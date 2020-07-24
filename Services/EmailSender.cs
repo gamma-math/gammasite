@@ -16,6 +16,7 @@ namespace GamMaSite.Services
         private bool enableSSL;
         private string userName;
         private string password;
+        private string fromAddress;
 
         // Get our parameterized configuration
         public EmailSender(string host, int port, bool enableSSL, string userName, string password)
@@ -25,9 +26,20 @@ namespace GamMaSite.Services
             this.enableSSL = enableSSL;
             this.userName = userName;
             this.password = password;
+            this.fromAddress = userName;
         }
 
-        public Task SendEmailAsync(string email, string subject, string htmlMessage)
+        public EmailSender(string host, int port, bool enableSSL, string userName, string password, string fromAddress)
+        {
+            this.host = host;
+            this.port = port;
+            this.enableSSL = enableSSL;
+            this.userName = userName;
+            this.password = password;
+            this.fromAddress = fromAddress;
+        }
+
+        public Task SendEmailAsync(string toAddress, string subject, string htmlMessage)
         {
             var client = new SmtpClient(host, port)
             {
@@ -36,7 +48,7 @@ namespace GamMaSite.Services
                 EnableSsl = enableSSL
             };
             return client.SendMailAsync(
-                new MailMessage(userName, email, subject, htmlMessage) { IsBodyHtml = true }
+                new MailMessage(fromAddress, toAddress, subject, htmlMessage) { IsBodyHtml = true }
             );
         }
     }
