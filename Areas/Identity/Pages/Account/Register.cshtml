@@ -1,15 +1,18 @@
 ﻿@page
 @model RegisterModel
 @{
-    ViewData["Title"] = "Tilmeld dig GamMa";
+    ViewData["Title"] = "Opret ny GamMa-bruger";
 }
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/2.4.1/core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/2.0.3/fetch.min.js"></script>
 
 <h1>@ViewData["Title"]</h1>
 
 <div class="row">
     <div class="col-md-4">
         <form asp-route-returnUrl="@Model.ReturnUrl" method="post">
-            <h4>Opret ny GamMa-bruger</h4>
+            <!--<h4>Opret ny GamMa-bruger</h4>-->
             <hr />
             <div asp-validation-summary="All" class="text-danger"></div>
             <div class="form-group">
@@ -26,6 +29,21 @@
                 <label asp-for="Input.ConfirmPassword"></label>
                 <input asp-for="Input.ConfirmPassword" class="form-control" />
                 <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.Navn"></label>
+                <input asp-for="Input.Navn" class="form-control" />
+                <span asp-validation-for="Input.Navn" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.Aargang"></label>
+                <input asp-for="Input.Aargang" class="form-control" />
+                <span asp-validation-for="Input.Aargang" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.Adresse"></label>
+                <input asp-for="Input.Adresse" class="form-control" />
+                <span asp-validation-for="Input.Adresse" class="text-danger"></span>
             </div>
             <button type="submit" class="btn btn-primary">Tilmeld</button>
         </form>

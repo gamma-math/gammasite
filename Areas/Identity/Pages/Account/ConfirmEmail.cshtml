@@ -1,7 +1,14 @@
 ﻿@page
 @model ConfirmEmailModel
 @{
-    ViewData["Title"] = "Bekræft email";
+    ViewData["Title"] = "Email bekræftet";
 }
 
 <h1>@ViewData["Title"]</h1>
+<hr />
+<div>
+    <p>
+        Din mail er bekræftet, og din profil er hermed oprettet i GamMas system. Et bestyrelsesmedlem vil herefter tjekke, om du er berettiget til medlemskab.
+        Du kan allerede nu <a asp-area="Identity" asp-page="/Account/Login">logge ind</a> på din profil.
+    </p>
+</div>

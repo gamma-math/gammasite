@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "name": "asp.net",
+  "private": true,
+  "devDependencies": {
+    "dawa-autocomplete2": "1.0.2"
+  },
+  "dependencies": {
+    "dawa-autocomplete2": "1.0.2"
+  }
+}

@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using GamMaSite.Areas.Identity.Data;
+using GamMaSite.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -19,14 +21,14 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class RegisterModel : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<GamMaUser> _userManager;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
 
         public RegisterModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
+            UserManager<GamMaUser> userManager,
+            SignInManager<GamMaUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender)
         {
@@ -46,6 +48,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account
         public class InputModel
         {
             [Required]
+            [DataType(DataType.Text)]
+            [Display(Name = "Navn")]
+            public string Navn { get; set; }
+
+            [Required]
             [EmailAddress]
             [Display(Name = "Email")]
             public string Email { get; set; }
@@ -60,6 +67,16 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             [Display(Name = "Bekræft password")]
             [Compare("Password", ErrorMessage = "Password og det bekræftede password stemmer ikke overens.")]
             public string ConfirmPassword { get; set; }
+
+            [Required]
+            [Range(1849, 2025, ErrorMessage = "Årstallet {0} skal være mellem {1} og {2}.")]
+            [Display(Name = "Årgang (start på studiet)")]
+            public int Aargang { get; set; }
+
+            [Required]
+            [DataType(DataType.Text)]
+            [Display(Name = "Adresse")]
+            public string Adresse { get; set; }
         }
 
         public async Task OnGetAsync(string returnUrl = null)
@@ -74,7 +91,16 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
             {
-                var user = new IdentityUser { UserName = Input.Email, Email = Input.Email };
+                var user = new GamMaUser 
+                { 
+                    UserName = Input.Email, 
+                    Email = Input.Email,
+                    Adresse = Input.Adresse,
+                    Navn = Input.Navn,
+                    Aargang = Input.Aargang,
+                    Status = UserStatus.OPRETTET,
+                    KontingentDato = DateTime.Now
+                };
                 var result = await _userManager.CreateAsync(user, Input.Password);
                 if (result.Succeeded)
                 {

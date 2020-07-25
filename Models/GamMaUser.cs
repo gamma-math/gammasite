@@ -1,5 +1,6 @@
 ﻿using GamMaSite.Areas.Identity.Data;
 using Microsoft.AspNetCore.Identity;
+using System;
 
 namespace GamMaSite.Models
 {
@@ -12,10 +13,13 @@ namespace GamMaSite.Models
         public string Adresse { get; set; }
 
         [PersonalData]
-        public string Aargang { get; set; }
+        public int Aargang { get; set; }
 
         [PersonalData]
         public UserStatus Status { get; set; }
+
+        [PersonalData]
+        public DateTime KontingentDato { get; set; }
 
     }
 }

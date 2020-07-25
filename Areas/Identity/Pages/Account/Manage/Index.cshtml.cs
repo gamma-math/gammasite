@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using GamMaSite.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -11,12 +12,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
     public partial class IndexModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<GamMaUser> _userManager;
+        private readonly SignInManager<GamMaUser> _signInManager;
 
         public IndexModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager)
+            UserManager<GamMaUser> userManager,
+            SignInManager<GamMaUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -32,12 +33,24 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
+            [DataType(DataType.Text)]
+            [Display(Name = "Navn")]
+            public string Navn { get; set; }
+
+            [DataType(DataType.Text)]
+            [Display(Name = "Adresse")]
+            public string Adresse { get; set; }
+
+            [Range(1849, 2025, ErrorMessage = "Årstallet {0} skal være mellem {1} og {2}.")]
+            [Display(Name = "Årgang")]
+            public int Aargang { get; set; }
+
             [Phone]
             [Display(Name = "Telefon")]
             public string PhoneNumber { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user)
+        private async Task LoadAsync(GamMaUser user)
         {
             var userName = await _userManager.GetUserNameAsync(user);
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
@@ -46,6 +59,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 
             Input = new InputModel
             {
+                Navn = user.Navn,
+                Adresse = user.Adresse,
+                Aargang = user.Aargang,
                 PhoneNumber = phoneNumber
             };
         }
@@ -86,6 +102,23 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                     return RedirectToPage();
                 }
             }
+
+            if (Input.Navn != user.Navn)
+            {
+                user.Navn = Input.Navn;
+            }
+
+            if (Input.Adresse != user.Adresse)
+            {
+                user.Adresse = Input.Adresse;
+            }
+
+            if (Input.Aargang != user.Aargang)
+            {
+                user.Aargang = Input.Aargang;
+            }
+
+            await _userManager.UpdateAsync(user);
 
             await _signInManager.RefreshSignInAsync(user);
             StatusMessage = "Din profil er blevet opdateret";
