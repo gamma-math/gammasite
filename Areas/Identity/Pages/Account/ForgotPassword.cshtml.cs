@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
-using GamMaSite.Models;
+using GamMaSite.Areas.Identity.Data;
 
 namespace GamMaSite.Areas.Identity.Pages.Account
 {

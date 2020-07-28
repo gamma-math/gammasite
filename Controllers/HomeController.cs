@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using GamMaSite.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GamMaSite.Controllers
 {
@@ -28,7 +29,8 @@ namespace GamMaSite.Controllers
             return View();
         }
 
-        public IActionResult Om()
+        [Authorize(Roles = "Admin")]
+        public IActionResult Medlemmer()
         {
             return View();
         }

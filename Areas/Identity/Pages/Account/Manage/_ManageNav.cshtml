@@ -1,4 +1,5 @@
 ﻿@using GamMaSite.Models
+@using GamMaSite.Areas.Identity.Data
 @inject SignInManager<GamMaUser> SignInManager
 @{
     var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();

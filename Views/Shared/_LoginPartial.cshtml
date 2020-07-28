@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Identity
+@using GamMaSite.Areas.Identity.Data
 @inject SignInManager<GamMaUser> SignInManager
 @inject UserManager<GamMaUser> UserManager
 
@@ -20,7 +21,7 @@ else
         <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Tilmelding</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Log ind</a>
     </li>
 }
 </ul>

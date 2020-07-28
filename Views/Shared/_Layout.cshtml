@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@using GamMaSite.Areas.Identity.Data
+@inject SignInManager<GamMaUser> SignInManager
+@inject UserManager<GamMaUser> UserManager
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -22,6 +26,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Arrangementer">Arrangementer</a>
                         </li>
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Medlemmer">Medlemmer</a>
+                        </li>
+                        }
                         <li class="nav-item">
                             <a class="nav-link text-dark" target="_blank" href="https://www.facebook.com/groups/gammamath/">Facebook</a>
                         </li>

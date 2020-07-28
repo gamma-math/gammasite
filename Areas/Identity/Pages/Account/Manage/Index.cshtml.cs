@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using GamMaSite.Areas.Identity.Data;
 using GamMaSite.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
         }
 
         public string Username { get; set; }
+
+        public UserStatus Status { get; set; }
 
         [TempData]
         public string StatusMessage { get; set; }
@@ -56,6 +59,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
             Username = userName;
+            Status = user.Status;
 
             Input = new InputModel
             {
