@@ -31,11 +31,16 @@ namespace GamMaSite
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseMySql(
-                    Configuration.GetConnectionString("DefaultConnection")
-                    )
-                );
+            string DbConnectionString = Configuration.GetConnectionString("DefaultConnection");
+            if (DbConnectionString == "in-mem") {
+                services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase("DeveloperDB"));
+            } else {
+                services.AddDbContext<ApplicationDbContext>(options =>
+                    options.UseMySql(
+                        Configuration.GetConnectionString("DefaultConnection")
+                        )
+                    );
+            }
 
             services.AddDefaultIdentity<GamMaUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>()
