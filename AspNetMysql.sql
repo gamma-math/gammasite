@@ -9,9 +9,20 @@
 CREATE TABLE IF NOT EXISTS AspNetRoles (
   `Id` varchar(128) NOT NULL,
   `Name` varchar(256) NOT NULL,
+  `NormalizedName` varchar(256) NOT NULL,
+  `ConcurrencyStamp` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DROP TABLE IF EXISTS `AspNetRoleClaims`;
+CREATE TABLE `AspNetRoleClaims` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `ClaimType` longtext,
+  `ClaimValue` longtext,
+  `RoleId` varchar(127) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_AspNetRoleClaims_RoleId` (`RoleId`)
+);
 -- --------------------------------------------------------
 
 --
