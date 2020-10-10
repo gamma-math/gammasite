@@ -78,6 +78,11 @@ CREATE TABLE IF NOT EXISTS AspNetUsers (
   `LockoutEnd` datetime DEFAULT NULL,
   `NormalizedEmail` varchar(256) DEFAULT NULL,
   `NormalizedUserName` varchar(256) DEFAULT NULL,
+  `Navn` varchar(256) NOT NULL,
+  `Adresse` mediumtext,
+  `Status` int(11) NOT NULL DEFAULT '0',
+  `Aargang` int(11) NOT NULL,
+  `KontingentDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
