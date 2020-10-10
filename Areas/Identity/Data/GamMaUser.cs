@@ -18,6 +18,9 @@ namespace GamMaSite.Areas.Identity.Data
         public int Aargang { get; set; }
 
         [PersonalData]
+        public string Beskaeftigelse { get; set; }
+
+        [PersonalData]
         public UserStatus Status { get; set; }
 
         [PersonalData]

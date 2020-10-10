@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS AspNetUsers (
   `Adresse` mediumtext,
   `Status` int(11) NOT NULL DEFAULT '0',
   `Aargang` int(11) NOT NULL,
+  `Beskaeftigelse` longtext,
   `KontingentDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
