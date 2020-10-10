@@ -20,7 +20,7 @@
             @foreach (GamMaUser user in Model.NonMembers)
             {
                 <tr>
-                    <td>@user.UserName</td>
+                    <td>@user.Navn, @user.UserName</td>
                     <td>
                         <input type="checkbox" name="AddIds" value="@user.Id">
                     </td>
@@ -40,7 +40,7 @@
             @foreach (GamMaUser user in Model.Members)
             {
                 <tr>
-                    <td>@user.UserName</td>
+                    <td>@user.Navn, @user.UserName</td>
                     <td>
                         <input type="checkbox" name="DeleteIds" value="@user.Id">
                     </td>
