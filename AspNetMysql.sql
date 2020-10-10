@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS AspNetUserClaims (
 CREATE TABLE IF NOT EXISTS AspNetUserLogins (
   `LoginProvider` varchar(128) NOT NULL,
   `ProviderKey` varchar(128) NOT NULL,
+  `ProviderDisplayName` varchar(128) NOT NULL,
   `UserId` varchar(128) NOT NULL,
   PRIMARY KEY (`LoginProvider`,`ProviderKey`,`UserId`),
   KEY `ApplicationUser_Logins` (`UserId`)
