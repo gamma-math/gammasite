@@ -60,7 +60,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                 await _emailSender.SendEmailAsync(
                     Input.Email,
                     "Nulstil Password",
-                    $"Nulstil venligst kodeord ved at<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+                    $"Nulstil venligst kodeord ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
 
                 return RedirectToPage("./ForgotPasswordConfirmation");
             }
