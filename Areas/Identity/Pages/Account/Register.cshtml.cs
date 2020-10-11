@@ -115,7 +115,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                         protocol: Request.Scheme);
 
                     await _emailSender.SendEmailAsync(Input.Email, "Bekræft din email",
-                        $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.\n" +
+                        $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
                         $"Kontakt dernæst bestyrelsen@gam-ma.dk for yderligere instrukser.");
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
