@@ -1,0 +1,33 @@
+﻿@model GamMaSite.Areas.Identity.Data.GamMaUser
+
+<h1 class="">Redigér bruger</h1>
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form asp-action="Update" method="post">
+    <div class="form-group">
+        <label asp-for="Id" style="display: none;"></label>
+        <input type="hidden" asp-for="Id" class="form-control" disabled />
+    </div>
+    <div class="form-group">
+        <label asp-for="Navn"><b>Navn:</b></label>
+        <input asp-for="Navn" class="form-control" disabled />
+    </div>
+    <div class="form-group">
+        <label asp-for="Aargang"><b>Aargang:</b></label>
+        <input asp-for="Aargang" class="form-control" disabled />
+    </div>
+    <div class="form-group">
+        <label asp-for="Email"><b>Email:</b></label>
+        <input asp-for="Email" class="form-control" disabled />
+    </div>
+    <div class="form-group">
+        <label asp-for="Status"><b>Status:</b></label>
+        <select asp-for="Status" class="form-control">
+            <option value="OPRETTET">OPRETTET</option>
+            <option value="BETALT">BETALT</option>
+            <option value="SKYLDER">SKYLDER</option>
+            <option value="INAKTIV">INAKTIV</option>
+        </select>
+    </div>
+    <a asp-action="Expanded" class="btn btn-secondary">Tilbage</a>  <button type="submit" class="btn btn-primary">Gem</button>
+</form>
