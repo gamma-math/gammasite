@@ -51,6 +51,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             [Phone]
             [Display(Name = "Telefon")]
             public string PhoneNumber { get; set; }
+
+            [DataType(DataType.Text)]
+            [Display(Name = "Beskæftigelse")]
+            public string Beskaeftigelse { get; set; }
+
         }
 
         private async Task LoadAsync(GamMaUser user)
@@ -66,7 +71,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                 Navn = user.Navn,
                 Adresse = user.Adresse,
                 Aargang = user.Aargang,
-                PhoneNumber = phoneNumber
+                PhoneNumber = phoneNumber,
+                Beskaeftigelse = user.Beskaeftigelse
             };
         }
 
@@ -120,6 +126,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             if (Input.Aargang != user.Aargang)
             {
                 user.Aargang = Input.Aargang;
+            }
+
+            if (Input.Beskaeftigelse != user.Beskaeftigelse)
+            {
+                user.Beskaeftigelse = Input.Beskaeftigelse;
             }
 
             await _userManager.UpdateAsync(user);
