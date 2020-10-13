@@ -99,7 +99,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     Navn = Input.Navn,
                     Aargang = Input.Aargang,
                     Status = UserStatus.OPRETTET,
-                    KontingentDato = DateTime.Now
+                    KontingentDato = DateTime.MinValue
                 };
                 var result = await _userManager.CreateAsync(user, Input.Password);
                 if (result.Succeeded)
