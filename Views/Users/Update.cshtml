@@ -3,7 +3,7 @@
 <h1 class="">Redigér bruger</h1>
 <div asp-validation-summary="All" class="text-danger"></div>
 
-<form asp-action="Update" method="post">
+<form asp-action="Update" asp-controller="Users" method="post">
     <div class="form-group">
         <label asp-for="Id" style="display: none;"></label>
         <input type="hidden" asp-for="Id" class="form-control" disabled />
@@ -13,7 +13,7 @@
         <input asp-for="Navn" class="form-control" disabled />
     </div>
     <div class="form-group">
-        <label asp-for="Aargang"><b>Aargang:</b></label>
+        <label asp-for="Aargang"><b>Årgang:</b></label>
         <input asp-for="Aargang" class="form-control" disabled />
     </div>
     <div class="form-group">

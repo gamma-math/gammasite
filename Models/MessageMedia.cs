@@ -7,11 +7,10 @@ using GamMaSite.Areas.Identity.Data;
 
 namespace GamMaSite.Models
 {
-    public class RoleEdit
+    public enum MessageMedia
     {
-        public IdentityRole Role { get; set; }
-        public IEnumerable<GamMaUser> Members { get; set; }
-
-        public IEnumerable<GamMaUser> NonMembers { get; set; }
+        Email,
+        SMS,
+        EmailSMS
     }
 }

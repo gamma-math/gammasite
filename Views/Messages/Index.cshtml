@@ -1,0 +1,32 @@
+﻿@using GamMaSite.Areas.Identity.Data;
+@model IEnumerable<UserStatus>
+
+<h1>Send besked</h1>
+<form asp-action="Send" asp-controller="Messages" method="post">
+    <div class="form-group">
+        <select multiple="multiple" id="messageSelect" name="Status" class="form-control">
+            @foreach (var status in Model)
+            {
+                <option value="@status">@status</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <input type="radio" name="Media" value="Email" checked>&nbsp;Email&nbsp;</input>
+        <input type="radio" name="Media" value="SMS">&nbsp;SMS&nbsp;</input>
+        <input type="radio" name="Media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
+    </div>
+    <div class="form-group">
+        <input type="text" name="Subject" class="form-control" placeholder="Emne. Kun relevant i mail..." />
+    </div>
+    <div class="form-group">
+        <textarea name="MessageBody" class="form-control" type="text" placeholder="Indtast besked..."></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Send besked</button>
+</form>
+<script>
+    $('#messageSelect').selectWoo({
+        placeholder: " Vælg gruppe..."
+    });
+</script>
+

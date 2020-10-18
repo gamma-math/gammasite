@@ -51,6 +51,13 @@ namespace GamMaSite
                 Configuration["EmailSender:Password"]
                 )
             );
+            services.AddScoped<ISmsSender, SmsSender>(i =>
+            new SmsSender(
+                Configuration["SmsSender:Host"],
+                Configuration["SmsSender:ApiKey"],
+                Configuration["SmsSender:From"]
+                )
+            );
             services.AddControllersWithViews();
             services.AddRazorPages();
         }
