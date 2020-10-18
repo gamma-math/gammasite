@@ -80,6 +80,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account
 
             [Required]
             [DataType(DataType.Text)]
+            [Display(Name = "Beskæftigelse ved arbejdsgiver")]
+            public string Beskaeftigelse { get; set; }
+
+            [Required]
+            [DataType(DataType.Text)]
             [Display(Name = "Adresse")]
             public string Adresse { get; set; }
         }
@@ -104,6 +109,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     Navn = Input.Navn,
                     PhoneNumber = Input.PhoneNumber,
                     Aargang = Input.Aargang,
+                    Beskaeftigelse = Input.Beskaeftigelse,
                     Status = UserStatus.OPRETTET,
                     KontingentDato = DateTime.MinValue,
                     OprettetDato = DateTime.Now
