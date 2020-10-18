@@ -69,6 +69,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             public string ConfirmPassword { get; set; }
 
             [Required]
+            [Phone]
+            [Display(Name = "Telefonnummer")]
+            public string PhoneNumber { get; set; }
+
+            [Required]
             [Range(1849, 2025, ErrorMessage = "Årstallet {0} skal være mellem {1} og {2}.")]
             [Display(Name = "Årgang (start på studiet)")]
             public int Aargang { get; set; }
@@ -97,6 +102,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     Email = Input.Email,
                     Adresse = Input.Adresse,
                     Navn = Input.Navn,
+                    PhoneNumber = Input.PhoneNumber,
                     Aargang = Input.Aargang,
                     Status = UserStatus.OPRETTET,
                     KontingentDato = DateTime.MinValue
