@@ -26,5 +26,8 @@ namespace GamMaSite.Areas.Identity.Data
         [PersonalData]
         public DateTime KontingentDato { get; set; }
 
+        [PersonalData]
+        public DateTime OprettetDato { get; set; }
+
     }
 }

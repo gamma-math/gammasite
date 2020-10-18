@@ -105,7 +105,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     PhoneNumber = Input.PhoneNumber,
                     Aargang = Input.Aargang,
                     Status = UserStatus.OPRETTET,
-                    KontingentDato = DateTime.MinValue
+                    KontingentDato = DateTime.MinValue,
+                    OprettetDato = DateTime.Now
                 };
                 var result = await _userManager.CreateAsync(user, Input.Password);
                 if (result.Succeeded)
