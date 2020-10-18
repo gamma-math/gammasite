@@ -29,7 +29,8 @@ namespace GamMaSite.Controllers
 
         public IActionResult Index()
         {
-            return View(userManager.Users.Select(user => user.Status).Distinct().ToList());
+            var userCategories = new UserCategories(roleManager, userManager);
+            return View(userCategories);
         }
 
         public async Task<IActionResult> Send(UserStatus[] status, string role, string messageBody, MessageMedia media, string subject)

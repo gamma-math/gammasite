@@ -1,13 +1,19 @@
-﻿@using GamMaSite.Areas.Identity.Data;
-@model IEnumerable<UserStatus>
+﻿@model UserCategories
 
 <h1>Send besked</h1>
 <form asp-action="Send" asp-controller="Messages" method="post">
-    <div class="form-group">
-        <select multiple="multiple" id="messageSelect" name="Status" class="form-control">
-            @foreach (var status in Model)
+    <div class="input-group form-group">
+        <select multiple="multiple" id="statusSelect" name="Status" class="form-control">
+            @foreach (var status in @Model.Status)
             {
-                <option value="@status">@status</option>
+            <option value="@status">@status</option>
+            }
+        </select>
+        <span class="input-group-addon">&nbsp;&nbsp;&nbsp;</span>
+        <select multiple="multiple" id="roleSelect" name="Role" class="form-control">
+            @foreach (var role in @Model.Roles)
+            {
+            <option value="@role.Name">@role.Name</option>
             }
         </select>
     </div>
@@ -25,8 +31,11 @@
     <button type="submit" class="btn btn-primary">Send besked</button>
 </form>
 <script>
-    $('#messageSelect').selectWoo({
+    $('#statusSelect').selectWoo({
         placeholder: " Vælg gruppe..."
+    });
+    $('#roleSelect').selectWoo({
+        placeholder: " Vælg rolle..."
     });
 </script>
 
