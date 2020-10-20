@@ -39,6 +39,7 @@ namespace GamMaSite
             services.AddDefaultIdentity<GamMaUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddRoles<IdentityRole>()
                 .AddRoleManager<RoleManager<IdentityRole>>()
+                .AddErrorDescriber<DanishIdentityErrorDescriber>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
             services.AddTransient<IEmailSender, EmailSender>(i =>
