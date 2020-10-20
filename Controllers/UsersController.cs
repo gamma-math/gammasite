@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GamMaSite.Controllers
 {
-    [Authorize(Roles = "Admin")]
     public class UsersController : Controller
     {
         private UserManager<GamMaUser> userManager;
@@ -25,11 +24,13 @@ namespace GamMaSite.Controllers
             return View(userManager.Users);
         }
 
+        [Authorize(Roles = "Admin")]
         public IActionResult Expanded()
         {
             return View(userManager.Users);
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(string id)
         {
             GamMaUser user = await userManager.FindByIdAsync(id);
@@ -39,6 +40,7 @@ namespace GamMaSite.Controllers
                 return RedirectToAction("Index");
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Update(string id, UserStatus status)
         {
