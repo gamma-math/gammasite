@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace GamMaSite.Areas.Identity.Data
+namespace GamMaSite.Models
 {
     public enum UserStatus
     {

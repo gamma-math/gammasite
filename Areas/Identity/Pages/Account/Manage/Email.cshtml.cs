@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
-using GamMaSite.Areas.Identity.Data;
 using GamMaSite.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;

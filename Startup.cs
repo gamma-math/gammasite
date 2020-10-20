@@ -15,7 +15,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using GamMaSite.Services;
 using GamMaSite.Models;
-using GamMaSite.Areas.Identity.Data;
 
 namespace GamMaSite
 {
