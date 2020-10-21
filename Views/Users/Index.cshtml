@@ -7,20 +7,22 @@
 <h1 class="">Medlemsoversigt</h1>
 <br />
 <table class="table table-sm table-bordered" id="medlemmer">
-    <tr>
-        <th>Navn</th>
-        <th>Årgang</th>
-        <th>Beskæftigelse</th>
-    </tr>
+    <thead class="thead-dark">
+        <tr>
+            <th>Navn</th>
+            <th>Årgang</th>
+            <th>Beskæftigelse</th>
+        </tr>
+    </thead>
     @foreach (GamMaUser user in Model.OrderBy(it => it.Navn))
     {
         if (new[] { UserStatus.BETALT, UserStatus.SKYLDER }.Contains(user.Status))
         {
-            <tr>
-                <td>@user.Navn</td>
-                <td>@user.Aargang</td>
-                <td>@user.Beskaeftigelse</td>
-            </tr>
+    <tr>
+        <td>@user.Navn</td>
+        <td>@user.Aargang</td>
+        <td>@user.Beskaeftigelse</td>
+    </tr>
         }
     }
 </table>
