@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "Kontingent";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section Scripts {
+    <script src="https://polyfill.io/v3/polyfill.min.js?version=3.52.1&features=fetch"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script type="text/javascript">
+        // Create an instance of the Stripe object with your publishable API key
+        var stripe = Stripe("pk_test_XbTXDRaWHSTKiNxGsvv8CKP100NnEtOaQd");
+        var checkoutButton = document.getElementById("checkout-button");
+        checkoutButton.addEventListener("click", function () {
+            fetch(window.location.origin + "/api/Stripe", {
+                method: "POST",
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (session) {
+                    return stripe.redirectToCheckout({ sessionId: session.id });
+                })
+                .then(function (result) {
+                    if (result.error) {
+                        alert(result.error.message);
+                    }
+                })
+                .catch(function (error) {
+                    console.error("Error:", error);
+                });
+        });
+    </script>
+}
+
+<h1>Kontingent</h1>
+
+<section>
+    <div class="product">
+        <div class="description">
+            <h3>Kontingent til GamMa</h3>
+            <h5>100,-</h5>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary" id="checkout-button">Betal kontingent</button>
+</section>

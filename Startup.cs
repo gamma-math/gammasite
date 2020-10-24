@@ -15,6 +15,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using GamMaSite.Services;
 using GamMaSite.Models;
+using Stripe;
 
 namespace GamMaSite
 {
@@ -51,6 +52,8 @@ namespace GamMaSite
                 Configuration["EmailSender:Password"]
                 )
             );
+            services.AddScoped<IStripeService, StripeService>(i => new StripeService());
+            StripeConfiguration.ApiKey = Configuration["StripeConfig:SecretApiKey"];
             services.AddScoped<ISmsSender, SmsSender>(i =>
             new SmsSender(
                 Configuration["SmsSender:Host"],

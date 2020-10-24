@@ -12,6 +12,7 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <link rel="stylesheet" type="text/css" href="~/css/thirdparty/select2.min.css">
     <script src="~/js/thirdparty/selectWoo.min.js"></script>
+    @RenderSection("Styles", required: false)
 </head>
 <body>
     <header>
@@ -35,24 +36,24 @@
                         </li>
                         @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Admin"))
                         {
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Medlemmer</a>
-                        </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Medlemmer</a>
+                            </li>
                         }
                         @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
                         {
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Expanded">Medlemmer</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Admin
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="adminDropdown">
-                                <a class="dropdown-item" asp-area="" asp-controller="Messages" asp-action="Index">Beskeder</a>
-                                <a class="dropdown-item" asp-area="" asp-controller="Role" asp-action="Index">Roller</a>
-                            </div>
-                        </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Expanded">Medlemmer</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Admin
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="adminDropdown">
+                                    <a class="dropdown-item" asp-area="" asp-controller="Messages" asp-action="Index">Beskeder</a>
+                                    <a class="dropdown-item" asp-area="" asp-controller="Role" asp-action="Index">Roller</a>
+                                </div>
+                            </li>
                         }
                     </ul>
                 </div>
