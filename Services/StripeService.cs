@@ -8,12 +8,12 @@ namespace GamMaSite.Services
 {
     public interface IStripeService
     {
-        string StartPayment(long price, string currency, string productName, string mode, string successUrl, string cancelUrl);
+        string StartPayment(string id, long price, string currency, string productName, string mode, string successUrl, string cancelUrl);
     }
 
     public class StripeService : IStripeService
     {
-        public string StartPayment(long price, string currency, string productName, string mode, string successUrl, string cancelUrl)
+        public string StartPayment(string id, long price, string currency, string productName, string mode, string successUrl, string cancelUrl)
         {
             var options = new SessionCreateOptions
             {
@@ -25,15 +25,7 @@ namespace GamMaSite.Services
                 {
                     new SessionLineItemOptions
                     {
-                        PriceData = new SessionLineItemPriceDataOptions
-                        {
-                            UnitAmount = price,
-                            Currency = currency,
-                            ProductData = new SessionLineItemPriceDataProductDataOptions
-                            {
-                                Name = productName,
-                            },
-                        },
+                        PriceData = id != null ? GetPriceData(id) :  GetPriceData(price, currency, productName),
                         Quantity = 1,
                     },
                 },
@@ -57,6 +49,14 @@ namespace GamMaSite.Services
                 {
                     Name = productName,
                 },
+            };
+        }
+
+        private SessionLineItemPriceDataOptions GetPriceData(string id)
+        {
+            return new SessionLineItemPriceDataOptions
+            {
+                Product = id
             };
         }
     }

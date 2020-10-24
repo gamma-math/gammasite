@@ -25,7 +25,7 @@ namespace GamMaSite.Controllers
             var successUrl = domain + "/success.html";
             var cancelUrl = domain + "/cancel.html";
 
-            var stripeSessionId = _stripeService.StartPayment(2000, "dkk", "Generisk Betaling", "payment", successUrl, cancelUrl);
+            var stripeSessionId = _stripeService.StartPayment(null, 2000, "dkk", "Generisk Betaling", "payment", successUrl, cancelUrl);
 
             var result = new JsonResult(new { id = stripeSessionId });
             return result;
