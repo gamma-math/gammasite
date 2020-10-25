@@ -1,0 +1,26 @@
+﻿@using Stripe;
+@model IEnumerable<Product>;
+
+@{
+    ViewData["Title"] = "Produkter";
+}
+
+<h1 class="">Produkter</h1>
+<br />
+<table class="table table-sm table-bordered" id="produkter">
+    <thead class="thead-dark">
+        <tr>
+            <th>Navn</th>
+            <th>Beskrivelse</th>
+            <th>Produkt</th>
+        </tr>
+    </thead>
+    @foreach (Product product in Model)
+    {
+        <tr>
+            <td>@product.Name</td>
+            <td>@product.Description</td>
+            <td><a class="btn btn-sm btn-primary" asp-action="Product" asp-route-id="@product.Id">Vælg</a></td>
+        </tr>
+    }
+</table>

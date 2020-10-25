@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using GamMaSite.Services;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace GamMaSite.Controllers
 {
@@ -18,14 +19,40 @@ namespace GamMaSite.Controllers
             this._stripeService = stripeService;
         }
 
-        [HttpPost]
-        public ActionResult Create()
+        [HttpPost("Product")]
+        public async Task<ActionResult> ProductAsync(string product, string price)
         {
-            var domain = Url.PageLink();
-            var successUrl = domain + "/success.html";
-            var cancelUrl = domain + "/cancel.html";
+            var prod = await _stripeService.GetProductAsync(product);
+            var priceObject = await _stripeService.GetPriceAsync(price);
+            var successUrl = Url.Action("Success", "Payment", new { }, Request.Scheme);
+            var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
 
-            var stripeSessionId = _stripeService.StartPayment(null, 2000, "dkk", "Generisk Betaling", "payment", successUrl, cancelUrl);
+            var stripeSessionId = _stripeService.StartPayment(
+                prod.Id,
+                priceObject.UnitAmount.Value,
+                priceObject.Currency,
+                successUrl,
+                cancelUrl
+                );
+
+            var result = new JsonResult(new { id = stripeSessionId });
+            return result;
+        }
+
+        [HttpPost("Generic")]
+        public ActionResult Generic(string name, long price, string description)
+        {
+            var successUrl = Url.Action("Success", "Payment", new { }, Request.Scheme);
+            var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
+
+            var stripeSessionId = _stripeService.StartPayment(
+                name, 
+                description, 
+                price, 
+                "dkk", 
+                successUrl, 
+                cancelUrl
+                );
 
             var result = new JsonResult(new { id = stripeSessionId });
             return result;

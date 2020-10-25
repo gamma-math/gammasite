@@ -37,7 +37,7 @@ namespace GamMaSite.Controllers
             if (user != null)
                 return View(user);
             else
-                return RedirectToAction("Index");
+                return RedirectToAction(nameof(Index));
         }
 
         [Authorize(Roles = "Admin")]
@@ -56,7 +56,7 @@ namespace GamMaSite.Controllers
                     }
                     IdentityResult result = await userManager.UpdateAsync(user);
                     if (result.Succeeded)
-                        return RedirectToAction("Expanded");
+                        return RedirectToAction(nameof(Expanded));
                     else
                     {
                         ModelState.AddModelError("", "Status må ikke være tom");

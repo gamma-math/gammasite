@@ -1,4 +1,5 @@
-﻿using Stripe.Checkout;
+﻿using Stripe;
+using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,12 +9,72 @@ namespace GamMaSite.Services
 {
     public interface IStripeService
     {
-        string StartPayment(string id, long price, string currency, string productName, string mode, string successUrl, string cancelUrl);
+        string StartPayment(string product, long price, string currency, string successUrl, string cancelUrl);
+
+        string StartPayment(string name, string description, long price, string currency, string successUrl, string cancelUrl);
+
+        Task<Product[]> GetAllProductsAsync();
+
+        Task<Product> GetProductAsync(string id);
+
+        Task<Price[]> GetPricesAsync(string productID);
+
+        Task<Price> GetPriceAsync(string id);
     }
 
     public class StripeService : IStripeService
     {
-        public string StartPayment(string id, long price, string currency, string productName, string mode, string successUrl, string cancelUrl)
+        public string StartPayment(string product, long price, string currency, string successUrl, string cancelUrl)
+        {
+            Session session = GetCreateSession(GetPriceData(product, price, currency), successUrl, cancelUrl);
+
+            return session.Id;
+        }
+
+        public string StartPayment(string name, string description, long price, string currency, string successUrl, string cancelUrl)
+        {
+            Session session = GetCreateSession(GetPriceData(name, description, price, currency), successUrl, cancelUrl);
+
+            return session.Id;
+        }
+
+        public async Task<Product[]> GetAllProductsAsync()
+        {
+            var options = new ProductListOptions
+            {
+                Limit = 100,
+                Active = true
+            };
+            var service = new ProductService();
+            var products = (await service.ListAsync(options)).ToArray();
+            return products;
+        }
+
+        public async Task<Product> GetProductAsync(string id)
+        {
+            return await new ProductService().GetAsync(id);
+        }
+
+        public async Task<Price[]> GetPricesAsync(string productID)
+        {
+            var options = new PriceListOptions
+            {
+                Limit = 100,
+                Active = true,
+                Product = productID
+            };
+            var service = new PriceService();
+            var products = (await service.ListAsync(options)).ToArray();
+            return products;
+        }
+
+        public async Task<Price> GetPriceAsync(string id)
+        {
+            var price = (await new PriceService().GetAsync(id));
+            return price;
+        }
+
+        private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string successUrl, string cancelUrl)
         {
             var options = new SessionCreateOptions
             {
@@ -25,21 +86,30 @@ namespace GamMaSite.Services
                 {
                     new SessionLineItemOptions
                     {
-                        PriceData = id != null ? GetPriceData(id) :  GetPriceData(price, currency, productName),
+                        PriceData = priceData,
                         Quantity = 1,
-                    },
+                    }
                 },
-                Mode = mode,
+                Mode = "payment",
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,
             };
             var service = new SessionService();
             Session session = service.Create(options);
-
-            return session.Id;
+            return session;
         }
 
-        private SessionLineItemPriceDataOptions GetPriceData(long price, string currency, string productName)
+        private SessionLineItemPriceDataOptions GetPriceData(string product, long price, string currency)
+        {
+            return new SessionLineItemPriceDataOptions
+            {
+                Product = product,
+                UnitAmount = price,
+                Currency = currency
+            };
+        }
+
+        private SessionLineItemPriceDataOptions GetPriceData(string name, string description, long price, string currency)
         {
             return new SessionLineItemPriceDataOptions
             {
@@ -47,16 +117,9 @@ namespace GamMaSite.Services
                 Currency = currency,
                 ProductData = new SessionLineItemPriceDataProductDataOptions
                 {
-                    Name = productName,
-                },
-            };
-        }
-
-        private SessionLineItemPriceDataOptions GetPriceData(string id)
-        {
-            return new SessionLineItemPriceDataOptions
-            {
-                Product = id
+                    Description = description,
+                    Name = name
+                }
             };
         }
     }

@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = "Kontingent";
+    ViewData["Title"] = "Overfør valgfrit beløb";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 @section Scripts {
@@ -10,7 +10,9 @@
         var stripe = Stripe("pk_test_XbTXDRaWHSTKiNxGsvv8CKP100NnEtOaQd");
         var checkoutButton = document.getElementById("checkout-button");
         checkoutButton.addEventListener("click", function () {
-            fetch(window.location.origin + "/api/Stripe", {
+            var money = document.getElementById("money").value;
+            var desc = document.getElementById("description").value;
+            fetch(window.location.origin + "/api/Stripe/Generic?name=Generisk&price=" + money + "&description=" + desc, {
                 method: "POST",
             })
                 .then(function (response) {
@@ -31,14 +33,15 @@
     </script>
 }
 
-<h1>Kontingent</h1>
+<h1>Overfør valgfrit beløb</h1>
 
 <section>
-    <div class="product">
-        <div class="description">
-            <h3>Kontingent til GamMa</h3>
-            <h5>100,-</h5>
-        </div>
+    <div class="form-group">
+        <label><b>Beløb:</b></label>
+        <input type="number" class="form-control" id="money" placeholder="Indtast beløb..." />
+        <br />
+        <label><b>Beskrivelse:</b></label>
+        <input type="text" class="form-control" id="description" placeholder="Indtast beskrivelse..." />
     </div>
-    <button type="submit" class="btn btn-primary" id="checkout-button">Betal kontingent</button>
+    <button type="submit" class="btn btn-primary" id="checkout-button">Overfør beløb</button>
 </section>
