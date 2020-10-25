@@ -24,7 +24,7 @@ namespace GamMaSite.Controllers
         {
             var prod = await _stripeService.GetProductAsync(product);
             var priceObject = await _stripeService.GetPriceAsync(price);
-            var parameters = new { };
+            var parameters = new { productName = prod.Name };
             var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
             var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
             var successUrl = $"{Url.Action(successPage, "Payment", parameters, Request.Scheme)}{sessionparameter}";
@@ -44,15 +44,15 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("Generic")]
-        public ActionResult Generic(string name, long price, string description, string user)
+        public ActionResult Generic(string product, long price, string description, string user)
         {
-            var parameters = new { };
+            var parameters = new { productName = product };
             var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
             var successUrl = $"{Url.Action("Success", "Payment", parameters, Request.Scheme)}{sessionparameter}";
             var cancelUrl = Url.Action("Cancel", "Payment", parameters, Request.Scheme);
 
             var stripeSessionId = _stripeService.StartPayment(
-                name,
+                product,
                 description, 
                 price,
                 "dkk",
