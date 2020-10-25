@@ -13,6 +13,8 @@ namespace GamMaSite.Services
 
         string StartPayment(string name, string description, long price, string currency, string successUrl, string cancelUrl);
 
+        Task<bool> IsPaymentComplete(string sessionId);
+
         Task<Product[]> GetAllProductsAsync();
 
         Task<Product> GetProductAsync(string id);
@@ -36,6 +38,13 @@ namespace GamMaSite.Services
             Session session = GetCreateSession(GetPriceData(name, description, price, currency), successUrl, cancelUrl);
 
             return session.Id;
+        }
+
+        public async Task<bool> IsPaymentComplete(string sessionId)
+        {
+            var service = await new SessionService().GetAsync(sessionId);
+            var result = new string[] { "paid", "no_payment_required" }.Contains(service.PaymentStatus);
+            return result;
         }
 
         public async Task<Product[]> GetAllProductsAsync()

@@ -20,12 +20,15 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("Product")]
-        public async Task<ActionResult> ProductAsync(string product, string price)
+        public async Task<ActionResult> ProductAsync(string product, string price, string user)
         {
             var prod = await _stripeService.GetProductAsync(product);
             var priceObject = await _stripeService.GetPriceAsync(price);
-            var successUrl = Url.Action("Success", "Payment", new { }, Request.Scheme);
-            var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
+            var parameters = new { userid = user, product = prod.Name };
+            var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
+            var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
+            var successUrl = $"{Url.Action(successPage, "Payment", parameters, Request.Scheme)}{sessionparameter}";
+            var cancelUrl = Url.Action("Cancel", "Payment", parameters, Request.Scheme);
 
             var stripeSessionId = _stripeService.StartPayment(
                 prod.Id,
@@ -42,14 +45,16 @@ namespace GamMaSite.Controllers
         [HttpPost("Generic")]
         public ActionResult Generic(string name, long price, string description)
         {
-            var successUrl = Url.Action("Success", "Payment", new { }, Request.Scheme);
-            var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
+            var parameters = new { product = name, productPrice = price, desc = description };
+            var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
+            var successUrl = $"{Url.Action("Success", "Payment", parameters, Request.Scheme)}{sessionparameter}";
+            var cancelUrl = Url.Action("Cancel", "Payment", parameters, Request.Scheme);
 
             var stripeSessionId = _stripeService.StartPayment(
-                name, 
+                name,
                 description, 
-                price, 
-                "dkk", 
+                price,
+                "dkk",
                 successUrl, 
                 cancelUrl
                 );
