@@ -9,11 +9,11 @@ namespace GamMaSite.Services
 {
     public interface IStripeService
     {
-        string StartPayment(string product, long price, string currency, string successUrl, string cancelUrl);
+        string StartPayment(string product, long price, string currency, string user, string successUrl, string cancelUrl);
 
-        string StartPayment(string name, string description, long price, string currency, string successUrl, string cancelUrl);
+        string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
 
-        Task<bool> IsPaymentComplete(string sessionId);
+        Task<bool> IsPaymentComplete(string sessionId, string userid);
 
         Task<Product[]> GetAllProductsAsync();
 
@@ -26,25 +26,26 @@ namespace GamMaSite.Services
 
     public class StripeService : IStripeService
     {
-        public string StartPayment(string product, long price, string currency, string successUrl, string cancelUrl)
+        public string StartPayment(string product, long price, string currency, string user, string successUrl, string cancelUrl)
         {
-            Session session = GetCreateSession(GetPriceData(product, price, currency), successUrl, cancelUrl);
+            Session session = GetCreateSession(GetPriceData(product, price, currency), user, successUrl, cancelUrl);
 
             return session.Id;
         }
 
-        public string StartPayment(string name, string description, long price, string currency, string successUrl, string cancelUrl)
+        public string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl)
         {
-            Session session = GetCreateSession(GetPriceData(name, description, price, currency), successUrl, cancelUrl);
+            Session session = GetCreateSession(GetPriceData(name, description, price, currency), user, successUrl, cancelUrl);
 
             return session.Id;
         }
 
-        public async Task<bool> IsPaymentComplete(string sessionId)
+        public async Task<bool> IsPaymentComplete(string sessionId, string userid)
         {
-            var service = await new SessionService().GetAsync(sessionId);
-            var result = new string[] { "paid", "no_payment_required" }.Contains(service.PaymentStatus);
-            return result;
+            var session = await new SessionService().GetAsync(sessionId);
+            var correctUserAssociation = session.ClientReferenceId == userid;
+            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session.PaymentStatus);
+            return correctUserAssociation && paymentComplete;
         }
 
         public async Task<Product[]> GetAllProductsAsync()
@@ -83,7 +84,7 @@ namespace GamMaSite.Services
             return price;
         }
 
-        private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string successUrl, string cancelUrl)
+        private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string user, string successUrl, string cancelUrl)
         {
             var options = new SessionCreateOptions
             {
@@ -99,6 +100,8 @@ namespace GamMaSite.Services
                         Quantity = 1,
                     }
                 },
+                Metadata = new Dictionary<string, string> { { "SessionCreated", DateTime.Now.ToString() } },
+                ClientReferenceId = user,
                 Mode = "payment",
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,

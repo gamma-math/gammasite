@@ -24,7 +24,7 @@ namespace GamMaSite.Controllers
         {
             var prod = await _stripeService.GetProductAsync(product);
             var priceObject = await _stripeService.GetPriceAsync(price);
-            var parameters = new { userid = user, product = prod.Name };
+            var parameters = new { };
             var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
             var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
             var successUrl = $"{Url.Action(successPage, "Payment", parameters, Request.Scheme)}{sessionparameter}";
@@ -34,6 +34,7 @@ namespace GamMaSite.Controllers
                 prod.Id,
                 priceObject.UnitAmount.Value,
                 priceObject.Currency,
+                user,
                 successUrl,
                 cancelUrl
                 );
@@ -43,9 +44,9 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("Generic")]
-        public ActionResult Generic(string name, long price, string description)
+        public ActionResult Generic(string name, long price, string description, string user)
         {
-            var parameters = new { product = name, productPrice = price, desc = description };
+            var parameters = new { };
             var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
             var successUrl = $"{Url.Action("Success", "Payment", parameters, Request.Scheme)}{sessionparameter}";
             var cancelUrl = Url.Action("Cancel", "Payment", parameters, Request.Scheme);
@@ -55,6 +56,7 @@ namespace GamMaSite.Controllers
                 description, 
                 price,
                 "dkk",
+                user,
                 successUrl, 
                 cancelUrl
                 );
