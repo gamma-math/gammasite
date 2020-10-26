@@ -39,14 +39,14 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> ForAsync(string id)
         {
             var product = await _stripeService.GetProductByNameAsync(id);
-            return RedirectToAction("Product", new { id = product.Id }); ;
-        }
-
-        public async Task<IActionResult> KontingentAsync()
-        {
-            var kontingent = (await _stripeService.GetAllProductsAsync())
-                .Where(p => p.Name.ToLower().Contains("kontingent")).FirstOrDefault();
-            return RedirectToAction("Product", new { id = kontingent.Id }); ;
+            if (product != null)
+            {
+                return RedirectToAction("Product", new { id = product.Id });
+            }
+            else
+            {
+                return RedirectToAction("Index");
+            }
         }
 
         public IActionResult Generisk()
