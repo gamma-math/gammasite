@@ -32,7 +32,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
         public class InputModel
         {
             [BindProperty]
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [DataType(DataType.Text)]
             [Display(Name = "Recovery Code")]
             public string RecoveryCode { get; set; }

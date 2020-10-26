@@ -41,7 +41,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [EmailAddress]
             [Display(Name = "Ny email")]
             public string NewEmail { get; set; }

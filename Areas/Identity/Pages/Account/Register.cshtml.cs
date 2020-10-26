@@ -46,17 +46,17 @@ namespace GamMaSite.Areas.Identity.Pages.Account
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [DataType(DataType.Text)]
             [Display(Name = "Navn")]
             public string Navn { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [EmailAddress]
             [Display(Name = "Email")]
             public string Email { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [StringLength(100, ErrorMessage = "{0} skal bestå af mindst {2} og højst {1} tegn.", MinimumLength = 6)]
             [DataType(DataType.Password)]
             [Display(Name = "Password")]
@@ -67,22 +67,22 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             [Compare("Password", ErrorMessage = "Password og det bekræftede password stemmer ikke overens.")]
             public string ConfirmPassword { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [Phone]
             [Display(Name = "Telefonnummer")]
             public string PhoneNumber { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "Årgang er obligatorisk")]
             [Range(1849, 2025, ErrorMessage = "Årstallet {0} skal være mellem {1} og {2}.")]
             [Display(Name = "Årgang (start på studiet)")]
             public int Aargang { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [DataType(DataType.Text)]
             [Display(Name = "Beskæftigelse ved arbejdsgiver")]
             public string Beskaeftigelse { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [DataType(DataType.Text)]
             [Display(Name = "Adresse")]
             public string Adresse { get; set; }

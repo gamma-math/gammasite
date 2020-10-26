@@ -34,12 +34,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [DataType(DataType.Password)]
             [Display(Name = "Nuværende password")]
             public string OldPassword { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "{0} er obligatorisk")]
             [StringLength(100, ErrorMessage = "{0} skal bestå af mindst {2} og højst {1} tegn.", MinimumLength = 6)]
             [DataType(DataType.Password)]
             [Display(Name = "Nyt password")]

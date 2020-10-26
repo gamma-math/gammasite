@@ -9,7 +9,7 @@ namespace GamMaSite.Models
 {
     public class RoleModification
     {
-        [Required]
+        [Required(ErrorMessage = "{0} er obligatorisk")]
         public string RoleName { get; set; }
 
         public string RoleId { get; set; }

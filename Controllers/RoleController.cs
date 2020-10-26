@@ -26,7 +26,7 @@ namespace GamMaSite.Controllers
         public IActionResult Create() => View();
 
         [HttpPost]
-        public async Task<IActionResult> Create([Required] string name)
+        public async Task<IActionResult> Create([Required(ErrorMessage = "{0} er obligatorisk")] string name)
         {
             if (ModelState.IsValid)
             {
