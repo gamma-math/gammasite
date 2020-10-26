@@ -44,14 +44,21 @@ namespace GamMaSite.Services
 
         public bool IsPaymentComplete(Session session)
         {
-            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session.PaymentStatus);
+            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session?.PaymentStatus);
             return paymentComplete;
         }
 
         public async Task<Session> GetSessionAsync(string sessionId)
         {
-            var session = await new SessionService().GetAsync(sessionId);
-            return session;
+            try
+            {
+                var session = await new SessionService().GetAsync(sessionId);
+                return session;
+            }
+            catch (StripeException ex)
+            {
+                return null;
+            }
         }
 
         public async Task<Product[]> GetAllProductsAsync()

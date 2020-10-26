@@ -64,15 +64,19 @@ namespace GamMaSite.Controllers
             var kontingentProduct = await _stripeService.GetProductByNameAsync("kontingent");
             var stripeSession = await _stripeService.GetSessionAsync(session);
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
-            var correctProduct = stripeSession.Metadata?["Product"] == kontingentProduct.Id;
-            var user = await _userManager.FindByIdAsync(stripeSession.ClientReferenceId);
-            var sessionCreated = DateTime.Parse(stripeSession.Metadata["SessionCreated"]);
+            var correctProduct = stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
+            var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
+            var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
             if (DateTime.Now < sessionCreated.AddHours(1) && hasPayed && correctProduct)
             {
-                user.MarkAsPayed();
+                user?.MarkAsPayed();
                 await _userManager.UpdateAsync(user);
+                return View(user);
             }
-            return View(user);
+            else
+            {
+                return RedirectToAction("Index");
+            }
         }
 
         public IActionResult Cancel()
