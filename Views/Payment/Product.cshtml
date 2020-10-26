@@ -16,9 +16,8 @@
         var checkoutButton = document.getElementById("checkout-button");
         checkoutButton.addEventListener("click", function () {
             var productId = document.getElementById("product").value;
-            var priceId = document.getElementById("price").value;
             var userId = document.getElementById("user").value;
-            fetch(window.location.origin + "/api/Stripe/Product?product=" + productId + "&price=" + priceId + "&user=" + userId, {
+            fetch(window.location.origin + "/api/Stripe/Product?product=" + productId + "&user=" + userId, {
                 method: "POST",
             })
                 .then(function (response) {
@@ -53,11 +52,10 @@
         <tr>
             <td>@Model.Product.Name</td>
             <td>@Model.Product.Description</td>
-            <td>@(@Model.Prices[0].UnitAmount/100) kr.</td>
+            <td>@(@Model.Price.UnitAmount/100) kr.</td>
         </tr>
     </table>
     <input type="hidden" id="user" value="@UserManager.FindByNameAsync(@User.Identity.Name).Result.Id" />
     <input type="hidden" id="product" value="@Model.Product.Id" />
-    <input type="hidden" id="price" value="@Model.Prices[0].Id" />
     <button type="submit" class="btn btn-primary" id="checkout-button">Køb @Model.Product.Name.ToLower()</button>
 </section>

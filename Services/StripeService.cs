@@ -13,13 +13,15 @@ namespace GamMaSite.Services
 
         string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
 
-        Task<bool> IsPaymentComplete(string sessionId, string userid);
+        bool IsPaymentComplete(Session session);
+
+        Task<Session> GetSessionAsync(string sessionId);
 
         Task<Product[]> GetAllProductsAsync();
 
         Task<Product> GetProductAsync(string id);
 
-        Task<Price[]> GetPricesAsync(string productID);
+        Task<Product> GetProductByNameAsync(string name);
 
         Task<Price> GetPriceAsync(string id);
     }
@@ -40,12 +42,16 @@ namespace GamMaSite.Services
             return session.Id;
         }
 
-        public async Task<bool> IsPaymentComplete(string sessionId, string userid)
+        public bool IsPaymentComplete(Session session)
+        {
+            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session.PaymentStatus);
+            return paymentComplete;
+        }
+
+        public async Task<Session> GetSessionAsync(string sessionId)
         {
             var session = await new SessionService().GetAsync(sessionId);
-            var correctUserAssociation = session.ClientReferenceId == userid;
-            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session.PaymentStatus);
-            return correctUserAssociation && paymentComplete;
+            return session;
         }
 
         public async Task<Product[]> GetAllProductsAsync()
@@ -65,7 +71,13 @@ namespace GamMaSite.Services
             return await new ProductService().GetAsync(id);
         }
 
-        public async Task<Price[]> GetPricesAsync(string productID)
+        public async Task<Product> GetProductByNameAsync(string name)
+        {
+            var matches = (await GetAllProductsAsync()).Where(p => p.Name.ToLower().Contains(name.ToLower()));
+            return matches.OrderBy(p => p.Name.Length).FirstOrDefault();
+        }
+
+        public async Task<Price> GetPriceAsync(string productID)
         {
             var options = new PriceListOptions
             {
@@ -74,14 +86,8 @@ namespace GamMaSite.Services
                 Product = productID
             };
             var service = new PriceService();
-            var products = (await service.ListAsync(options)).ToArray();
-            return products;
-        }
-
-        public async Task<Price> GetPriceAsync(string id)
-        {
-            var price = (await new PriceService().GetAsync(id));
-            return price;
+            var prices = (await service.ListAsync(options)).OrderByDescending(p => p.UnitAmount);
+            return prices.FirstOrDefault();
         }
 
         private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string user, string successUrl, string cancelUrl)
@@ -100,7 +106,11 @@ namespace GamMaSite.Services
                         Quantity = 1,
                     }
                 },
-                Metadata = new Dictionary<string, string> { { "SessionCreated", DateTime.Now.ToString() } },
+                Metadata = new Dictionary<string, string> 
+                { 
+                    { "SessionCreated", DateTime.Now.ToString() },
+                    { "Product", priceData.Product }
+                },
                 ClientReferenceId = user,
                 Mode = "payment",
                 SuccessUrl = successUrl,

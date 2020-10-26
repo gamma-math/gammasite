@@ -10,12 +10,12 @@ namespace GamMaSite.ViewModels
     { 
         public Product Product { get; set; }
 
-        public Price[] Prices { get; set; }
+        public Price Price { get; set; }
 
-        public ProductInfo(Product product, Price[] prices)
+        public ProductInfo(Product product, Price price)
         {
             this.Product = product;
-            this.Prices = prices;
+            this.Price = price;
         }
     }
 }

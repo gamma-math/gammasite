@@ -28,5 +28,13 @@ namespace GamMaSite.Models
         [PersonalData]
         public DateTime OprettetDato { get; set; }
 
+        public void MarkAsPayed()
+        {
+            if (this.Status != UserStatus.BETALT)
+            {
+                this.Status = UserStatus.BETALT;
+                this.KontingentDato = DateTime.Now;
+            }
+        }
     }
 }
