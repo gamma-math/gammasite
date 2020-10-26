@@ -45,10 +45,9 @@ namespace GamMaSite.Controllers
         [HttpPost("Generic")]
         public ActionResult Generic(string product, long price, string description, string user)
         {
-            var parameters = new { productName = product };
-            var sessionparameter = "&session={CHECKOUT_SESSION_ID}";
-            var successUrl = $"{Url.Action("Success", "Payment", parameters, Request.Scheme)}{sessionparameter}";
-            var cancelUrl = Url.Action("Cancel", "Payment", parameters, Request.Scheme);
+            var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
+            var successUrl = $"{Url.Action("Success", "Payment", new { }, Request.Scheme)}{sessionparameter}";
+            var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
 
             var stripeSessionId = _stripeService.StartPayment(
                 product,

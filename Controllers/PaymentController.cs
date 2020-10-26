@@ -61,8 +61,8 @@ namespace GamMaSite.Controllers
 
         public async Task<IActionResult> KontingentSuccessAsync(string session)
         {
-            var stripeSession = await _stripeService.GetSessionAsync(session);
             var kontingentProduct = await _stripeService.GetProductByNameAsync("kontingent");
+            var stripeSession = await _stripeService.GetSessionAsync(session);
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
             var correctProduct = stripeSession.Metadata?["Product"] == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession.ClientReferenceId);
