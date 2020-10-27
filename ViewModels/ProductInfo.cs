@@ -12,10 +12,13 @@ namespace GamMaSite.ViewModels
 
         public Price Price { get; set; }
 
-        public ProductInfo(Product product, Price price)
+        public string ApiKey { get; set; }
+
+        public ProductInfo(Product product, Price price, string apiKey)
         {
             this.Product = product;
             this.Price = price;
+            this.ApiKey = apiKey;
         }
     }
 }

@@ -8,6 +8,7 @@ using GamMaSite.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Controllers
 {
@@ -18,10 +19,13 @@ namespace GamMaSite.Controllers
 
         private IStripeService _stripeService;
 
-        public PaymentController(UserManager<GamMaUser> userManager, IStripeService stripeService)
+        private IConfiguration _configuration;
+
+        public PaymentController(UserManager<GamMaUser> usrMgr, IStripeService stripe, IConfiguration conf)
         {
-            this._userManager = userManager;
-            this._stripeService = stripeService;
+            this._userManager = usrMgr;
+            this._stripeService = stripe;
+            this._configuration = conf;
         }
 
         public async Task<IActionResult> IndexAsync()
@@ -33,7 +37,8 @@ namespace GamMaSite.Controllers
         {
             var product = await _stripeService.GetProductAsync(id);
             var price = await _stripeService.GetPriceAsync(id);
-            return View(new ProductInfo(product, price));
+            var apiKey = _configuration["StripeConfig:PublicApiKey"];
+            return View(new ProductInfo(product, price, apiKey));
         }
 
         public async Task<IActionResult> ForAsync(string id)

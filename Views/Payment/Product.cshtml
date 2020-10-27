@@ -12,7 +12,7 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script type="text/javascript">
         // Create an instance of the Stripe object with your publishable API key
-        var stripe = Stripe("pk_test_XbTXDRaWHSTKiNxGsvv8CKP100NnEtOaQd");
+        var stripe = Stripe(document.getElementById("apiKey").value);
         var checkoutButton = document.getElementById("checkout-button");
         checkoutButton.addEventListener("click", function () {
             var productId = document.getElementById("product").value;
@@ -57,5 +57,6 @@
     </table>
     <input type="hidden" id="user" value="@UserManager.FindByNameAsync(@User.Identity.Name).Result.Id" />
     <input type="hidden" id="product" value="@Model.Product.Id" />
+    <input type="hidden" id="apiKey" value="@Model.ApiKey" />
     <button type="submit" class="btn btn-primary" id="checkout-button">Køb @Model.Product.Name.ToLower()</button>
 </section>
