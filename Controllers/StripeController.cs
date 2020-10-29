@@ -23,16 +23,15 @@ namespace GamMaSite.Controllers
         public async Task<ActionResult> ProductAsync(string product, string user)
         {
             var prod = await _stripeService.GetProductAsync(product);
-            var priceObject = await _stripeService.GetPriceAsync(product);
+            var price = await _stripeService.GetPriceAsync(product);
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
             var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
             var successUrl = $"{Url.Action(successPage, "Payment", new { }, Request.Scheme)}{sessionparameter}";
             var cancelUrl = Url.Action("Cancel", "Payment", new { }, Request.Scheme);
 
             var stripeSessionId = _stripeService.StartPayment(
-                product,
-                priceObject.UnitAmount.Value,
-                priceObject.Currency,
+                prod,
+                price,
                 user,
                 successUrl,
                 cancelUrl

@@ -9,7 +9,7 @@ namespace GamMaSite.Services
 {
     public interface IStripeService
     {
-        string StartPayment(string product, long price, string currency, string user, string successUrl, string cancelUrl);
+        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl);
 
         string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
 
@@ -23,14 +23,14 @@ namespace GamMaSite.Services
 
         Task<Product> GetProductByNameAsync(string name);
 
-        Task<Price> GetPriceAsync(string id);
+        Task<Price> GetPriceAsync(string product);
     }
 
     public class StripeService : IStripeService
     {
-        public string StartPayment(string product, long price, string currency, string user, string successUrl, string cancelUrl)
+        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl)
         {
-            Session session = GetCreateSession(GetPriceData(product, price, currency), user, successUrl, cancelUrl);
+            Session session = GetCreateSession(GetPriceData(product, price), user, successUrl, cancelUrl);
 
             return session.Id;
         }
@@ -84,13 +84,17 @@ namespace GamMaSite.Services
             return matches.OrderBy(p => p.Name.Length).FirstOrDefault();
         }
 
-        public async Task<Price> GetPriceAsync(string productID)
+        public async Task<Price> GetPriceAsync(string product)
         {
+            var services = new CouponService();
+            StripeList<Coupon> coupons = services.List(
+              new CouponListOptions { Limit = 30 }
+            );
             var options = new PriceListOptions
             {
                 Limit = 100,
                 Active = true,
-                Product = productID
+                Product = product
             };
             var service = new PriceService();
             var prices = (await service.ListAsync(options)).OrderByDescending(p => p.UnitAmount);
@@ -129,13 +133,13 @@ namespace GamMaSite.Services
             return session;
         }
 
-        private SessionLineItemPriceDataOptions GetPriceData(string product, long price, string currency)
+        private SessionLineItemPriceDataOptions GetPriceData(Product product, Price price)
         {
             return new SessionLineItemPriceDataOptions
             {
-                Product = product,
-                UnitAmount = price,
-                Currency = currency
+                Product = product.Id,
+                UnitAmount = price.UnitAmount,
+                Currency = price.Currency
             };
         }
 
