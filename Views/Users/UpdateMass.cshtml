@@ -1,0 +1,23 @@
+﻿@model IEnumerable<GamMaUser>
+
+<h1>Skift status</h1>
+<form asp-action="UpdateMassEdit" asp-controller="Users" method="post">
+    <div class="input-group form-group">
+        <label><b>Kontingentdato fra:&nbsp;</b></label>
+        <input type="date" id="to" value="@DateTime.Today.ToString("yyyy-MM-dd")" name="to">
+    </div>
+    <div class="input-group form-group">
+        <label><b>Kontingentdato til:&nbsp;</b></label>
+        <input type="date" id="to" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" name="to">
+    </div>
+    <div class="input-group form-group">
+        <label><b>Status:&nbsp;</b></label>
+        <select id="roleSelect" name="Status" class="form-control">
+            <option value="OPRETTET">OPRETTET</option>
+            <option value="BETALT">BETALT</option>
+            <option value="SKYLDER">SKYLDER</option>
+            <option value="INAKTIV">INAKTIV</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Skift status</button>
+</form>

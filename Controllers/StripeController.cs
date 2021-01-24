@@ -5,10 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using GamMaSite.Services;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GamMaSite.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class StripeController : ControllerBase
     {

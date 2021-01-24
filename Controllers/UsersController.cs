@@ -71,6 +71,38 @@ namespace GamMaSite.Controllers
             return View(user);
         }
 
+        [Authorize(Roles = "Admin")]
+        public IActionResult UpdateMass()
+        {
+            return View(userManager.Users);
+        }
+
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateMassEditAsync(DateTime from, DateTime to, UserStatus status)
+        {
+            var users = userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
+            foreach(GamMaUser user in users)
+            {
+                if (user.Status != status)
+                {
+                    user.Status = status;
+                    if (status == UserStatus.BETALT)
+                    {
+                        user.KontingentDato = DateTime.Now;
+                    }
+                    IdentityResult result = await userManager.UpdateAsync(user);
+                    if (result.Succeeded)
+                        return RedirectToAction(nameof(Expanded));
+                    else
+                    {
+                        ModelState.AddModelError("", "Status må ikke være tom");
+                        Errors(result);
+                    }
+                }
+            }
+            return RedirectToAction(nameof(UpdateMass));
+        }
+
         private void Errors(IdentityResult result)
         {
             foreach (IdentityError error in result.Errors)
