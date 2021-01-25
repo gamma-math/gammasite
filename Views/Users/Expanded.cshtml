@@ -27,3 +27,30 @@
         </tr>
     }
 </table>
+<script>
+    $(document).ready(function () {
+        $('#medlemmer').DataTable(
+            {
+                responsive: {
+                    details: {
+                        type: 'column'
+                    }
+                },
+                language: {
+                    paginate: {
+                        previous: "Forrige",
+                        next: "Næste"
+                    },
+                    lengthMenu: "Viser _MENU_ medlemmer per side",
+                    search: "Søg:",
+                    info: "Viser element _START_ til _END_",
+                    infoEmpty: "Visning af element 0 til 0 på 0 elementer",
+                    dataTables_empty: "Ingen data i tabellen",
+                    zeroRecords: "Intet match på søgning",
+                    emptyTable: "Ingen data i tabellen"
+                },
+                lengthMenu: [50, 75, 100, 200, 500, 1000]
+            }
+        );
+    });
+</script>
