@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<GamMaUser>
 
 <h1>Skift status</h1>
-<form asp-action="UpdateMassEdit" asp-controller="Users" method="post">
+<form asp-action="UpdateMassEdit" asp-controller="Users" method="post" id="currentForm">
     <div class="input-group form-group">
         <label><b>Kontingentdato fra:&nbsp;</b></label>
         <input type="date" id="to" value="@DateTime.Today.ToString("yyyy-MM-dd")" name="to">
@@ -19,5 +19,26 @@
             <option value="INAKTIV">INAKTIV</option>
         </select>
     </div>
-    <button type="submit" class="btn btn-primary">Skift status</button>
+    <!--<button type="submit" class="btn btn-primary">Skift status</button>-->
 </form>
+<button onclick="click()" class="btn btn-primary">Skift status</button>
+<script>
+    function click() {
+        Swal.fire({
+            title: 'Vil du fuldføre?',
+            showDenyButton: true,
+            confirmButtonText: `Skift status!`,
+            denyButtonText: `Annulér`,
+        }).then((result) => {
+            /* Read more about isConfirmed, isDenied below */
+            if (result.isConfirmed) {
+                document.getElementById("currentForm").submit();
+            }
+            return result;
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire('Saved!', '', 'success');
+            }
+        })
+    }
+</script>
