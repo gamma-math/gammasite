@@ -40,6 +40,16 @@ namespace GamMaSite.Controllers
             return View();
         }
 
+        public IActionResult Betingelser()
+        {
+            return View();
+        }
+
+        public IActionResult Cookies()
+        {
+            return View();
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
