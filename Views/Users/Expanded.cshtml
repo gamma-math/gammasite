@@ -9,7 +9,6 @@
 <table class="table table-sm table-bordered display nowrap" id="medlemmer">
     <thead class="thead-dark">
         <tr>
-            <th></th>
             <th>Navn</th>
             <th>Årgang</th>
             <th>Beskæftigelse</th>
@@ -24,7 +23,6 @@
     @foreach (GamMaUser user in Model.OrderBy(it => it.Status).ThenBy(it => it.Navn))
     {
         <tr>
-            <td></td>
             <td>@user.Navn</td>
             <td>@user.Aargang</td>
             <td>@user.Beskaeftigelse</td>
@@ -43,15 +41,11 @@
             {
                 responsive: {
                     details: {
-                        type: 'column'
+                        type: 'column',
+                        type: 'tr'
                     }
                 },
-                columnDefs: [{
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                }],
-                order: [1, 'asc'],
+                order: [0, 'asc'],
                 language: {
                     paginate: {
                         previous: "Forrige",
