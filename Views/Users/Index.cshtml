@@ -6,9 +6,10 @@
 
 <h1 class="">Medlemsoversigt</h1>
 <br />
-<table class="table table-sm table-bordered table-responsive-sm table-responsive-md" id="medlemmer">
+<table class="table table-sm table-bordered display nowrap" id="medlemmer">
     <thead class="thead-dark">
         <tr>
+            <th></th>
             <th>Navn</th>
             <th>Årgang</th>
             <th>Beskæftigelse</th>
@@ -19,6 +20,7 @@
         if (new[] { UserStatus.BETALT, UserStatus.SKYLDER }.Contains(user.Status))
         {
     <tr>
+        <td></td>
         <td>@user.Navn</td>
         <td>@user.Aargang</td>
         <td>@user.Beskaeftigelse</td>
@@ -30,12 +32,23 @@
     $(document).ready(function () {
         $('#medlemmer').DataTable(
             {
+                responsive: {
+                    details: {
+                        type: 'column'
+                    }
+                },
+                columnDefs: [{
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                }],
+                order: [1, 'asc'],
                 language: {
                     paginate: {
                         previous: "Forrige",
                         next: "Næste"
                     },
-                    lengthMenu: "Viser _MENU_ medlemmer per side",
+                    lengthMenu: "_MENU_ per side",
                     search: "Søg:",
                     info: "Viser element _START_ til _END_",
                     infoEmpty: "Visning af element 0 til 0 på 0 elementer",
