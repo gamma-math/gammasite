@@ -37,17 +37,27 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" target="_blank" href="https://www.facebook.com/groups/gammamath/">Facebook</a>
                         </li>
-                        @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Admin"))
+                        @if (SignInManager.IsSignedIn(User))
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Medlemmer</a>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Menu
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="adminDropdown">
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Expanded">Medlemmer</a>
+                                    }
+                                    else
+                                    {
+                                        <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Index">Medlemmer</a>
+                                    }
+                                    <a class="dropdown-item" asp-area="" asp-controller="Pay" asp-action="Index">Betal</a>
+                                </div>
                             </li>
                         }
                         @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Expanded">Medlemmer</a>
-                            </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     Admin
