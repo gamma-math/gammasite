@@ -75,7 +75,14 @@ namespace GamMaSite.Services
 
         public async Task<Product> GetProductAsync(string id)
         {
-            return await new ProductService().GetAsync(id);
+            try
+            {
+                return await new ProductService().GetAsync(id);
+            }
+            catch (StripeException ex)
+            {
+                return null;
+            }
         }
 
         public async Task<Product> GetProductByNameAsync(string name)
@@ -97,8 +104,15 @@ namespace GamMaSite.Services
                 Product = product
             };
             var service = new PriceService();
-            var prices = (await service.ListAsync(options)).OrderByDescending(p => p.UnitAmount);
-            return prices.FirstOrDefault();
+            try
+            {
+                var prices = (await service.ListAsync(options)).OrderByDescending(p => p.UnitAmount);
+                return prices.FirstOrDefault();
+            }
+            catch (StripeException ex)
+            {
+                return null;
+            }
         }
 
         private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string user, string successUrl, string cancelUrl)

@@ -55,6 +55,14 @@
             <td>@(@Model.Price.UnitAmount/100) kr.</td>
         </tr>
     </table>
+    @if (!string.IsNullOrEmpty(Model.GetMetadata("Additional")))
+    {
+        <p>@Model.GetMetadata("Additional")</p>
+    }
+    @if (!string.IsNullOrEmpty(Model.GetMetadata("Conditions")))
+    {
+        <p>Ved køb accepteres de gældende <a href="@Model.GetMetadata("Conditions")">@Model.GetMetadata("ConditionsName")</a>.</p>
+    }
     <input type="hidden" id="user" value="@UserManager.FindByNameAsync(@User.Identity.Name).Result.Id" />
     <input type="hidden" id="product" value="@Model.Product.Id" />
     <input type="hidden" id="apiKey" value="@Model.ApiKey" />

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Configuration;
 namespace GamMaSite.Controllers
 {
     [Authorize]
-    public class PaymentController : Controller
+    public class PayController : Controller
     {
         private UserManager<GamMaUser> _userManager;
 
@@ -21,7 +21,7 @@ namespace GamMaSite.Controllers
 
         private IConfiguration _configuration;
 
-        public PaymentController(UserManager<GamMaUser> usrMgr, IStripeService stripe, IConfiguration conf)
+        public PayController(UserManager<GamMaUser> usrMgr, IStripeService stripe, IConfiguration conf)
         {
             this._userManager = usrMgr;
             this._stripeService = stripe;
@@ -37,8 +37,15 @@ namespace GamMaSite.Controllers
         {
             var product = await _stripeService.GetProductAsync(id);
             var price = await _stripeService.GetPriceAsync(id);
-            var apiKey = _configuration["StripeConfig:PublicApiKey"];
-            return View(new ProductInfo(product, price, apiKey));
+            if (product != null && price != null)
+            {
+                var apiKey = _configuration["StripeConfig:PublicApiKey"];
+                return View(new ProductInfo(product, price, apiKey));
+            }
+            else
+            {
+                return RedirectToAction("Index");
+            }
         }
 
         public async Task<IActionResult> ForAsync(string id)

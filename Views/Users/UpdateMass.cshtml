@@ -1,6 +1,6 @@
 ﻿@model IEnumerable<GamMaUser>
 
-<h1>Skift status</h1>
+<h1>Massebehandling</h1>
 <form asp-action="UpdateMassEdit" asp-controller="Users" method="post" id="currentForm">
     <div class="input-group form-group">
         <label><b>Kontingentdato fra:&nbsp;</b></label>
@@ -13,10 +13,9 @@
     <div class="input-group form-group">
         <label><b>Status:&nbsp;</b></label>
         <select id="roleSelect" name="Status" class="form-control">
-            <option value="OPRETTET">OPRETTET</option>
-            <option value="BETALT">BETALT</option>
             <option value="SKYLDER">SKYLDER</option>
             <option value="INAKTIV">INAKTIV</option>
+            <option value="OPRETTET">OPRETTET</option>
         </select>
     </div>
     <!--<button type="submit" class="btn btn-primary">Skift status</button>-->

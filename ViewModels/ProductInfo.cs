@@ -20,5 +20,10 @@ namespace GamMaSite.ViewModels
             this.Price = price;
             this.ApiKey = apiKey;
         }
+
+        public string GetMetadata(string key)
+        {
+            return this.Product.Metadata.GetValueOrDefault(key, "");
+        }
     }
 }
