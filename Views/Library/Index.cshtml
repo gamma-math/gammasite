@@ -1,0 +1,54 @@
+﻿@using GamMaSite.Services;
+@model IEnumerable<ContentMeta>;
+
+@{
+    ViewData["Title"] = "Bibliotek";
+}
+
+<h1>Bibliotek</h1>
+<table class="table table-sm table-bordered" id="bibliotek">
+    <thead class="thead-dark">
+        <tr>
+            <th>Type</th>
+            <th>Sti</th>
+            <th>Link</th>
+        </tr>
+    </thead>
+    @foreach (ContentMeta meta in Model)
+    {
+        <tr>
+            <td>@meta.TypeConverted()</td>
+            <td><a href="@string.Concat("/Library?query=", meta.Path, "&type=", meta.Type)">@meta.Path</a></td>
+            <td>
+            @if (meta.Type == "file")
+                {
+                    <a class="btn btn-sm btn-primary" href="@meta.Download_Url">Hent</a>
+                }
+            </td>
+        </tr>
+    }
+</table>
+<script>
+    $(document).ready(function () {
+        $('#bibliotek').DataTable(
+            {
+                order: [0, 'desc'],
+                language: {
+                    paginate: {
+                        previous: "Forrige",
+                        next: "Næste"
+                    },
+                    lengthMenu: "_MENU_ per side",
+                    search: "Søg:",
+                    info: "Viser element _START_ til _END_",
+                    infoEmpty: "Visning af element 0 til 0 på 0 elementer",
+                    dataTables_empty: "Ingen data i tabellen",
+                    zeroRecords: "Intet match på søgning",
+                    emptyTable: "Ingen data i tabellen"
+                },
+                lengthMenu: [100],
+                bLengthChange: false
+            }
+        );
+    });
+</script>
