@@ -9,7 +9,6 @@
 <table class="table table-sm table-bordered" id="bibliotek">
     <thead class="thead-dark">
         <tr>
-            <th>Type</th>
             <th>Sti</th>
             <th>Link</th>
         </tr>
@@ -17,8 +16,7 @@
     @foreach (ContentMeta meta in Model)
     {
         <tr>
-            <td>@meta.TypeConverted()</td>
-            <td><a href="@string.Concat("/Library?query=", meta.Path, "&type=", meta.Type)">@meta.Path</a></td>
+            <td><a href="@string.Concat("/Library?query=", meta.Path)">@meta.TypeConverted() @meta.Path</a></td>
             <td>
             @if (meta.Type == "file")
                 {
@@ -32,7 +30,7 @@
     $(document).ready(function () {
         $('#bibliotek').DataTable(
             {
-                order: [0, 'desc'],
+                order: [0, 'asc'],
                 language: {
                     paginate: {
                         previous: "Forrige",

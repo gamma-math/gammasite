@@ -71,5 +71,15 @@ namespace GamMaSite.Services
                 }
             }
         }
+
+        public bool isFileName(string path)
+        {
+            if (path == null)
+            {
+                return false;
+            }
+            var name = path.Split("/").Last();
+            return name.Contains(".");
+        }
     }
 }

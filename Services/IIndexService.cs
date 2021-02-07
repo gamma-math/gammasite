@@ -13,6 +13,8 @@ namespace GamMaSite.Services
         public Task<ContentType> GetContentAsync(string query);
 
         public Task<byte[]> GetContentBytesAsync(string query);
+
+        public bool isFileName(string path);
     }
 
     public class ContentMeta
@@ -25,7 +27,7 @@ namespace GamMaSite.Services
 
         public string TypeConverted()
         {
-            return Type == "file" ? "fil" : "mappe";
+            return Type == "file" ? "🗎" : "🗀";
         }
     }
 
