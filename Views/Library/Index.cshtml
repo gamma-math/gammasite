@@ -16,7 +16,7 @@
     @foreach (ContentMeta meta in Model)
     {
         <tr>
-            <td><a href="@string.Concat("/Library?query=", meta.Path)">@meta.TypeConverted() @meta.Path</a></td>
+            <td><a href="@string.Concat("/Library?path=", meta.Path)">@meta.TypeConverted() @meta.Path</a></td>
             <td>
             @if (meta.Type == "file")
                 {

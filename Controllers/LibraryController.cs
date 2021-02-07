@@ -22,12 +22,12 @@ namespace GamMaSite.Controllers
             this._indexService = indexService;
         }
 
-        public async Task<IActionResult> IndexAsync(string query)
+        public async Task<IActionResult> IndexAsync(string path)
         {
-            var isEmpty = !string.IsNullOrEmpty(query);
-            if (_indexService.isFileName(query))
+            var isEmpty = !string.IsNullOrEmpty(path);
+            if (_indexService.isFileName(path))
             {
-                var content = await _indexService.GetContentAsync(isEmpty ? query : "");
+                var content = await _indexService.GetContentAsync(isEmpty ? path : "");
                 var name = content.Name != null ? content.Name : "";
                 var splitted = name.Split(".");
                 var mimeType = MimeTypeMap.GetMimeType(splitted.Length > 1 ? splitted[1] : "yml");
@@ -35,9 +35,9 @@ namespace GamMaSite.Controllers
                 {
                     return File(content.ContentBytes(), mimeType);
                 }
-                return File(content.ContentBytes(), "text/plain");
+                return File(content.ContentBytes(), "text/plain;charset=utf-8");
             }
-            var metaData = await _indexService.GetContentMetasAsync(isEmpty ? query : "");
+            var metaData = await _indexService.GetContentMetasAsync(isEmpty ? path : "");
             return View(metaData);
         }
 

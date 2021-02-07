@@ -27,7 +27,7 @@ namespace GamMaSite.Services
 
         public string TypeConverted()
         {
-            return Type == "file" ? "🗎" : "🗀";
+            return Type == "file" ? "🗎" : "▣";
         }
     }
 
