@@ -40,7 +40,8 @@ namespace GamMaSite.Services
         public string Content { get; set; }
         public byte[] ContentBytes()
         {
-            return Convert.FromBase64String(this.Content.Replace("\n", ""));
+            var content = !string.IsNullOrEmpty(this.Content) ? this.Content.Replace("\n", "") : "";
+            return Convert.FromBase64String(content);
         }
     }
 }
