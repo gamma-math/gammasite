@@ -20,9 +20,9 @@
     </div>
     <!--<button type="submit" class="btn btn-primary">Skift status</button>-->
 </form>
-<button onclick="click()" class="btn btn-primary">Skift status</button>
+<button onclick="submitform()" class="btn btn-primary">Skift status</button>
 <script>
-    function click() {
+    function submitform() {
         Swal.fire({
             title: 'Vil du fuldføre?',
             showDenyButton: true,
@@ -33,11 +33,6 @@
             if (result.isConfirmed) {
                 document.getElementById("currentForm").submit();
             }
-            return result;
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire('Saved!', '', 'success');
-            }
-        })
+        });
     }
 </script>
