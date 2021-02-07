@@ -53,6 +53,12 @@ namespace GamMaSite
                 )
             );
             services.AddScoped<IStripeService, StripeService>(i => new StripeService());
+            services.AddScoped<IIndexService, GithubService>(i => 
+            new GithubService(
+                Configuration["GitHub:ContentAPI"],
+                Configuration["GitHub:Token"]
+                )
+            );
             StripeConfiguration.ApiKey = Configuration["StripeConfig:SecretApiKey"];
             services.AddScoped<ISmsSender, SmsSender>(i =>
             new SmsSender(
