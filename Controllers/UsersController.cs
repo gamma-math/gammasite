@@ -11,9 +11,9 @@ namespace GamMaSite.Controllers
 {
     public class UsersController : Controller
     {
-        private UserManager<GamMaUser> userManager;
+        private UserManager<SiteUser> userManager;
 
-        public UsersController(UserManager<GamMaUser> usrMgr)
+        public UsersController(UserManager<SiteUser> usrMgr)
         {
             userManager = usrMgr;
         }
@@ -33,7 +33,7 @@ namespace GamMaSite.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(string id)
         {
-            GamMaUser user = await userManager.FindByIdAsync(id);
+            SiteUser user = await userManager.FindByIdAsync(id);
             if (user != null)
                 return View(user);
             else
@@ -44,7 +44,7 @@ namespace GamMaSite.Controllers
         [HttpPost]
         public async Task<IActionResult> Update(string id, UserStatus status)
         {
-            GamMaUser user = await userManager.FindByIdAsync(id);
+            SiteUser user = await userManager.FindByIdAsync(id);
             if (user != null)
             {
                 if (user.Status != status)
@@ -82,7 +82,7 @@ namespace GamMaSite.Controllers
         {
             var users = userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
             var results = new List<IdentityResult>();
-            foreach(GamMaUser user in users)
+            foreach(SiteUser user in users)
             {
                 if (user.Status != status && !new[] { UserStatus.BETALT }.Contains(user.Status))
                 {

@@ -1,4 +1,4 @@
-﻿@model IEnumerable<GamMaUser>
+﻿@model IEnumerable<SiteUser>
 
 @{
     ViewData["Title"] = "Medlemmer";
@@ -21,7 +21,7 @@
             <th class="all">Admin</th>
         </tr>
     </thead>
-    @foreach (GamMaUser user in Model)
+    @foreach (SiteUser user in Model)
     {
         <tr>
             <td></td>
@@ -63,6 +63,7 @@
                     infoEmpty: "Visning af element 0 til 0 på 0 elementer",
                     dataTables_empty: "Ingen data i tabellen",
                     zeroRecords: "Intet match på søgning",
+                    infoFiltered: "(filtreret fra i alt _MAX_ elementer)",
                     emptyTable: "Ingen data i tabellen"
                 },
                 lengthMenu: [50, 75, 100, 200, 500, 1000]

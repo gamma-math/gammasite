@@ -16,13 +16,13 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class LoginModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<GamMaUser> signInManager, 
+        public LoginModel(SignInManager<SiteUser> signInManager, 
             ILogger<LoginModel> logger,
-            UserManager<GamMaUser> userManager)
+            UserManager<SiteUser> userManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;

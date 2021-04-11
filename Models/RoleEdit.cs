@@ -9,8 +9,8 @@ namespace GamMaSite.Models
     public class RoleEdit
     {
         public IdentityRole Role { get; set; }
-        public IEnumerable<GamMaUser> Members { get; set; }
+        public IEnumerable<SiteUser> Members { get; set; }
 
-        public IEnumerable<GamMaUser> NonMembers { get; set; }
+        public IEnumerable<SiteUser> NonMembers { get; set; }
     }
 }

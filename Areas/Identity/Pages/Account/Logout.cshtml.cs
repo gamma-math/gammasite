@@ -14,10 +14,10 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class LogoutModel : PageModel
     {
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly SignInManager<SiteUser> _signInManager;
         private readonly ILogger<LogoutModel> _logger;
 
-        public LogoutModel(SignInManager<GamMaUser> signInManager, ILogger<LogoutModel> logger)
+        public LogoutModel(SignInManager<SiteUser> signInManager, ILogger<LogoutModel> logger)
         {
             _signInManager = signInManager;
             _logger = logger;

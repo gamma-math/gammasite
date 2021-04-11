@@ -37,7 +37,7 @@ namespace GamMaSite
                     )
                 );
 
-            services.AddDefaultIdentity<GamMaUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            services.AddDefaultIdentity<SiteUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddRoles<IdentityRole>()
                 .AddRoleManager<RoleManager<IdentityRole>>()
                 .AddErrorDescriber<DanishIdentityErrorDescriber>()

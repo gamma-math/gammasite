@@ -12,12 +12,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
     public class SetPasswordModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
 
         public SetPasswordModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager)
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;

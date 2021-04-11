@@ -20,14 +20,14 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class RegisterModel : PageModel
     {
-        private readonly SignInManager<GamMaUser> _signInManager;
-        private readonly UserManager<GamMaUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
 
         public RegisterModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager,
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender)
         {
@@ -100,7 +100,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
             {
-                var user = new GamMaUser 
+                var user = new SiteUser 
                 { 
                     UserName = Input.Email, 
                     Email = Input.Email,

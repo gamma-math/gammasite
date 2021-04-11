@@ -15,10 +15,10 @@ namespace GamMaSite.Controllers
     public class MessagesController : Controller
     {
         private RoleManager<IdentityRole> roleManager;
-        private UserManager<GamMaUser> userManager;
+        private UserManager<SiteUser> userManager;
         private ISmsSender smsSender;
         private IEmailSender emailSender;
-        public MessagesController(RoleManager<IdentityRole> roleMgr, UserManager<GamMaUser> userMrg, ISmsSender smsSdr, IEmailSender emailSdr)
+        public MessagesController(RoleManager<IdentityRole> roleMgr, UserManager<SiteUser> userMrg, ISmsSender smsSdr, IEmailSender emailSdr)
         {
             roleManager = roleMgr;
             userManager = userMrg;

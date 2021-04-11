@@ -17,10 +17,10 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class ForgotPasswordModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
+        private readonly UserManager<SiteUser> _userManager;
         private readonly IEmailSender _emailSender;
 
-        public ForgotPasswordModel(UserManager<GamMaUser> userManager, IEmailSender emailSender)
+        public ForgotPasswordModel(UserManager<SiteUser> userManager, IEmailSender emailSender)
         {
             _userManager = userManager;
             _emailSender = emailSender;

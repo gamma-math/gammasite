@@ -13,13 +13,13 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
     public partial class EmailModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
         private readonly IEmailSender _emailSender;
 
         public EmailModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager,
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager,
             IEmailSender emailSender)
         {
             _userManager = userManager;
@@ -47,7 +47,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             public string NewEmail { get; set; }
         }
 
-        private async Task LoadAsync(GamMaUser user)
+        private async Task LoadAsync(SiteUser user)
         {
             var email = await _userManager.GetEmailAsync(user);
             Email = email;

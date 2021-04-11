@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace GamMaSite.Models
 {
-    public class GamMaUser : IdentityUser
+    public class SiteUser : IdentityUser
     {
         [PersonalData]
         public string Navn { get; set; }

@@ -15,9 +15,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class ConfirmEmailModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
+        private readonly UserManager<SiteUser> _userManager;
 
-        public ConfirmEmailModel(UserManager<GamMaUser> userManager)
+        public ConfirmEmailModel(UserManager<SiteUser> userManager)
         {
             _userManager = userManager;
         }

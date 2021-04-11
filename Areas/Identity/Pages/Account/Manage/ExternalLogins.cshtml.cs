@@ -12,12 +12,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
     public class ExternalLoginsModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
 
         public ExternalLoginsModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager)
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;

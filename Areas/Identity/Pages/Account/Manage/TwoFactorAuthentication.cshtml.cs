@@ -14,13 +14,13 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
     {
         private const string AuthenicatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}";
 
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
         private readonly ILogger<TwoFactorAuthenticationModel> _logger;
 
         public TwoFactorAuthenticationModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager,
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager,
             ILogger<TwoFactorAuthenticationModel> logger)
         {
             _userManager = userManager;

@@ -15,10 +15,10 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class ConfirmEmailChangeModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
 
-        public ConfirmEmailChangeModel(UserManager<GamMaUser> userManager, SignInManager<GamMaUser> signInManager)
+        public ConfirmEmailChangeModel(UserManager<SiteUser> userManager, SignInManager<SiteUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;

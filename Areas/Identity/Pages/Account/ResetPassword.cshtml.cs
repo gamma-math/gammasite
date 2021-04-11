@@ -16,9 +16,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class ResetPasswordModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
+        private readonly UserManager<SiteUser> _userManager;
 
-        public ResetPasswordModel(UserManager<GamMaUser> userManager)
+        public ResetPasswordModel(UserManager<SiteUser> userManager)
         {
             _userManager = userManager;
         }

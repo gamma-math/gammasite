@@ -14,8 +14,8 @@ namespace GamMaSite.Controllers
     public class RoleController : Controller
     {
         private RoleManager<IdentityRole> roleManager;
-        private UserManager<GamMaUser> userManager;
-        public RoleController(RoleManager<IdentityRole> roleMgr, UserManager<GamMaUser> userMrg)
+        private UserManager<SiteUser> userManager;
+        public RoleController(RoleManager<IdentityRole> roleMgr, UserManager<SiteUser> userMrg)
         {
             roleManager = roleMgr;
             userManager = userMrg;
@@ -60,9 +60,9 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> Update(string id)
         {
             IdentityRole role = await roleManager.FindByIdAsync(id);
-            List<GamMaUser> members = new List<GamMaUser>();
-            List<GamMaUser> nonMembers = new List<GamMaUser>();
-            foreach (GamMaUser user in userManager.Users.ToList())
+            List<SiteUser> members = new List<SiteUser>();
+            List<SiteUser> nonMembers = new List<SiteUser>();
+            foreach (SiteUser user in userManager.Users.ToList())
             {
                 var list = await userManager.IsInRoleAsync(user, role.Name) ? members : nonMembers;
                 list.Add(user);
@@ -83,7 +83,7 @@ namespace GamMaSite.Controllers
             {
                 foreach (string userId in model.AddIds ?? new string[] { })
                 {
-                    GamMaUser user = await userManager.FindByIdAsync(userId);
+                    SiteUser user = await userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
                         result = await userManager.AddToRoleAsync(user, model.RoleName);
@@ -93,7 +93,7 @@ namespace GamMaSite.Controllers
                 }
                 foreach (string userId in model.DeleteIds ?? new string[] { })
                 {
-                    GamMaUser user = await userManager.FindByIdAsync(userId);
+                    SiteUser user = await userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
                         result = await userManager.RemoveFromRoleAsync(user, model.RoleName);

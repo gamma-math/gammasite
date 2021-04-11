@@ -13,10 +13,10 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class RegisterConfirmationModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
+        private readonly UserManager<SiteUser> _userManager;
         private readonly IEmailSender _sender;
 
-        public RegisterConfirmationModel(UserManager<GamMaUser> userManager, IEmailSender sender)
+        public RegisterConfirmationModel(UserManager<SiteUser> userManager, IEmailSender sender)
         {
             _userManager = userManager;
             _sender = sender;

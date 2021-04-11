@@ -16,7 +16,7 @@
         }
         else
         {
-            @foreach (GamMaUser user in Model.NonMembers.OrderBy(it => it.Navn))
+            @foreach (SiteUser user in Model.NonMembers.OrderBy(it => it.Navn))
             {
                 <tr>
                     <td>@user.Navn, @user.UserName</td>
@@ -36,7 +36,7 @@
         }
         else
         {
-            @foreach (GamMaUser user in Model.Members.OrderBy(it => it.Navn))
+            @foreach (SiteUser user in Model.Members.OrderBy(it => it.Navn))
             {
                 <tr>
                     <td>@user.Navn, @user.UserName</td>

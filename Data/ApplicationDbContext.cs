@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace GamMaSite.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<GamMaUser>
+    public class ApplicationDbContext : IdentityDbContext<SiteUser>
     {
         public ApplicationDbContext() : base()
         {
@@ -49,9 +49,9 @@ namespace GamMaSite.Data
         }
     }
 
-    public class UserConfiguration : IEntityTypeConfiguration<GamMaUser>
+    public class UserConfiguration : IEntityTypeConfiguration<SiteUser>
     {
-        public void Configure(EntityTypeBuilder<GamMaUser> builder)
+        public void Configure(EntityTypeBuilder<SiteUser> builder)
         {
             // This Converter will perform the conversion to and from Json to the desired type
         }

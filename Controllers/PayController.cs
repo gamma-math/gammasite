@@ -15,13 +15,13 @@ namespace GamMaSite.Controllers
     [Authorize]
     public class PayController : Controller
     {
-        private UserManager<GamMaUser> _userManager;
+        private UserManager<SiteUser> _userManager;
 
         private IStripeService _stripeService;
 
         private IConfiguration _configuration;
 
-        public PayController(UserManager<GamMaUser> usrMgr, IStripeService stripe, IConfiguration conf)
+        public PayController(UserManager<SiteUser> usrMgr, IStripeService stripe, IConfiguration conf)
         {
             this._userManager = usrMgr;
             this._stripeService = stripe;

@@ -12,12 +12,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
     public partial class IndexModel : PageModel
     {
-        private readonly UserManager<GamMaUser> _userManager;
-        private readonly SignInManager<GamMaUser> _signInManager;
+        private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
 
         public IndexModel(
-            UserManager<GamMaUser> userManager,
-            SignInManager<GamMaUser> signInManager)
+            UserManager<SiteUser> userManager,
+            SignInManager<SiteUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -60,7 +60,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 
         }
 
-        private async Task LoadAsync(GamMaUser user)
+        private async Task LoadAsync(SiteUser user)
         {
             var userName = await _userManager.GetUserNameAsync(user);
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
