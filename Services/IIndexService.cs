@@ -11,19 +11,13 @@ namespace GamMaSite.Services
         public Task<List<ContentMeta>> GetContentMetasAsync(string query);
 
         public Task<ContentType> GetContentAsync(string query);
-
-        public Task<byte[]> GetContentBytesAsync(string query);
-
-        public bool isFileName(string path);
     }
 
     public class ContentMeta
     {
         public string Name { get; set; }
         public string Path { get; set; }
-        public string Sha { get; set; }
         public string Type { get; set; }
-        public string Download_Url { get; set; }
 
         public string TypeConverted()
         {
@@ -40,8 +34,7 @@ namespace GamMaSite.Services
         public string Content { get; set; }
         public byte[] ContentBytes()
         {
-            var content = !string.IsNullOrEmpty(this.Content) ? this.Content.Replace("\n", "") : "";
-            return Convert.FromBase64String(content);
+            return !string.IsNullOrEmpty(this.Content) ? Convert.FromBase64String(this.Content) : new byte[0];
         }
     }
 }

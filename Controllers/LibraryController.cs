@@ -25,7 +25,8 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> IndexAsync(string path)
         {
             var isEmpty = !string.IsNullOrEmpty(path);
-            if (_indexService.isFileName(path))
+            var metaData = await _indexService.GetContentMetasAsync(isEmpty ? path : "");
+            if (metaData.Count == 0)
             {
                 var content = await _indexService.GetContentAsync(isEmpty ? path : "");
                 var name = content.Name != null ? content.Name : "";
@@ -37,7 +38,6 @@ namespace GamMaSite.Controllers
                 }
                 return File(content.ContentBytes(), "text/plain;charset=utf-8");
             }
-            var metaData = await _indexService.GetContentMetasAsync(isEmpty ? path : "");
             return View(metaData);
         }
 

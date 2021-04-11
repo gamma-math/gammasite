@@ -39,12 +39,6 @@ namespace GamMaSite.Services
             return await GetResult<ContentType>(query);
         }
 
-        public async Task<byte[]> GetContentBytesAsync(string query)
-        {
-            var contentBytes = (await GetResult<ContentType>(query)).ContentBytes();
-            return contentBytes;
-        }
-
         private async Task<TResult> GetResult<TResult>(string query)
         {
             var handler = new HttpClientHandler
@@ -61,25 +55,21 @@ namespace GamMaSite.Services
                 var responseString = await response.Content.ReadAsStringAsync();
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = JsonSerializer.Deserialize<TResult>(responseString, this.options);
-                    return result;
+                    try
+                    {
+                        var result = JsonSerializer.Deserialize<TResult>(responseString, this.options);
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        return Activator.CreateInstance<TResult>();
+                    }
                 }
                 else
                 {
-                    var result = Activator.CreateInstance<TResult>();
-                    return result;
+                    return Activator.CreateInstance<TResult>();
                 }
             }
-        }
-
-        public bool isFileName(string path)
-        {
-            if (path == null)
-            {
-                return false;
-            }
-            var name = path.Split("/").Last();
-            return name.Contains(".");
         }
     }
 }
