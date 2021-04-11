@@ -55,6 +55,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             [Display(Name = "Beskæftigelse")]
             public string Beskaeftigelse { get; set; }
 
+            [Display(Name = "Brugerinfo synlig for medlemmer:")]
+            public bool Visibility { get; set; }
+
         }
 
         private async Task LoadAsync(GamMaUser user)
@@ -71,7 +74,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                 Adresse = user.Adresse,
                 Aargang = user.Aargang,
                 PhoneNumber = phoneNumber,
-                Beskaeftigelse = user.Beskaeftigelse
+                Beskaeftigelse = user.Beskaeftigelse,
+                Visibility = user.Visibility.IsVisible()
             };
         }
 
@@ -130,6 +134,11 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             if (Input.Beskaeftigelse != user.Beskaeftigelse)
             {
                 user.Beskaeftigelse = Input.Beskaeftigelse;
+            }
+
+            if (Input.Visibility.ToVisibility() != user.Visibility)
+            {
+                user.Visibility = Input.Visibility.ToVisibility();
             }
 
             await _userManager.UpdateAsync(user);

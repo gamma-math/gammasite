@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using GamMaSite.Data;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 
 namespace GamMaSite.Models
 {
@@ -23,6 +25,9 @@ namespace GamMaSite.Models
         public UserStatus Status { get; set; }
 
         [PersonalData]
+        public VisibilityStatus Visibility { get; set; }
+
+        [PersonalData]
         public DateTime KontingentDato { get; set; }
 
         [PersonalData]
@@ -35,6 +40,14 @@ namespace GamMaSite.Models
                 this.Status = UserStatus.BETALT;
                 this.KontingentDato = DateTime.Now;
             }
+        }
+    }
+
+    public class Metadata
+    {
+        public override string ToString()
+        {
+            return this != null ? JsonSerializer.Serialize<Metadata>(this) : null;
         }
     }
 }

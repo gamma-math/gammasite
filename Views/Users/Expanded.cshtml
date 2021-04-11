@@ -21,7 +21,7 @@
             <th class="all">Admin</th>
         </tr>
     </thead>
-    @foreach (GamMaUser user in Model.OrderBy(it => it.Status).ThenBy(it => it.Navn))
+    @foreach (GamMaUser user in Model)
     {
         <tr>
             <td></td>

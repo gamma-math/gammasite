@@ -44,6 +44,11 @@
                 <label asp-for="Status">Brugerstatus</label>
                 <input asp-for="Status" class="form-control" disabled />
             </div>
+            <div class="form-group">
+                <label asp-for="Input.Visibility"></label>
+                <input asp-for="Input.Visibility" class="custom-checkbox" type="checkbox"/>
+                <span asp-validation-for="Input.Visibility" class="text-danger"></span>
+            </div>
             <button id="update-profile-button" type="submit" class="btn btn-primary">Gem</button>
         </form>
     </div>

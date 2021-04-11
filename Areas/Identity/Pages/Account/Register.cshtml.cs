@@ -111,7 +111,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     Beskaeftigelse = Input.Beskaeftigelse,
                     Status = UserStatus.OPRETTET,
                     KontingentDato = DateTime.MinValue,
-                    OprettetDato = DateTime.Now
+                    OprettetDato = DateTime.UtcNow,
+                    Visibility = VisibilityStatus.VISIBLE
                 };
                 var result = await _userManager.CreateAsync(user, Input.Password);
                 if (result.Succeeded)

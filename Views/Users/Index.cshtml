@@ -13,9 +13,11 @@
             <th>Navn</th>
             <th>Årgang</th>
             <th>Beskæftigelse</th>
+            <th>Email</th>
+            <th>Telefon</th>
         </tr>
     </thead>
-    @foreach (GamMaUser user in Model.OrderBy(it => it.Navn))
+    @foreach (GamMaUser user in Model)
     {
         if (new[] { UserStatus.BETALT, UserStatus.SKYLDER }.Contains(user.Status))
         {
@@ -23,7 +25,9 @@
         <td></td>
         <td>@user.Navn</td>
         <td>@user.Aargang</td>
-        <td>@user.Beskaeftigelse</td>
+        <td>@if (@user.Visibility.IsVisible()) {@user.Beskaeftigelse}</td>
+        <td>@if (@user.Visibility.IsVisible()) {@user.Email}</td>
+        <td>@if (@user.Visibility.IsVisible()) {@user.PhoneNumber}</td>
     </tr>
         }
     }
