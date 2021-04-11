@@ -5,6 +5,7 @@ using GamMaSite.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace GamMaSite.Data
 {
@@ -45,6 +46,14 @@ namespace GamMaSite.Data
                 entity.Property(m => m.LoginProvider).HasMaxLength(127);
                 entity.Property(m => m.Name).HasMaxLength(127);
             });
+        }
+    }
+
+    public class UserConfiguration : IEntityTypeConfiguration<GamMaUser>
+    {
+        public void Configure(EntityTypeBuilder<GamMaUser> builder)
+        {
+            // This Converter will perform the conversion to and from Json to the desired type
         }
     }
 }
