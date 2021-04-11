@@ -1,5 +1,6 @@
 ﻿@using GamMaSite.Services;
 @model IEnumerable<ContentMeta>;
+@inject UserManager<GamMaUser> UserManager
 
 @{
     ViewData["Title"] = "Bibliotek";
@@ -19,6 +20,10 @@
         </tr>
     }
 </table>
+@if (User.IsInRole("Admin"))
+{
+<a class="btn btn-primary" href="https://github.com/gamma-math/gammastatic">Redigér filer</a>
+}
 <script>
     $(document).ready(function () {
         $('#bibliotek').DataTable(
