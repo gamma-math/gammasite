@@ -31,7 +31,7 @@ namespace GamMaSite.Controllers
                 var content = await _indexService.GetContentAsync(isEmpty ? path : "");
                 var name = content.Name != null ? content.Name : "";
                 var splitted = name.Split(".");
-                var mimeType = MimeTypeMap.GetMimeType(splitted.Length > 1 ? splitted[1] : "yml");
+                var mimeType = MimeTypeMap.GetMimeType(splitted.Length > 1 ? splitted.Last() : "txt");
                 if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
                 {
                     mimeType = "text/plain;charset=utf-8";
