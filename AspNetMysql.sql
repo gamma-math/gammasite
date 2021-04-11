@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS AspNetUsers (
   `Navn` varchar(256) NOT NULL,
   `Adresse` mediumtext,
   `Status` int(11) NOT NULL DEFAULT '0',
+  `Visibility` int(11) NOT NULL DEFAULT '1',
   `Aargang` int(11) NOT NULL,
   `Beskaeftigelse` longtext,
   `KontingentDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
