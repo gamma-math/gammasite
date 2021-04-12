@@ -133,7 +133,7 @@ namespace GamMaSite.Services
                 },
                 Metadata = new Dictionary<string, string> 
                 { 
-                    { "SessionCreated", DateTime.Now.ToString() },
+                    { "SessionCreated", DateTime.UtcNow.ToString() },
                     { "Product", priceData?.Product },
                     { "ProductName", priceData?.ProductData?.Name }
                 },

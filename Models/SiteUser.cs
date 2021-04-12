@@ -38,7 +38,7 @@ namespace GamMaSite.Models
             if (this.Status != UserStatus.BETALT)
             {
                 this.Status = UserStatus.BETALT;
-                this.KontingentDato = DateTime.Now;
+                this.KontingentDato = DateTime.UtcNow;
             }
         }
     }

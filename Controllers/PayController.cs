@@ -79,7 +79,7 @@ namespace GamMaSite.Controllers
             var correctProduct = stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
             var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
-            if (DateTime.Now < sessionCreated.AddHours(1) && hasPayed && correctProduct)
+            if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct)
             {
                 user?.MarkAsPayed();
                 await _userManager.UpdateAsync(user);

@@ -52,7 +52,7 @@ namespace GamMaSite.Controllers
                     user.Status = status;
                     if (status == UserStatus.BETALT)
                     {
-                        user.KontingentDato = DateTime.Now;
+                        user.KontingentDato = DateTime.UtcNow;
                     }
                     IdentityResult result = await userManager.UpdateAsync(user);
                     if (result.Succeeded)
