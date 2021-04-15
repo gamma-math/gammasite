@@ -19,6 +19,8 @@ namespace GamMaSite.Services
 
         Task<Product[]> GetAllProductsAsync();
 
+        Task<Product[]> GetProductsAsync(List<string> ids);
+
         Task<Product> GetProductAsync(string id);
 
         Task<Product> GetProductByNameAsync(string name);
@@ -63,11 +65,15 @@ namespace GamMaSite.Services
 
         public async Task<Product[]> GetAllProductsAsync()
         {
-            var options = new ProductListOptions
-            {
-                Limit = 100,
-                Active = true
-            };
+            var service = new ProductService();
+            var products = (await service.ListAsync(GetProductListOptions())).ToArray();
+            return products;
+        }
+
+        public async Task<Product[]> GetProductsAsync(List<string> ids)
+        {
+            var options = GetProductListOptions();
+            options.Ids = ids;
             var service = new ProductService();
             var products = (await service.ListAsync(options)).ToArray();
             return products;
@@ -145,6 +151,15 @@ namespace GamMaSite.Services
             var service = new SessionService();
             Session session = service.Create(options);
             return session;
+        }
+
+        private ProductListOptions GetProductListOptions()
+        {
+            return new ProductListOptions
+            {
+                Limit = 100,
+                Active = true
+            };
         }
 
         private SessionLineItemPriceDataOptions GetPriceData(Product product, Price price)
