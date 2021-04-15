@@ -40,7 +40,7 @@
     <PackageReference Include="MimeTypeMapOfficial" Version="1.0.15" />
     <PackageReference Include="Node.js" Version="5.3.0" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="3.2.4" />
-    <PackageReference Include="Stripe.net" Version="39.44.0" />
+    <PackageReference Include="Stripe.net" Version="39.33.0" />
   </ItemGroup>
 
   <ItemGroup>
