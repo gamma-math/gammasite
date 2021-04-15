@@ -99,6 +99,10 @@ namespace GamMaSite.Services
 
         public async Task<Price> GetPriceAsync(string product)
         {
+            var services = new CouponService();
+            StripeList<Coupon> coupons = services.List(
+              new CouponListOptions { Limit = 30 }
+            );
             var options = new PriceListOptions
             {
                 Limit = 100,
@@ -163,11 +167,6 @@ namespace GamMaSite.Services
             return new SessionLineItemPriceDataOptions
             {
                 Product = product.Id,
-                ProductData = new SessionLineItemPriceDataProductDataOptions
-                {
-                    Name = product?.Name,
-                    Description = product?.Description
-                },
                 UnitAmount = price.UnitAmount,
                 Currency = price.Currency
             };
