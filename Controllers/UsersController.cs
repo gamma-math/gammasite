@@ -81,14 +81,12 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> UpdateMassEditAsync(DateTime from, DateTime to, UserStatus status)
         {
             var users = userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
-            var results = new List<IdentityResult>();
             foreach(SiteUser user in users)
             {
-                if (user.Status != status && !new[] { UserStatus.BETALT }.Contains(user.Status))
+                if (user.Status != status)
                 {
                     user.Status = status;
                     IdentityResult result = await userManager.UpdateAsync(user);
-                    results.Add(result);
                 }
             }
             return RedirectToAction(nameof(UpdateMass));
