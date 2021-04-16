@@ -1,16 +1,16 @@
 ﻿@model UserCategories
 
 <h1>Send besked</h1>
-<form asp-action="Send" asp-controller="Messages" method="post">
+<form asp-action="Send" asp-controller="Messages" method="post" id="currentForm">
     <div class="input-group form-group">
-        <select multiple="multiple" id="statusSelect" name="Status" class="form-control">
+        <select multiple="multiple" name="Status" class="selectpicker form-control" title="Vælg gruppe...">
             @foreach (var status in @Model.Status)
             {
             <option value="@status">@status</option>
             }
         </select>
         <span class="input-group-addon">&nbsp;&nbsp;&nbsp;</span>
-        <select multiple="multiple" id="roleSelect" name="Role" class="form-control">
+        <select multiple="multiple" name="Role" class="selectpicker form-control" title="Vælg rolle...">
             @foreach (var role in @Model.Roles)
             {
             <option value="@role.Name">@role.Name</option>
@@ -26,16 +26,26 @@
         <input type="text" name="Subject" class="form-control" placeholder="Emne. Kun relevant i mail..." />
     </div>
     <div class="form-group">
-        <textarea name="MessageBody" class="form-control" type="text" placeholder="Indtast besked..."></textarea>
+        <textarea id="summernote" name="MessageBody"></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Send besked</button>
 </form>
+<button onclick="submitform()" class="btn btn-primary">Send besked</button>
 <script>
-    $('#statusSelect').selectWoo({
-        placeholder: " Vælg gruppe..."
+    $('#summernote').summernote({
+        placeholder: 'Indtast besked...'
     });
-    $('#roleSelect').selectWoo({
-        placeholder: " Vælg rolle..."
-    });
+    function submitform() {
+        Swal.fire({
+            title: 'Vil du sende beskeden?',
+            showDenyButton: true,
+            confirmButtonText: `Send besked!`,
+            denyButtonText: `Annullér`,
+        }).then((result) => {
+            /* Read more about isConfirmed, isDenied below */
+            if (result.isConfirmed) {
+                document.getElementById("currentForm").submit();
+            }
+        });
+    };
 </script>
 
