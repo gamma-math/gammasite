@@ -41,16 +41,16 @@ namespace GamMaSite.Controllers
             }
             if (media == MessageMedia.SMS || media == MessageMedia.EmailSMS)
             {
-                var userPhonenumbers = usersToReceiveMessage.Where(user => !String.IsNullOrEmpty(user.PhoneNumber)).Select(user => user.PhoneNumber).ToArray();
+                var userPhonenumbers = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.PhoneNumber)).Select(user => user.PhoneNumber).ToArray();
                 var result = await smsSender.SendSmsAsync(messageBody, userPhonenumbers);
             }
             if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
             {
-                var usersMails = usersToReceiveMessage.Where(user => !String.IsNullOrEmpty(user.Email)).Select(user => user.Email).ToArray();
-                foreach (var mail in usersMails)
+                var usersMails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
+                Parallel.ForEach(usersMails, mail =>
                 {
-                    await emailSender.SendEmailAsync(mail, !String.IsNullOrEmpty(subject) ? subject : "", messageBody);
-                }
+                    emailSender.SendEmailAsync(mail, !string.IsNullOrEmpty(subject) ? subject : "", messageBody);
+                });
             }
             return RedirectToAction(nameof(Index));
         }
