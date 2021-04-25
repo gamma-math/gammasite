@@ -31,8 +31,8 @@
             <td>@user.Status</td>
             <td>@user.Email</td>
             <td>@user.PhoneNumber</td>
-            <td>@user.KontingentDato</td>
-            <td>@user.OprettetDato</td>
+            <td>@user.KontingentDato.ToLocalTime()</td>
+            <td>@user.OprettetDato.ToLocalTime()</td>
             <td><a class="btn btn-sm btn-primary" asp-action="Update" asp-route-id="@user.Id">Redigér</a></td>
         </tr>
     }
