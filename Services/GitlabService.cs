@@ -7,16 +7,17 @@ using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace GamMaSite.Services
 {
-    public class GithubService : IIndexService
+    public class GitlabService : IIndexService
     {
         private string contentAPI;
         private string token;
         private JsonSerializerOptions options;
 
-        public GithubService(string contentAPI, string token)
+        public GitlabService(string contentAPI, string token)
         {
             this.contentAPI = contentAPI;
             this.token = token;
@@ -30,15 +31,17 @@ namespace GamMaSite.Services
             };
         }
 
-        public async Task<List<ContentMeta>> GetContentMetasAsync(string query)
+        public async Task<List<ContentMeta>> GetContentMetasAsync(string path)
         {
+            var query = $"tree?path={HttpUtility.UrlEncode(path)}";
             return await GetResult<List<ContentMeta>>(query);
         }
 
-        public async Task<ContentType> GetContentAsync(string query)
+        public async Task<ContentType> GetContentAsync(string path)
         {
-            var content = await GetResult<GithubContent>(query);
-            var nameSplitted = (content.Name != null ? content.Name : "").Split(".");
+            var query = $"files/{HttpUtility.UrlEncode(path)}?ref=master";
+            var content = await GetResult<GitlabContent>(query);
+            var nameSplitted = (content.File_Name != null ? content.File_Name : "").Split(".");
             var mimeType = MimeTypeMap.GetMimeType(nameSplitted.Length > 1 ? nameSplitted.Last() : "txt");
             if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
             {
@@ -59,7 +62,7 @@ namespace GamMaSite.Services
             };
             using (var client = new HttpClient(handler))
             {
-                client.DefaultRequestHeaders.Add("Authorization", $"token {this.token}");
+                client.DefaultRequestHeaders.Add("Private-Token", $"{this.token}");
                 client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
 
                 var response = await client.GetAsync($"{this.contentAPI}{query}");
@@ -84,12 +87,10 @@ namespace GamMaSite.Services
             }
         }
 
-        private class GithubContent
+        private class GitlabContent
         {
-            public string Name { get; set; }
-            public string Path { get; set; }
-            public string Sha { get; set; }
-            public string Type { get; set; }
+            public string File_Name { get; set; }
+            public string File_Path { get; set; }
             public string Content { get; set; }
             public byte[] ContentBytes()
             {

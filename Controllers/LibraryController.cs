@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
-using MimeTypes;
 using GamMaSite.Services;
 using GamMaSite.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -24,19 +23,12 @@ namespace GamMaSite.Controllers
 
         public async Task<IActionResult> IndexAsync(string path)
         {
-            var isEmpty = !string.IsNullOrEmpty(path);
-            var metaData = await _indexService.GetContentMetasAsync(isEmpty ? path : "");
+            var pathName = !string.IsNullOrEmpty(path) ? path : "";
+            var metaData = await _indexService.GetContentMetasAsync(pathName);
             if (metaData.Count == 0)
             {
-                var content = await _indexService.GetContentAsync(isEmpty ? path : "");
-                var name = content.Name != null ? content.Name : "";
-                var splitted = name.Split(".");
-                var mimeType = MimeTypeMap.GetMimeType(splitted.Length > 1 ? splitted.Last() : "txt");
-                if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
-                {
-                    mimeType = "text/plain;charset=utf-8";
-                }
-                return File(content.ContentBytes(), mimeType);
+                var content = await _indexService.GetContentAsync(pathName);
+                return File(content.Content, content.MimeType);
             }
             return View(metaData);
         }

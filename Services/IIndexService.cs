@@ -21,20 +21,13 @@ namespace GamMaSite.Services
 
         public string TypeConverted()
         {
-            return Type == "file" ? "🗎" : "▣";
+            return new string[] { "file", "blob" }.Contains(Type) ? "🗎" : "▣";
         }
     }
 
     public class ContentType
     {
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public string Sha { get; set; }
-        public string Type { get; set; }
-        public string Content { get; set; }
-        public byte[] ContentBytes()
-        {
-            return !string.IsNullOrEmpty(this.Content) ? Convert.FromBase64String(this.Content) : new byte[0];
-        }
+        public string MimeType { get; set; }
+        public byte[] Content { get; set; }
     }
 }
