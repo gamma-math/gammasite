@@ -32,27 +32,30 @@ namespace GamMaSite.Controllers
             return View(userCategories);
         }
 
-        public async Task<IActionResult> Send(UserStatus[] status, string role, string messageBody, MessageMedia media, string subject)
+        public async Task<IActionResult> Send(UserStatus[] status, string role, MessageMedia media, string subject, string messageBody, string smsBody)
         {
             var usersToReceiveMessage = userManager.Users.Where(user => status.Contains(user.Status)).ToHashSet();
-            if(!String.IsNullOrEmpty(role))
+            if (!String.IsNullOrEmpty(role))
             {
                 usersToReceiveMessage.UnionWith(await userManager.GetUsersInRoleAsync(role));
             }
             if (media == MessageMedia.SMS || media == MessageMedia.EmailSMS)
             {
                 var userPhonenumbers = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.PhoneNumber)).Select(user => user.PhoneNumber).ToArray();
-                var result = await smsSender.SendSmsAsync(messageBody, userPhonenumbers);
+                var result = await smsSender.SendSmsAsync(smsBody, userPhonenumbers);
             }
             if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
             {
                 var usersMails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
-                Parallel.ForEach(usersMails, mail =>
-                {
-                    emailSender.SendEmailAsync(mail, !string.IsNullOrEmpty(subject) ? subject : "", messageBody);
-                });
+
+                await Task.WhenAll(usersMails.Select(mail => MailTask(mail, subject, messageBody)));
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        private Task MailTask(string mail, string subject, string messageBody)
+        {
+            return emailSender.SendEmailAsync(mail, !string.IsNullOrEmpty(subject) ? subject : "", messageBody);
         }
     }
 }

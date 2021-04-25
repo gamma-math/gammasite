@@ -3,14 +3,14 @@
 <h1>Send besked</h1>
 <form asp-action="Send" asp-controller="Messages" method="post" id="currentForm">
     <div class="input-group form-group">
-        <select multiple="multiple" name="Status" class="selectpicker form-control" title="Vælg gruppe...">
+        <select multiple="multiple" name="status" class="selectpicker form-control" title="Vælg gruppe...">
             @foreach (var status in @Model.Status)
             {
             <option value="@status">@status</option>
             }
         </select>
         <span class="input-group-addon">&nbsp;&nbsp;&nbsp;</span>
-        <select multiple="multiple" name="Role" class="selectpicker form-control" title="Vælg rolle...">
+        <select multiple="multiple" name="role" class="selectpicker form-control" title="Vælg rolle...">
             @foreach (var role in @Model.Roles)
             {
             <option value="@role.Name">@role.Name</option>
@@ -18,16 +18,17 @@
         </select>
     </div>
     <div class="form-group">
-        <input type="radio" name="Media" value="Email" checked>&nbsp;Email&nbsp;</input>
-        <input type="radio" name="Media" value="SMS">&nbsp;SMS&nbsp;</input>
-        <input type="radio" name="Media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
+        <input type="radio" name="media" value="Email" checked>&nbsp;Email&nbsp;</input>
+        <input type="radio" name="media" value="SMS">&nbsp;SMS&nbsp;</input>
+        <input type="radio" name="media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
     </div>
     <div class="form-group">
-        <input type="text" name="Subject" class="form-control" placeholder="Emne. Kun relevant i mail..." />
+        <input type="text" name="subject" class="form-control" placeholder="Emne. Kun relevant i mail..." />
     </div>
     <div class="form-group">
-        <textarea id="summernote" name="MessageBody"></textarea>
+        <textarea id="summernote" name="messageBody"></textarea>
     </div>
+    <input type="hidden" id="smsBody" name="smsBody" value="" />
 </form>
 <button onclick="submitform()" class="btn btn-primary">Send besked</button>
 <script>
@@ -35,6 +36,7 @@
         placeholder: 'Indtast besked...'
     });
     function submitform() {
+        document.getElementById('smsBody').value = $($('#summernote').summernote('code')).text();
         Swal.fire({
             title: 'Vil du sende beskeden?',
             showDenyButton: true,
