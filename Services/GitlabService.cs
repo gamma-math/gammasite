@@ -41,8 +41,7 @@ namespace GamMaSite.Services
         {
             var query = $"files/{HttpUtility.UrlEncode(path)}?ref=master";
             var content = await GetResult<GitlabContent>(query);
-            var nameSplitted = (content.File_Name != null ? content.File_Name : "").Split(".");
-            var mimeType = MimeTypeMap.GetMimeType(nameSplitted.Length > 1 ? nameSplitted.Last() : "txt");
+            var mimeType = MimeTypeMap.GetMimeType(content.File_Name != null ? content.File_Name : "txt");
             if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
             {
                 mimeType = "text/plain;charset=utf-8";

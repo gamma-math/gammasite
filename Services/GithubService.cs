@@ -38,8 +38,7 @@ namespace GamMaSite.Services
         public async Task<ContentType> GetContentAsync(string query)
         {
             var content = await GetResult<GithubContent>(query);
-            var nameSplitted = (content.Name != null ? content.Name : "").Split(".");
-            var mimeType = MimeTypeMap.GetMimeType(nameSplitted.Length > 1 ? nameSplitted.Last() : "txt");
+            var mimeType = MimeTypeMap.GetMimeType(content.Name != null ? content.Name : "txt");
             if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
             {
                 mimeType = "text/plain;charset=utf-8";

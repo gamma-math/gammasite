@@ -1,3 +1,4 @@
+-- Reference: https://gist.github.com/jambelnet/1ea70236c933d644b36895b296fb44e5
 --
 -- MySql - ASP.NET Core Identity
 --
