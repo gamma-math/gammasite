@@ -31,10 +31,10 @@ namespace GamMaSite
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            var mysqlConn = Configuration.GetConnectionString("DefaultConnection");
+            var serverVersion = new MySqlServerVersion(new Version(5, 7, 33));
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseMySql(
-                    Configuration.GetConnectionString("DefaultConnection")
-                    )
+                options.UseMySql(mysqlConn, serverVersion)
                 );
 
             services.AddHsts(options =>
