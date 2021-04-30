@@ -24,11 +24,7 @@ namespace GamMaSite.Services
             this.apiKey = apiKey;
             this.from = from;
 
-            this.options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true
-            };
+            this.options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         public async Task<string> SendSmsAsync(string message, params string[] recipients)
@@ -42,7 +38,7 @@ namespace GamMaSite.Services
 
             using (var client = new HttpClient(handler))
             {
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{this.apiKey}:"));
+                var base64 = Convert.ToBase64String(Encoding.Default.GetBytes($"{this.apiKey}:"));
                 client.DefaultRequestHeaders.Add("Authorization", $"Basic {base64}");
 
                 var httpContent = new StringContent(json, Encoding.UTF8, "application/json");

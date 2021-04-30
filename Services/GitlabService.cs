@@ -22,13 +22,7 @@ namespace GamMaSite.Services
             this.contentAPI = contentAPI;
             this.token = token;
 
-            this.options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-                AllowTrailingCommas = true,
-                PropertyNameCaseInsensitive = true
-            };
+            this.options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         public async Task<List<ContentMeta>> GetContentMetasAsync(string path)
