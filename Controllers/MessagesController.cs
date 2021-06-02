@@ -46,16 +46,10 @@ namespace GamMaSite.Controllers
             }
             if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
             {
-                var usersMails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
-
-                await Task.WhenAll(usersMails.Select(mail => MailTask(mail, subject, messageBody)));
+                var mails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
+                await emailSender.SendEmailAsync(string.Join(";", mails), subject, messageBody);
             }
             return RedirectToAction(nameof(Index));
-        }
-
-        private Task MailTask(string mail, string subject, string messageBody)
-        {
-            return emailSender.SendEmailAsync(mail, !string.IsNullOrEmpty(subject) ? subject : "", messageBody);
         }
     }
 }

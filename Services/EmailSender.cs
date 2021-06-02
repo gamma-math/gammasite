@@ -39,17 +39,21 @@ namespace GamMaSite.Services
             this.fromAddress = fromAddress;
         }
 
-        public Task SendEmailAsync(string toAddress, string subject, string htmlMessage)
+        public async Task SendEmailAsync(string toAddress, string subject, string htmlMessage)
         {
-            var client = new SmtpClient(host, port)
-            {
+            string[] mails = toAddress.Split(";");
+            using (var client = new SmtpClient(host, port) {
                 UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(userName, password),
                 EnableSsl = enableSSL
-            };
-            return client.SendMailAsync(
-                new MailMessage(fromAddress, toAddress, subject, htmlMessage) { IsBodyHtml = true }
-            );
+            })
+            {
+                foreach (var email in mails)
+                {
+                    var mailMessage = new MailMessage(fromAddress, email, subject, htmlMessage) { IsBodyHtml = true };
+                    await client.SendMailAsync(mailMessage);
+                }
+            }
         }
     }
 }
