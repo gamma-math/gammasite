@@ -15,4 +15,7 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
       - name: Build app for release
-        run: msbuild .\GamMaSite.csproj -t:rebuild -verbosity:diag -property:Configuration=Release
+        run: msbuild .\GamMaSite.csproj /p:DeployOnBuild=true /p:PublishProfile=./Properties/PublishProfiles/IISProfile.pubxml /p:Username=$env:username /p:Password=$env:password
+        env:
+          username: $ { { secrets.USERNAME } }
+          password: $ { { secrets.PASSWORD } }
