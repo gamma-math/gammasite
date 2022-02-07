@@ -14,6 +14,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
+      - name: Add dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+      - name: Restore NuGet packages
+        run: dotnet restore
       - name: Build app for release
         run: msbuild .\GamMaSite.csproj /p:DeployOnBuild=true /p:PublishProfile=./Properties/PublishProfiles/IISProfile.pubxml /p:Username=$env:username /p:Password=$env:password
         env:
