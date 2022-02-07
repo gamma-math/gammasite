@@ -11,7 +11,6 @@ env:
   WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
   IIS_PROFILE: .\Properties\PublishProfiles\IISProfile.pubxml
   CS_PROJ: .\GamMaSite.csproj
-  DOTNET_VERSION: 5.0.x
   RUNTIME: win-x86
 jobs:
   build-deploy:
@@ -22,7 +21,7 @@ jobs:
       - name: Add dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: $env:DOTNET_VERSION
+          dotnet-version: '5.0.x'
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
