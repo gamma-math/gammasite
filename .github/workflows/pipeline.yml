@@ -12,8 +12,6 @@ env:
   IIS_PROFILE: .\Properties\PublishProfiles\IISProfile.pubxml
   CS_PROJ: .\GamMaSite.csproj
   RUNTIME: win-x86
-  TARGET: net5.0
-  DEPLOY_URL: nt37.unoeuro.com
 jobs:
   build-deploy:
     runs-on: windows-latest
@@ -38,13 +36,6 @@ jobs:
           GitHub.Token: ${{ secrets.GH_API_KEY }}
           GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
       - name: Restore NuGet packages
-        shell: pwsh
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
-        shell: pwsh
-        run: | 
-          dotnet msbuild /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD $env:CS_PROJ \
-          /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=$env:TARGET /p:MSDeployServiceURL=$env:DEPLOY_URL \
-          /p:DeployIisAppPath=$env:WD_USERNAME /p:DeployOnBuild=true /p:MSDeployPublishMethod=WMSVC \
-          /p:WebPublishMethod=MSDeploy /p:Configuration=Release /p:SelfContained=true \
-          /p:SkipExtraFilesOnServer=true /p:EnableMSDeployBackup=true
+        run: dotnet msbuild $env:CS_PROJ /p:PublishProfile=$env:IIS_PROFILE /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD /p:DeployOnBuild=true
