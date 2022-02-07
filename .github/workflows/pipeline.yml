@@ -7,21 +7,21 @@ on:
         required: true
         default: 'warning'
 env:
-  USERNAME: ${{ secrets.USERNAME }}
-  PASSWORD: ${{ secrets.PASSWORD }}
+  WD_USERNAME: ${{ secrets.WD_USERNAME }}
+  WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
+  IIS_PROFILE: .\Properties\PublishProfiles\IISProfile.pubxml
+  CS_PROJ: .\GamMaSite.csproj
 jobs:
   build-deploy:
     runs-on: windows-latest
     steps:
       - name: Check-out your repository
         uses: actions/checkout@v2
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1
       - name: Add dotnet
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '5.0.x'
       - name: Restore NuGet packages
-        run: dotnet restore -r win-x86 .\GamMaSite.csproj
-      - name: Build app for release
-        run: dotnet msbuild .\GamMaSite.csproj /p:DeployOnBuild=true /p:PublishProfile=./Properties/PublishProfiles/IISProfile.pubxml /p:Username=$env:USERNAME /p:Password=$env:PASSWORD
+        run: dotnet restore -r win-x86 $env:CS_PROJ
+      - name: Build and release app
+        run: dotnet msbuild $env:CS_PROJ /p:PublishProfile=$env:IIS_PROFILE /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD /p:DeployOnBuild=true
