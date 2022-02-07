@@ -6,6 +6,9 @@ on:
         description: 'Log level'     
         required: true
         default: 'warning'
+env:
+  USERNAME: ${{ secrets.USERNAME }}
+  PASSWORD: ${{ secrets.PASSWORD }}
 jobs:
   build-deploy:
     runs-on: windows-latest
@@ -19,9 +22,6 @@ jobs:
         with:
           dotnet-version: '5.0.x'
       - name: Restore NuGet packages
-        run: dotnet restore -r win-x86
+        run: dotnet restore -r win-x86 .\GamMaSite.csproj
       - name: Build app for release
-        run: msbuild .\GamMaSite.csproj /p:DeployOnBuild=true /p:PublishProfile=./Properties/PublishProfiles/IISProfile.pubxml /p:Username=$env:username /p:Password=$env:password
-        env:
-          username: $ { { secrets.USERNAME } }
-          password: $ { { secrets.PASSWORD } }
+        run: dotnet msbuild .\GamMaSite.csproj /p:DeployOnBuild=true /p:PublishProfile=./Properties/PublishProfiles/IISProfile.pubxml /p:Username=$env:USERNAME /p:Password=$env:PASSWORD
