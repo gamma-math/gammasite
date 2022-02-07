@@ -22,6 +22,19 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '5.0.x'
+      - name: Variable substitutions
+        uses: microsoft/variable-substitution@v1 
+        with:
+          files: 'appsettings.json'
+        env:
+          ConnectionStrings.DefaultConnection: ${{ secrets.CONNECTION_STRING }}
+          EmailSender.UserName: ${{ secrets.MAILGUN_MAIL }}
+          EmailSender.Password: ${{ secrets.MAILGUN_API_KEY }}
+          SmsSender.ApiKey: ${{ secrets.SMS_APIGATEWAY_KEY }}
+          StripeConfig.PublicApiKey: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
+          StripeConfig.SecretApiKey: ${{ secrets.STRIPE_SECRET_API_KEY }}
+          GitHub.Token: ${{ secrets.GH_API_KEY }}
+          GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
