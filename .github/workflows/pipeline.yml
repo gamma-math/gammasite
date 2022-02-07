@@ -10,6 +10,8 @@ jobs:
   build-deploy:
     runs-on: windows-latest
     steps:
+      - name: Check-out your repository
+        uses: actions/checkout@v2
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
       - name: List files
