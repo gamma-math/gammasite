@@ -11,7 +11,7 @@ env:
   WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
   IIS_PROFILE: .\Properties\PublishProfiles\IISProfile.pubxml
   CS_PROJ: .\GamMaSite.csproj
-  DOTNET_VERSION: '5.0.x'
+  DOTNET_VERSION: 5.0.x
   RUNTIME: win-x86
 jobs:
   build-deploy:
