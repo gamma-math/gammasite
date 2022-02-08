@@ -1,0 +1,21 @@
+name: Multiline
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+jobs:
+  build-multiline:
+    runs-on: windows-latest
+    steps:
+      - name: Add dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+      - name: Configure functions
+        run: |
+          dotnet \
+            --help
+            
