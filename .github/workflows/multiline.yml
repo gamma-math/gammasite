@@ -15,6 +15,7 @@ jobs:
         with:
           dotnet-version: '5.0.x'
       - name: Configure functions
+        shell: pwsh
         run: |
           dotnet \
             --help
