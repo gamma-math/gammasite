@@ -9,7 +9,8 @@ on:
 env:
   WD_USERNAME: ${{ secrets.WD_USERNAME }}
   WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
-  IIS_PROFILE: .\Properties\PublishProfiles\IISProfile.pubxml
+  APP_PATH: ${{ secrets.WD_USERNAME }}
+  DEPLOY_SERIVICE_URL: nt37.unoeuro.com
   CS_PROJ: .\GamMaSite.csproj
   RUNTIME: win-x86
 jobs:
@@ -38,4 +39,11 @@ jobs:
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
-        run: dotnet msbuild $env:CS_PROJ /p:PublishProfile=$env:IIS_PROFILE /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD /p:DeployOnBuild=true
+        run: >
+          dotnet msbuild $env:CS_PROJ
+          /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD
+          /p:DeployIisAppPath=$env:APP_PATH /p:MSDeployServiceURL=$env:DEPLOY_SERIVICE_URL
+          /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=net5.0
+          /p:DeployOnBuild=true /p:WebPublishMethod=MSDeploy /p:Configuration=Release
+          /p:MSDeployPublishMethod=WMSVC /p:SkipExtraFilesOnServer=true
+          /p:SelfContained=true /p:EnableMSDeployBackup=true
