@@ -36,6 +36,7 @@ namespace GamMaSite
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseMySql(mysqlConn, serverVersion)
                 );
+            services.AddDatabaseDeveloperPageExceptionFilter();
 
             services.AddHsts(options =>
             {
@@ -84,7 +85,7 @@ namespace GamMaSite
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
+                app.UseMigrationsEndPoint();
             }
             else
             {
