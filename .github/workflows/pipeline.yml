@@ -15,7 +15,7 @@ env:
   RUNTIME: win-x86
 jobs:
   build-deploy:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Check-out your repository
         uses: actions/checkout@v2
