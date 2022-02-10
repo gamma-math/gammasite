@@ -65,7 +65,7 @@ namespace GamMaSite.Services
                         var result = JsonSerializer.Deserialize<TResult>(responseString, this.options);
                         return result;
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         return Activator.CreateInstance<TResult>();
                     }

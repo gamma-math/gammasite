@@ -57,7 +57,7 @@ namespace GamMaSite.Services
                 var session = await new SessionService().GetAsync(sessionId);
                 return session;
             }
-            catch (StripeException ex)
+            catch (StripeException)
             {
                 return null;
             }
@@ -85,7 +85,7 @@ namespace GamMaSite.Services
             {
                 return await new ProductService().GetAsync(id);
             }
-            catch (StripeException ex)
+            catch (StripeException)
             {
                 return null;
             }
@@ -111,7 +111,7 @@ namespace GamMaSite.Services
                 var prices = (await service.ListAsync(options)).OrderByDescending(p => p.UnitAmount);
                 return prices.FirstOrDefault();
             }
-            catch (StripeException ex)
+            catch (StripeException)
             {
                 return null;
             }
