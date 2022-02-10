@@ -22,7 +22,7 @@ jobs:
       - name: Add dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '5.0.x'
       - name: Variable substitutions
         uses: microsoft/variable-substitution@v1 
         with:
@@ -43,7 +43,7 @@ jobs:
           dotnet msbuild $env:CS_PROJ
           /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD
           /p:DeployIisAppPath=$env:APP_PATH /p:MSDeployServiceURL=$env:DEPLOY_SERIVICE_URL
-          /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=net6.0
+          /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=net5.0
           /p:DeployOnBuild=true /p:WebPublishMethod=MSDeploy /p:Configuration=Release
           /p:MSDeployPublishMethod=WMSVC /p:SkipExtraFilesOnServer=true
           /p:SelfContained=true /p:EnableMSDeployBackup=true
