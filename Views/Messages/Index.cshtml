@@ -23,7 +23,7 @@
         <input type="radio" name="media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
     </div>
     <div class="form-group">
-        <input type="text" name="subject" class="form-control" placeholder="Emne. Kun relevant i mail..." />
+        <input type="text" name="subject" id="subject" class="form-control" placeholder="Emne..." />
     </div>
     <div class="form-group">
         <textarea id="summernote" name="messageBody"></textarea>
@@ -36,6 +36,15 @@
         placeholder: 'Indtast besked...'
     });
     function submitform() {
+        var subject = document.getElementById("subject").value.trim().length;
+        if (subject == 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Hov!',
+                text: 'Emnefelt skal udfyldes!'
+            });
+            return;
+        }
         document.getElementById('smsBody').value = $($('#summernote').summernote('code')).text();
         Swal.fire({
             title: 'Vil du sende beskeden?',
