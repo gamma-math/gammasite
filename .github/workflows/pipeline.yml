@@ -50,4 +50,4 @@ jobs:
           /p:Configuration=$env:CONFIGURATION /p:SelfContained=$env:SELF_CONTAINED
           /p:WebPublishMethod=MSDeploy /p:MSDeployPublishMethod=WMSVC
           /p:DeployOnBuild=true /p:EnableMSDeployBackup=true
-          /p:EnableMsDeployAppOffline=true /p:SkipExtraFilesOnServer=true
+          /p:EnableMsDeployAppOffline=true /p:SkipExtraFilesOnServer=false
