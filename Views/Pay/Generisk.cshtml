@@ -3,11 +3,9 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 @section Scripts {
-    <script src="https://polyfill.io/v3/polyfill.min.js?version=3.52.1&features=fetch"></script>
-    <script src="https://js.stripe.com/v3/"></script>
     <script type="text/javascript">
         // Create an instance of the Stripe object with your publishable API key
-        var stripe = Stripe("pk_test_XbTXDRaWHSTKiNxGsvv8CKP100NnEtOaQd");
+        var stripe = Stripe(document.getElementById("apiKey").value);
         var checkoutButton = document.getElementById("checkout-button");
         checkoutButton.addEventListener("click", function () {
             var money = document.getElementById("money").value;

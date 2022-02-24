@@ -1,34 +1,36 @@
 ﻿@model UserCategories
 
 <h1>Send besked</h1>
-<form asp-action="Send" asp-controller="Messages" method="post" id="currentForm">
-    <div class="input-group form-group">
-        <select multiple="multiple" name="status" class="selectpicker form-control" title="Vælg gruppe...">
-            @foreach (var status in @Model.Status)
-            {
-            <option value="@status">@status</option>
-            }
-        </select>
-        <span class="input-group-addon">&nbsp;&nbsp;&nbsp;</span>
-        <select multiple="multiple" name="role" class="selectpicker form-control" title="Vælg rolle...">
-            @foreach (var role in @Model.Roles)
-            {
-            <option value="@role.Name">@role.Name</option>
-            }
-        </select>
+<form asp-action="Send" asp-controller="Messages" method="post" id="messageForm">
+    <div class="d-grid gap-1">
+        <div class="input-group form-group p-1">
+            <select multiple="multiple" name="status" class="selectpicker form-control" title="Vælg gruppe...">
+                @foreach (var status in @Model.Status)
+                {
+                <option value="@status">@status</option>
+                }
+            </select>
+            <span class="input-group-addon">&nbsp;&nbsp;&nbsp;</span>
+            <select multiple="multiple" name="role" class="selectpicker form-control" title="Vælg rolle...">
+                @foreach (var role in @Model.Roles)
+                {
+                <option value="@role.Name">@role.Name</option>
+                }
+            </select>
+        </div>
+        <div class="form-group p-1">
+            <input type="radio" name="media" value="Email" checked>&nbsp;Email&nbsp;</input>
+            <input type="radio" name="media" value="SMS">&nbsp;SMS&nbsp;</input>
+            <input type="radio" name="media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
+        </div>
+        <div class="form-group p-1">
+            <input type="text" name="subject" id="subject" class="form-control" placeholder="Emne..." />
+        </div>
+        <div class="form-group p-1">
+            <textarea id="summernote" name="messageBody"></textarea>
+        </div>
+        <input class="p-1" type="hidden" id="smsBody" name="smsBody" value="" />
     </div>
-    <div class="form-group">
-        <input type="radio" name="media" value="Email" checked>&nbsp;Email&nbsp;</input>
-        <input type="radio" name="media" value="SMS">&nbsp;SMS&nbsp;</input>
-        <input type="radio" name="media" value="EmailSMS">&nbsp;Email & SMS&nbsp;</input>
-    </div>
-    <div class="form-group">
-        <input type="text" name="subject" id="subject" class="form-control" placeholder="Emne..." />
-    </div>
-    <div class="form-group">
-        <textarea id="summernote" name="messageBody"></textarea>
-    </div>
-    <input type="hidden" id="smsBody" name="smsBody" value="" />
 </form>
 <button onclick="submitform()" class="btn btn-primary">Send besked</button>
 <script>
@@ -54,7 +56,7 @@
         }).then((result) => {
             /* Read more about isConfirmed, isDenied below */
             if (result.isConfirmed) {
-                document.getElementById("currentForm").submit();
+                document.getElementById("messageForm").submit();
             }
         });
     };

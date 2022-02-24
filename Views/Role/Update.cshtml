@@ -8,8 +8,13 @@
     <input type="hidden" name="roleName" value="@Model.Role.Name" />
     <input type="hidden" name="roleId" value="@Model.Role.Id" />
 
-    <h2>Tilføj til @Model.Role.Name</h2>
-    <table class="table table-bordered table-sm">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Tilføj til @Model.Role.Name</th>
+                <th></th>
+            </tr>
+        </thead>
         @if (Model.NonMembers.Count() == 0)
         {
             <tr><td colspan="2">Alle brugere er medlem</td></tr>
@@ -28,8 +33,13 @@
         }
     </table>
 
-    <h2>Fjern fra @Model.Role.Name</h2>
-    <table class="table table-bordered table-sm">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Fjern fra @Model.Role.Name</th>
+                <th></th>
+            </tr>
+        </thead>
         @if (Model.Members.Count() == 0)
         {
             <tr><td colspan="2">Ingen brugere er medlem</td></tr>

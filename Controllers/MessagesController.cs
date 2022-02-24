@@ -6,7 +6,6 @@ using GamMaSite.Models;
 using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GamMaSite.Controllers
@@ -47,7 +46,7 @@ namespace GamMaSite.Controllers
             if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
             {
                 var mails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
-                await emailSender.SendEmailAsync(string.Join(";", mails), subject, messageBody);
+                await emailSender.SendEmailAsync(mails, subject, messageBody);
             }
             return RedirectToAction(nameof(Index));
         }

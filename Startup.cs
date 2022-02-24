@@ -12,7 +12,6 @@ using GamMaSite.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using GamMaSite.Services;
 using GamMaSite.Models;
 using Stripe;
@@ -54,10 +53,8 @@ namespace GamMaSite
             services.AddTransient<IEmailSender, EmailSender>(i =>
             new EmailSender(
                 Configuration["EmailSender:Host"],
-                Configuration.GetValue<int>("EmailSender:Port"),
-                Configuration.GetValue<bool>("EmailSender:EnableSSL"),
-                Configuration["EmailSender:UserName"],
-                Configuration["EmailSender:Password"]
+                Configuration["EmailSender:Mail"],
+                Configuration["EmailSender:ApiKey"]
                 )
             );
             services.AddScoped<IStripeService, StripeService>(i => new StripeService());
@@ -75,6 +72,7 @@ namespace GamMaSite
                 Configuration["SmsSender:From"]
                 )
             );
+            services.AddScoped<IICalService, ICalService>(i => new ICalService(Configuration["ICal:ICalAddress"]));
             services.AddControllersWithViews();
             services.AddRazorPages();
         }

@@ -1,59 +1,53 @@
-﻿using Microsoft.AspNetCore.Identity.UI.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Mail;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Security.Authentication;
+using System.Text;
 
 namespace GamMaSite.Services
 {
     public class EmailSender : IEmailSender
     {
-        // Our private configuration variables
-        private string host;
-        private int port;
-        private bool enableSSL;
-        private string userName;
-        private string password;
-        private string fromAddress;
+        private readonly string host;
+        private readonly string fromAddress;
+        private readonly string apiKey;
 
-        // Get our parameterized configuration
-        public EmailSender(string host, int port, bool enableSSL, string userName, string password)
+        public EmailSender(string host, string fromAddress, string apiKey)
         {
             this.host = host;
-            this.port = port;
-            this.enableSSL = enableSSL;
-            this.userName = userName;
-            this.password = password;
-            this.fromAddress = userName;
-        }
-
-        public EmailSender(string host, int port, bool enableSSL, string userName, string password, string fromAddress)
-        {
-            this.host = host;
-            this.port = port;
-            this.enableSSL = enableSSL;
-            this.userName = userName;
-            this.password = password;
             this.fromAddress = fromAddress;
+            this.apiKey = apiKey;
         }
 
-        public async Task SendEmailAsync(string toAddress, string subject, string htmlMessage)
+        public async Task SendEmailAsync(string[] toAddresses, string subject, string htmlMessage)
         {
-            string[] mails = toAddress.Split(";");
-            using (var client = new SmtpClient(host, port) {
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(userName, password),
-                EnableSsl = enableSSL
-            })
+            var mailTasks = new List<Task>();
+            foreach (var address in toAddresses)
             {
-                foreach (var email in mails)
-                {
-                    var mailMessage = new MailMessage(fromAddress, email, subject, htmlMessage) { IsBodyHtml = true };
-                    await client.SendMailAsync(mailMessage);
-                }
+                mailTasks.Add(PostMailgun(address, subject, htmlMessage));
             }
+            await Task.WhenAll(mailTasks);
+        }
+
+        private async Task PostMailgun(string toAddress, string subject, string htmlMessage)
+        {
+            var handler = new HttpClientHandler
+            {
+                SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
+            };
+            using var client = new HttpClient(handler);
+            var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"api:{this.apiKey}"));
+            client.DefaultRequestHeaders.Add("Authorization", $"Basic {authToken}");
+
+            IList<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>> {
+                { new KeyValuePair<string, string>("from", this.fromAddress) },
+                { new KeyValuePair<string, string>("to", toAddress) },
+                { new KeyValuePair<string, string>("subject", subject) },
+                { new KeyValuePair<string, string>("html", htmlMessage) }
+            };
+
+            await client.PostAsync(this.host, new FormUrlEncodedContent(keyValues));
         }
     }
 }
