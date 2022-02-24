@@ -55,7 +55,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             [Display(Name = "Beskæftigelse")]
             public string Beskaeftigelse { get; set; }
 
-            [Display(Name = "Brugerinfo synlig for medlemmer:")]
+            [Display(Name = "Brugerinfo synlig for medlemmer")]
             public bool Visibility { get; set; }
 
         }

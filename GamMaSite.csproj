@@ -38,6 +38,8 @@
   <ItemGroup>
     <Folder Include="Areas\Identity\Data\" />
     <Folder Include="Data\Migrations\" />
+    <Folder Include="wwwroot\css\thirdparty\" />
+    <Folder Include="wwwroot\js\thirdparty\" />
   </ItemGroup>
 
 </Project>
