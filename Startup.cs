@@ -53,10 +53,8 @@ namespace GamMaSite
             services.AddTransient<IEmailSender, EmailSender>(i =>
             new EmailSender(
                 Configuration["EmailSender:Host"],
-                Configuration.GetValue<int>("EmailSender:Port"),
-                Configuration.GetValue<bool>("EmailSender:EnableSSL"),
-                Configuration["EmailSender:UserName"],
-                Configuration["EmailSender:Password"]
+                Configuration["EmailSender:Mail"],
+                Configuration["EmailSender:ApiKey"]
                 )
             );
             services.AddScoped<IStripeService, StripeService>(i => new StripeService());

@@ -32,8 +32,9 @@ jobs:
           files: 'appsettings.json'
         env:
           ConnectionStrings.DefaultConnection: ${{ secrets.CONNECTION_STRING }}
-          EmailSender.UserName: ${{ secrets.MAILGUN_MAIL }}
-          EmailSender.Password: ${{ secrets.MAILGUN_API_KEY }}
+          EmailSender.Host: ${{ secrets.MAILGUN_HOST }}
+          EmailSender.ApiKey: ${{ secrets.MAILGUN_API_KEY }}
+          EmailSender.Mail: ${{ secrets.MAILGUN_MAIL }}
           SmsSender.ApiKey: ${{ secrets.SMS_APIGATEWAY_KEY }}
           StripeConfig.PublicApiKey: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
           StripeConfig.SecretApiKey: ${{ secrets.STRIPE_SECRET_API_KEY }}

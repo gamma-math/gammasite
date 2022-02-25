@@ -7,8 +7,6 @@ namespace GamMaSite.Services
 {
     public interface IEmailSender
     {
-        public Task SendEmailAsync(string toAddress, string subject, string htmlMessage);
-
         public Task SendEmailAsync(string[] toAddresses, string subject, string htmlMessage);
 
     }
