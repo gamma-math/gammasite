@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity.UI.Services;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit;
+using MimeKit;
 using System.Threading.Tasks;
 
 namespace GamMaSite.Services
@@ -41,19 +41,33 @@ namespace GamMaSite.Services
 
         public async Task SendEmailAsync(string toAddress, string subject, string htmlMessage)
         {
-            string[] mails = toAddress.Split(";");
-            using (var client = new SmtpClient(host, port) {
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(userName, password),
-                EnableSsl = enableSSL
-            })
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(fromAddress, fromAddress));
+            message.To.Add(new MailboxAddress(toAddress, toAddress));
+            message.Subject = subject;
+            var bodyBuilder = new BodyBuilder
             {
-                foreach (var email in mails)
-                {
-                    var mailMessage = new MailMessage(fromAddress, email, subject, htmlMessage) { IsBodyHtml = true };
-                    await client.SendMailAsync(mailMessage);
-                }
+                HtmlBody = htmlMessage
+            };
+            message.Body = bodyBuilder.ToMessageBody();
+
+            using var client = new SmtpClient();
+            client.Connect(this.host, this.port, this.enableSSL);
+
+            client.Authenticate(this.userName, this.password);
+
+            await client.SendAsync(message);
+            client.Disconnect(true);
+        }
+
+        public async Task SendEmailAsync(string[] toAddresses, string subject, string htmlMessage)
+        {
+            var mailTasks = new List<Task>();
+            foreach (var address in toAddresses)
+            {
+                mailTasks.Add(SendEmailAsync(address, subject, htmlMessage));
             }
+            await Task.WhenAll(mailTasks);
         }
     }
 }
