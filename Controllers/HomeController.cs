@@ -24,17 +24,6 @@ namespace GamMaSite.Controllers
             return View();
         }
 
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
-        [Authorize(Roles = "Admin")]
-        public IActionResult Medlemmer()
-        {
-            return View();
-        }
-
         public IActionResult Arrangementer()
         {
             return View();
