@@ -14,7 +14,7 @@ namespace GamMaSite.Controllers
     [ApiController]
     public class StripeController : ControllerBase
     {
-        IStripeService _stripeService;
+        private IStripeService _stripeService;
 
         public StripeController(IStripeService stripeService)
         {

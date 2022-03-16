@@ -16,8 +16,8 @@ namespace GamMaSite.Controllers
         private RoleManager<IdentityRole> roleManager;
         private UserManager<SiteUser> userManager;
         private ISmsSender smsSender;
-        private IEmailSender emailSender;
-        public MessagesController(RoleManager<IdentityRole> roleMgr, UserManager<SiteUser> userMrg, ISmsSender smsSdr, IEmailSender emailSdr)
+        private IEmailService emailSender;
+        public MessagesController(RoleManager<IdentityRole> roleMgr, UserManager<SiteUser> userMrg, ISmsSender smsSdr, IEmailService emailSdr)
         {
             roleManager = roleMgr;
             userManager = userMrg;
