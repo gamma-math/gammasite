@@ -31,7 +31,7 @@ namespace GamMaSite.Services
         
         public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         {
-            await SendEmailAsync(new[] {email}, subject, htmlMessage);
+            await PostMailgun(email, subject, htmlMessage);
         }
 
         private async Task PostMailgun(string toAddress, string subject, string htmlMessage)
