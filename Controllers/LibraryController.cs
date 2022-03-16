@@ -21,13 +21,13 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> IndexAsync(string path)
         {
             var pathName = !string.IsNullOrEmpty(path) ? path : "";
-            var metaData = await _indexService.GetContentMetasAsync(pathName);
-            if (metaData.Count == 0)
+            var metas = new ContentMetas
             {
-                var content = await _indexService.GetContentAsync(pathName);
-                return File(content.Content, content.MimeType);
-            }
-            return View(metaData);
+                Metas = await _indexService.GetContentMetasAsync(pathName)
+            };
+            if (metas.Metas.Count != 0) return View(metas);
+            var content = await _indexService.GetContentAsync(pathName);
+            return File(content.Content, content.MimeType);
         }
 
     }

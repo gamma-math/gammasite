@@ -1,5 +1,5 @@
 ﻿@using GamMaSite.Services;
-@model IList<ContentMeta>;
+@model ContentMetas;
 @inject UserManager<SiteUser> UserManager
 
 @{
@@ -10,19 +10,19 @@
 <table class="table table-striped table-bordered" id="bibliotek">
     <thead class="table-dark">
     <tr>
-        <th>@Model[0].GetRoot()</th>
+        <th>@Model.GetRoot()</th>
     </tr>
     </thead>
-    @foreach (var meta in Model)
+    @foreach (var meta in Model.Metas)
     {
         <tr>
             <td><a href="@string.Concat("/library?path=", meta.Path)">@meta.TypeConverted() @meta.Name</a></td>
         </tr>
     }
 </table>
-@if (Model[0].HasParent())
+@if (Model.HasParent())
 {
-    <a class="btn btn-secondary" href="@string.Concat("/library?path=", Model[0].GetParent())">Tilbage</a>
+    <a class="btn btn-secondary" href="@string.Concat("/library?path=", Model.GetParent())">Tilbage</a>
 }
 @if (User.IsInRole("Admin"))
 {
