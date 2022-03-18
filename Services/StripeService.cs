@@ -39,14 +39,14 @@ namespace GamMaSite.Services
 
         public string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl)
         {
-            Session session = GetCreateSession(GetPriceData(name, description, price, currency), user, successUrl, cancelUrl);
+            var session = GetCreateSession(GetPriceData(name, description, price, currency), user, successUrl, cancelUrl);
 
             return session.Id;
         }
 
         public bool IsPaymentComplete(Session session)
         {
-            var paymentComplete = new string[] { "paid", "no_payment_required" }.Contains(session?.PaymentStatus);
+            var paymentComplete = new[] { "paid", "no_payment_required" }.Contains(session?.PaymentStatus);
             return paymentComplete;
         }
 

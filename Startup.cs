@@ -12,9 +12,9 @@ using GamMaSite.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using GamMaSite.Services;
 using GamMaSite.Models;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Stripe;
 
 namespace GamMaSite
@@ -51,15 +51,13 @@ namespace GamMaSite
                 .AddErrorDescriber<DanishIdentityErrorDescriber>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
-            services.AddTransient<IEmailSender, EmailSender>(i =>
-            new EmailSender(
-                Configuration["EmailSender:Host"],
-                Configuration.GetValue<int>("EmailSender:Port"),
-                Configuration.GetValue<bool>("EmailSender:EnableSSL"),
-                Configuration["EmailSender:UserName"],
-                Configuration["EmailSender:Password"]
-                )
-            );
+            EmailService EmailInstance(IServiceProvider i) => new(
+                Configuration["EmailSender:Host"], 
+                Configuration["EmailSender:Mail"], 
+                Configuration["EmailSender:ApiKey"]
+                );
+            services.AddTransient<IEmailService, EmailService>(EmailInstance);
+            services.AddTransient<IEmailSender, EmailService>(EmailInstance);
             services.AddScoped<IStripeService, StripeService>(i => new StripeService());
             services.AddScoped<IIndexService, GithubService>(i => 
             new GithubService(
@@ -75,6 +73,7 @@ namespace GamMaSite
                 Configuration["SmsSender:From"]
                 )
             );
+            services.AddScoped<IICalService, ICalService>(i => new ICalService(Configuration["ICal:ICalAddress"]));
             services.AddControllersWithViews();
             services.AddRazorPages();
         }

@@ -2,21 +2,23 @@
 
 <h1>Massebehandling</h1>
 <form asp-action="UpdateMassEdit" asp-controller="Users" method="post" id="currentForm">
-    <div class="input-group form-group">
-        <label><b>Kontingentdato fra:&nbsp;</b></label>
-        <input type="date" id="from" value="@DateTime.Today.ToString("yyyy-MM-dd")" name="from">
-    </div>
-    <div class="input-group form-group">
-        <label><b>Kontingentdato til:&nbsp;</b></label>
-        <input type="date" id="to" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" name="to">
-    </div>
-    <div class="input-group form-group">
-        <label><b>Status:&nbsp;</b></label>
-        <select id="roleSelect" name="Status" class="form-control">
-            <option value="SKYLDER">SKYLDER</option>
-            <option value="INAKTIV">INAKTIV</option>
-            <option value="OPRETTET">OPRETTET</option>
-        </select>
+    <div class="d-grid gap-1">
+        <div class="input-group form-group p-2">
+            <label><b>Kontingentdato fra:&nbsp;</b></label>
+            <input type="date" id="from" value="@DateTime.Today.ToString("yyyy-MM-dd")" name="from">
+        </div>
+        <div class="input-group form-group p-2">
+            <label><b>Kontingentdato til:&nbsp;</b></label>
+            <input type="date" id="to" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" name="to">
+        </div>
+        <div class="input-group form-group p-2">
+            <label><b>Status:&nbsp;</b></label>
+            <select id="roleSelect" name="Status" class="form-control">
+                <option value="SKYLDER">SKYLDER</option>
+                <option value="INAKTIV">INAKTIV</option>
+                <option value="OPRETTET">OPRETTET</option>
+            </select>
+        </div>
     </div>
 </form>
 <button onclick="submitform()" class="btn btn-primary">Skift status</button>

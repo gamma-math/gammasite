@@ -21,8 +21,29 @@ namespace GamMaSite.Services
 
         public string TypeConverted()
         {
-            return new string[] { "file", "blob" }.Contains(Type) ? "🗎" : "▣";
+            return new[] { "file", "blob" }.Contains(Type) ? "🗎" : "▣";
         }
+    }
+
+    public class ContentMetas
+    {
+        public IList<ContentMeta> Metas { get; set; }
+        
+        public string GetRoot()
+        {
+            var split = Metas.Count > 0 ? Metas[0].Path.Split("/").ToList() : new List<string>();
+            var cut = Math.Max(0, split.Count - 1);
+            return split.Count > 1 ? $"/{string.Join("/", split.GetRange(0, cut))}" : "/";
+        }
+        
+        public string GetParent()
+        {
+            var split = Metas.Count > 0 ? Metas[0].Path.Split("/").ToList() : new List<string>();
+            var cut = Math.Max(0, split.Count - 2);
+            return split.Count > 1 ? string.Join("/", split.GetRange(0, cut)) : "/";
+        }
+
+        public bool HasParent() => Metas.Count > 0 && Metas[0].Path.Split("/").Length > 1;
     }
 
     public class ContentType

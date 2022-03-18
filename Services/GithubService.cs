@@ -1,27 +1,26 @@
-﻿using MimeTypes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Authentication;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using MimeTypes;
 
 namespace GamMaSite.Services
 {
     public class GithubService : IIndexService
     {
-        private string contentAPI;
-        private string token;
-        private JsonSerializerOptions options;
+        private readonly string _contentApi;
+        private readonly string _token;
+        private readonly JsonSerializerOptions _options;
 
-        public GithubService(string contentAPI, string token)
+        public GithubService(string contentApi, string token)
         {
-            this.contentAPI = contentAPI;
-            this.token = token;
+            this._contentApi = contentApi;
+            this._token = token;
 
-            this.options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         public async Task<List<ContentMeta>> GetContentMetasAsync(string query)
@@ -32,8 +31,8 @@ namespace GamMaSite.Services
         public async Task<ContentType> GetContentAsync(string query)
         {
             var content = await GetResult<GithubContent>(query);
-            var mimeType = MimeTypeMap.GetMimeType(content.Name != null ? content.Name : "txt");
-            if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
+            var mimeType = MimeTypeMap.GetMimeType(content.Name ?? "txt");
+            if (new[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
             {
                 mimeType = "text/plain;charset=utf-8";
             }
@@ -50,30 +49,22 @@ namespace GamMaSite.Services
             {
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
-            using (var client = new HttpClient(handler))
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("Authorization", $"token {_token}");
+            client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
+
+            var response = await client.GetAsync($"{_contentApi}{query}");
+
+            var responseString = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) return Activator.CreateInstance<TResult>();
+            try
             {
-                client.DefaultRequestHeaders.Add("Authorization", $"token {this.token}");
-                client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
-
-                var response = await client.GetAsync($"{this.contentAPI}{query}");
-
-                var responseString = await response.Content.ReadAsStringAsync();
-                if (response.IsSuccessStatusCode)
-                {
-                    try
-                    {
-                        var result = JsonSerializer.Deserialize<TResult>(responseString, this.options);
-                        return result;
-                    }
-                    catch (Exception)
-                    {
-                        return Activator.CreateInstance<TResult>();
-                    }
-                }
-                else
-                {
-                    return Activator.CreateInstance<TResult>();
-                }
+                var result = JsonSerializer.Deserialize<TResult>(responseString, _options);
+                return result;
+            }
+            catch (Exception)
+            {
+                return Activator.CreateInstance<TResult>();
             }
         }
 
@@ -86,7 +77,7 @@ namespace GamMaSite.Services
             public string Content { get; set; }
             public byte[] ContentBytes()
             {
-                return !string.IsNullOrEmpty(this.Content) ? Convert.FromBase64String(this.Content) : new byte[0];
+                return !string.IsNullOrEmpty(Content) ? Convert.FromBase64String(Content) : Array.Empty<byte>();
             }
         }
     }

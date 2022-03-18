@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.56.0.2590" />
+    <PackageReference Include="Humanizer.Core" Version="2.14.1" />
+    <PackageReference Include="Humanizer.Core.da" Version="2.14.1" />
+    <PackageReference Include="Ical.Net" Version="4.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="6.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="6.0.2" />
@@ -38,6 +42,8 @@
   <ItemGroup>
     <Folder Include="Areas\Identity\Data\" />
     <Folder Include="Data\Migrations\" />
+    <Folder Include="wwwroot\css\thirdparty\" />
+    <Folder Include="wwwroot\js\thirdparty\" />
   </ItemGroup>
 
 </Project>
