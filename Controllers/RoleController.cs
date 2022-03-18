@@ -13,15 +13,15 @@ namespace GamMaSite.Controllers
     [Authorize(Roles = "Admin")]
     public class RoleController : Controller
     {
-        private RoleManager<IdentityRole> roleManager;
-        private UserManager<SiteUser> userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly UserManager<SiteUser> _userManager;
         public RoleController(RoleManager<IdentityRole> roleMgr, UserManager<SiteUser> userMrg)
         {
-            roleManager = roleMgr;
-            userManager = userMrg;
+            _roleManager = roleMgr;
+            _userManager = userMrg;
         }
 
-        public ViewResult Index() => View(roleManager.Roles);
+        public ViewResult Index() => View(_roleManager.Roles);
 
         public IActionResult Create() => View();
 
@@ -31,7 +31,7 @@ namespace GamMaSite.Controllers
             if (ModelState.IsValid)
             {
                 var role = new IdentityRole(name);
-                IdentityResult result = await roleManager.CreateAsync(role);
+                var result = await _roleManager.CreateAsync(role);
                 if (result.Succeeded)
                     return RedirectToAction("Index");
                 else
@@ -43,28 +43,27 @@ namespace GamMaSite.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
-            IdentityRole role = await roleManager.FindByIdAsync(id);
+            var role = await _roleManager.FindByIdAsync(id);
             if (role != null)
             {
-                IdentityResult result = await roleManager.DeleteAsync(role);
+                var result = await _roleManager.DeleteAsync(role);
                 if (result.Succeeded)
                     return RedirectToAction("Index");
-                else
-                    Errors(result);
+                Errors(result);
             }
             else
                 ModelState.AddModelError("", "No role found");
-            return View("Index", roleManager.Roles);
+            return View("Index", _roleManager.Roles);
         }
 
         public async Task<IActionResult> Update(string id)
         {
-            IdentityRole role = await roleManager.FindByIdAsync(id);
-            List<SiteUser> members = new List<SiteUser>();
-            List<SiteUser> nonMembers = new List<SiteUser>();
-            foreach (SiteUser user in userManager.Users.ToList())
+            var role = await _roleManager.FindByIdAsync(id);
+            var members = new List<SiteUser>();
+            var nonMembers = new List<SiteUser>();
+            foreach (SiteUser user in _userManager.Users.ToList())
             {
-                var list = await userManager.IsInRoleAsync(user, role.Name) ? members : nonMembers;
+                var list = await _userManager.IsInRoleAsync(user, role.Name) ? members : nonMembers;
                 list.Add(user);
             }
             return View(new RoleEdit
@@ -78,25 +77,25 @@ namespace GamMaSite.Controllers
         [HttpPost]
         public async Task<IActionResult> Update(RoleModification model)
         {
-            IdentityResult result;
             if (ModelState.IsValid)
             {
-                foreach (string userId in model.AddIds ?? new string[] { })
+                IdentityResult result;
+                foreach (var userId in model.AddIds ?? Array.Empty<string>())
                 {
-                    SiteUser user = await userManager.FindByIdAsync(userId);
+                    var user = await _userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
-                        result = await userManager.AddToRoleAsync(user, model.RoleName);
+                        result = await _userManager.AddToRoleAsync(user, model.RoleName);
                         if (!result.Succeeded)
                             Errors(result);
                     }
                 }
                 foreach (string userId in model.DeleteIds ?? new string[] { })
                 {
-                    SiteUser user = await userManager.FindByIdAsync(userId);
+                    var user = await _userManager.FindByIdAsync(userId);
                     if (user != null)
                     {
-                        result = await userManager.RemoveFromRoleAsync(user, model.RoleName);
+                        result = await _userManager.RemoveFromRoleAsync(user, model.RoleName);
                         if (!result.Succeeded)
                             Errors(result);
                     }
@@ -111,7 +110,7 @@ namespace GamMaSite.Controllers
 
         private void Errors(IdentityResult result)
         {
-            foreach (IdentityError error in result.Errors)
+            foreach (var error in result.Errors)
                 ModelState.AddModelError(error.Code, error.Description);
         }
     }

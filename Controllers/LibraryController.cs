@@ -11,7 +11,7 @@ namespace GamMaSite.Controllers
     [Authorize]
     public class LibraryController : Controller
     {
-        private IIndexService _indexService;
+        private readonly IIndexService _indexService;
 
         public LibraryController(IIndexService indexService)
         {

@@ -11,29 +11,29 @@ namespace GamMaSite.Controllers
 {
     public class UsersController : Controller
     {
-        private UserManager<SiteUser> userManager;
+        private readonly UserManager<SiteUser> _userManager;
 
         public UsersController(UserManager<SiteUser> usrMgr)
         {
-            userManager = usrMgr;
+            _userManager = usrMgr;
         }
 
         [Authorize]
         public IActionResult Index()
         {
-            return View(userManager.Users);
+            return View(_userManager.Users);
         }
 
         [Authorize(Roles = "Admin")]
         public IActionResult Expanded()
         {
-            return View(userManager.Users);
+            return View(_userManager.Users);
         }
 
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(string id)
         {
-            SiteUser user = await userManager.FindByIdAsync(id);
+            var user = await _userManager.FindByIdAsync(id);
             if (user != null)
                 return View(user);
             else
@@ -44,7 +44,7 @@ namespace GamMaSite.Controllers
         [HttpPost]
         public async Task<IActionResult> Update(string id, UserStatus status)
         {
-            SiteUser user = await userManager.FindByIdAsync(id);
+            var user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
                 if (user.Status != status)
@@ -54,14 +54,11 @@ namespace GamMaSite.Controllers
                     {
                         user.KontingentDato = DateTime.UtcNow;
                     }
-                    IdentityResult result = await userManager.UpdateAsync(user);
+                    var result = await _userManager.UpdateAsync(user);
                     if (result.Succeeded)
                         return RedirectToAction(nameof(Expanded));
-                    else
-                    {
-                        ModelState.AddModelError("", "Status må ikke være tom");
-                        Errors(result);
-                    }
+                    ModelState.AddModelError("", "Status må ikke være tom");
+                    Errors(result);
                 }
             }
             else
@@ -74,27 +71,24 @@ namespace GamMaSite.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult UpdateMass()
         {
-            return View(userManager.Users);
+            return View(_userManager.Users);
         }
 
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateMassEditAsync(DateTime from, DateTime to, UserStatus status)
         {
-            var users = userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
-            foreach(SiteUser user in users)
+            var users = _userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
+            foreach (var user in users.Where(user => user.Status != status))
             {
-                if (user.Status != status)
-                {
-                    user.Status = status;
-                    IdentityResult result = await userManager.UpdateAsync(user);
-                }
+                user.Status = status;
+                var result = await _userManager.UpdateAsync(user);
             }
             return RedirectToAction(nameof(UpdateMass));
         }
 
         private void Errors(IdentityResult result)
         {
-            foreach (IdentityError error in result.Errors)
+            foreach (var error in result.Errors)
                 ModelState.AddModelError("", error.Description);
         }
     }

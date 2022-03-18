@@ -13,16 +13,16 @@ namespace GamMaSite.Services
 {
     public class GitlabService : IIndexService
     {
-        private string contentAPI;
-        private string token;
-        private JsonSerializerOptions options;
+        private readonly string _contentApi;
+        private readonly string _token;
+        private readonly JsonSerializerOptions _options;
 
-        public GitlabService(string contentAPI, string token)
+        public GitlabService(string contentApi, string token)
         {
-            this.contentAPI = contentAPI;
-            this.token = token;
+            this._contentApi = contentApi;
+            this._token = token;
 
-            this.options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            this._options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         public async Task<List<ContentMeta>> GetContentMetasAsync(string path)
@@ -35,8 +35,8 @@ namespace GamMaSite.Services
         {
             var query = $"files/{HttpUtility.UrlEncode(path)}?ref=master";
             var content = await GetResult<GitlabContent>(query);
-            var mimeType = MimeTypeMap.GetMimeType(content.File_Name != null ? content.File_Name : "txt");
-            if (new string[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
+            var mimeType = MimeTypeMap.GetMimeType(content.File_Name ?? "txt");
+            if (new[] { "text/plain", "application/octet-stream" }.Contains(mimeType))
             {
                 mimeType = "text/plain;charset=utf-8";
             }
@@ -53,30 +53,22 @@ namespace GamMaSite.Services
             {
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
-            using (var client = new HttpClient(handler))
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("Private-Token", $"{this._token}");
+            client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
+
+            var response = await client.GetAsync($"{this._contentApi}{query}");
+
+            var responseString = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) return Activator.CreateInstance<TResult>();
+            try
             {
-                client.DefaultRequestHeaders.Add("Private-Token", $"{this.token}");
-                client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
-
-                var response = await client.GetAsync($"{this.contentAPI}{query}");
-
-                var responseString = await response.Content.ReadAsStringAsync();
-                if (response.IsSuccessStatusCode)
-                {
-                    try
-                    {
-                        var result = JsonSerializer.Deserialize<TResult>(responseString, this.options);
-                        return result;
-                    }
-                    catch (Exception)
-                    {
-                        return Activator.CreateInstance<TResult>();
-                    }
-                }
-                else
-                {
-                    return Activator.CreateInstance<TResult>();
-                }
+                var result = JsonSerializer.Deserialize<TResult>(responseString, this._options);
+                return result;
+            }
+            catch (Exception)
+            {
+                return Activator.CreateInstance<TResult>();
             }
         }
 
@@ -87,7 +79,7 @@ namespace GamMaSite.Services
             public string Content { get; set; }
             public byte[] ContentBytes()
             {
-                return !string.IsNullOrEmpty(this.Content) ? Convert.FromBase64String(this.Content) : new byte[0];
+                return !string.IsNullOrEmpty(this.Content) ? Convert.FromBase64String(this.Content) : Array.Empty<byte>();
             }
         }
     }

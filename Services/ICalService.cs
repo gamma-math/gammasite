@@ -22,16 +22,16 @@ namespace GamMaSite.Services
 
     public class ICalService : IICalService
     {
-        private readonly string icalAddress;
+        private readonly string _icalAddress;
 
         public ICalService(string icalAddress)
         {
-            this.icalAddress = icalAddress;
+            this._icalAddress = icalAddress;
         }
 
         public async Task<IEnumerable<CalendarEvent>> FetchCalendarEvents()
         {
-            var result = await GetResult(this.icalAddress);
+            var result = await GetResult(this._icalAddress);
             var calendar = Calendar.Load(result);
             var events = calendar.Events;
             
@@ -40,9 +40,9 @@ namespace GamMaSite.Services
 
         public async Task<CalendarEvent> FetchCalendarEvent(string uid)
         {
-            var cal_events = await FetchCalendarEvents();
-            var cal_event = cal_events.First(it => it.Uid == uid);
-            return cal_event;
+            var calEvents = await FetchCalendarEvents();
+            var calEvent = calEvents.First(it => it.Uid == uid);
+            return calEvent;
         }
 
         private async Task<string> GetResult(string query)
@@ -51,13 +51,11 @@ namespace GamMaSite.Services
             {
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
-            using (var client = new HttpClient(handler))
-            {
-                var response = await client.GetAsync(query);
+            using var client = new HttpClient(handler);
+            var response = await client.GetAsync(query);
 
-                var responseString = await response.Content.ReadAsStringAsync();
-                return responseString;
-            }
+            var responseString = await response.Content.ReadAsStringAsync();
+            return responseString;
         }
 
         public async Task<EventsWrapper> GetEventsWrapper()
@@ -96,18 +94,17 @@ namespace GamMaSite.Services
             return calendar.Start.AsSystemLocal.ToLocalTime().ToString("dddd").Humanize(LetterCasing.Sentence);
         }
 
-        public static string ToGoogleMapsAddress(this CalendarEvent calendar)
-        {
-            return $"https://google.com/maps?q={HttpUtility.UrlEncode(calendar.Location)}";
-        }
-
         public static string ToWeekOfYear(this CalendarEvent calendar)
         {
             var datetime = calendar.Start.AsSystemLocal.ToLocalTime();
             var dfi = System.Globalization.DateTimeFormatInfo.CurrentInfo;
-            var cal = dfi.Calendar;
-            var weekNumber = cal.GetWeekOfYear(datetime, dfi.CalendarWeekRule, dfi.FirstDayOfWeek);
+            var weekNumber = dfi?.Calendar.GetWeekOfYear(datetime, dfi.CalendarWeekRule, dfi.FirstDayOfWeek);
             return $"{weekNumber}";
+        }
+        
+        public static string ToGoogleMapsAddress(this CalendarEvent calendar)
+        {
+            return $"https://google.com/maps?q={HttpUtility.UrlEncode(calendar.Location)}";
         }
     }
 }

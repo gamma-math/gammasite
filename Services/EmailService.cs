@@ -5,24 +5,23 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Text;
-using Microsoft.AspNetCore.Identity.UI.Services;
 
 namespace GamMaSite.Services
 {
-    public class EmailService : IEmailService, IEmailSender
+    public class EmailService : IEmailService
     {
-        private readonly string host;
-        private readonly string fromAddress;
-        private readonly string apiKey;
+        private readonly string _host;
+        private readonly string _fromAddress;
+        private readonly string _apiKey;
 
         public EmailService(string host, string fromAddress, string apiKey)
         {
-            this.host = host;
-            this.fromAddress = fromAddress;
-            this.apiKey = apiKey;
+            this._host = host;
+            this._fromAddress = fromAddress;
+            this._apiKey = apiKey;
         }
 
-        public async Task SendEmailAsync(string[] emails, string subject, string htmlMessage)
+        public async Task SendEmailAsync(IEnumerable<string> emails, string subject, string htmlMessage)
         {
             var mailTasks = emails.Select(address => PostMailgun(address, subject, htmlMessage)).ToList();
 
@@ -41,17 +40,17 @@ namespace GamMaSite.Services
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
             using var client = new HttpClient(handler);
-            var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"api:{this.apiKey}"));
+            var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"api:{this._apiKey}"));
             client.DefaultRequestHeaders.Add("Authorization", $"Basic {authToken}");
 
             IList<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>> {
-                new("from", this.fromAddress),
+                new("from", this._fromAddress),
                 new("to", toAddress),
                 new("subject", subject),
-                new("html", htmlMessage)
+                new("html", htmlMessage ?? "<p></p>")
             };
 
-            await client.PostAsync(this.host, new FormUrlEncodedContent(keyValues));
+            await client.PostAsync(this._host, new FormUrlEncodedContent(keyValues));
         }
     }
 }

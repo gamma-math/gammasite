@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 namespace GamMaSite.Services
 {
-    public interface IEmailService
+    public interface IEmailService : IEmailSender
     {
-        public Task SendEmailAsync(string[] emails, string subject, string htmlMessage);
+        public Task SendEmailAsync(IEnumerable<string> emails, string subject, string htmlMessage);
         
-        public Task SendEmailAsync(string email, string subject, string htmlMessage);
     }
 }
