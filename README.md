@@ -12,3 +12,4 @@ Sources of inspiration:
 * https://docs.microsoft.com/en-us/aspnet/core/security/authentication/scaffold-identity
 * https://docs.microsoft.com/en-us/aspnet/core/security/authentication/add-user-data
 * https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration
+* https://www.yogihosting.com/aspnet-core-identity-roles/
