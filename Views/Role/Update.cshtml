@@ -15,7 +15,7 @@
                 <th></th>
             </tr>
         </thead>
-        @if (Model.NonMembers.Count() == 0)
+        @if (!Model.NonMembers.Any())
         {
             <tr><td colspan="2">Alle brugere er medlem</td></tr>
         }
@@ -40,7 +40,7 @@
                 <th></th>
             </tr>
         </thead>
-        @if (Model.Members.Count() == 0)
+        @if (!Model.Members.Any())
         {
             <tr><td colspan="2">Ingen brugere er medlem</td></tr>
         }

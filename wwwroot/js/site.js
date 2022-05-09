@@ -7,11 +7,6 @@ function initializeDatatable() {
     $(document).ready(function () {
         $('table.datatable').DataTable(
             {
-                responsive: {
-                    details: {
-                        type: 'column'
-                    }
-                },
                 columnDefs: [{
                     className: 'dtr-control',
                     orderable: false,
