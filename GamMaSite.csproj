@@ -33,7 +33,6 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="6.0.4" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.3" />
     <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" />
-    <PackageReference Include="Node.js" Version="5.3.0" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="6.0.1" />
     <PackageReference Include="Stripe.net" Version="39.107.0" />
   </ItemGroup>
