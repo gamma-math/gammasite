@@ -117,6 +117,45 @@ CONSTRAINT PK_AspNetUserTokens PRIMARY KEY (UserId, LoginProvider, Name)
 );
 
 
+CREATE TABLE IF NOT EXISTS Keys (
+`Id` varchar(128) NOT NULL,
+`Version` INTEGER NOT NULL,
+`Created` text NOT NULL,
+`Use` text NULL,
+`Algorithm` text NOT NULL,
+`IsX509Certificate` INTEGER NOT NULL,
+`DataProtected` INTEGER NOT NULL,
+`Data` longtext NOT NULL,
+CONSTRAINT PK_Keys PRIMARY KEY (Id)
+);
+
+CREATE TABLE `PersistedGrants` (
+    `Key` varchar(128) NOT NULL,
+    `Type` text NOT NULL,
+    `SubjectId` text NULL,
+    `SessionId` text NULL,
+    `ClientId` text NOT NULL,
+    `Description` text NULL,
+    `CreationTime` text NOT NULL,
+    `Expiration` text NULL,
+    `ConsumedTime` text NULL,
+    `Data` text NOT NULL,
+    CONSTRAINT PK_PersistedGrants PRIMARY KEY (`Key`)
+);
+
+CREATE TABLE `DeviceCodes` (
+`UserCode` varchar(128) NOT NULL,
+`DeviceCode` TEXT NOT NULL,
+`SubjectId` TEXT NULL,
+`SessionId` TEXT NULL,
+`ClientId` TEXT NOT NULL,
+`Description` TEXT NULL,
+`CreationTime` TEXT NOT NULL,
+`Expiration` TEXT NOT NULL,
+`Data` TEXT NOT NULL,
+CONSTRAINT PK_DeviceCodes PRIMARY KEY (`UserCode`)
+);
+
 CREATE TABLE `__EFMigrationsHistory` (
   `MigrationId` text NOT NULL,
   `ProductVersion` text NOT NULL,
