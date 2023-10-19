@@ -36,3 +36,4 @@ bld/
 
 # NUNIT
 *.VisualState.xml
+multiproject.code-workspace

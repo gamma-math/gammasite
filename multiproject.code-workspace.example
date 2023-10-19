@@ -1,0 +1,36 @@
+{
+  "folders": [
+    {
+      "name": "gamma-site",
+      "path": "."
+    },
+    {
+      "name": "Controllers",
+      "path": "./Controllers"
+    },
+    {
+      "name": "Services",
+      "path": "./Services"
+    },
+    {
+      "name": "Views",
+      "path": "./Views"
+    },
+    {
+      "name": "ViewModels",
+      "path": "./ViewModels"
+    },
+    {
+      "name": "Models",
+      "path": "./Models"
+    },
+    {
+      "name": "Properties (Settings)",
+      "path": "./Properties"
+    }
+    ],
+    "settings":
+    {
+      "files.exclude": {}
+    }
+}
