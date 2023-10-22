@@ -32,7 +32,7 @@ namespace GamMaSite
         public void ConfigureServices(IServiceCollection services)
         {
             var mysqlConn = Configuration.GetConnectionString("DefaultConnection");
-            var serverVersion = new MySqlServerVersion(new Version(5, 7, 33));
+            var serverVersion = new MySqlServerVersion(new Version(8, 0));
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseMySql(mysqlConn, serverVersion)
                 );
