@@ -110,7 +110,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     Aargang = Input.Aargang,
                     Beskaeftigelse = Input.Beskaeftigelse,
                     Status = UserStatus.OPRETTET,
-                    KontingentDato = DateTime.MinValue,
+                    KontingentDato = DateTime.MinValue.ToUniversalTime(),
                     OprettetDato = DateTime.UtcNow,
                     Visibility = VisibilityStatus.VISIBLE
                 };
