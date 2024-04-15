@@ -13,7 +13,7 @@ env:
   DEPLOY_SERIVICE_URL: nt37.unoeuro.com
   CS_PROJ: .\GamMaSite.csproj
   RUNTIME: win-x86
-  FRAMEWORK: net6.0
+  FRAMEWORK: net8.0
   CONFIGURATION: Release
   SELF_CONTAINED: true
 jobs:
@@ -25,7 +25,7 @@ jobs:
       - name: Add dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
       - name: Variable substitutions
         uses: microsoft/variable-substitution@v1 
         with:
