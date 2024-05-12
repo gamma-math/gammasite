@@ -30,10 +30,18 @@ bld/
 # JetBrains
 .idea/
 
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+multiproject.code-workspace
+
+# dotnet-tools
+.config/dotnet-tools.json
+
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
 # NUNIT
 *.VisualState.xml
-multiproject.code-workspace
