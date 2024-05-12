@@ -2,6 +2,7 @@
 using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -65,7 +66,7 @@ namespace GamMaSite.Services
 
         public async Task<Product[]> GetAllProductsAsync()
         {
-                        var service = new ProductService();
+            var service = new ProductService();
             var products = (await service.ListAsync(GetProductListOptions())).ToArray();
             return products;
         }
@@ -94,7 +95,7 @@ namespace GamMaSite.Services
         public async Task<Product> GetProductByNameAsync(string name)
         {
             var matches = (await GetAllProductsAsync()).Where(p => p.Name.ToLower().Contains(name.ToLower()));
-            return matches.OrderBy(p => p.Name.Length).FirstOrDefault();
+            return matches.MinBy(p => p.Name.Length);
         }
 
         public async Task<Price> GetPriceAsync(string product)
@@ -125,17 +126,16 @@ namespace GamMaSite.Services
                 {
                     "card"
                 },
-                LineItems = new List<SessionLineItemOptions>
-                {
-                    new SessionLineItemOptions
-                    {
+                LineItems =
+                [
+                    new() {
                         PriceData = priceData,
                         Quantity = 1,
                     }
-                },
+                ],
                 Metadata = new Dictionary<string, string> 
                 { 
-                    { "SessionCreated", DateTime.UtcNow.ToString() },
+                    { "SessionCreated", DateTime.UtcNow.ToString(CultureInfo.InvariantCulture) },
                     { "Product", priceData?.Product },
                     { "ProductName", priceData?.ProductData?.Name }
                 },
@@ -145,11 +145,11 @@ namespace GamMaSite.Services
                 CancelUrl = cancelUrl,
             };
             var service = new SessionService();
-            Session session = service.Create(options);
+            var session = service.Create(options);
             return session;
         }
 
-        private ProductListOptions GetProductListOptions()
+        private static ProductListOptions GetProductListOptions()
         {
             return new ProductListOptions
             {
@@ -158,7 +158,7 @@ namespace GamMaSite.Services
             };
         }
 
-        private SessionLineItemPriceDataOptions GetPriceData(Product product, Price price)
+        private static SessionLineItemPriceDataOptions GetPriceData(Product product, Price price)
         {
             return new SessionLineItemPriceDataOptions
             {
@@ -168,7 +168,7 @@ namespace GamMaSite.Services
             };
         }
 
-        private SessionLineItemPriceDataOptions GetPriceData(string name, string description, long price, string currency)
+        private static SessionLineItemPriceDataOptions GetPriceData(string name, string description, long price, string currency)
         {
             return new SessionLineItemPriceDataOptions
             {
