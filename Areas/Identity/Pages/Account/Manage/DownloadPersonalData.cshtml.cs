@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 
 namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
@@ -49,8 +50,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             {
                 personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
             }
-
-            Response.Headers.Add("Content-Disposition", "attachment; filename=PersonalData.json");
+            Response.Headers.Append("Content-Disposition", "attachment; filename=PersonalData.json");
             return new FileContentResult(JsonSerializer.SerializeToUtf8Bytes(personalData), "application/json");
         }
     }

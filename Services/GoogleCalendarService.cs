@@ -3,9 +3,6 @@ using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace GamMaSite.Services
@@ -16,7 +13,7 @@ namespace GamMaSite.Services
 
         public Task<Events> GetHistoricEvents();
 
-        public Task<Events> GetEvents(DateTime from, DateTime to);
+        public Task<Events> GetEvents(DateTimeOffset from, DateTimeOffset to);
 
         public Task<Events> GetEvents();
 
@@ -35,27 +32,27 @@ namespace GamMaSite.Services
 
         public async Task<Events> GetUpcommingEvents()
         {
-            return await GetEvents(DateTime.Now, DateTime.MaxValue);
+            return await GetEvents(DateTimeOffset.Now, DateTimeOffset.MaxValue);
         }
 
         public async Task<Events> GetHistoricEvents()
         {
-            return await GetEvents(DateTime.MinValue, DateTime.Now);
+            return await GetEvents(DateTimeOffset.MinValue, DateTimeOffset.Now);
         }
 
         public async Task<Events> GetEvents()
         {
-            return await GetEvents(DateTime.MinValue, DateTime.MaxValue);
+            return await GetEvents(DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
         }
 
-        public async Task<Events> GetEvents(DateTime from, DateTime to)
+        public async Task<Events> GetEvents(DateTimeOffset from, DateTimeOffset to)
         {
-            string[] scopes = { CalendarService.Scope.CalendarReadonly };
+            string[] scopes = [CalendarService.Scope.CalendarReadonly];
             var service = CreateService(scopes);
 
             EventsResource.ListRequest request = service.Events.List(this._calendar);
-            request.TimeMin = from;
-            request.TimeMax = to;
+            request.TimeMinDateTimeOffset = from;
+            request.TimeMaxDateTimeOffset = to;
             request.ShowDeleted = true;
             request.SingleEvents = true;
             request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
