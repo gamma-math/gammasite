@@ -86,6 +86,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             [DataType(DataType.Text)]
             [Display(Name = "Adresse")]
             public string Adresse { get; set; }
+
+            [Display(Name = "Jeg er studerende")]
+            public bool IsStudent { get; set; }
         }
 
         public async Task OnGetAsync(string returnUrl = null)
@@ -109,8 +112,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     PhoneNumber = Input.PhoneNumber,
                     Aargang = Input.Aargang,
                     Beskaeftigelse = Input.Beskaeftigelse,
-                    Status = UserStatus.OPRETTET,
-                    KontingentDato = DateTime.MinValue.ToUniversalTime(),
+                    Status = Input.IsStudent ? UserStatus.STUDERENDE : UserStatus.OPRETTET,
+                    KontingentDato = Input.IsStudent ? DateTime.UtcNow : DateTime.MinValue.ToUniversalTime(),
                     OprettetDato = DateTime.UtcNow,
                     Visibility = VisibilityStatus.VISIBLE
                 };

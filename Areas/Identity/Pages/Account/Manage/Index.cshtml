@@ -44,13 +44,29 @@
                 <input asp-for="Status" class="form-control" disabled placeholder=" " />
                 <label asp-for="Status" class="form-label">Brugerstatus</label>
             </div>
-            <div class="form-check">
-                <input asp-for="Input.Visibility" class="form-check-input" type="checkbox"/>
-                <label asp-for="Input.Visibility" class="form-check-label"></label>
+            <div class="p-1">
+                <div class="d-flex align-items-start gap-2">
+                    <input asp-for="Input.IsStudent" class="form-check-input m-0 mt-1" type="checkbox"/>
+                    <div>
+                        <label asp-for="Input.IsStudent" class="form-check-label d-block"></label>
+                    </div>
+                </div>
+                <div class="form-text">
+                    Markér her hvis du stadig er kandidat- eller PhD-studerende.
+                </div>
+            </div>
+            <div class="p-1">
+                <div class="d-flex align-items-start gap-2">
+                    <input asp-for="Input.Visibility" class="form-check-input m-0 mt-1" type="checkbox"/>
+                    <div>
+                        <label asp-for="Input.Visibility" class="form-check-label d-block"></label>
+                    </div>
+                </div>
                 <span asp-validation-for="Input.Visibility" class="text-danger"></span>
             </div>
-            <br />
-            <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">Gem</button>
+            <div class="p-1 d-grid">
+                <button id="update-profile-button" type="submit" class="btn btn-lg btn-primary">Gem</button>
+            </div>
         </form>
     </div>
 </div>

@@ -58,6 +58,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             [Display(Name = "Brugerinfo synlig for medlemmer")]
             public bool Visibility { get; set; }
 
+            [Display(Name = "Jeg er studerende")]
+            public bool IsStudent { get; set; }
+
         }
 
         private async Task LoadAsync(SiteUser user)
@@ -75,7 +78,8 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                 Aargang = user.Aargang,
                 PhoneNumber = phoneNumber,
                 Beskaeftigelse = user.Beskaeftigelse,
-                Visibility = user.Visibility.IsVisible()
+                Visibility = user.Visibility.IsVisible(),
+                IsStudent = user.Status == UserStatus.STUDERENDE
             };
         }
 
@@ -139,6 +143,16 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
             if (Input.Visibility.ToVisibility() != user.Visibility)
             {
                 user.Visibility = Input.Visibility.ToVisibility();
+            }
+
+            if (Input.IsStudent && user.Status != UserStatus.STUDERENDE)
+            {
+                user.Status = UserStatus.STUDERENDE;
+                user.KontingentDato = DateTime.UtcNow;
+            }
+            else if (!Input.IsStudent && user.Status == UserStatus.STUDERENDE)
+            {
+                user.Status = UserStatus.OPRETTET;
             }
 
             await _userManager.UpdateAsync(user);
