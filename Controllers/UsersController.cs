@@ -80,9 +80,9 @@ namespace GamMaSite.Controllers
             var users = _userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();
             foreach (var user in users.Where(user => user.Status != status))
             {
-                user.Status = status;
-                if (status == UserStatus.BETALT || status == UserStatus.STUDERENDE)
+                if (user.Status != status && status == UserStatus.BETALT)
                 {
+                    user.Status = status;
                     user.KontingentDato = DateTime.UtcNow;
                 }
                 var result = await _userManager.UpdateAsync(user);
