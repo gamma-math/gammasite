@@ -87,8 +87,6 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             [Display(Name = "Adresse")]
             public string Adresse { get; set; }
 
-            [Display(Name = "Jeg er studerende")]
-            public bool IsStudent { get; set; }
         }
 
         public async Task OnGetAsync(string returnUrl = null)
@@ -103,17 +101,17 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
             {
-                var user = new SiteUser 
-                { 
-                    UserName = Input.Email, 
+                var user = new SiteUser
+                {
+                    UserName = Input.Email,
                     Email = Input.Email,
                     Adresse = Input.Adresse,
                     Navn = Input.Navn,
                     PhoneNumber = Input.PhoneNumber,
                     Aargang = Input.Aargang,
                     Beskaeftigelse = Input.Beskaeftigelse,
-                    Status = Input.IsStudent ? UserStatus.STUDERENDE : UserStatus.OPRETTET,
-                    KontingentDato = Input.IsStudent ? DateTime.UtcNow : DateTime.MinValue.ToUniversalTime(),
+                    Status = UserStatus.OPRETTET,
+                    KontingentDato = DateTime.MinValue.ToUniversalTime(),
                     OprettetDato = DateTime.UtcNow,
                     Visibility = VisibilityStatus.VISIBLE
                 };
@@ -132,7 +130,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
 
                     await _emailSender.SendEmailAsync(Input.Email, "Bekræft din email",
                         $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
-                        $"Kontakt dernæst bestyrelsen@gam-ma.dk for yderligere instrukser.");
+                        $"For at blive godkendt som medlem, kan du kontakte foreningens bestyrelse på bestyrelsen@gam-ma.dk." +
+                        $"Hvis du er studerende kan du opnå gratis medlemskab."
+                    );
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {

@@ -20,7 +20,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
         private readonly SignInManager<SiteUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<SiteUser> signInManager, 
+        public LoginModel(SignInManager<SiteUser> signInManager,
             ILogger<LoginModel> logger,
             UserManager<SiteUser> userManager)
         {
@@ -81,7 +81,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("Bruger loggende ind succesfuldt.");
+                    _logger.LogInformation("Bruger loggede ind succesfuldt.");
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)
