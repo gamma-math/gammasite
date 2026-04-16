@@ -1,4 +1,4 @@
-﻿@model IEnumerable<SiteUser>
+@model IEnumerable<SiteUser>
 
 <h1>Massebehandling</h1>
 <form asp-action="UpdateMassEdit" asp-controller="Users" method="post" id="currentForm">
@@ -17,6 +17,7 @@
                 <option value="SKYLDER">SKYLDER</option>
                 <option value="INAKTIV">INAKTIV</option>
                 <option value="OPRETTET">OPRETTET</option>
+                <option value="STUDERENDE">STUDERENDE</option>
             </select>
         </div>
     </div>
@@ -30,7 +31,6 @@
             confirmButtonText: `Skift status!`,
             denyButtonText: `Annullér`,
         }).then((result) => {
-            /* Read more about isConfirmed, isDenied below */
             if (result.isConfirmed) {
                 document.getElementById("currentForm").submit();
             }

@@ -7,9 +7,10 @@ namespace GamMaSite.Models
 {
     public enum UserStatus
     {
-        OPRETTET,
-        BETALT,
-        SKYLDER,
-        INAKTIV
+        OPRETTET = 0,
+        BETALT = 1,
+        SKYLDER = 2,
+        INAKTIV = 3,
+        STUDERENDE = 4
     }
 }

@@ -50,7 +50,7 @@ namespace GamMaSite.Controllers
                 if (user.Status != status)
                 {
                     user.Status = status;
-                    if (status == UserStatus.BETALT)
+                    if (status == UserStatus.BETALT || status == UserStatus.STUDERENDE)
                     {
                         user.KontingentDato = DateTime.UtcNow;
                     }
@@ -81,6 +81,10 @@ namespace GamMaSite.Controllers
             foreach (var user in users.Where(user => user.Status != status))
             {
                 user.Status = status;
+                if (status == UserStatus.BETALT || status == UserStatus.STUDERENDE)
+                {
+                    user.KontingentDato = DateTime.UtcNow;
+                }
                 var result = await _userManager.UpdateAsync(user);
             }
             return RedirectToAction(nameof(UpdateMass));

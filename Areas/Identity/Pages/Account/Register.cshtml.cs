@@ -86,6 +86,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             [DataType(DataType.Text)]
             [Display(Name = "Adresse")]
             public string Adresse { get; set; }
+
         }
 
         public async Task OnGetAsync(string returnUrl = null)
@@ -100,9 +101,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
             {
-                var user = new SiteUser 
-                { 
-                    UserName = Input.Email, 
+                var user = new SiteUser
+                {
+                    UserName = Input.Email,
                     Email = Input.Email,
                     Adresse = Input.Adresse,
                     Navn = Input.Navn,
@@ -129,7 +130,9 @@ namespace GamMaSite.Areas.Identity.Pages.Account
 
                     await _emailSender.SendEmailAsync(Input.Email, "Bekræft din email",
                         $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
-                        $"Kontakt dernæst bestyrelsen@gam-ma.dk for yderligere instrukser.");
+                        $"For at blive godkendt som medlem, kan du kontakte foreningens bestyrelse på bestyrelsen@gam-ma.dk." +
+                        $"Gør i den forbindelse opmærksom på, om du er studerende eller har færdiggjort dine studier."
+                    );
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {

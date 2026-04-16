@@ -45,3 +45,8 @@ multiproject.code-workspace
 
 # NUNIT
 *.VisualState.xml
+
+# Local environment and ad-hoc run files
+.env
+.env.*
+*.log

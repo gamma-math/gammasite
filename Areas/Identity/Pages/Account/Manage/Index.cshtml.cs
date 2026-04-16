@@ -75,7 +75,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                 Aargang = user.Aargang,
                 PhoneNumber = phoneNumber,
                 Beskaeftigelse = user.Beskaeftigelse,
-                Visibility = user.Visibility.IsVisible()
+                Visibility = user.Visibility.IsVisible(),
             };
         }
 

@@ -19,7 +19,7 @@
     </thead>
     @foreach (var user in Model)
     {
-        if (new[] { UserStatus.BETALT, UserStatus.SKYLDER }.Contains(user.Status))
+        if (new[] { UserStatus.BETALT, UserStatus.SKYLDER, UserStatus.STUDERENDE }.Contains(user.Status))
         {
     <tr>
         <td></td>
