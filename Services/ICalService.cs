@@ -86,17 +86,17 @@ namespace GamMaSite.Services
     {
         public static string ToStartLocalDateTime(this CalendarEvent calendar)
         {
-            return calendar.Start.AsSystemLocal.ToLocalTime().ToString("dd-MM-yyyy HH:mm");
+            return calendar.Start.AsUtc.ToLocalTime().ToString("dd-MM-yyyy HH:mm");
         }
 
         public static string ToStartWeekday(this CalendarEvent calendar)
         {
-            return calendar.Start.AsSystemLocal.ToLocalTime().ToString("dddd").Humanize(LetterCasing.Sentence);
+            return calendar.Start.AsUtc.ToLocalTime().ToString("dddd").Humanize(LetterCasing.Sentence);
         }
 
         public static string ToWeekOfYear(this CalendarEvent calendar)
         {
-            var datetime = calendar.Start.AsSystemLocal.ToLocalTime();
+            var datetime = calendar.Start.AsUtc.ToLocalTime();
             var dfi = System.Globalization.DateTimeFormatInfo.CurrentInfo;
             var weekNumber = dfi?.Calendar.GetWeekOfYear(datetime, dfi.CalendarWeekRule, dfi.FirstDayOfWeek);
             return $"{weekNumber}";

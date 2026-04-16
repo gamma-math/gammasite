@@ -101,7 +101,7 @@ if (!env.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.MapStaticAssets();
 
 app.UseRouting();
 
@@ -109,8 +109,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Controller routes and Razor pages
-app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages();
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
+app.MapRazorPages().WithStaticAssets();
 
 
 /* Run the application */
