@@ -131,7 +131,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     await _emailSender.SendEmailAsync(Input.Email, "Bekræft din email",
                         $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
                         $"For at blive godkendt som medlem, kan du kontakte foreningens bestyrelse på bestyrelsen@gam-ma.dk." +
-                        $"Hvis du er studerende kan du opnå gratis medlemskab."
+                        $"Gør i den forbindelse opmærksom på, om du er studerende eller har færdiggjort dine studier."
                     );
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
