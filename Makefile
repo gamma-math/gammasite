@@ -14,12 +14,14 @@ restore:
 	dotnet restore GamMaSite.sln
 
 ## Run the application (default: Development)
+run: export ASPNETCORE_ENVIRONMENT = $(ENV)
 run:
-	ASPNETCORE_ENVIRONMENT=$(ENV) dotnet run --project GamMaSite.csproj
+	dotnet run --project GamMaSite.csproj
 
 ## Run with hot reload (watches for file changes, default: Development)
+watch: export ASPNETCORE_ENVIRONMENT = $(ENV)
 watch:
-	ASPNETCORE_ENVIRONMENT=$(ENV) dotnet watch run --project GamMaSite.csproj
+	dotnet watch run --project GamMaSite.csproj
 
 ## Publish a Release build
 publish:
