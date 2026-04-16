@@ -1,0 +1,66 @@
+name: Build and deploy TEST
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+
+jobs:
+  build-deploy-test:
+    name: Build and deploy test.gam-ma.dk
+    runs-on: windows-2025
+    environment: TEST
+    concurrency:
+      group: deploy-test
+      cancel-in-progress: false
+    env:
+      WD_USERNAME: ${{ secrets.WD_USERNAME }}
+      WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
+      APP_PATH: ${{ vars.SITE_DOMAIN || 'test.gam-ma.dk' }}
+      DEPLOY_SERIVICE_URL: nt37.unoeuro.com
+      CS_PROJ: .\GamMaSite.csproj
+      RUNTIME: win-x86
+      FRAMEWORK: net10.0
+      CONFIGURATION: Release
+      SELF_CONTAINED: true
+    steps:
+      - name: Check-out repository
+        uses: actions/checkout@v2
+
+      - name: Add dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Variable substitutions
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: 'appsettings.json'
+        env:
+          ConnectionStrings.DefaultConnection: ${{ secrets.CONNECTION_STRING }}
+          EmailSender.Host: ${{ secrets.MAILGUN_HOST }}
+          EmailSender.ApiKey: ${{ secrets.MAILGUN_API_KEY }}
+          EmailSender.Mail: ${{ secrets.MAILGUN_MAIL }}
+          SmsSender.ApiKey: ${{ secrets.SMS_APIGATEWAY_KEY }}
+          StripeConfig.PublicApiKey: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
+          StripeConfig.SecretApiKey: ${{ secrets.STRIPE_SECRET_API_KEY }}
+          GitHub.Token: ${{ secrets.GH_API_KEY }}
+          GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
+          ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}
+
+      - name: Restore NuGet packages
+        run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
+
+      - name: Build and release app
+        run: >
+          dotnet msbuild $env:CS_PROJ
+          /p:Username=$env:WD_USERNAME /p:Password=$env:WD_PASSWORD
+          /p:DeployIisAppPath=$env:APP_PATH /p:MSDeployServiceURL=$env:DEPLOY_SERIVICE_URL
+          /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=$env:FRAMEWORK
+          /p:Configuration=$env:CONFIGURATION /p:SelfContained=$env:SELF_CONTAINED
+          /p:WebPublishMethod=MSDeploy /p:MSDeployPublishMethod=WMSVC
+          /p:DeployOnBuild=true /p:EnableMSDeployBackup=true
+          /p:EnableMsDeployAppOffline=true /p:SkipExtraFilesOnServer=false
