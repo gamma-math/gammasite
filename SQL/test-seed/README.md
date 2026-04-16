@@ -1,8 +1,8 @@
 # Test Seed
 
-Denne mappe indeholder falske testdata til GAMMASITE.
+Denne mappe indeholder fake testdata til GAMMASITE, saaledes at databasen hurtigt kan seedes lokalt til udvikling og test.
 
-Seed-filerne er lavet ud fra strukturen i produktionseksporten, men uden rigtige persondata eller prod-hemmeligheder.
+Seed-filerne bruger kun testdata og indeholder ikke rigtige persondata eller produktionshemmeligheder.
 
 ## Kendte loginoplysninger
 
@@ -10,19 +10,57 @@ Seed-filerne er lavet ud fra strukturen i produktionseksporten, men uden rigtige
 - Bruger: `bruger.test@gamma.local` / `Bruger123!Test`
 - Oevrige testbrugere: `Bruger123!Test`
 
-## Rekkefolge
+## Hvad der faktisk seedes
 
-Koer filerne i denne rekkefolge:
+Foelgende scripts indsaetter testdata:
 
 1. `01_AspNetRoles.sql`
 2. `02_AspNetUsers.sql`
 3. `03_AspNetUserRoles.sql`
 4. `07_AspNetUserTokens.sql`
 
-Du kan ogsaa koere `00_seed_all.sql`, hvis du vil koere det hele paa en gang.
+Foelgende scripts rydder kun tabellerne og efterlader dem tomme:
 
-## Bemaerkning
+1. `04_AspNetRoleClaims.sql`
+2. `05_AspNetUserClaims.sql`
+3. `06_AspNetUserLogins.sql`
+4. `08_DeviceCodes.sql`
+5. `09_Keys.sql`
+6. `10_PersistedGrants.sql`
 
-- `Keys`, `DeviceCodes` og `PersistedGrants` bliver ikke seeded med prod-data.
-- `Keys` boer oprettes af testmiljoeet selv, saa vi ikke genbruger signeringsnoegler fra produktion.
-- Filerne er kun beregnet til testdatabasen.
+Foelgende scripts indsaetter ikke data i deres nuvaerende form:
+
+1. `11_UserOverview.sql`
+2. `12___EFMigrationsHistory.sql`
+
+## Koerselsrekkefolge
+
+Hvis du vil koere scripts enkeltvist, brug denne rekkefolge:
+
+1. `01_AspNetRoles.sql`
+2. `02_AspNetUsers.sql`
+3. `03_AspNetUserRoles.sql`
+4. `04_AspNetRoleClaims.sql`
+5. `05_AspNetUserClaims.sql`
+6. `06_AspNetUserLogins.sql`
+7. `07_AspNetUserTokens.sql`
+8. `08_DeviceCodes.sql`
+9. `09_Keys.sql`
+10. `10_PersistedGrants.sql`
+11. `11_UserOverview.sql`
+12. `12___EFMigrationsHistory.sql`
+
+Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sql`.
+
+`00_seed_all.sql` rydder og seeder kun disse tabeller:
+
+1. `AspNetRoles`
+2. `AspNetUsers`
+3. `AspNetUserRoles`
+4. `AspNetUserTokens`
+
+## Bemaerkninger
+
+- `Keys` holdes bevidst tom, saa testmiljoeet kan generere sine egne signeringsnoegler.
+- `DeviceCodes` og `PersistedGrants` seedes ikke med data.
+- Filerne er kun beregnet til lokal udvikling og test.
