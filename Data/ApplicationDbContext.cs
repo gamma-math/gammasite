@@ -25,8 +25,11 @@ namespace GamMaSite.Data
             base.OnModelCreating(builder);
 
 
-            builder.Entity<IdentityRole>(entity => entity.Property(m => m.Id).HasMaxLength(127));
-            builder.Entity<IdentityRole>(entity => entity.Property(m => m.ConcurrencyStamp).HasColumnType("varchar(256)"));
+            builder.Entity<IdentityRole>(entity =>
+            {
+                entity.Property(m => m.Id).HasMaxLength(127);
+                entity.Property(m => m.ConcurrencyStamp).HasColumnType("varchar(256)");
+            });
 
             builder.Entity<IdentityUserLogin<string>>(entity =>
             {
