@@ -19,7 +19,7 @@ jobs:
     env:
       WD_USERNAME: ${{ secrets.WD_USERNAME }}
       WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
-      APP_PATH: ${{ vars.SITE_DOMAIN || 'test.gam-ma.dk' }}
+      APP_PATH: ${{ vars.SITE_DOMAIN }}
       DEPLOY_SERIVICE_URL: nt37.unoeuro.com
       CS_PROJ: .\GamMaSite.csproj
       RUNTIME: win-x86
