@@ -25,6 +25,8 @@ namespace GamMaSite.Controllers
             _emailService = emailService;
         }
 
+        // ── MVC actions (kept until React page is cut over) ───────────────────
+
         public IActionResult Index()
         {
             var userCategories = new UserCategories(_roleManager, _userManager);
@@ -61,5 +63,84 @@ namespace GamMaSite.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        // ── REST API endpoints for the React SPA ───────────────────────────────
+
+        // Returns available statuses and roles to populate the recipient selectors.
+        [HttpGet("/api/messages/recipients")]
+        public IActionResult GetRecipients()
+        {
+            var statuses = _userManager.Users
+                .Select(u => u.Status)
+                .Distinct()
+                .OrderBy(s => s)
+                .Select(s => s.ToString())
+                .ToList();
+
+            var roles = _roleManager.Roles
+                .OrderBy(r => r.Name)
+                .Select(r => r.Name)
+                .ToList();
+
+            return Ok(new { statuses, roles });
+        }
+
+        [HttpPost("/api/messages/send")]
+        public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body.Subject))
+                return BadRequest(new { error = "Emne er obligatorisk" });
+
+            if ((body.Media == "Email" || body.Media == "EmailSMS") && string.IsNullOrWhiteSpace(body.MessageBody))
+                return BadRequest(new { error = "Beskedtekst er obligatorisk for e-mail" });
+
+            if ((body.Media == "SMS" || body.Media == "EmailSMS") && string.IsNullOrWhiteSpace(body.SmsBody))
+                return BadRequest(new { error = "SMS-tekst er obligatorisk" });
+
+            if (!Enum.TryParse<MessageMedia>(body.Media, out var media))
+                return BadRequest(new { error = "Ugyldigt medie" });
+
+            var statuses = (body.Statuses ?? [])
+                .Select(s => Enum.TryParse<UserStatus>(s, out var us) ? (UserStatus?)us : null)
+                .Where(s => s.HasValue)
+                .Select(s => s!.Value)
+                .ToArray();
+
+            var usersToReceive = _userManager.Users
+                .Where(u => statuses.Contains(u.Status))
+                .ToHashSet();
+
+            if (!string.IsNullOrEmpty(body.Role))
+                usersToReceive.UnionWith(await _userManager.GetUsersInRoleAsync(body.Role));
+
+            if (media == MessageMedia.SMS || media == MessageMedia.EmailSMS)
+            {
+                var phones = usersToReceive
+                    .Where(u => !string.IsNullOrEmpty(u.PhoneNumber))
+                    .Select(u => u.PhoneNumber!)
+                    .ToArray();
+                await _smsSender.SendSmsAsync(body.SmsBody!, phones);
+            }
+
+            if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
+            {
+                var mails = usersToReceive
+                    .Where(u => !string.IsNullOrEmpty(u.Email))
+                    .Select(u => u.Email!)
+                    .ToArray();
+                await _emailService.SendEmailAsync(mails, body.Subject, body.MessageBody!);
+            }
+
+            return Ok(new { sent = usersToReceive.Count });
+        }
+
+        public record SendMessageRequest(
+            string[] Statuses,
+            string? Role,
+            string Media,
+            string Subject,
+            string? MessageBody,
+            string? SmsBody
+        );
     }
 }
