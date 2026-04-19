@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+  ],
+
+  // Assets are served from /spa/ by the .NET static files middleware
+  base: '/spa/',
 
   // Production build outputs into the .NET wwwroot so dotnet publish picks it up
   build: {

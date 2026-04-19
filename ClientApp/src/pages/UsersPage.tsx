@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { type ColumnDef } from '@tanstack/react-table';
 import { apiFetch } from '../api/client';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { DataTable } from '../components/DataTable';
 
 // Member-facing shape (visibility-gated)
 interface MemberUser {
@@ -27,7 +29,10 @@ interface AdminUser {
 
 const STATUS_OPTIONS = ['OPRETTET', 'BETALT', 'SKYLDER', 'INAKTIV', 'STUDERENDE'];
 
-function AdminRow({ user, onStatusChange }: { user: AdminUser; onStatusChange: (id: string, status: string) => void }) {
+function StatusCell({ user, onStatusChange }: {
+  user: AdminUser;
+  onStatusChange: (id: string, status: string) => void;
+}) {
   const [saving, setSaving] = useState(false);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -44,27 +49,16 @@ function AdminRow({ user, onStatusChange }: { user: AdminUser; onStatusChange: (
   };
 
   return (
-    <tr>
-      <td>{user.navn}</td>
-      <td>{user.aargang}</td>
-      <td>{user.beskaeftigelse}</td>
-      <td>
-        <select
-          className="form-select form-select-sm"
-          value={user.status}
-          onChange={handleChange}
-          disabled={saving}
-        >
-          {STATUS_OPTIONS.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </td>
-      <td>{user.email}</td>
-      <td>{user.phoneNumber}</td>
-      <td>{new Date(user.kontingentDato).toLocaleDateString('da-DK')}</td>
-      <td>{new Date(user.oprettetDato).toLocaleDateString('da-DK')}</td>
-    </tr>
+    <select
+      className="form-select form-select-sm"
+      value={user.status}
+      onChange={handleChange}
+      disabled={saving}
+    >
+      {STATUS_OPTIONS.map(s => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
   );
 }
 
@@ -117,6 +111,14 @@ function BulkUpdatePanel({ onDone }: { onDone: () => void }) {
   );
 }
 
+const memberColumns: ColumnDef<MemberUser>[] = [
+  { accessorKey: 'navn', header: 'Navn' },
+  { accessorKey: 'aargang', header: 'Årgang' },
+  { accessorKey: 'beskaeftigelse', header: 'Beskæftigelse' },
+  { accessorKey: 'email', header: 'Email' },
+  { accessorKey: 'phoneNumber', header: 'Telefon' },
+];
+
 export default function UsersPage() {
   const { loading: authLoading, roles } = useCurrentUser();
   const isAdmin = roles.includes('Admin');
@@ -141,64 +143,54 @@ export default function UsersPage() {
     );
   };
 
+  const adminColumns = useMemo<ColumnDef<AdminUser>[]>(() => [
+    { accessorKey: 'navn', header: 'Navn' },
+    { accessorKey: 'aargang', header: 'Årgang' },
+    { accessorKey: 'beskaeftigelse', header: 'Beskæftigelse' },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <StatusCell user={row.original} onStatusChange={handleStatusChange} />,
+    },
+    { accessorKey: 'email', header: 'Email' },
+    { accessorKey: 'phoneNumber', header: 'Telefon' },
+    {
+      accessorKey: 'kontingentDato',
+      header: 'Kontingentdato',
+      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString('da-DK'),
+    },
+    {
+      accessorKey: 'oprettetDato',
+      header: 'Oprettet',
+      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString('da-DK'),
+    },
+  ], []);
+
   if (authLoading || loading) return <p>Henter medlemmer...</p>;
   if (error) return <p>Fejl: {error}</p>;
 
   if (isAdmin) {
-    const adminUsers = users as AdminUser[];
     return (
       <>
         <h1>Medlemsoversigt</h1>
         <BulkUpdatePanel onDone={() => loadUsers(true)} />
-        <table className="table table-striped table-bordered">
-          <thead className="table-dark">
-            <tr>
-              <th>Navn</th>
-              <th>Årgang</th>
-              <th>Beskæftigelse</th>
-              <th>Status</th>
-              <th>Email</th>
-              <th>Telefon</th>
-              <th>Kontingentdato</th>
-              <th>Oprettet</th>
-            </tr>
-          </thead>
-          <tbody>
-            {adminUsers.map(user => (
-              <AdminRow key={user.id} user={user} onStatusChange={handleStatusChange} />
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          data={users as AdminUser[]}
+          columns={adminColumns}
+          searchPlaceholder="Søg i medlemmer..."
+        />
       </>
     );
   }
 
-  const memberUsers = users as MemberUser[];
   return (
     <>
       <h1>Medlemsoversigt</h1>
-      <table className="table table-striped table-bordered">
-        <thead className="table-dark">
-          <tr>
-            <th>Navn</th>
-            <th>Årgang</th>
-            <th>Beskæftigelse</th>
-            <th>Email</th>
-            <th>Telefon</th>
-          </tr>
-        </thead>
-        <tbody>
-          {memberUsers.map(user => (
-            <tr key={user.id}>
-              <td>{user.navn}</td>
-              <td>{user.aargang}</td>
-              <td>{user.beskaeftigelse}</td>
-              <td>{user.email}</td>
-              <td>{user.phoneNumber}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        data={users as MemberUser[]}
+        columns={memberColumns}
+        searchPlaceholder="Søg i medlemmer..."
+      />
     </>
   );
 }

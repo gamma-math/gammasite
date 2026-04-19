@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ColumnDef } from '@tanstack/react-table';
 import { apiFetch } from '../api/client';
+import { DataTable } from '../components/DataTable';
 
 interface Role {
   id: string;
@@ -153,14 +155,62 @@ export default function RolesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     await apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
     setRoles(prev => prev.filter(r => r.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  };
+    setExpandedId(prev => (prev === id ? null : prev));
+  }, []);
 
-  const toggleExpand = (id: string) =>
-    setExpandedId(prev => (prev === id ? null : id));
+  const toggleExpand = useCallback((id: string) =>
+    setExpandedId(prev => (prev === id ? null : id)),
+  []);
+
+  const roleColumns = useMemo<ColumnDef<Role>[]>(() => [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+      cell: ({ getValue }) => <small className="text-muted">{getValue<string>()}</small>,
+    },
+    { accessorKey: 'name', header: 'Navn' },
+    {
+      id: 'update',
+      header: 'Opdatér',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <button
+          className="btn btn-sm btn-primary"
+          onClick={() => toggleExpand(row.original.id)}
+        >
+          {expandedId === row.original.id ? 'Luk' : 'Opdatér'}
+        </button>
+      ),
+    },
+    {
+      id: 'delete',
+      header: 'Slet',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="dropdown">
+          <button
+            className="btn btn-sm btn-danger dropdown-toggle"
+            data-bs-toggle="dropdown"
+          >
+            Slet
+          </button>
+          <ul className="dropdown-menu">
+            <li>
+              <button
+                className="dropdown-item"
+                onClick={() => handleDelete(row.original.id)}
+              >
+                Bekræft
+              </button>
+            </li>
+          </ul>
+        </div>
+      ),
+    },
+  ], [expandedId, toggleExpand, handleDelete]);
 
   if (loading) return <p>Henter roller...</p>;
   if (error) return <p>Fejl: {error}</p>;
@@ -187,61 +237,16 @@ export default function RolesPage() {
         </div>
       </form>
 
-      <table className="table table-striped table-bordered">
-        <thead className="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Navn</th>
-            <th>Opdatér</th>
-            <th>Slet</th>
-          </tr>
-        </thead>
-        <tbody>
-          {roles.map(role => (
-            <>
-              <tr key={role.id}>
-                <td><small className="text-muted">{role.id}</small></td>
-                <td>{role.name}</td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => toggleExpand(role.id)}
-                  >
-                    {expandedId === role.id ? 'Luk' : 'Opdatér'}
-                  </button>
-                </td>
-                <td>
-                  <div className="dropdown">
-                    <button
-                      className="btn btn-sm btn-danger dropdown-toggle"
-                      data-bs-toggle="dropdown"
-                    >
-                      Slet
-                    </button>
-                    <ul className="dropdown-menu">
-                      <li>
-                        <button
-                          className="dropdown-item"
-                          onClick={() => handleDelete(role.id)}
-                        >
-                          Bekræft
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-                </td>
-              </tr>
-              {expandedId === role.id && (
-                <MemberEditor
-                  key={`editor-${role.id}`}
-                  roleId={role.id}
-                  onClose={() => setExpandedId(null)}
-                />
-              )}
-            </>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        data={roles}
+        columns={roleColumns}
+        searchPlaceholder="Søg i roller..."
+        renderExpandedRow={row =>
+          expandedId === row.original.id ? (
+            <MemberEditor roleId={row.original.id} onClose={() => setExpandedId(null)} />
+          ) : null
+        }
+      />
     </>
   );
 }

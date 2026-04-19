@@ -39,9 +39,10 @@ export default function LibraryPage() {
     apiFetch<LibraryResponse>(`/api/library?path=${encodeURIComponent(path)}`)
       .then(data => {
         if (data.isFile) {
-          // Server says this path is a file — navigate the browser directly so it
-          // handles the download natively (Content-Disposition, Save dialog, etc.)
-          window.location.href = data.downloadUrl;
+          // Should not normally be reached since files are opened directly from the
+          // folder listing. Guard against direct URL access by redirecting to root.
+          setSearchParams({});
+          setLoading(false);
         } else {
           setFolder(data);
           setLoading(false);
@@ -53,7 +54,17 @@ export default function LibraryPage() {
       });
   }, [path]);
 
-  const navigate = (newPath: string) => {
+  const navigate = (entry: LibraryEntry) => {
+    if (entry.isFile) {
+      // Navigate directly to the view/download URL without setting ?path= in the SPA
+      // first. This adds exactly one history entry, so Back returns to this folder.
+      window.location.href = `/api/library/download?path=${encodeURIComponent(entry.path)}`;
+    } else {
+      setSearchParams(entry.path ? { path: entry.path } : {});
+    }
+  };
+
+  const navigateToPath = (newPath: string) => {
     setSearchParams(newPath ? { path: newPath } : {});
   };
 
@@ -76,7 +87,7 @@ export default function LibraryPage() {
               <td>
                 <button
                   className="btn btn-link p-0 text-start"
-                  onClick={() => navigate(entry.path)}
+                  onClick={() => navigate(entry)}
                 >
                   {entry.icon} {entry.name}
                 </button>
@@ -89,7 +100,7 @@ export default function LibraryPage() {
       {folder.parent !== null && (
         <button
           className="btn btn-secondary me-2"
-          onClick={() => navigate(folder.parent!)}
+          onClick={() => navigateToPath(folder.parent!)}
         >
           Tilbage
         </button>

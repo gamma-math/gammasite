@@ -27,9 +27,13 @@ namespace GamMaSite.Controllers
             var prod = await _stripeService.GetProductAsync(product);
             var price = await _stripeService.GetPriceAsync(product);
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
-            var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
-            var successUrl = $"{Url.Action(successPage, "Pay", new { }, Request.Scheme)}{sessionparameter}";
-            var cancelUrl = Url.Action("Cancel", "Pay", new { }, Request.Scheme);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            // Products with a "Success" metadata key redirect to a server-side MVC action (e.g. KontingentSuccess).
+            // All other products redirect to the React SPA success page.
+            var successUrl = prod.Metadata.Keys.Contains("Success")
+                ? $"{Url.Action(prod.Metadata["Success"], "Pay", new { }, Request.Scheme)}{sessionparameter}"
+                : $"{baseUrl}/app/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/app/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 prod,
@@ -48,8 +52,9 @@ namespace GamMaSite.Controllers
         public ActionResult Generic(string product, long price, string description, string user)
         {
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
-            var successUrl = $"{Url.Action("Success", "Pay", new { }, Request.Scheme)}{sessionparameter}";
-            var cancelUrl = Url.Action("Cancel", "Pay", new { }, Request.Scheme);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var successUrl = $"{baseUrl}/app/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/app/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 product,

@@ -113,6 +113,9 @@ namespace GamMaSite.Controllers
             if (!string.IsNullOrEmpty(body.Role))
                 usersToReceive.UnionWith(await _userManager.GetUsersInRoleAsync(body.Role));
 
+            foreach (var role in body.Roles ?? [])
+                usersToReceive.UnionWith(await _userManager.GetUsersInRoleAsync(role));
+
             if (media == MessageMedia.SMS || media == MessageMedia.EmailSMS)
             {
                 var phones = usersToReceive
@@ -137,6 +140,7 @@ namespace GamMaSite.Controllers
         public record SendMessageRequest(
             string[] Statuses,
             string? Role,
+            string[]? Roles,
             string Media,
             string Subject,
             string? MessageBody,

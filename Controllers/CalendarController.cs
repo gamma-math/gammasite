@@ -17,13 +17,6 @@ namespace GamMaSite.Controllers
             this._icalService = icalService;
         }
 
-        // MVC action — kept until the React page is cut over
-        public async Task<IActionResult> Index()
-        {
-            return View(await _icalService.GetEventsWrapper());
-        }
-
-        // REST endpoint for the React SPA
         [HttpGet("/api/calendar")]
         public async Task<IActionResult> GetEvents()
         {

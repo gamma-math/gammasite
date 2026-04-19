@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Services;
@@ -18,19 +17,6 @@ namespace GamMaSite.Controllers
             this._indexService = indexService;
         }
 
-        // MVC action — kept until the React page is cut over
-        public async Task<IActionResult> IndexAsync(string path)
-        {
-            var pathName = !string.IsNullOrEmpty(path) ? path : "";
-            var metas = new ContentMetas
-            {
-                Metas = await _indexService.GetContentMetasAsync(pathName)
-            };
-            if (metas.Metas.Count != 0) return View(metas);
-            var content = await _indexService.GetContentAsync(pathName);
-            return File(content.Content, content.MimeType);
-        }
-
         // REST endpoint for the React SPA: returns folder entries as JSON.
         // File downloads are handled by the browser via /library/download?path=…
         // so the browser can prompt a Save dialog natively without JS blob handling.
@@ -42,7 +28,7 @@ namespace GamMaSite.Controllers
             // If the result is empty the path points to a file — tell the SPA to
             // navigate the browser directly to the download endpoint instead.
             if (metas.Count == 0)
-                return Ok(new { isFile = true, downloadUrl = $"/library/download?path={Uri.EscapeDataString(path)}" });
+                return Ok(new { isFile = true, downloadUrl = $"/api/library/download?path={Uri.EscapeDataString(path)}" });
 
             var wrapper = new ContentMetas { Metas = metas };
             return Ok(new
@@ -61,8 +47,8 @@ namespace GamMaSite.Controllers
             });
         }
 
-        // Serves a raw file for download — called directly by the browser, not via fetch.
-        [HttpGet("/library/download")]
+        // Serves a raw file — called directly by the browser, not via fetch.
+        [HttpGet("/api/library/download")]
         public async Task<IActionResult> Download([FromQuery] string path)
         {
             if (string.IsNullOrEmpty(path)) return BadRequest();

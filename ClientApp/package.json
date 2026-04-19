@@ -6,16 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "rm -rf ../wwwroot/spa/libs/tinymce && mkdir -p ../wwwroot/spa/libs/tinymce && cp node_modules/tinymce/tinymce.min.js ../wwwroot/spa/libs/tinymce/ && cp -r node_modules/tinymce/skins node_modules/tinymce/plugins node_modules/tinymce/themes node_modules/tinymce/icons node_modules/tinymce/models ../wwwroot/spa/libs/tinymce/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.2.0",
-    "@tiptap/react": "^3.22.4",
-    "@tiptap/starter-kit": "^3.22.4",
+    "@tanstack/react-table": "^8.21.3",
+    "@tinymce/tinymce-react": "^6.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.14.1"
+    "react-router-dom": "^7.14.1",
+    "react-select": "^5.10.2",
+    "tinymce": "^8.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
