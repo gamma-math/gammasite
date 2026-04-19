@@ -46,6 +46,20 @@ builder.Services.AddDefaultIdentity<SiteUser>(
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// Explicitly configure the auth cookie instead of relying on defaults.
+// HttpOnly: blocks JS from reading the cookie (XSS mitigation).
+// SameSite=Lax: blocks cross-site POST (CSRF) while allowing top-level GET navigation
+//   (e.g. users clicking links in emails arrive already logged in).
+// SecurePolicy=Always: default is SameAsRequest which omits Secure flag over HTTP.
+// Name: avoids fingerprinting the server stack via the default cookie name.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+    options.Cookie.Name = ".GamMaSite.Auth";
+});
+
 // Add email services
 EmailService EmailInstance(IServiceProvider i) => new(
     builder.Configuration["EmailSender:Host"],
@@ -103,6 +117,9 @@ if (!env.IsDevelopment())
 app.UseHttpsRedirection();
 app.MapStaticAssets();
 
+// Serve the React SPA build output from wwwroot/spa
+app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthentication();
@@ -111,6 +128,10 @@ app.UseAuthorization();
 // Controller routes and Razor pages
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
 app.MapRazorPages().WithStaticAssets();
+
+// SPA fallback: any request that doesn't match an API route, controller, or static file
+// gets served index.html so React Router handles client-side routing
+app.MapFallbackToFile("spa/index.html");
 
 
 /* Run the application */

@@ -23,8 +23,12 @@ watch: export ASPNETCORE_ENVIRONMENT = $(ENV)
 watch:
 	dotnet watch run --project GamMaSite.csproj
 
-## Publish a Release build
-publish:
+## Build the React SPA (outputs to wwwroot/spa/)
+build-spa:
+	npm --prefix ClientApp run build
+
+## Publish a Release build (builds SPA first, then .NET)
+publish: build-spa
 	dotnet publish GamMaSite.sln -c Release
 
 ## Remove build and publish output
