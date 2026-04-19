@@ -3,13 +3,21 @@ on:
   workflow_dispatch:
     inputs:
       logLevel:
-        description: 'Log level'     
+        description: 'Log level'
         required: true
         default: 'warning'
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'TEST'
+        type: choice
+        options:
+          - TEST
+          - PROD
 env:
   WD_USERNAME: ${{ secrets.WD_USERNAME }}
   WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
-  APP_PATH: ${{ secrets.WD_USERNAME }}
+  APP_PATH: ${{ vars.SITE_DOMAIN }}
   DEPLOY_SERIVICE_URL: nt37.unoeuro.com
   CS_PROJ: .\GamMaSite.csproj
   RUNTIME: win-x86
@@ -19,6 +27,7 @@ env:
 jobs:
   build-deploy:
     runs-on: windows-2025
+    environment: ${{ inputs.environment }}
     steps:
       - name: Check-out repository
         uses: actions/checkout@v2
@@ -27,7 +36,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Variable substitutions
-        uses: microsoft/variable-substitution@v1 
+        uses: microsoft/variable-substitution@v1
         with:
           files: 'appsettings.json'
         env:
