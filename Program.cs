@@ -131,7 +131,7 @@ app.MapRazorPages().WithStaticAssets();
 
 // SPA fallback: any request that doesn't match an API route, controller, or static file
 // gets served index.html so React Router handles client-side routing
-app.MapFallbackToFile("spa/index.html");
+app.MapFallbackToFile("/app/{**path}", "spa/index.html");
 
 
 /* Run the application */

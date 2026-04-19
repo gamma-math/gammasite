@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+
+# Version control and editor
+.git/
+.gitignore
+.vscode/
+
+# Local secrets — never bake into an image
+.env
+
+# Development-only config
+appsettings.Development.json
+
+# Documentation and tooling (not needed at runtime)
+docs/
+Makefile
+*.md
+*.suo
+*.user
