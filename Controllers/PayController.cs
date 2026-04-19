@@ -28,6 +28,8 @@ namespace GamMaSite.Controllers
             this._configuration = conf;
         }
 
+        // ── MVC actions (kept until React pages are cut over) ──────────────────
+
         public async Task<IActionResult> IndexAsync()
         {
             return View(await _stripeService.GetAllProductsAsync());
@@ -94,6 +96,56 @@ namespace GamMaSite.Controllers
         public IActionResult Cancel()
         {
             return View();
+        }
+
+        // ── REST API endpoints for the React SPA ───────────────────────────────
+
+        // List all active Stripe products with their price. Also returns the
+        // Stripe public key so the SPA can initialise stripe-js without a
+        // separate config endpoint.
+        [HttpGet("/api/pay/products")]
+        public async Task<IActionResult> GetProducts()
+        {
+            var products = await _stripeService.GetAllProductsAsync();
+            var publicKey = _configuration["StripeConfig:PublicApiKey"];
+
+            var result = new List<object>();
+            foreach (var p in products)
+            {
+                var price = await _stripeService.GetPriceAsync(p.Id);
+                result.Add(new
+                {
+                    id = p.Id,
+                    name = p.Name,
+                    description = p.Description,
+                    priceOre = price?.UnitAmount,
+                    currency = price?.Currency,
+                });
+            }
+
+            return Ok(new { publicKey, products = result });
+        }
+
+        // Single product detail — used by the product detail / checkout page.
+        [HttpGet("/api/pay/products/{id}")]
+        public async Task<IActionResult> GetProduct(string id)
+        {
+            var product = await _stripeService.GetProductAsync(id);
+            if (product is null) return NotFound();
+
+            var price = await _stripeService.GetPriceAsync(id);
+            var publicKey = _configuration["StripeConfig:PublicApiKey"];
+
+            return Ok(new
+            {
+                id = product.Id,
+                name = product.Name,
+                description = product.Description,
+                priceOre = price?.UnitAmount,
+                currency = price?.Currency,
+                metadata = product.Metadata,
+                publicKey,
+            });
         }
     }
 }

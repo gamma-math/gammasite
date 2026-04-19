@@ -39,7 +39,8 @@ namespace GamMaSite.Controllers
                 cancelUrl
                 );
 
-            var result = new JsonResult(new { id = stripeSessionId });
+            var session = await _stripeService.GetSessionAsync(stripeSessionId);
+            var result = new JsonResult(new { id = stripeSessionId, url = session?.Url });
             return result;
         }
 
@@ -52,11 +53,11 @@ namespace GamMaSite.Controllers
 
             var stripeSessionId = _stripeService.StartPayment(
                 product,
-                description, 
+                description,
                 price,
                 "dkk",
                 user,
-                successUrl, 
+                successUrl,
                 cancelUrl
                 );
 
