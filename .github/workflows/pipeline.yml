@@ -60,5 +60,6 @@ jobs:
           /p:RuntimeIdentifier=$env:RUNTIME /p:TargetFramework=$env:FRAMEWORK
           /p:Configuration=$env:CONFIGURATION /p:SelfContained=$env:SELF_CONTAINED
           /p:WebPublishMethod=MSDeploy /p:MSDeployPublishMethod=WMSVC
+          /p:AspNetCoreHostingModel=OutOfProcess
           /p:DeployOnBuild=true /p:EnableMSDeployBackup=true
           /p:EnableMsDeployAppOffline=true /p:SkipExtraFilesOnServer=false
