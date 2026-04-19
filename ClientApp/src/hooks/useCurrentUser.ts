@@ -22,7 +22,5 @@ export function useCurrentUser() {
       .catch(() => setLoading(false));
   }, []);
 
-  const isAdmin = user?.roles.includes('Admin') ?? false;
-
-  return { user, loading, isAdmin };
+  return { user, loading, roles: user?.roles ?? [] };
 }

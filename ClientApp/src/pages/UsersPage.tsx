@@ -118,7 +118,8 @@ function BulkUpdatePanel({ onDone }: { onDone: () => void }) {
 }
 
 export default function UsersPage() {
-  const { loading: authLoading, isAdmin } = useCurrentUser();
+  const { loading: authLoading, roles } = useCurrentUser();
+  const isAdmin = roles.includes('Admin');
   const [users, setUsers] = useState<MemberUser[] | AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
