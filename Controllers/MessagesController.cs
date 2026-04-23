@@ -33,7 +33,18 @@ namespace GamMaSite.Controllers
 
         public async Task<IActionResult> Send(UserStatus[] status, string role, MessageMedia media, string subject, string messageBody, string smsBody)
         {
-            var usersToReceiveMessage = _userManager.Users.Where(user => status.Contains(user.Status)).ToHashSet();
+            var usersToReceiveMessage = new HashSet<SiteUser>();
+
+            if (status?.Length > 0)
+            {
+                var selectedStatuses = status.ToHashSet();
+                usersToReceiveMessage.UnionWith(
+                    _userManager.Users
+                        .AsEnumerable()
+                        .Where(user => selectedStatuses.Contains(user.Status))
+                );
+            }
+
             if (!String.IsNullOrEmpty(role))
             {
                 usersToReceiveMessage.UnionWith(await _userManager.GetUsersInRoleAsync(role));
