@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "postbuild": "rm -rf ../wwwroot/spa/libs/tinymce && mkdir -p ../wwwroot/spa/libs/tinymce && cp node_modules/tinymce/tinymce.min.js ../wwwroot/spa/libs/tinymce/ && cp -r node_modules/tinymce/skins node_modules/tinymce/plugins node_modules/tinymce/themes node_modules/tinymce/icons node_modules/tinymce/models ../wwwroot/spa/libs/tinymce/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -32,6 +31,7 @@
     "globals": "^17.4.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vite-plugin-static-copy": "^4.1.0"
   }
 }
