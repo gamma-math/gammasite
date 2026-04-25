@@ -50,6 +50,18 @@ jobs:
           GitHub.Token: ${{ secrets.GH_API_KEY }}
           GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
           ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ClientApp/package-lock.json
+      - name: Install SPA dependencies
+        run: npm ci
+        working-directory: ClientApp
+      - name: Build SPA
+        run: npm run build
+        working-directory: ClientApp
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
