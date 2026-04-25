@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 using System.Threading.Tasks;
 using GamMaSite.Models;
 using GamMaSite.Services;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+
 
 namespace GamMaSite.Controllers
 {
@@ -41,7 +43,7 @@ namespace GamMaSite.Controllers
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
             var correctProduct = stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
-            var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
+            var sessionCreated = DateTime.Parse(stripeSession.Metadata["SessionCreated"], CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
 
             if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct && user is not null)
             {
