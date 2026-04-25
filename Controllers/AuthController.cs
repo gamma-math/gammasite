@@ -50,7 +50,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            return Ok();
+            return NoContent();
         }
     }
 }

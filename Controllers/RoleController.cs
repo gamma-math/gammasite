@@ -62,7 +62,7 @@ namespace GamMaSite.Controllers
                 return ValidationProblem();
             }
 
-            return Ok();
+            return NoContent();
         }
 
         // Returns members and non-members for the role membership management UI.
@@ -115,7 +115,7 @@ namespace GamMaSite.Controllers
             if (!ModelState.IsValid)
                 return ValidationProblem();
 
-            return Ok();
+            return NoContent();
         }
 
         public record CreateRoleRequest(string Name);
