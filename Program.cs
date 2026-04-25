@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -61,6 +62,46 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
     options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
     options.Cookie.Name = ".GamMaSite.Auth";
+
+    // By default, cookie authentication responds to 401/403 with a 302 redirect to
+    // the HTML login page. This is correct for browser navigation (Identity Razor Pages),
+    // but breaks fetch() calls from the React SPA: the browser silently follows the
+    // redirect and the SPA receives HTML instead of JSON, causing parse errors.
+    //
+    // The fix is to intercept the redirect events and return the proper HTTP status codes
+    // for API requests, while leaving the redirect behaviour intact for Razor Pages.
+    // A request is treated as an API request if its path starts with /api (the hard
+    // routing convention for all controllers) or if the caller explicitly signals it
+    // accepts JSON (defensive catch-all for non-browser API clients).
+    //
+    // This is the standard pattern for mixed cookie + SPA apps in ASP.NET Core:
+    // https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie#react-to-back-end-changes
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api") ||
+            context.Request.Headers.Accept.ToString().Contains("application/json"))
+        {
+            // Unauthenticated — tell the SPA to redirect the user to the login page.
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+        // Razor Pages (Identity): preserve the normal login redirect.
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api") ||
+            context.Request.Headers.Accept.ToString().Contains("application/json"))
+        {
+            // Authenticated but lacks the required role/claim.
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+        // Razor Pages (Identity): preserve the normal access-denied redirect.
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 // Add email services
@@ -152,13 +193,15 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Controller routes and Razor pages
-app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
+// Razor pages (Identity)
 app.MapRazorPages().WithStaticAssets();
 
-// SPA fallback: any request that doesn't match an API route, controller, or static file
-// gets served index.html so React Router handles client-side routing
-app.MapFallbackToFile("/app/{**path}", "spa/index.html");
+// API controllers
+app.MapControllers();
+
+// All remaining requests are handled by the React SPA.
+// API and Identity routes are matched above; this catches everything else.
+app.MapFallbackToFile("spa/index.html");
 
 
 /* Run the application */

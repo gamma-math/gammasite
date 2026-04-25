@@ -29,7 +29,7 @@ namespace GamMaSite.Controllers
 
         // Verifies a completed kontingent Stripe session and marks the user as paid.
         // Called by KontingentSuccessPage on mount — Stripe redirects the browser to
-        // /app/pay/kontingent-success?session={CHECKOUT_SESSION_ID} after payment.
+        // /pay/kontingent-success?session={CHECKOUT_SESSION_ID} after payment.
         [HttpGet("/api/pay/kontingent-success")]
         public async Task<IActionResult> KontingentSuccessAsync([FromQuery] string session)
         {

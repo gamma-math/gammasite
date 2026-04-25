@@ -57,7 +57,7 @@ export default function PayPage() {
               <td>{p.description}</td>
               <td>{formatPrice(p.priceOre, p.currency)}</td>
               <td>
-                <Link className="btn btn-sm btn-primary" to={`/app/pay/product/${p.id}`}>
+                <Link className="btn btn-sm btn-primary" to={`/pay/product/${p.id}`}>
                   Vælg
                 </Link>
               </td>

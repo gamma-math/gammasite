@@ -58,7 +58,7 @@ export default function PayProductPage() {
   return (
     <>
       <h1>Detaljer om {product.name.toLowerCase()}</h1>
-      <button className="btn btn-secondary mb-3" onClick={() => navigate('/app/pay')}>
+      <button className="btn btn-secondary mb-3" onClick={() => navigate('/pay')}>
         Tilbage
       </button>
 

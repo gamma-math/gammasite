@@ -5,7 +5,7 @@ export default function PayCancelPage() {
     <>
       <h1>Køb annulleret</h1>
       <p>Dit køb blev annulleret.</p>
-      <Link className="btn btn-secondary" to="/app/pay">Til oversigten</Link>
+      <Link className="btn btn-secondary" to="/pay">Til oversigten</Link>
     </>
   );
 }

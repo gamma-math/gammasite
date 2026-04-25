@@ -8,7 +8,7 @@ export default function Navbar() {
   return (
     <nav className="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
       <div className="container">
-        <Link className="navbar-brand" to="/app/">
+        <Link className="navbar-brand" to="/">
           GamMa
         </Link>
 
@@ -27,7 +27,7 @@ export default function Navbar() {
         <div className="collapse navbar-collapse" id="spaNavbar">
           <ul className="navbar-nav me-auto">
             <li className="nav-item">
-              <NavLink className="nav-link text-dark" to="/app/arrangementer">Arrangementer</NavLink>
+              <NavLink className="nav-link text-dark" to="/arrangementer">Arrangementer</NavLink>
             </li>
             <li className="nav-item">
               <a className="nav-link text-dark" href="https://www.facebook.com/groups/gammamath/" target="_blank" rel="noreferrer">
@@ -42,16 +42,16 @@ export default function Navbar() {
                 </a>
                 <ul className="dropdown-menu">
                   <li>
-                    <NavLink className="dropdown-item" to="/app/users">Medlemmer</NavLink>
+                    <NavLink className="dropdown-item" to="/users">Medlemmer</NavLink>
                   </li>
                   <li>
-                    <NavLink className="dropdown-item" to="/app/pay">Betal</NavLink>
+                    <NavLink className="dropdown-item" to="/pay">Betal</NavLink>
                   </li>
                   <li>
-                    <NavLink className="dropdown-item" to="/app/library">Bibliotek</NavLink>
+                    <NavLink className="dropdown-item" to="/library">Bibliotek</NavLink>
                   </li>
                   <li>
-                    <NavLink className="dropdown-item" to="/app/calendar">Kalender</NavLink>
+                    <NavLink className="dropdown-item" to="/calendar">Kalender</NavLink>
                   </li>
                 </ul>
               </li>
@@ -64,10 +64,10 @@ export default function Navbar() {
                 </a>
                 <ul className="dropdown-menu">
                   <li>
-                    <NavLink className="dropdown-item" to="/app/messages">Beskeder</NavLink>
+                    <NavLink className="dropdown-item" to="/messages">Beskeder</NavLink>
                   </li>
                   <li>
-                    <NavLink className="dropdown-item" to="/app/roles">Roller</NavLink>
+                    <NavLink className="dropdown-item" to="/roles">Roller</NavLink>
                   </li>
                 </ul>
               </li>
@@ -85,30 +85,20 @@ export default function Navbar() {
                       <a className="nav-link text-dark" href="/Identity/Account/Manage">Konto</a>
                     </li>
                     <li className="nav-item">
-                      <a
-                        className="nav-link text-dark"
-                        href="/Identity/Account/Logout"
-                        onClick={e => {
-                          // POST to logout to satisfy antiforgery — let the MVC form handle it
-                          e.preventDefault();
-                          const form = document.createElement('form');
-                          form.method = 'POST';
-                          form.action = '/Identity/Account/Logout';
-                          const input = document.createElement('input');
-                          input.type = 'hidden';
-                          input.name = 'returnUrl';
-                          input.value = '/app/';
-                          form.appendChild(input);
-                          document.body.appendChild(form);
-                          form.submit();
+                      <button
+                        className="nav-link text-dark btn btn-link"
+                        onClick={() => {
+                          fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
+                            window.location.href = '/';
+                          });
                         }}
                       >
                         Log ud
-                      </a>
+                      </button>
                     </li>
                   </>
                 : <li className="nav-item">
-                    <a className="nav-link text-dark" href={`/Identity/Account/Login?returnUrl=${encodeURIComponent('/app/')}`}>
+                    <a className="nav-link text-dark" href={`/Identity/Account/Login?returnUrl=${encodeURIComponent('/')}`}>
                       Log ind
                     </a>
                   </li>

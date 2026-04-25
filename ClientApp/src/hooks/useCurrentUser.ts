@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../api/client';
 
 interface CurrentUser {
   id: string;
@@ -14,7 +13,11 @@ export function useCurrentUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch<CurrentUser>('/api/auth/me')
+    // Use plain fetch rather than apiFetch: a 401 here means "not logged in",
+    // not an error — unauthenticated users should see the app, just without
+    // the auth-gated UI. apiFetch would redirect them to the login page instead.
+    fetch('/api/auth/me')
+      .then(res => (res.ok ? res.json() as Promise<CurrentUser> : null))
       .then(data => {
         setUser(data);
         setLoading(false);

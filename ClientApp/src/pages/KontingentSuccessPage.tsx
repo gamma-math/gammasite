@@ -28,7 +28,7 @@ export default function KontingentSuccessPage() {
       <>
         <h1>Kontingent betalt</h1>
         <p>Dit kontingent er nu registreret. Velkommen!</p>
-        <Link className="btn btn-secondary" to="/app/pay">Til oversigten</Link>
+        <Link className="btn btn-secondary" to="/pay">Til oversigten</Link>
       </>
     );
   }
@@ -37,7 +37,7 @@ export default function KontingentSuccessPage() {
     <>
       <h1>Betaling kunne ikke bekræftes</h1>
       <p>Vi kunne ikke bekræfte din betaling. Kontakt venligst administrator.</p>
-      <Link className="btn btn-secondary" to="/app/pay">Til oversigten</Link>
+      <Link className="btn btn-secondary" to="/pay">Til oversigten</Link>
     </>
   );
 }

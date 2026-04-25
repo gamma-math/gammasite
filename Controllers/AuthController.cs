@@ -12,10 +12,12 @@ namespace GamMaSite.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<SiteUser> _userManager;
+        private readonly SignInManager<SiteUser> _signInManager;
 
-        public AuthController(UserManager<SiteUser> userManager)
+        public AuthController(UserManager<SiteUser> userManager, SignInManager<SiteUser> signInManager)
         {
             _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         // Returns the currently authenticated user's identity and roles.
@@ -40,6 +42,15 @@ namespace GamMaSite.Controllers
                 status = user.Status.ToString(),
                 roles = roles.ToArray(),
             });
+        }
+
+        // Signs the current user out via SignInManager (no antiforgery token required
+        // on [ApiController] routes). The SPA redirects to the login page after this.
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return Ok();
         }
     }
 }

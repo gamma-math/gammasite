@@ -31,9 +31,9 @@ namespace GamMaSite.Controllers
             // which calls the server-side verification endpoint on mount.
             // All other products redirect to the generic React SPA success page.
             var successUrl = prod.Metadata.Keys.Contains("Success")
-                ? $"{baseUrl}/app/pay/kontingent-success{sessionparameter}"
-                : $"{baseUrl}/app/pay/success{sessionparameter}";
-            var cancelUrl = $"{baseUrl}/app/pay/cancel";
+                ? $"{baseUrl}/pay/kontingent-success{sessionparameter}"
+                : $"{baseUrl}/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 prod,
@@ -53,8 +53,8 @@ namespace GamMaSite.Controllers
         {
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var successUrl = $"{baseUrl}/app/pay/success{sessionparameter}";
-            var cancelUrl = $"{baseUrl}/app/pay/cancel";
+            var successUrl = $"{baseUrl}/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 product,

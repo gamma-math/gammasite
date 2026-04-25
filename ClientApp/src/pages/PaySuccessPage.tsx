@@ -5,7 +5,7 @@ export default function PaySuccessPage() {
     <>
       <h1>Køb gennemført</h1>
       <p>Dit køb blev gennemført med success!</p>
-      <Link className="btn btn-secondary" to="/app/pay">Til oversigten</Link>
+      <Link className="btn btn-secondary" to="/pay">Til oversigten</Link>
     </>
   );
 }
