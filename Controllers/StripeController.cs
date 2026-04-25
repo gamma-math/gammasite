@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using GamMaSite.Services;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Authorization;
 
 namespace GamMaSite.Controllers
@@ -28,10 +27,11 @@ namespace GamMaSite.Controllers
             var price = await _stripeService.GetPriceAsync(product);
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            // Products with a "Success" metadata key redirect to a server-side MVC action (e.g. KontingentSuccess).
-            // All other products redirect to the React SPA success page.
+            // Products with a "Success" metadata key use the kontingent-specific SPA success page,
+            // which calls the server-side verification endpoint on mount.
+            // All other products redirect to the generic React SPA success page.
             var successUrl = prod.Metadata.Keys.Contains("Success")
-                ? $"{Url.Action(prod.Metadata["Success"], "Pay", new { }, Request.Scheme)}{sessionparameter}"
+                ? $"{baseUrl}/app/pay/kontingent-success{sessionparameter}"
                 : $"{baseUrl}/app/pay/success{sessionparameter}";
             var cancelUrl = $"{baseUrl}/app/pay/cancel";
 

@@ -1,11 +1,14 @@
 using System;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Stripe;
 using GamMaSite.Data;
@@ -95,6 +98,13 @@ builder.Services.AddScoped<IICalService, ICalService>(
     i => new ICalService(builder.Configuration["ICal:ICalAddress"])
 );
 
+// Add Problem Details (RFC 7807 API error responses with content negotiation)
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = ctx =>
+        ctx.ProblemDetails.Extensions["requestId"] =
+            Activity.Current?.Id ?? ctx.HttpContext.TraceIdentifier
+);
+
 // Add controllers and views
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
@@ -110,7 +120,24 @@ var env = app.Environment;
 
 if (!env.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler(exceptionApp => exceptionApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.Headers.CacheControl = "no-cache, no-store";
+
+        // Use content negotiation: API clients (fetch) receive RFC 7807 Problem Details JSON;
+        // browser-navigated pages (Identity) receive the static HTML error page.
+        var problemDetails = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        var written = await problemDetails.TryWriteAsync(new() { HttpContext = context });
+
+        if (!written)
+        {
+            context.Response.ContentType = "text/html";
+            await context.Response.SendFileAsync(
+                env.WebRootFileProvider.GetFileInfo("error.html")
+            );
+        }
+    }));
     app.UseHsts();
 }
 

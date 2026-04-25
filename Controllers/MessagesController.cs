@@ -25,45 +25,6 @@ namespace GamMaSite.Controllers
             _emailService = emailService;
         }
 
-        // ── MVC actions (kept until React page is cut over) ───────────────────
-
-        public IActionResult Index()
-        {
-            var userCategories = new UserCategories(_roleManager, _userManager);
-            return View(userCategories);
-        }
-
-        public async Task<IActionResult> Send(UserStatus[] status, string role, MessageMedia media, string subject, string messageBody, string smsBody)
-        {
-            var usersToReceiveMessage = new HashSet<SiteUser>();
-
-            if (status?.Length > 0)
-            {
-                var selectedStatuses = status.ToHashSet();
-                usersToReceiveMessage.UnionWith(
-                    _userManager.Users
-                        .AsEnumerable()
-                        .Where(user => selectedStatuses.Contains(user.Status))
-                );
-            }
-
-            if (!String.IsNullOrEmpty(role))
-            {
-                usersToReceiveMessage.UnionWith(await _userManager.GetUsersInRoleAsync(role));
-            }
-            if (media == MessageMedia.SMS || media == MessageMedia.EmailSMS)
-            {
-                var userPhonenumbers = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.PhoneNumber)).Select(user => user.PhoneNumber).ToArray();
-                var result = await _smsSender.SendSmsAsync(smsBody, userPhonenumbers);
-            }
-            if (media == MessageMedia.Email || media == MessageMedia.EmailSMS)
-            {
-                var mails = usersToReceiveMessage.Where(user => !string.IsNullOrEmpty(user?.Email)).Select(user => user.Email).ToArray();
-                await _emailService.SendEmailAsync(mails, subject, messageBody);
-            }
-            return RedirectToAction(nameof(Index));
-        }
-
         // ── REST API endpoints for the React SPA ───────────────────────────────
 
         // Returns available statuses and roles to populate the recipient selectors.

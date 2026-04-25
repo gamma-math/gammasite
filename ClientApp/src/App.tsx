@@ -12,6 +12,7 @@ import MessagesPage from './pages/MessagesPage';
 import PayPage from './pages/PayPage';
 import PayProductPage from './pages/PayProductPage';
 import PaySuccessPage from './pages/PaySuccessPage';
+import KontingentSuccessPage from './pages/KontingentSuccessPage';
 import PayCancelPage from './pages/PayCancelPage';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/app/pay" element={<PayPage />} />
           <Route path="/app/pay/product/:id" element={<PayProductPage />} />
           <Route path="/app/pay/success" element={<PaySuccessPage />} />
+          <Route path="/app/pay/kontingent-success" element={<KontingentSuccessPage />} />
           <Route path="/app/pay/cancel" element={<PayCancelPage />} />
           <Route path="*" element={<Navigate to="/app/" replace />} />
         </Routes>

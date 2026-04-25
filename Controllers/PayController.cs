@@ -25,29 +25,33 @@ namespace GamMaSite.Controllers
             this._configuration = conf;
         }
 
-        // KontingentSuccess: Stripe redirects here after a kontingent payment.
-        // Server-side verification required — cannot be a React page.
-        public async Task<IActionResult> KontingentSuccessAsync(string session)
+        // ── REST API endpoints for the React SPA ───────────────────────────────
+
+        // Verifies a completed kontingent Stripe session and marks the user as paid.
+        // Called by KontingentSuccessPage on mount — Stripe redirects the browser to
+        // /app/pay/kontingent-success?session={CHECKOUT_SESSION_ID} after payment.
+        [HttpGet("/api/pay/kontingent-success")]
+        public async Task<IActionResult> KontingentSuccessAsync([FromQuery] string session)
         {
+            if (string.IsNullOrEmpty(session))
+                return BadRequest(new { error = "Manglende session" });
+
             var kontingentProduct = await _stripeService.GetProductByNameAsync("kontingent");
             var stripeSession = await _stripeService.GetSessionAsync(session);
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
             var correctProduct = stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
             var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
-            if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct)
-            {
-                user?.MarkAsPayed();
-                await _userManager.UpdateAsync(user);
-                return View(user);
-            }
-            else
-            {
-                return Redirect("/app/pay");
-            }
-        }
 
-        // ── REST API endpoints for the React SPA ───────────────────────────────
+            if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct && user is not null)
+            {
+                user.MarkAsPayed();
+                await _userManager.UpdateAsync(user);
+                return Ok(new { success = true });
+            }
+
+            return Ok(new { success = false });
+        }
 
         // List all active Stripe products with their price. Also returns the
         // Stripe public key so the SPA can initialise stripe-js without a
