@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Designudkast</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="page-shell site-header-inner">
+      <a class="brand" href="index.html">
+        <img src="../../wwwroot/lib/logo_blue.png" alt="GamMa logo">
+      </a>
+      <nav class="nav-links" aria-label="Prototype navigation">
+        <a href="forside.html">Forside gaest</a>
+        <a href="forside-bruger.html">Forside bruger</a>
+        <a href="forside-admin.html">Forside admin</a>
+        <a href="menu.html">Begivenheder gaest</a>
+        <a href="medlemmer-bruger.html">Medlemmer bruger</a>
+        <a href="menu-admin.html">Begivenheder admin</a>
+        <a href="menu-event-admin.html">Event admin</a>
+        <a href="admin.html">Beskeder admin</a>
+        <a href="admin-massebehandling.html">Massebehandling</a>
+        <a href="admin-roller.html">Roller</a>
+      </nav>
+      <div class="account-links">
+        <span class="status-pill">HTML under docs/design/</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Website Design Guide</span>
+        <h1>Tre hurtige mockups til GamMa-siderne</h1>
+        <p>
+          Udkastene her folger designguidens farver, typografi og side-skeletter, saa I hurtigt kan
+          vurdere retning, hierarki og stemning, foer det egentlige frontend-arbejde gaar i gang.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="forside.html">Se Skelet A</a>
+          <a class="button button-secondary" href="admin.html">Se Skelet C</a>
+        </div>
+      </div>
+
+      <aside class="hero-card">
+        <h2>Bygget ud fra guiden</h2>
+        <p>
+          Fokus har vaeret paa lyse flader, mork navigation, diskrete skillelinjer og logoets blaa accent.
+          Forsiden er gjort mere redaktionel, mens admin og menu er mere stramme arbejdsflader.
+        </p>
+        <div class="metric-list">
+          <div class="metric-item">
+            <strong>Skelet A</strong>
+            Hero, primaer kolonne, sekundaer kolonne og bred bundsektion.
+          </div>
+          <div class="metric-item">
+            <strong>Skelet C</strong>
+            Sidebjaelke, central arbejdsflade og plads til hjaelpetekst og status.
+          </div>
+          <div class="metric-item">
+            <strong>Mobilvenligt</strong>
+            Alle layouts stables, saa de kan fungere som hurtige klikbare referencer paa mobil.
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="overview-grid" aria-label="Oversigt over designudkast">
+      <article class="overview-card">
+        <span class="nav-pill">Skelet A</span>
+        <h2>Forsider</h2>
+        <p>
+          Tre separate versioner af forsiden for gaest, logget ind bruger og admin.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="forside.html">Aabn gaest</a>
+          <a class="button button-secondary" href="forside-bruger.html">Aabn bruger</a>
+          <a class="button button-secondary" href="forside-admin.html">Aabn admin</a>
+        </div>
+      </article>
+
+      <article class="overview-card">
+        <span class="nav-pill">Skelet C</span>
+        <h2>Menu</h2>
+        <p>
+          Tre setup-inspirerede menusider for gæst, bruger og admin med venstremenu og arbejdsflade.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="menu.html">Begivenheder gæst</a>
+          <a class="button button-secondary" href="medlemmer-bruger.html">Medlemmer bruger</a>
+          <a class="button button-secondary" href="menu-admin.html">Begivenheder admin</a>
+          <a class="button button-secondary" href="menu-event-admin.html">Event admin</a>
+        </div>
+      </article>
+
+      <article class="overview-card">
+        <span class="nav-pill">Skelet C</span>
+        <h2>Admin</h2>
+        <p>
+          Tre admin-sider for beskeder, massebehandling og roller i samme layoutfamilie som menu-siderne.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="admin.html">Beskeder</a>
+          <a class="button button-secondary" href="admin-massebehandling.html">Massebehandling</a>
+          <a class="button button-secondary" href="admin-roller.html">Roller</a>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="page-shell page-footer">
+    Designudkastene er statiske HTML-filer og er lavet som visuelle skitser, ikke som faerdig implementering.
+  </footer>
+</body>
+</html>

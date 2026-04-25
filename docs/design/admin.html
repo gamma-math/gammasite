@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Designudkast - Admin Beskeder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="menu-page-body">
+  <header class="site-header frontpage-header">
+    <div class="page-shell">
+      <div class="frontpage-topbar">
+        <a class="brand" href="index.html">
+          <img src="../wwwroot/lib/logo_blue.png" alt="GamMa logo">
+        </a>
+
+        <div class="frontpage-topbar-actions" aria-label="Admin navigation">
+          <div class="frontpage-left-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="menu.html">Menu</a>
+            <a class="frontpage-button frontpage-button-secondary" href="admin.html">Admin</a>
+          </div>
+          <div class="frontpage-right-actions">
+            <a class="frontpage-profile-link frontpage-profile-link-default" href="#" aria-label="Profil">
+              <svg class="frontpage-avatar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4.5 20c1.9-3.7 5-5.5 7.5-5.5S17.6 16.3 19.5 20"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="menu-shell">
+    <section class="menu-workspace">
+      <aside class="menu-sidebar">
+        <h2 class="menu-sidebar-title">Admin</h2>
+        <nav class="menu-side-nav" aria-label="Admin sektioner">
+          <a class="menu-side-link is-active" href="admin.html">Beskeder</a>
+          <a class="menu-side-link" href="admin-massebehandling.html">Massebehandling</a>
+          <a class="menu-side-link" href="admin-roller.html">Roller</a>
+        </nav>
+      </aside>
+
+      <section class="menu-content">
+        <div class="menu-panel-header">
+          <div>
+            <p class="menu-section-title">Beskeder</p>
+          </div>
+        </div>
+
+        <div class="admin-message-form">
+          <div class="admin-form-row admin-form-row-four">
+            <label class="admin-field">
+              <span>Vælg Template</span>
+              <select>
+                <option selected>Sommer vibes</option>
+                <option>Standard nyhedsbrev</option>
+                <option>Arrangement mail</option>
+              </select>
+            </label>
+
+            <button class="admin-action-button" type="button">Tilføj Event</button>
+            <button class="admin-action-button" type="button">Tilføj Nyhed</button>
+            <button class="admin-action-button" type="button">Tilføj boks</button>
+          </div>
+
+          <label class="admin-field">
+            <span>Emne</span>
+            <input type="text" value="Bla bla bla">
+          </label>
+
+          <div class="admin-editor-shell">
+            <div class="admin-editor-toolbar" aria-label="Editor værktøjer">
+              <span class="admin-tool-chip">B</span>
+              <span class="admin-tool-chip">U</span>
+              <span class="admin-tool-chip">A</span>
+              <span class="admin-tool-chip">&lt;/&gt;</span>
+              <span class="admin-tool-chip">Link</span>
+              <span class="admin-tool-chip">Billede</span>
+            </div>
+
+            <div class="admin-field admin-field-editor">
+              <span>Besked preview</span>
+              <div class="admin-rendered-preview">
+                <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+                  Rettelse: Det var selvfølgelig arrangementerne i 2026, vi mente
+                </div>
+
+                <div style="margin:0;padding:0;background-color:#dff5f2;width:100%;font-family:Arial,sans-serif;">
+                  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+                    <img src="https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/mails/img/headers/GamMa_Sommer_Bjaelke.jpg?raw=true"
+                         alt="GamMa sommer banner"
+                         width="100%"
+                         style="display:block;border:0;outline:none;text-decoration:none;height:auto;">
+                  </a>
+
+                  <div style="width:90%;max-width:720px;margin:16px auto 24px auto;background-color:#ffffff;
+                              padding:20px;color:#173042;line-height:1.55;font-size:0.95rem;
+                              box-shadow:0 6px 22px rgba(20,70,90,0.12);">
+
+                    <div style="text-align:center;font-size:18px;letter-spacing:4px;color:#78b7b0;margin:0 0 10px;">SUMMER VIBES</div>
+
+                    <p style="margin:0 0 12px;"><strong>Kære GamMa-medlem,</strong></p>
+
+                    <p style="margin:0 0 10px;">
+                      Som I måske bemærkede, så stod der 2025 i den seneste mail. Det, jeg selvfølgelig mente, var 2026.
+                    </p>
+
+                    <p style="margin:0 0 18px;">
+                      Alle datoer var korrekte, men ugedagene var forkerte. Det var en bummert - beklager.
+                    </p>
+
+                    <div style="width:90%;margin:0 auto 20px auto;padding:16px;
+                                background-color:#f6fffb;border:1px solid #d8efe8;
+                                border-left:6px solid #18a999;border-radius:8px;">
+
+                      <p style="margin:0 0 8px;font-weight:bold;font-size:1.05rem;">
+                        1) Fyraftenscafe på Bastard
+                      </p>
+
+                      <p style="margin:0 0 10px;">
+                        Onsdag den <strong>13. maj kl. 16:00</strong> gentager vi sidste års fyraftensøl på Bastard Cafe på Nørrebro.
+                        Vi tager en afslappet eftermiddag med plads til hygge, snak og en god start på forsommeren.
+                      </p>
+
+                      <p style="margin:0 0 10px;">
+                        <strong>Hvor:</strong> Bastard Cafe, Borgmestervangen 21, 2200 København N
+                      </p>
+
+                      <p style="margin:0 0 12px;">
+                        Der bliver booket borde, så vi kan sidde samlet, og der er en gratis sodavand eller øl til alle,
+                        der tilmelder sig som deltagere. Svar gerne senest den 1. maj.
+                      </p>
+
+                      <a href="https://www.facebook.com/events/935100782602251"
+                         target="_blank"
+                         style="display:block;width:100%;box-sizing:border-box;text-align:center;
+                                background-color:#1877F2;color:#ffffff;text-decoration:none;
+                                border-radius:8px;padding:12px 16px;
+                                font-size:0.95rem;font-weight:bold;">
+                        Se Facebook-event - Bastard
+                      </a>
+
+                      <p style="margin:10px 0 0;text-align:center;font-size:0.82rem;color:#5b7383;font-style:italic;">
+                        Arrangør: Magnus Skude
+                      </p>
+                    </div>
+
+                    <div style="width:90%;margin:0 auto 20px auto;padding:16px;
+                                background-color:#fffef8;border:1px solid #ece7d5;
+                                border-left:6px solid #f2b134;border-radius:8px;">
+
+                      <p style="margin:0 0 8px;font-weight:bold;font-size:1.05rem;">
+                        2) Faglig aften - 1. juni
+                      </p>
+
+                      <p style="margin:0 0 10px;">
+                        Mandag den <strong>1. juni</strong> holder vi igen faglig aften, hvor to færdiguddannede matematikere
+                        kommer og fortæller om et emne, de brænder for.
+                      </p>
+
+                      <p style="margin:0 0 10px;">
+                        Denne gang er det <strong>Flemming von Essen</strong> og <strong>Matias Lolk Andersen</strong>.
+                        Der kommer mere information om deres oplæg snart, men du kan allerede nu sætte kryds i kalenderen.
+                      </p>
+
+                      <p style="margin:0 0 12px;">
+                        Som sædvanlig sørger GamMa for lidt mad og drikke, så arrangementet kræver tilmelding.
+                        Vi glæder os til en hyggelig og faglig aften sammen.
+                      </p>
+
+                      <a href="https://www.facebook.com/events/1352011586978094/"
+                         target="_blank"
+                         style="display:block;width:100%;box-sizing:border-box;text-align:center;
+                                background-color:#1877F2;color:#ffffff;text-decoration:none;
+                                border-radius:8px;padding:12px 16px;
+                                font-size:0.95rem;font-weight:bold;">
+                        Se Facebook-event - Faglig aften
+                      </a>
+
+                      <p style="margin:10px 0 0;text-align:center;font-size:0.82rem;color:#5b7383;font-style:italic;">
+                        Arrangører: Morten Hornbech og Patrick Gregersen
+                      </p>
+                    </div>
+
+                    <div style="width:90%;margin:0 auto 10px auto;padding:16px;
+                                background-color:#f7fbff;border:1px solid #dbeaf5;
+                                border-left:6px solid #52a7d8;border-radius:8px;">
+
+                      <p style="margin:0 0 8px;font-weight:bold;font-size:1.05rem;">
+                        3) Andre arrangementer i år 2026
+                      </p>
+
+                      <p style="margin:0 0 10px;">
+                        På baggrund af ønsker fra generalforsamlingen har vi valgt allerede nu at fastsætte datoer for de fleste af årets arrangementer.
+                        Det gør det forhåbentlig lidt nemmere at få GamMa med i kalenderen i god tid.
+                      </p>
+
+                      <p style="margin:0 0 12px;">
+                        Her er overblikket for resten af 2026. Vi håber, I vil sætte dagene af, og vi skal nok give besked så tidligt som muligt,
+                        hvis der bliver behov for at flytte noget.
+                      </p>
+
+                      <p style="margin:0 0 14px;text-align:center;">
+                        <img src="https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/mails/img/other/Arrangementer_Tidslinje.png?raw=true"
+                             alt="Tidslinje over GamMas arrangementer i 2026"
+                             width="100%"
+                             style="display:block;border:0;margin:0 auto;height:auto;max-width:640px;border-radius:10px;">
+                      </p>
+                    </div>
+
+                    <p style="margin:18px 0 0;">
+                      Vi håber, du har lyst til at kigge forbi og tage en ven med, hvis du kender en GamMa'er, der også bør få det med.
+                    </p>
+
+                    <p style="margin:8px 0 0;">
+                      Med venlig hilsen<br>
+                      <strong>GamMas bestyrelse</strong>
+                    </p>
+
+                    <div style="text-align:center;font-size:18px;letter-spacing:4px;color:#78b7b0;margin:10px 0 0;">SUN AND MATH</div>
+                  </div>
+
+                  <div style="height:1px;background-color:#cfe6e2;width:90%;max-width:720px;margin:0 auto 12px auto;"></div>
+
+                  <div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#173042;line-height:1.45;font-size:0.9rem;">
+                    <div style="padding:16px;background-color:#fffefb;border-radius:10px;border:1px solid #e9efe8;">
+                      <p style="margin:0 0 8px;font-weight:bold;">Medlemskab?</p>
+                      <p style="margin:0 0 8px;">Husk, at deltagelse i GamMa-arrangementer kræver et aktivt medlemskab.</p>
+                      <p style="margin:0 0 8px;">
+                        Tjek betaling og opdater dine oplysninger på
+                        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">
+                          GamMa.dk - <span style="font-weight:bold;">Profil</span>
+                        </a>.
+                      </p>
+                      <p style="margin:0 0 8px;">Bliv medlem sådan her:</p>
+                      <ul style="margin:0 0 10px;padding-left:20px;">
+                        <li>MobilePay: <strong>150 kr. til 22766</strong></li>
+                        <li>Log ind på <a href="https://gam-ma.dk/" style="color:#337ab7;text-decoration:none;">gam-ma.dk</a> og betal med kort under <em>Menu &gt;&gt; Betal</em></li>
+                        <li>Skan eller tryk på QR-koden nedenfor</li>
+                      </ul>
+                      <p style="margin:0 0 10px;font-size:0.85rem;color:#5b7383;">
+                        Er du studerende, er medlemskabet gratis. Kontakt bestyrelsen, så vi kan notere det.
+                      </p>
+                      <p style="margin:0 0 10px;text-align:center;">
+                        <a href="https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amp;amount=150&amp;comment=Medlemskab" target="_blank" style="text-decoration:none;">
+                          <img src="https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/mails/img/qr/QR_medlemskab.png?raw=true"
+                               alt="Medlemskab MobilePay QR"
+                               width="150"
+                               style="border:0;display:block;margin:0 auto;height:auto;">
+                        </a>
+                      </p>
+                      <p style="margin:0;text-align:center;font-size:0.75rem;">
+                        Ønsker du at blive afmeldt eller udmeldt, så log ind på
+                        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">GamMa.dk - Privatdata</a>
+                        og klik <b>'slet'</b>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style="height:1px;background-color:#cfe6e2;width:90%;max-width:720px;margin:0 auto 12px auto;"></div>
+
+                  <div style="width:90%;max-width:720px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;border-radius:10px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;">
+                      <tbody>
+                        <tr>
+                          <td style="padding:10px;border:none;background:none;text-align:center;">
+                            <a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;">
+                              <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+                              <div style="margin-top:6px;font-size:0.7rem;color:#000000;text-align:center;">LinkedIn</div>
+                            </a>
+                          </td>
+                          <td style="padding:10px;border:none;background:none;text-align:center;">
+                            <a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;">
+                              <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+                              <div style="margin-top:6px;font-size:0.7rem;color:#000000;text-align:center;">Instagram</div>
+                            </a>
+                          </td>
+                          <td style="padding:10px;border:none;background:none;text-align:center;">
+                            <a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;">
+                              <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+                              <div style="margin-top:6px;font-size:0.7rem;color:#000000;text-align:center;">Facebook</div>
+                            </a>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style="height:16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-form-row admin-form-row-two">
+            <label class="admin-field">
+              <span>Vælg gruppe</span>
+              <select>
+                <option selected>Alle medlemmer</option>
+                <option>Betalende medlemmer</option>
+                <option>Studerende</option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>Vælg rolle</span>
+              <select>
+                <option selected>Alle roller</option>
+                <option>Admin</option>
+                <option>Bestyrelse</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="admin-radio-row" role="radiogroup" aria-label="Udsendelsestype">
+            <label><input type="radio" name="sendtype" checked> Email</label>
+            <label><input type="radio" name="sendtype"> SMS</label>
+            <label><input type="radio" name="sendtype"> Email &amp; SMS</label>
+          </div>
+
+          <div class="admin-submit-row">
+            <button class="menu-create-button" type="button">Send besked</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <section class="frontpage-footer-band">
+    <div class="page-shell frontpage-footer-inner">
+      <div class="frontpage-footer-col frontpage-footer-col-wide">
+        <h2>Alumneforeningen GamMa</h2>
+        <ul class="frontpage-contact-list">
+          <li>Vedtægter: <a href="#">Link til dem</a></li>
+          <li>CVR: 34637768</li>
+          <li>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></li>
+        </ul>
+      </div>
+
+      <div class="frontpage-footer-icons">
+        <span class="frontpage-social-list">
+          <a class="frontpage-social-link" href="#" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="4"></rect>
+              <path d="M7.2 9.2V17"></path>
+              <circle cx="7.2" cy="6.9" r="1"></circle>
+              <path d="M11 17V9.2"></path>
+              <path d="M11 11.6c0-1.6 1-2.6 2.5-2.6 1.5 0 2.3 1 2.3 3V17"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.4c-.4-.1-1.1-.2-2-.2-2 0-3.4 1.2-3.4 3.5v2.5H8.3V14h2.3v7z"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect>
+              <circle cx="12" cy="12" r="3.8"></circle>
+              <circle cx="17.2" cy="6.8" r="1"></circle>
+            </svg>
+          </a>
+        </span>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
