@@ -67,8 +67,10 @@ namespace GamMaSite.Controllers
                 .Select(s => s!.Value)
                 .ToArray();
 
+            var statusInts = statuses.Select(s => (int)s).ToArray();
             var usersToReceive = _userManager.Users
-                .Where(u => statuses.Contains(u.Status))
+                .AsEnumerable()
+                .Where(u => statusInts.Contains((int)u.Status))
                 .ToHashSet();
 
             if (!string.IsNullOrEmpty(body.Role))
