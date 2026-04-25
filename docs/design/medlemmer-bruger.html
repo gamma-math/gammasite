@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Designudkast - Medlemmer Bruger</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="menu-page-body">
+  <header class="site-header frontpage-header">
+    <div class="page-shell">
+      <div class="frontpage-topbar">
+        <a class="brand" href="index.html">
+          <img src="../wwwroot/lib/logo_blue.png" alt="GamMa logo">
+        </a>
+
+        <div class="frontpage-topbar-actions" aria-label="Bruger navigation">
+          <div class="frontpage-left-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="menu.html">Menu</a>
+          </div>
+          <div class="frontpage-right-actions">
+            <a class="frontpage-profile-link" href="#" aria-label="Profil">
+              <img class="frontpage-avatar-image" src="https://i.pravatar.cc/88?img=12" alt="Profilbillede">
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="menu-shell">
+    <section class="menu-workspace">
+      <aside class="menu-sidebar">
+        <h2 class="menu-sidebar-title">Menu</h2>
+        <nav class="menu-side-nav" aria-label="Bruger sektioner">
+          <a class="menu-side-link" href="menu.html">Begivenheder</a>
+          <a class="menu-side-link" href="#">Nyheder</a>
+          <a class="menu-side-link is-active" href="medlemmer-bruger.html">Medlemmer</a>
+          <a class="menu-side-link" href="#">Betal</a>
+        </nav>
+      </aside>
+
+      <section class="menu-content">
+        <div class="menu-panel-header">
+          <div>
+            <p class="menu-section-title">Medlemmer</p>
+            <p class="menu-panel-lead menu-panel-lead-inline">
+              Her kan du få overblik over foreningens medlemmer og se deres årgang, beskæftigelse og kontaktoplysninger.
+            </p>
+          </div>
+        </div>
+
+        <div class="menu-table-toolbar">
+          <label class="menu-table-select">
+            <span>Vis</span>
+            <select>
+              <option>25</option>
+              <option selected>50</option>
+              <option>100</option>
+            </select>
+            <span>pr. side</span>
+          </label>
+
+          <label class="menu-table-search">
+            <span>Søg</span>
+            <input type="search" placeholder="Navn">
+          </label>
+        </div>
+
+        <div class="menu-table-wrap">
+          <table class="menu-member-table">
+            <thead>
+              <tr>
+                <th>Billede</th>
+                <th>Navn</th>
+                <th>Årgang</th>
+                <th>Beskæftigelse</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=5" alt="Medlemsbillede"></td>
+                <td>Abraham Ben Chadli Borgi</td>
+                <td>2014</td>
+                <td>North Media A/S</td>
+                <td>abraham.borgi@live.dk</td>
+              </tr>
+              <tr>
+                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=26" alt="Medlemsbillede"></td>
+                <td>Ada Louise Olesen Nzulumike</td>
+                <td>2007</td>
+                <td>Systemudvikler hos NES TECH A/S</td>
+                <td>alouise87@gmail.com</td>
+              </tr>
+              <tr>
+                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=31" alt="Medlemsbillede"></td>
+                <td>Julie Madsen</td>
+                <td>2018</td>
+                <td>Data Scientist hos Ørsted</td>
+                <td>julie.madsen@gmail.com</td>
+              </tr>
+              <tr>
+                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=44" alt="Medlemsbillede"></td>
+                <td>Kasper Holm</td>
+                <td>2011</td>
+                <td>Lektor ved Københavns Universitet</td>
+                <td>kasper.holm@ku.dk</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <section class="frontpage-footer-band">
+    <div class="page-shell frontpage-footer-inner">
+      <div class="frontpage-footer-col frontpage-footer-col-wide">
+        <h2>Alumneforeningen GamMa</h2>
+        <ul class="frontpage-contact-list">
+          <li>Vedtægter: <a href="#">Link til dem</a></li>
+          <li>CVR: 34637768</li>
+          <li>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></li>
+        </ul>
+      </div>
+
+      <div class="frontpage-footer-icons">
+        <span class="frontpage-social-list">
+          <a class="frontpage-social-link" href="#" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="4"></rect>
+              <path d="M7.2 9.2V17"></path>
+              <circle cx="7.2" cy="6.9" r="1"></circle>
+              <path d="M11 17V9.2"></path>
+              <path d="M11 11.6c0-1.6 1-2.6 2.5-2.6 1.5 0 2.3 1 2.3 3V17"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.4c-.4-.1-1.1-.2-2-.2-2 0-3.4 1.2-3.4 3.5v2.5H8.3V14h2.3v7z"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect>
+              <circle cx="12" cy="12" r="3.8"></circle>
+              <circle cx="17.2" cy="6.8" r="1"></circle>
+            </svg>
+          </a>
+        </span>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
