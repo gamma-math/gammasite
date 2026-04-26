@@ -7,6 +7,16 @@
 * Stripe (payments)
 * Ical.Net (calendar)
 
+## Branching workflow
+
+* `master` is the production and default branch.
+* `staging` is the test and integration branch before changes are promoted to `master`.
+* Create new features in `feature/*` branches and merge them into `staging` via Pull Requests.
+* Create bug fixes in `fix/*` branches and merge them into `staging` via Pull Requests.
+* Promote tested changes from `staging` to `master` via Pull Requests.
+* If needed, urgent fixes can be created in `fix/*` and merged directly into `master` via Pull Requests.
+* Direct pushes to `master` and `staging` are not allowed.
+
 ## Getting started
 
 ### Prerequisites
