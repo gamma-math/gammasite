@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api/client';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
@@ -83,7 +83,7 @@ export default function PayProductPage() {
         <p>{product.metadata['Additional']}</p>
       )}
       {product.metadata['Conditions'] && (
-        <p><em>{product.metadata['Conditions']}</em></p>
+        <p>Læs <em><Link to={product.metadata['Conditions']}>Betingelser</Link></em></p>
       )}
 
       {error && <div className="alert alert-danger">{error}</div>}
