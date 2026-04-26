@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Designudkast - Login Gæst</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="frontpage-body">
+  <header class="site-header frontpage-header">
+    <div class="page-shell">
+      <div class="frontpage-topbar">
+        <a class="brand" href="../index.html">
+          <img src="../../../wwwroot/lib/logo_blue.png" alt="GamMa logo">
+        </a>
+
+        <div class="frontpage-topbar-actions" aria-label="Gæst navigation">
+          <div class="frontpage-left-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="begivenheder.html">Menu</a>
+          </div>
+          <div class="frontpage-right-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="login.html">Login</a>
+            <a class="frontpage-button frontpage-button-primary" href="bliv-medlem.html">Bliv medlem</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="login-page-main">
+    <div class="page-shell login-page-shell">
+      <section class="login-card">
+        <div class="login-card-copy">
+          <h1>Log ind</h1>
+          <p>Indtast dine login-oplysninger.</p>
+        </div>
+
+        <form class="login-form">
+          <label class="login-field">
+            <span>Email</span>
+            <input type="email" value="Abrahim.borgi@live.dk">
+          </label>
+
+          <label class="login-field">
+            <span>Password</span>
+            <input type="password" value="Adgang1234">
+          </label>
+
+          <label class="login-checkbox">
+            <input type="checkbox">
+            <span>Husk mig?</span>
+          </label>
+
+          <button class="login-submit-button" type="submit">Log ind</button>
+        </form>
+
+        <div class="login-links">
+          <a href="glemt-password.html">Glemt dit password?</a>
+          <a href="bliv-medlem.html">Tilmeld dig som ny bruger</a>
+          <a href="gensend-email-bekraeftelse.html">Gensend email-bekræftelse</a>
+        </div>
+
+        <p class="login-consent">
+          <span class="login-consent-icon" aria-hidden="true">&#10003;</span>
+          Ved login accepteres <a href="#">Cookie</a>-politik.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <section class="frontpage-footer-band">
+    <div class="page-shell frontpage-footer-inner">
+      <div class="frontpage-footer-col frontpage-footer-col-wide">
+        <h2>Alumneforeningen GamMa</h2>
+        <ul class="frontpage-contact-list">
+          <li>Vedtægter: <a href="#">Link til dem</a></li>
+          <li>CVR: 34637768</li>
+          <li>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></li>
+        </ul>
+      </div>
+
+      <div class="frontpage-footer-icons">
+        <span class="frontpage-social-list">
+          <a class="frontpage-social-link" href="#" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="4"></rect>
+              <path d="M7.2 9.2V17"></path>
+              <circle cx="7.2" cy="6.9" r="1"></circle>
+              <path d="M11 17V9.2"></path>
+              <path d="M11 11.6c0-1.6 1-2.6 2.5-2.6 1.5 0 2.3 1 2.3 3V17"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.4c-.4-.1-1.1-.2-2-.2-2 0-3.4 1.2-3.4 3.5v2.5H8.3V14h2.3v7z"></path>
+            </svg>
+          </a>
+          <a class="frontpage-social-link" href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect>
+              <circle cx="12" cy="12" r="3.8"></circle>
+              <circle cx="17.2" cy="6.8" r="1"></circle>
+            </svg>
+          </a>
+        </span>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
