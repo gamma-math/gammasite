@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GamMa Designudkast - Admin Massebehandling</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>GamMa Designudkast - Medlemmer Admin</title>
+  <link rel="stylesheet" href="../styles.css">
 </head>
 <body class="menu-page-body">
   <header class="site-header frontpage-header">
     <div class="page-shell">
       <div class="frontpage-topbar">
-        <a class="brand" href="index.html">
-          <img src="../../wwwroot/lib/logo_blue.png" alt="GamMa logo">
+        <a class="brand" href="../index.html">
+          <img src="../../../wwwroot/lib/logo_blue.png" alt="GamMa logo">
         </a>
 
         <div class="frontpage-topbar-actions" aria-label="Admin navigation">
           <div class="frontpage-left-actions">
-            <a class="frontpage-button frontpage-button-secondary" href="menu.html">Menu</a>
-            <a class="frontpage-button frontpage-button-secondary" href="admin.html">Admin</a>
+            <a class="frontpage-button frontpage-button-secondary" href="begivenheder.html">Menu</a>
+            <a class="frontpage-button frontpage-button-secondary" href="beskeder.html">Admin</a>
           </div>
           <div class="frontpage-right-actions">
-            <a class="frontpage-profile-link frontpage-profile-link-default" href="#" aria-label="Profil">
+            <a class="frontpage-profile-link frontpage-profile-link-default" href="profil.html" aria-label="Profil">
               <svg class="frontpage-avatar-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="8" r="4"></circle>
                 <path d="M4.5 20c1.9-3.7 5-5.5 7.5-5.5S17.6 16.3 19.5 20"></path>
@@ -35,49 +35,43 @@
   <main class="menu-shell">
     <section class="menu-workspace">
       <aside class="menu-sidebar">
-        <h2 class="menu-sidebar-title">Admin</h2>
+        <h2 class="menu-sidebar-title">Menu</h2>
         <nav class="menu-side-nav" aria-label="Admin sektioner">
-          <a class="menu-side-link" href="admin.html">Beskeder</a>
-          <a class="menu-side-link is-active" href="admin-massebehandling.html">Massebehandling</a>
-          <a class="menu-side-link" href="admin-roller.html">Roller</a>
+          <a class="menu-side-link" href="begivenheder.html">Begivenheder</a>
+          <a class="menu-side-link" href="nyheder.html">Nyheder</a>
+          <a class="menu-side-link is-active" href="medlemmer.html">Medlemmer</a>
+          <a class="menu-side-link" href="betal-medlemskab.html">Betal medlemskab</a>
         </nav>
       </aside>
 
       <section class="menu-content">
         <div class="menu-panel-header">
           <div>
-            <p class="menu-section-title">Massebehandling</p>
+            <p class="menu-section-title">Medlemmer</p>
+            <p class="menu-panel-lead menu-panel-lead-inline">
+              Her kan du få overblik over foreningens medlemmer og opdatere deres medlemsstatus direkte i oversigten.
+            </p>
           </div>
         </div>
 
-        <div class="admin-message-form">
-          <div class="admin-form-row admin-form-row-three">
-            <label class="admin-field">
-              <span>Kontingentdato fra</span>
-              <input type="date" value="2026-04-25">
-            </label>
+        <div class="menu-table-toolbar">
+          <label class="menu-table-select">
+            <span>Vis</span>
+            <select>
+              <option>25</option>
+              <option selected>50</option>
+              <option>100</option>
+            </select>
+            <span>pr. side</span>
+          </label>
 
-            <label class="admin-field">
-              <span>Kontingentdato til</span>
-              <input type="date" value="2026-04-26">
-            </label>
-
-            <label class="admin-field">
-              <span>Status</span>
-              <select>
-                <option selected>SKYLDER</option>
-                <option>BETALT</option>
-                <option>GRATIS</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="admin-submit-row">
-            <button class="menu-create-button" type="button">Skift status</button>
-          </div>
+          <label class="menu-table-search">
+            <span>Søg</span>
+            <input type="search" placeholder="Navn">
+          </label>
         </div>
 
-        <div class="menu-table-wrap admin-table-gap">
+        <div class="menu-table-wrap">
           <table class="menu-member-table">
             <thead>
               <tr>
@@ -86,36 +80,73 @@
                 <th>Årgang</th>
                 <th>Beskæftigelse</th>
                 <th>Email</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=5" alt="Medlemsbillede"></td>
+                <td><a class="menu-member-avatar-link" href="medlem-profil.html"><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=5" alt="Medlemsbillede"></a></td>
                 <td>Abraham Ben Chadli Borgi</td>
                 <td>2014</td>
                 <td>North Media A/S</td>
                 <td>abraham.borgi@live.dk</td>
+                <td>
+                  <select class="menu-member-status-select" aria-label="Status for Abraham Ben Chadli Borgi">
+                    <option>OPRETTET</option>
+                    <option selected>BETALT</option>
+                    <option>SKYLDER</option>
+                    <option>INAKTIV</option>
+                    <option>STUDERENDE</option>
+                  </select>
+                </td>
               </tr>
               <tr>
-                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=26" alt="Medlemsbillede"></td>
+                <td><a class="menu-member-avatar-link" href="medlem-profil.html"><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=26" alt="Medlemsbillede"></a></td>
                 <td>Ada Louise Olesen Nzulumike</td>
                 <td>2007</td>
                 <td>Systemudvikler hos NES TECH A/S</td>
                 <td>alouise87@gmail.com</td>
+                <td>
+                  <select class="menu-member-status-select" aria-label="Status for Ada Louise Olesen Nzulumike">
+                    <option>OPRETTET</option>
+                    <option selected>BETALT</option>
+                    <option>SKYLDER</option>
+                    <option>INAKTIV</option>
+                    <option>STUDERENDE</option>
+                  </select>
+                </td>
               </tr>
               <tr>
-                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=31" alt="Medlemsbillede"></td>
+                <td><a class="menu-member-avatar-link" href="medlem-profil.html"><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=31" alt="Medlemsbillede"></a></td>
                 <td>Julie Madsen</td>
                 <td>2018</td>
                 <td>Data Scientist hos Ørsted</td>
                 <td>julie.madsen@gmail.com</td>
+                <td>
+                  <select class="menu-member-status-select" aria-label="Status for Julie Madsen">
+                    <option selected>OPRETTET</option>
+                    <option>BETALT</option>
+                    <option>SKYLDER</option>
+                    <option>INAKTIV</option>
+                    <option>STUDERENDE</option>
+                  </select>
+                </td>
               </tr>
               <tr>
-                <td><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=44" alt="Medlemsbillede"></td>
+                <td><a class="menu-member-avatar-link" href="medlem-profil.html"><img class="menu-member-avatar" src="https://i.pravatar.cc/72?img=44" alt="Medlemsbillede"></a></td>
                 <td>Kasper Holm</td>
                 <td>2011</td>
                 <td>Lektor ved Københavns Universitet</td>
                 <td>kasper.holm@ku.dk</td>
+                <td>
+                  <select class="menu-member-status-select" aria-label="Status for Kasper Holm">
+                    <option>OPRETTET</option>
+                    <option>BETALT</option>
+                    <option selected>SKYLDER</option>
+                    <option>INAKTIV</option>
+                    <option>STUDERENDE</option>
+                  </select>
+                </td>
               </tr>
             </tbody>
           </table>
