@@ -1,0 +1,28 @@
+export default function BetingelserPage() {
+  return (
+    <div>
+      <h1 className="display-4">Brugerbetingelser</h1>
+      <p>
+        Ved oprettelse af GamMa-medlemskab på denne side accepteres det, at følgende informationer er
+        tilgængelige for GamMas øvrige medlemmer:
+      </p>
+      <ul>
+        <li>Navn</li>
+        <li>Årgang</li>
+        <li>Telefonnummer</li>
+        <li>Mail</li>
+        <li>Arbejde</li>
+        <li>Adresse</li>
+      </ul>
+      <p>
+        <a href="/Identity/Account/Manage">Denne side</a> kan til enhver tid besøges for at regulere disse informationer.
+      </p>
+      <p>Specielt kan informationer udelades og skjules, hvis dette ønskes.</p>
+      <p>GamMas bestyrelse forbeholder sig retten til at kontakte medlemmer via ovenstående oplysninger.</p>
+      <p>
+        GamMa videredistribuerer ikke dine informationer til kommerciel brug eller til tredjeparter, der ikke er
+        direkte relateret til <a href="https://www.math.ku.dk/">Institut for Matematiske Fag, Københavns Universitet</a>.
+      </p>
+    </div>
+  );
+}

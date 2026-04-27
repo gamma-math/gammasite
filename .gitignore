@@ -53,3 +53,7 @@ multiproject.code-workspace
 .env
 .env.*
 *.log
+
+# SPA
+ClientApp/node_modules/
+wwwroot/spa/

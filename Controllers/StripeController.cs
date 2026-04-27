@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using GamMaSite.Services;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Authorization;
 
 namespace GamMaSite.Controllers
@@ -27,9 +26,14 @@ namespace GamMaSite.Controllers
             var prod = await _stripeService.GetProductAsync(product);
             var price = await _stripeService.GetPriceAsync(product);
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
-            var successPage = prod.Metadata.Keys.Contains("Success") ? prod.Metadata["Success"] : "Success";
-            var successUrl = $"{Url.Action(successPage, "Pay", new { }, Request.Scheme)}{sessionparameter}";
-            var cancelUrl = Url.Action("Cancel", "Pay", new { }, Request.Scheme);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            // Products with a "Success" metadata key use the kontingent-specific SPA success page,
+            // which calls the server-side verification endpoint on mount.
+            // All other products redirect to the generic React SPA success page.
+            var successUrl = prod.Metadata.Keys.Contains("Success")
+                ? $"{baseUrl}/pay/kontingent-success{sessionparameter}"
+                : $"{baseUrl}/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 prod,
@@ -39,7 +43,8 @@ namespace GamMaSite.Controllers
                 cancelUrl
                 );
 
-            var result = new JsonResult(new { id = stripeSessionId });
+            var session = await _stripeService.GetSessionAsync(stripeSessionId);
+            var result = new JsonResult(new { id = stripeSessionId, url = session?.Url });
             return result;
         }
 
@@ -47,16 +52,17 @@ namespace GamMaSite.Controllers
         public ActionResult Generic(string product, long price, string description, string user)
         {
             var sessionparameter = "?session={CHECKOUT_SESSION_ID}";
-            var successUrl = $"{Url.Action("Success", "Pay", new { }, Request.Scheme)}{sessionparameter}";
-            var cancelUrl = Url.Action("Cancel", "Pay", new { }, Request.Scheme);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var successUrl = $"{baseUrl}/pay/success{sessionparameter}";
+            var cancelUrl = $"{baseUrl}/pay/cancel";
 
             var stripeSessionId = _stripeService.StartPayment(
                 product,
-                description, 
+                description,
                 price,
                 "dkk",
                 user,
-                successUrl, 
+                successUrl,
                 cancelUrl
                 );
 

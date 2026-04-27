@@ -22,6 +22,7 @@
 ### Prerequisites
 
 * [.NET 10 SDK](https://dotnet.microsoft.com/download) (`dotnet --version` should show `10.x`)
+* [Node.js 22+](https://nodejs.org/) (`node --version` should show `22.x`)
 * MySQL 8.0+ server running and accessible via the connection string in `appsettings.json`
 
 ### Build and run
@@ -36,6 +37,9 @@ The project includes a `Makefile` with the most commonly used commands:
 | `make run ENV=Production`   | Start the application with the Production environment|
 | `make watch`                | Start with hot reload (Development)                  |
 | `make watch ENV=Staging`    | Start with hot reload in the Staging environment     |
+| `make dev`                  | Start backend + Vite dev server together (see below) |
+| `make dev-spa`              | Start the Vite dev server only                       |
+| `make build-spa`            | Build the React SPA into `wwwroot/spa/`              |
 | `make publish`              | Publish a Release build to `bin/Release/`            |
 | `make restore`              | Restore NuGet packages                               |
 | `make clean`                | Delete `bin/` and `obj/`                             |
@@ -57,6 +61,37 @@ ASPNETCORE_ENVIRONMENT=Development dotnet run --project GamMaSite.csproj
 ### VS Code
 
 Open the project in VS Code and press **F5** — the debug configuration in `.vscode/launch.json` will build and start automatically with the Development environment.
+
+---
+
+## Frontend development (React SPA)
+
+The React SPA lives in `ClientApp/` and is built with Vite. In production the compiled output sits in `wwwroot/spa/` and is served as static files by .NET. In development you run both processes in parallel so you get Vite's hot module replacement (HMR).
+
+### Quickstart
+
+```bash
+cd ClientApp && npm install   # first time only
+cd ..                         # back to repo root
+make dev                      # starts backend + Vite in parallel
+```
+
+Then open **http://localhost:5173** (the Vite URL) in your browser — **not** the .NET port.
+
+### How it works
+
+`make dev` runs `make watch` (the .NET backend with hot reload on `https://localhost:5001`) and `make dev-spa` (the Vite dev server on `http://localhost:5173`) in parallel.
+
+Vite is already configured to proxy `/api` and `/Identity` requests to the .NET backend, so authentication and API calls work transparently from the Vite port. You never need to deal with CORS in development.
+
+### If you only need to check the built SPA
+
+```bash
+make build-spa   # compiles React into wwwroot/spa/
+make watch       # serve via .NET at https://localhost:5001
+```
+
+Note that this skips HMR — you must re-run `make build-spa` after each frontend change.
 
 ---
 
