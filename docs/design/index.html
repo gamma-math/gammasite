@@ -13,19 +13,12 @@
         <img src="../../wwwroot/lib/logo_blue.png" alt="GamMa logo">
       </a>
       <nav class="nav-links" aria-label="Prototype navigation">
-        <a href="forside.html">Forside gaest</a>
-        <a href="forside-bruger.html">Forside bruger</a>
-        <a href="forside-admin.html">Forside admin</a>
-        <a href="menu.html">Begivenheder gaest</a>
-        <a href="medlemmer-bruger.html">Medlemmer bruger</a>
-        <a href="menu-admin.html">Begivenheder admin</a>
-        <a href="menu-event-admin.html">Event admin</a>
-        <a href="admin.html">Beskeder admin</a>
-        <a href="admin-massebehandling.html">Massebehandling</a>
-        <a href="admin-roller.html">Roller</a>
+        <a href="guest/forside.html">Gæst</a>
+        <a href="user/forside.html">Bruger</a>
+        <a href="admin/forside.html">Admin</a>
       </nav>
       <div class="account-links">
-        <span class="status-pill">HTML under docs/design/</span>
+        <span class="status-pill">Journeys under docs/design/</span>
       </div>
     </div>
   </header>
@@ -34,35 +27,35 @@
     <section class="hero">
       <div>
         <span class="eyebrow">Website Design Guide</span>
-        <h1>Tre hurtige mockups til GamMa-siderne</h1>
+        <h1>GamMa designrejser i klikbare HTML-udkast</h1>
         <p>
-          Udkastene her folger designguidens farver, typografi og side-skeletter, saa I hurtigt kan
-          vurdere retning, hierarki og stemning, foer det egentlige frontend-arbejde gaar i gang.
+          Her er designudkastene opdelt i gæst, bruger og admin, så det er lettere at gennemgå
+          navigation, indhold og de vigtigste sider i hver rejse.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="forside.html">Se Skelet A</a>
-          <a class="button button-secondary" href="admin.html">Se Skelet C</a>
+          <a class="button button-primary" href="guest/forside.html">Start gæst</a>
+          <a class="button button-secondary" href="admin/forside.html">Start admin</a>
         </div>
       </div>
 
       <aside class="hero-card">
-        <h2>Bygget ud fra guiden</h2>
+        <h2>Hvad er nyt</h2>
         <p>
-          Fokus har vaeret paa lyse flader, mork navigation, diskrete skillelinjer og logoets blaa accent.
-          Forsiden er gjort mere redaktionel, mens admin og menu er mere stramme arbejdsflader.
+          Begivenheder og nyheder har nu hver deres detaljesider, og menuen er gjort mere konsekvent
+          med særskilte mapper for de tre brugerrejser.
         </p>
         <div class="metric-list">
           <div class="metric-item">
-            <strong>Skelet A</strong>
-            Hero, primaer kolonne, sekundaer kolonne og bred bundsektion.
+            <strong>Gæst</strong>
+            Forside, begivenheder, nyheder og detaljesider samlet i ét gæsteflow.
           </div>
           <div class="metric-item">
-            <strong>Skelet C</strong>
-            Sidebjaelke, central arbejdsflade og plads til hjaelpetekst og status.
+            <strong>Bruger</strong>
+            Forside, medlemmer, betaling, begivenheder og nyheder samlet i ét medlemsflow.
           </div>
           <div class="metric-item">
-            <strong>Mobilvenligt</strong>
-            Alle layouts stables, saa de kan fungere som hurtige klikbare referencer paa mobil.
+            <strong>Admin</strong>
+            Menusider, detaljesider og adminværktøjer ligger nu samlet i admin-mappen.
           </div>
         </div>
       </aside>
@@ -70,49 +63,60 @@
 
     <section class="overview-grid" aria-label="Oversigt over designudkast">
       <article class="overview-card">
-        <span class="nav-pill">Skelet A</span>
-        <h2>Forsider</h2>
+        <span class="nav-pill">Gæst</span>
+        <h2>Offentligt flow</h2>
         <p>
-          Tre separate versioner af forsiden for gaest, logget ind bruger og admin.
+          Forside, begivenheder, nyheder og detaljer for besøgende før login.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="forside.html">Aabn gaest</a>
-          <a class="button button-secondary" href="forside-bruger.html">Aabn bruger</a>
-          <a class="button button-secondary" href="forside-admin.html">Aabn admin</a>
+          <a class="button button-primary" href="guest/forside.html">Forside</a>
+          <a class="button button-secondary" href="guest/begivenheder.html">Begivenheder</a>
+          <a class="button button-secondary" href="guest/begivenhed.html">Begivenhed</a>
+          <a class="button button-secondary" href="guest/nyheder.html">Nyheder</a>
+          <a class="button button-secondary" href="guest/nyhed.html">Nyhed</a>
         </div>
       </article>
 
       <article class="overview-card">
-        <span class="nav-pill">Skelet C</span>
-        <h2>Menu</h2>
+        <span class="nav-pill">Bruger</span>
+        <h2>Medlemsflow</h2>
         <p>
-          Tre setup-inspirerede menusider for gæst, bruger og admin med venstremenu og arbejdsflade.
+          Begivenheder, nyheder, medlemmer og betaling i samme sammenhængende brugerrejse.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="menu.html">Begivenheder gæst</a>
-          <a class="button button-secondary" href="medlemmer-bruger.html">Medlemmer bruger</a>
-          <a class="button button-secondary" href="menu-admin.html">Begivenheder admin</a>
-          <a class="button button-secondary" href="menu-event-admin.html">Event admin</a>
+          <a class="button button-primary" href="user/forside.html">Forside</a>
+          <a class="button button-secondary" href="user/begivenheder.html">Begivenheder</a>
+          <a class="button button-secondary" href="user/begivenhed.html">Begivenhed</a>
+          <a class="button button-secondary" href="user/nyheder.html">Nyheder</a>
+          <a class="button button-secondary" href="user/nyhed.html">Nyhed</a>
+          <a class="button button-secondary" href="user/medlemmer.html">Medlemmer</a>
+          <a class="button button-secondary" href="user/betal-medlemskab.html">Betal medlemskab</a>
         </div>
       </article>
 
       <article class="overview-card">
-        <span class="nav-pill">Skelet C</span>
-        <h2>Admin</h2>
+        <span class="nav-pill">Admin</span>
+        <h2>Adminflow</h2>
         <p>
-          Tre admin-sider for beskeder, massebehandling og roller i samme layoutfamilie som menu-siderne.
+          Admin har nu egne sider for begivenheder, nyheder, betaling og de eksisterende værktøjer.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="admin.html">Beskeder</a>
-          <a class="button button-secondary" href="admin-massebehandling.html">Massebehandling</a>
-          <a class="button button-secondary" href="admin-roller.html">Roller</a>
+          <a class="button button-primary" href="admin/forside.html">Forside</a>
+          <a class="button button-secondary" href="admin/begivenheder.html">Begivenheder</a>
+          <a class="button button-secondary" href="admin/begivenhed.html">Begivenhed</a>
+          <a class="button button-secondary" href="admin/nyheder.html">Nyheder</a>
+          <a class="button button-secondary" href="admin/nyhed.html">Nyhed</a>
+          <a class="button button-secondary" href="admin/betal-medlemskab.html">Betal medlemskab</a>
+          <a class="button button-secondary" href="admin/beskeder.html">Beskeder</a>
+          <a class="button button-secondary" href="admin/massebehandling.html">Massebehandling</a>
+          <a class="button button-secondary" href="admin/roller.html">Roller</a>
         </div>
       </article>
     </section>
   </main>
 
   <footer class="page-shell page-footer">
-    Designudkastene er statiske HTML-filer og er lavet som visuelle skitser, ikke som faerdig implementering.
+    Designudkastene er statiske HTML-filer og er lavet som visuelle skitser, ikke som færdig implementering.
   </footer>
 </body>
 </html>
