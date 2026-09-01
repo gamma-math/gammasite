@@ -3,8 +3,8 @@ import { Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, registrationsApi } from "../services/api.js";
-import { attendeeAvatarUrl, attendeeName } from "../utils/avatar.js";
-import { formatDate } from "../utils/format.js";
+import { attendeeInitials, attendeeName } from "../utils/avatar.js";
+import { contentMetaLabel, formatDate } from "../utils/format.js";
 
 export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
@@ -33,16 +33,17 @@ export function ContentDetailPage({ slug, type, user }) {
   }, [item?.id, item?.type, user.isAuthenticated]);
 
   if (error) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"}><p className="status-message">{error}</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message">{error}</p></MenuLayout>;
   }
 
   if (!item) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"}><p className="muted">Henter indhold...</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
   }
 
   const roles = new Set(user.roles ?? []);
   const isAdmin = roles.has("Admin") || roles.has("ADMIN");
   const isEvent = item.type === "EVENT";
+  const hasImage = Boolean(item.pictureUrl);
   const registrationsPath = `/react/events/${item.slug}/registrations`;
   const editPath = `/react/admin/events?edit=${item.id}`;
 
@@ -63,31 +64,19 @@ export function ContentDetailPage({ slug, type, user }) {
   }
 
   return (
-    <MenuLayout active={item.type === "EVENT" ? "/react/events" : "/react/news"}>
+    <MenuLayout active={item.type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
       <article className="menu-detail-card">
         <div className="menu-detail-hero">
           <div>
             <p className="menu-section-title">{isEvent ? "Begivenheder" : "Nyheder"}</p>
-            <small>{isEvent ? formatDate(item.startDate) : formatDate(item.publishedAt)}</small>
-            <h1>{item.title}</h1>
+            <p className="menu-panel-lead">{isEvent ? "Se selve eventet og læs mere om programmet." : "Læs nyheden fra foreningen."}</p>
           </div>
-          {isEvent && (
-            user.isAuthenticated ? (
-              <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
-                {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
-                {registration ? "Afmeld" : "Tilmeld"}
-              </button>
-            ) : (
-              <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
-                <LogIn size={16} />
-                Tilmeld
-              </a>
-            )
-          )}
         </div>
-        <img className="menu-detail-image" src={item.pictureUrl || `https://picsum.photos/seed/gamma-detail-${item.id}/1400/640`} alt="" />
+        <img className={`menu-detail-image ${hasImage ? "" : "content-logo-fallback"}`.trim()} src={hasImage ? item.pictureUrl : "/lib/logo_blue.png"} alt="" />
         <div className="menu-detail-body">
           <div className="menu-detail-copy">
+            <small>{contentMetaLabel(item)}</small>
+            <h1>{item.title}</h1>
             <p>{item.summary}</p>
             <p>{item.body}</p>
             <div className="menu-detail-meta">
@@ -99,10 +88,21 @@ export function ContentDetailPage({ slug, type, user }) {
               <div className="menu-detail-bottom-bar">
                 <div className="menu-attendee-preview" aria-hidden="true">
                   {registrations.slice(0, 4).map((eventRegistration) => (
-                    <img src={attendeeAvatarUrl(eventRegistration)} alt={attendeeName(eventRegistration)} key={eventRegistration.id} />
+                    <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
                   ))}
                 </div>
                 <div className="menu-detail-footer-actions">
+                  {user.isAuthenticated ? (
+                    <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
+                      {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
+                      {registration ? "Afmeld" : "Tilmeld"}
+                    </button>
+                  ) : (
+                    <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
+                      <LogIn size={16} />
+                      Tilmeld
+                    </a>
+                  )}
                   {user.isAuthenticated && (
                     <Link className="menu-attend-button" href={registrationsPath}>
                       <Users size={16} />

@@ -20,7 +20,7 @@ export function LibraryPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/library">
+    <MenuLayout active="/react/library" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Bibliotek</p>

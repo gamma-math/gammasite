@@ -31,4 +31,24 @@ namespace GamMaSite.ViewModels.Api
 
         public string ResponseText { get; set; }
     }
+
+    public class UpdateEventRegistrationRequest
+    {
+        public string RegistrationType { get; set; }
+
+        public bool Registered { get; set; }
+
+        public string ResponseText { get; set; }
+    }
+
+    public class AddEventRegistrationRequest
+    {
+        public string UserId { get; set; }
+
+        public string RegistrationType { get; set; }
+
+        public bool Registered { get; set; } = true;
+
+        public string ResponseText { get; set; }
+    }
 }

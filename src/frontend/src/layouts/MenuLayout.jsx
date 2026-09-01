@@ -3,12 +3,12 @@ import { Link } from "../routes/navigation.jsx";
 const userItems = [
   { href: "/react/events", label: "Begivenheder" },
   { href: "/react/news", label: "Nyheder" },
-  { href: "/react/members", label: "Medlemmer" },
-  { href: "/react/pay", label: "Betal medlemskab" }
+  { href: "/react/members", label: "Medlemmer", requiresAuth: true },
+  { href: "/react/pay", label: "Betal medlemskab", requiresAuth: true }
 ];
 
-export function MenuLayout({ active, title = "Menu", extraItems = [], children }) {
-  const items = [...userItems, ...extraItems];
+export function MenuLayout({ active, title = "Menu", isAuthenticated = false, contentClassName = "", extraItems = [], children }) {
+  const items = [...userItems, ...extraItems].filter((item) => !item.requiresAuth || isAuthenticated);
 
   return (
     <main className="menu-shell">
@@ -23,7 +23,7 @@ export function MenuLayout({ active, title = "Menu", extraItems = [], children }
             ))}
           </nav>
         </aside>
-        <section className="menu-content">{children}</section>
+        <section className={`menu-content ${contentClassName}`.trim()}>{children}</section>
       </section>
     </main>
   );

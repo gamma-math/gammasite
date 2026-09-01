@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { membersApi } from "../services/api.js";
-import { SearchToolbar } from "./MembersPage.jsx";
+import { Pagination, SearchToolbar, SortableHeader, useFilteredMembers, usePagedItems, useSortedMembers } from "./MembersPage.jsx";
 
 const statuses = ["OPRETTET", "BETALT", "SKYLDER", "INAKTIV", "STUDERENDE"];
 
 export function AdminMembersPage({ isAdmin }) {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState({ key: "name", direction: "asc" });
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(1);
   const [mass, setMass] = useState({ from: today(), to: today(1), status: "SKYLDER" });
   const [message, setMessage] = useState("");
 
@@ -33,10 +36,13 @@ export function AdminMembersPage({ isAdmin }) {
     await load();
   }
 
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase();
-    return members.filter((member) => [member.name, member.email, member.status].some((value) => (value ?? "").toLowerCase().includes(term)));
-  }, [members, search]);
+  const filtered = useFilteredMembers(members, search, ["name", "email", "phoneNumber", "status"]);
+  const sorted = useSortedMembers(filtered, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize, sort.key, sort.direction]);
 
   if (!isAdmin) {
     return <AdminLayout active="/react/admin/users" canWrite={false}><p className="status-message">Kun ADMIN kan administrere medlemmer.</p></AdminLayout>;
@@ -57,20 +63,20 @@ export function AdminMembersPage({ isAdmin }) {
         <label className="admin-field"><span>Status</span><select value={mass.status} onChange={(event) => setMass({ ...mass, status: event.target.value })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
         <button className="profile-button" type="submit">Skift status</button>
       </form>
-      <SearchToolbar search={search} setSearch={setSearch} />
+      <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} />
       <div className="menu-table-wrap">
         <table className="menu-member-table">
           <thead>
             <tr>
-              <th>Navn</th>
-              <th>Årgang</th>
-              <th>Email</th>
-              <th>Telefon</th>
-              <th>Status</th>
+              <SortableHeader label="Navn" sortKey="name" sort={sort} setSort={setSort} />
+              <SortableHeader label="Årgang" sortKey="graduationYear" sort={sort} setSort={setSort} />
+              <SortableHeader label="Email" sortKey="email" sort={sort} setSort={setSort} />
+              <SortableHeader label="Telefon" sortKey="phoneNumber" sort={sort} setSort={setSort} />
+              <SortableHeader label="Status" sortKey="status" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>
-            {filtered.map((member) => (
+            {visibleItems.map((member) => (
               <tr key={member.id}>
                 <td>{member.name}</td>
                 <td>{member.graduationYear || ""}</td>
@@ -83,9 +89,15 @@ export function AdminMembersPage({ isAdmin }) {
                 </td>
               </tr>
             ))}
+            {visibleItems.length === 0 && (
+              <tr>
+                <td colSpan="5">Ingen medlemmer matcher søgningen.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+      <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
     </AdminLayout>
   );
 }

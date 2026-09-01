@@ -17,7 +17,7 @@ export function CalendarPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/calendar">
+    <MenuLayout active="/react/calendar" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Kalender</p>

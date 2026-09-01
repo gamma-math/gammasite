@@ -110,6 +110,21 @@ namespace GamMaSite.Controllers
             }
         }
 
+        [HttpPost("{id:int}/registrations/admin")]
+        [Authorize(Roles = AdminRoles)]
+        public async Task<IActionResult> AddRegistration(int id, AddEventRegistrationRequest request)
+        {
+            try
+            {
+                var registration = await _registrationService.AddAsync(id, request);
+                return Ok(registration.ToDto());
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         [HttpDelete("{id:int}/registrations/me")]
         [Authorize]
         public async Task<IActionResult> Unregister(int id)
@@ -132,6 +147,21 @@ namespace GamMaSite.Controllers
         {
             var registrations = await _registrationService.GetRegistrationsAsync(id);
             return Ok(registrations.Select(registration => registration.ToDto()));
+        }
+
+        [HttpPut("{id:int}/registrations/{registrationId:int}")]
+        [Authorize(Roles = AdminRoles)]
+        public async Task<IActionResult> UpdateRegistration(int id, int registrationId, UpdateEventRegistrationRequest request)
+        {
+            try
+            {
+                var registration = await _registrationService.UpdateAsync(id, registrationId, request);
+                return registration == null ? NotFound() : Ok(registration.ToDto());
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         private bool UserCanReadUnpublished()

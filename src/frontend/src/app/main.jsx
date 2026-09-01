@@ -115,10 +115,10 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
     return <FrontPage />;
   }
   if (path === "/react/events" || path === "/react/arrangementer" || path === "/Home/Arrangementer") {
-    return <FrontPage mode="EVENT" title="Begivenheder" />;
+    return <FrontPage mode="EVENT" title="Begivenheder" user={user} />;
   }
   if (path === "/react/news") {
-    return <FrontPage mode="NEWS" title="Nyheder" />;
+    return <FrontPage mode="NEWS" title="Nyheder" user={user} />;
   }
   if (path === "/react/members" || path === "/Users") {
     return <MembersPage user={user} />;
@@ -136,13 +136,13 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
     return <GenericPaymentPage user={user} />;
   }
   if (path === "/react/pay/success" || path === "/Pay/Success") {
-    return <PaymentStatusPage status="success" />;
+    return <PaymentStatusPage status="success" user={user} />;
   }
   if (path === "/react/pay/kontingent-success") {
-    return <PaymentStatusPage status="kontingent-success" />;
+    return <PaymentStatusPage status="kontingent-success" user={user} />;
   }
   if (path === "/react/pay/cancel" || path === "/Pay/Cancel") {
-    return <PaymentStatusPage status="cancel" />;
+    return <PaymentStatusPage status="cancel" user={user} />;
   }
   const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
   if (oldProductMatch && oldProductMatch[1]) {

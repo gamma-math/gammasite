@@ -4,6 +4,8 @@ import { Link } from "../routes/navigation.jsx";
 import { paymentsApi } from "../services/api.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
+const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
+
 export function PaymentPage({ user }) {
   const [products, setProducts] = useState([]);
 
@@ -17,25 +19,35 @@ export function PaymentPage({ user }) {
     return <LoginRequired title="Betaling" />;
   }
 
+  const membershipProduct = products[0];
+
   return (
-    <MenuLayout active="/react/pay">
+    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Betal medlemskab</p>
-          <h1>Produkter</h1>
         </div>
       </div>
-      <div className="payment-grid">
-        {products.map((product) => (
-          <article className="menu-payment-card" key={product.id}>
-            <p className="menu-payment-kicker">{product.currency?.toUpperCase() ?? "DKK"}</p>
-            <h2>{product.name}</h2>
-            <p className="muted">{product.description}</p>
-            <strong>{product.unitAmount ? `${product.unitAmount / 100} kr.` : "Pris ikke sat"}</strong>
-            <Link className="menu-payment-button" href={`/react/pay/products/${product.id}`}>Vælg</Link>
-          </article>
-        ))}
-      </div>
+
+      <article className="menu-payment-card menu-payment-choice-card">
+        <p className="menu-payment-kicker">Vælg betalingsform</p>
+        <h1>Betal dit medlemskab</h1>
+        <div className="payment-choice-actions">
+          {membershipProduct ? (
+            <Link className="menu-payment-button menu-payment-button-large" href={`/react/pay/products/${membershipProduct.id}`}>
+              Betal med hævekort
+            </Link>
+          ) : (
+            <button className="menu-payment-button menu-payment-button-large" type="button" disabled>
+              Henter hævekort
+            </button>
+          )}
+          <span className="payment-choice-divider">eller</span>
+          <a className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" href={mobilePayMembershipUrl} target="_blank" rel="noreferrer">
+            Betal med MobilePay
+          </a>
+        </div>
+      </article>
     </MenuLayout>
   );
 }
@@ -54,6 +66,25 @@ export function ProductPaymentPage({ productId, user }) {
     return <LoginRequired title="Betaling" />;
   }
 
+  if (!product && !error) {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
+        <div className="menu-loading-card">
+          <span className="menu-loading-dot" aria-hidden="true" />
+          <p>Henter produkt...</p>
+        </div>
+      </MenuLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
+        <p className="status-message">{error}</p>
+      </MenuLayout>
+    );
+  }
+
   async function checkout() {
     const config = await paymentsApi.config();
     const session = await paymentsApi.startProductCheckout(product.id, user.id);
@@ -61,15 +92,14 @@ export function ProductPaymentPage({ productId, user }) {
   }
 
   return (
-    <MenuLayout active="/react/pay">
-      <article className="menu-payment-card">
+    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
+      <article className="menu-payment-card menu-payment-product-card">
         <p className="menu-payment-kicker">Produktside</p>
-        <h1>{product?.name ?? "Henter produkt..."}</h1>
-        {error && <p className="status-message">{error}</p>}
-        <p className="muted">{product?.description}</p>
-        {product?.additional && <p>{product.additional}</p>}
-        {product?.conditions && <p>Ved køb accepteres de gældende <a href={product.conditions}>{product.conditionsName || "betingelser"}</a>.</p>}
-        <button className="menu-payment-button" type="button" disabled={!product} onClick={checkout}>Køb {product?.name?.toLowerCase() ?? ""}</button>
+        <h1>{product.name}</h1>
+        <p className="muted">{product.description}</p>
+        {product.additional && <p>{product.additional}</p>}
+        {product.conditions && <p>Ved køb accepteres de gældende <a href={product.conditions}>{product.conditionsName || "betingelser"}</a>.</p>}
+        <button className="menu-payment-button" type="button" onClick={checkout}>Køb {product.name.toLowerCase()}</button>
       </article>
     </MenuLayout>
   );
@@ -91,7 +121,7 @@ export function GenericPaymentPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/pay">
+    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
       <form className="menu-payment-card" onSubmit={checkout}>
         <p className="menu-payment-kicker">Valgfrit beløb</p>
         <h1>Overfør valgfrit beløb</h1>
@@ -103,10 +133,10 @@ export function GenericPaymentPage({ user }) {
   );
 }
 
-export function PaymentStatusPage({ status }) {
+export function PaymentStatusPage({ status, user }) {
   const success = status === "success" || status === "kontingent-success";
   return (
-    <MenuLayout active="/react/pay">
+    <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated}>
       <article className="menu-payment-card">
         <p className="menu-payment-kicker">Betaling</p>
         <h1>{success ? "Køb gennemført" : "Køb annulleret"}</h1>

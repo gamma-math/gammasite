@@ -12,6 +12,22 @@ export function formatDate(value) {
   }).format(new Date(value));
 }
 
+export function formatShortDate(value) {
+  if (!value) {
+    return "Ingen dato";
+  }
+
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "numeric",
+    month: "long"
+  }).format(new Date(value));
+}
+
+export function contentMetaLabel(item) {
+  const date = item.type === "EVENT" ? formatShortDate(item.startDate) : formatShortDate(item.publishedAt);
+  return item.type === "EVENT" && item.location ? `${date} · ${item.location}` : date;
+}
+
 export function detailPath(item) {
   return item.type === "EVENT" ? `/react/events/${item.slug}` : `/react/news/${item.slug}`;
 }

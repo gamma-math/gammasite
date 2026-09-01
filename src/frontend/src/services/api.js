@@ -39,8 +39,10 @@ export const contentApi = {
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
   register: (contentId, payload) => request(`/api/content/${contentId}/registrations`, { method: "POST", body: JSON.stringify(payload) }),
+  add: (contentId, payload) => request(`/api/content/${contentId}/registrations/admin`, { method: "POST", body: JSON.stringify(payload) }),
   unregister: (contentId) => request(`/api/content/${contentId}/registrations/me`, { method: "DELETE" }),
-  list: (contentId) => request(`/api/content/${contentId}/registrations`)
+  list: (contentId) => request(`/api/content/${contentId}/registrations`),
+  update: (contentId, registrationId, payload) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "PUT", body: JSON.stringify(payload) })
 };
 
 export const emailTemplatesApi = {

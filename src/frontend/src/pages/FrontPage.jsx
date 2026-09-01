@@ -4,9 +4,10 @@ import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi } from "../services/api.js";
 
-export function FrontPage({ mode, title }) {
+export function FrontPage({ mode, title, user }) {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     contentApi.listPublished(mode)
@@ -14,9 +15,20 @@ export function FrontPage({ mode, title }) {
       .catch((err) => setError(err.message));
   }, [mode]);
 
+  useEffect(() => {
+    setPageIndex(0);
+  }, [mode, items.length]);
+
+  const sortedItems = [...items].sort((left, right) => contentDateValue(right) - contentDateValue(left));
+
   if (mode) {
+    const pageSize = 3;
+    const pageCount = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+    const currentPage = Math.min(pageIndex, pageCount - 1);
+    const visibleItems = sortedItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+
     return (
-      <MenuLayout active={mode === "EVENT" ? "/react/events" : "/react/news"}>
+      <MenuLayout active={mode === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user?.isAuthenticated}>
         <div className="menu-panel-header">
           <div>
             <p className="menu-section-title">{title}</p>
@@ -28,18 +40,18 @@ export function FrontPage({ mode, title }) {
           </div>
         </div>
         <div className="menu-event-rail-head">
-          <button className="menu-arrow-button" type="button" aria-label="Forrige">&lt;</button>
-          <button className="menu-arrow-button" type="button" aria-label="Næste">&gt;</button>
+          <button className="menu-arrow-button" type="button" aria-label="Forrige" disabled={currentPage === 0} onClick={() => setPageIndex((page) => Math.max(0, page - 1))}>&lt;</button>
+          <button className="menu-arrow-button" type="button" aria-label="Næste" disabled={currentPage >= pageCount - 1} onClick={() => setPageIndex((page) => Math.min(pageCount - 1, page + 1))}>&gt;</button>
         </div>
         {error && <p className="status-message">{error}</p>}
         <div className="menu-event-grid menu-event-grid-three">
-          {items.map((item) => <ContentCard item={item} key={item.id} />)}
+          {visibleItems.map((item) => <ContentCard item={item} key={item.id} />)}
         </div>
       </MenuLayout>
     );
   }
 
-  const featured = items.slice(0, 4);
+  const featured = sortedItems.slice(0, 4);
 
   return (
     <main className="page-shell frontpage-main">
@@ -66,7 +78,7 @@ export function FrontPage({ mode, title }) {
       <section className="frontpage-section frontpage-news">
         <div className="frontpage-section-head">
           <h2>Nyheder og events</h2>
-          <Link className="frontpage-button frontpage-button-secondary" href="/react/news">Se mere</Link>
+          <Link className="frontpage-button frontpage-button-secondary" href="/react/events">Se mere</Link>
         </div>
         {error && <p className="status-message">{error}</p>}
         <div className="frontpage-news-grid">
@@ -75,4 +87,9 @@ export function FrontPage({ mode, title }) {
       </section>
     </main>
   );
+}
+
+function contentDateValue(item) {
+  const value = item.type === "EVENT" ? item.startDate : item.publishedAt;
+  return value ? new Date(value).getTime() : 0;
 }
