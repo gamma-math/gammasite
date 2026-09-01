@@ -4,7 +4,6 @@ import { Menu, UserCircle } from "lucide-react";
 import { AdminContentPage } from "../pages/AdminContentPage.jsx";
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
-import { AdminRegistrationsPage } from "../pages/AdminRegistrationsPage.jsx";
 import { AdminRolesPage } from "../pages/AdminRolesPage.jsx";
 import { AdminTemplatesPage } from "../pages/AdminTemplatesPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
@@ -36,13 +35,17 @@ function useRoute() {
 }
 
 function useCurrentUser() {
-  const [user, setUser] = useState({ isAuthenticated: false, roles: [] });
+  const [user, setUser] = useState({ isLoading: true, isAuthenticated: false, roles: [] });
 
   useEffect(() => {
     let active = true;
     meApi.get().then((result) => {
       if (active) {
-        setUser(result);
+        setUser({ ...result, isLoading: false });
+      }
+    }).catch(() => {
+      if (active) {
+        setUser({ isLoading: false, isAuthenticated: false, roles: [] });
       }
     });
     return () => {
@@ -91,14 +94,17 @@ function Header({ user, isReadAdmin }) {
               )}
             </div>
             <div className="frontpage-right-actions">
-              {user.isAuthenticated ? (
+              {user.isLoading ? (
+                <span className="frontpage-auth-placeholder" aria-label="Henter brugerstatus" />
+              ) : user.isAuthenticated ? (
                 <a className="frontpage-profile-link frontpage-profile-link-default" href="/Identity/Account/Manage" aria-label="Profil">
                   <UserCircle size={23} />
                 </a>
               ) : (
-                <a className="frontpage-profile-link frontpage-profile-link-default" href="/Identity/Account/Login" aria-label="Login">
-                  <UserCircle size={23} />
-                </a>
+                <>
+                  <a className="frontpage-button frontpage-button-secondary" href="/Identity/Account/Login">Login</a>
+                  <a className="frontpage-button frontpage-button-primary" href="/Identity/Account/Register">Bliv medlem</a>
+                </>
               )}
             </div>
           </nav>
@@ -185,10 +191,6 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   }
   if (path === "/react/admin/roles" || path === "/Role" || path === "/Role/Create" || path.startsWith("/Role/Update")) {
     return <AdminRolesPage isAdmin={isAdmin} />;
-  }
-  const registrationMatch = path.match(/^\/react\/admin\/events\/(\d+)\/registrations$/);
-  if (registrationMatch) {
-    return <AdminRegistrationsPage contentId={Number(registrationMatch[1])} isReadAdmin={isReadAdmin} />;
   }
   if (path === "/react/admin/events") {
     const editId = Number(new URLSearchParams(route.search).get("edit"));

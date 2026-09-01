@@ -4,8 +4,7 @@ export const adminItems = [
   { href: "/react/admin/users", label: "Medlemmer" },
   { href: "/react/admin/messages", label: "Beskeder" },
   { href: "/react/admin/roles", label: "Roller" },
-  { href: "/react/admin/templates", label: "Email templates" },
-  { href: "/react/admin/events/1/registrations", label: "Tilmeldte", readAdmin: true }
+  { href: "/react/admin/templates", label: "Email templates" }
 ];
 
 export function navigate(href) {

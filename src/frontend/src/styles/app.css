@@ -145,6 +145,26 @@ img {
   padding: 0;
 }
 
+.frontpage-auth-placeholder {
+  width: 112px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f3f7fb, #ffffff, #f3f7fb);
+  background-size: 220% 100%;
+  animation: authPlaceholder 1.1s ease-in-out infinite;
+}
+
+@keyframes authPlaceholder {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 220% 0;
+  }
+}
+
 .frontpage-main {
   padding: 28px 0 40px;
 }

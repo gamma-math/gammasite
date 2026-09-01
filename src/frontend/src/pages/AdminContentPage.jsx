@@ -161,7 +161,6 @@ export function AdminContentPage({ type, isAdmin, selectedId }) {
                   <td className="table-actions">
                     {isAdmin && <button className="admin-table-button" type="button" onClick={() => setSelected(item)}>Rediger</button>}
                     <Link className="admin-table-button" href={detailPath(item)}><Eye size={14} /> Se</Link>
-                    {item.type === "EVENT" && <Link className="admin-table-button" href={`/react/admin/events/${item.id}/registrations`}>Tilmeldte</Link>}
                   </td>
                 </tr>
               ))}
