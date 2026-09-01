@@ -54,3 +54,6 @@ multiproject.code-workspace
 .env.*
 *.log
 run-local.*
+
+# Frontend dependencies
+node_modules/

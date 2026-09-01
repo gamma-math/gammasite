@@ -78,6 +78,14 @@ namespace GamMaSite.Services
             return true;
         }
 
+        public async Task<EventRegistration> GetRegistrationAsync(int contentItemId, string userId)
+        {
+            return await _db.EventRegistrations
+                .Include(item => item.User)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+        }
+
         public async Task<IReadOnlyList<EventRegistration>> GetRegistrationsAsync(int contentItemId)
         {
             return await _db.EventRegistrations

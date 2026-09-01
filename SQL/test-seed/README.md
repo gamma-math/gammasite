@@ -18,6 +18,10 @@ Foelgende scripts indsaetter testdata:
 2. `02_AspNetUsers.sql`
 3. `03_AspNetUserRoles.sql`
 4. `07_AspNetUserTokens.sql`
+5. `13_ContentItems.sql`
+6. `14_ContentLinks.sql`
+7. `15_EventRegistrations.sql`
+8. `16_EmailTemplates.sql`
 
 Foelgende scripts rydder kun tabellerne og efterlader dem tomme:
 
@@ -49,15 +53,25 @@ Hvis du vil koere scripts enkeltvist, brug denne rekkefolge:
 10. `10_PersistedGrants.sql`
 11. `11_UserOverview.sql`
 12. `12___EFMigrationsHistory.sql`
+13. `13_ContentItems.sql`
+14. `14_ContentLinks.sql`
+15. `15_EventRegistrations.sql`
+16. `16_EmailTemplates.sql`
 
 Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sql`.
 
-`00_seed_all.sql` rydder og seeder kun disse tabeller:
+`00_seed_all.sql` rydder og seeder disse tabeller:
 
 1. `AspNetRoles`
 2. `AspNetUsers`
 3. `AspNetUserRoles`
 4. `AspNetUserTokens`
+5. `ContentItems`
+6. `ContentLinks`
+7. `EventRegistrations`
+8. `EmailTemplates`
+
+De nye content-tabeller kan ogsaa seedes separat med `13_ContentItems.sql` til `16_EmailTemplates.sql`, saa de kan koeres ovenpaa en eksisterende lokal Identity-database uden at overskrive brugere og roller.
 
 ## Bemaerkninger
 

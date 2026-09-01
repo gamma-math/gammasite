@@ -34,7 +34,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Roles = AdminRoles)]
+        [Authorize(Roles = ReadAdminRoles)]
         public async Task<IActionResult> GetAll([FromQuery] string type, [FromQuery] string status)
         {
             var items = await _contentService.GetAllAsync(type, status);
@@ -118,8 +118,16 @@ namespace GamMaSite.Controllers
             return deleted ? NoContent() : NotFound();
         }
 
+        [HttpGet("{id:int}/registrations/me")]
+        [Authorize]
+        public async Task<IActionResult> GetMyRegistration(int id)
+        {
+            var registration = await _registrationService.GetRegistrationAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return registration == null ? NotFound() : Ok(registration.ToDto());
+        }
+
         [HttpGet("{id:int}/registrations")]
-        [Authorize(Roles = ReadAdminRoles)]
+        [Authorize]
         public async Task<IActionResult> GetRegistrations(int id)
         {
             var registrations = await _registrationService.GetRegistrationsAsync(id);

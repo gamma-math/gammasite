@@ -114,6 +114,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Controller routes and Razor pages
+app.MapControllers();
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 

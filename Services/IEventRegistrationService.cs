@@ -9,6 +9,8 @@ namespace GamMaSite.Services
     {
         Task<EventRegistration> RegisterAsync(int contentItemId, string userId, SaveEventRegistrationRequest request);
 
+        Task<EventRegistration> GetRegistrationAsync(int contentItemId, string userId);
+
         Task<bool> UnregisterAsync(int contentItemId, string userId);
 
         Task<IReadOnlyList<EventRegistration>> GetRegistrationsAsync(int contentItemId);
