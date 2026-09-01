@@ -59,6 +59,11 @@ builder.Services.AddTransient<IEmailSender, EmailService>(EmailInstance);
 builder.Services.AddScoped<IStripeService, StripeService>(i => new StripeService());
 StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
+// API services used by the future React frontend.
+builder.Services.AddScoped<IContentService, ContentService>();
+builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>
     new GithubService(
