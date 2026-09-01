@@ -1,6 +1,7 @@
 import { CalendarDays } from "lucide-react";
 import { Link } from "../routes/navigation.jsx";
 import { contentMetaLabel, detailPath } from "../utils/format.js";
+import { sanitizeHtml } from "../utils/richText.js";
 
 export function ContentCard({ item, variant }) {
   const hasImage = Boolean(item.pictureUrl);
@@ -19,7 +20,9 @@ export function ContentCard({ item, variant }) {
         ) : (
           <h2><Link className="menu-event-title-link" href={detailPath(item)}>{item.title}</Link></h2>
         )}
-        <p>{item.summary || item.body || "Ingen beskrivelse endnu."}</p>
+        <div className="content-card-rich-excerpt">
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.summary ?? "") }} />
+        </div>
         <div className="tag-row">
           {(item.tags ?? "").split(",").filter(Boolean).slice(0, 3).map((tag) => (
             <span className="tag" key={tag}>{tag.trim()}</span>

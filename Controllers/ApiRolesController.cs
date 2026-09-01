@@ -53,6 +53,11 @@ namespace GamMaSite.Controllers
                 return NotFound();
             }
 
+            if (string.Equals(role.Name, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { error = "ADMIN-rollen kan ikke slettes" });
+            }
+
             var result = await _roleManager.DeleteAsync(role);
             return result.Succeeded ? NoContent() : BadRequest(new { error = string.Join(", ", result.Errors.Select(error => error.Description)) });
         }

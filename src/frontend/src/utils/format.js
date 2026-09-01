@@ -44,6 +44,7 @@ export function emptyContent(type) {
     status: "DRAFT",
     startDate: "",
     endDate: "",
+    publishedAt: "",
     location: "",
     links: []
   };

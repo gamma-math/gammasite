@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
+import { CalendarPlus, Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
+import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 
 export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
@@ -45,7 +46,9 @@ export function ContentDetailPage({ slug, type, user }) {
   const isEvent = item.type === "EVENT";
   const hasImage = Boolean(item.pictureUrl);
   const registrationsPath = `/react/events/${item.slug}/registrations`;
-  const editPath = `/react/admin/events?edit=${item.id}`;
+  const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
+  const calendarFileName = `${item.slug || "begivenhed"}.ics`;
+  const calendarHref = isEvent ? createCalendarHref(item) : "";
 
   async function toggleRegistration() {
     if (registration) {
@@ -78,12 +81,18 @@ export function ContentDetailPage({ slug, type, user }) {
             <small>{contentMetaLabel(item)}</small>
             <h1>{item.title}</h1>
             <p>{item.summary}</p>
-            <p>{item.body}</p>
+            <div className="menu-detail-rich-body" dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body ?? "") }} />
             <div className="menu-detail-meta">
               <span className="tag tag-kind">{isEvent ? "Arrangement" : "Nyhed"}</span>
-              {item.location && <span className="tag">{item.location}</span>}
               {(item.tags ?? "").split(",").filter(Boolean).map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}
             </div>
+            {isEvent && (
+              <div className="event-detail-schedule">
+                {item.location && <div><strong>Sted:</strong> {item.location}</div>}
+                {item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}
+                {item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}
+              </div>
+            )}
             {isEvent && (
               <div className="menu-detail-bottom-bar">
                 <div className="menu-attendee-preview" aria-hidden="true">
@@ -106,7 +115,7 @@ export function ContentDetailPage({ slug, type, user }) {
                   {user.isAuthenticated && (
                     <Link className="menu-attend-button" href={registrationsPath}>
                       <Users size={16} />
-                      Se tilmeldte
+                      Tilmeldte
                     </Link>
                   )}
                   {isAdmin && (
@@ -115,6 +124,10 @@ export function ContentDetailPage({ slug, type, user }) {
                       Rediger
                     </Link>
                   )}
+                  <a className="menu-attend-button" href={calendarHref} download={calendarFileName}>
+                    <CalendarPlus size={16} />
+                    Kalender
+                  </a>
                 </div>
               </div>
             )}
@@ -140,4 +153,46 @@ function shortLinkLabel(label) {
     .replace("-gruppen", "")
     .replace("Linked In", "LinkedIn")
     .trim();
+}
+
+function createCalendarHref(item) {
+  const startsAt = toIcsDate(item.startDate);
+  const endsAt = toIcsDate(item.endDate || item.startDate);
+  const body = htmlToText(item.body ?? item.summary ?? "");
+  const uid = `gamma-${item.id || item.slug}@gammasite`;
+  const calendar = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//GamMa//GamMa Site//DA",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${escapeIcsText(uid)}`,
+    `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
+    startsAt ? `DTSTART:${startsAt}` : "",
+    endsAt ? `DTEND:${endsAt}` : "",
+    `SUMMARY:${escapeIcsText(item.title ?? "Begivenhed")}`,
+    item.location ? `LOCATION:${escapeIcsText(item.location)}` : "",
+    body ? `DESCRIPTION:${escapeIcsText(body)}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ].filter(Boolean).join("\r\n");
+
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(calendar)}`;
+}
+
+function toIcsDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function escapeIcsText(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 }

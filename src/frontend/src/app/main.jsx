@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Menu, UserCircle } from "lucide-react";
-import { AdminContentPage } from "../pages/AdminContentPage.jsx";
+import { AdminContentEditorPage, AdminContentPage } from "../pages/AdminContentPage.jsx";
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
-import { AdminRolesPage } from "../pages/AdminRolesPage.jsx";
+import { AdminRolesEditorPage, AdminRolesPage } from "../pages/AdminRolesPage.jsx";
 import { AdminTemplatesPage } from "../pages/AdminTemplatesPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
@@ -180,6 +180,11 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/admin/news") {
     return <AdminContentPage type="NEWS" isAdmin={isAdmin} />;
   }
+  const adminNewsEditorMatch = path.match(/^\/react\/admin\/news\/(new|\d+\/edit)$/);
+  if (adminNewsEditorMatch) {
+    const itemId = adminNewsEditorMatch[1] === "new" ? null : Number(adminNewsEditorMatch[1].split("/")[0]);
+    return <AdminContentEditorPage type="NEWS" isAdmin={isAdmin} itemId={itemId} />;
+  }
   if (path === "/react/admin/templates") {
     return <AdminTemplatesPage isAdmin={isAdmin} />;
   }
@@ -189,12 +194,27 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/admin/messages" || path === "/Messages") {
     return <AdminMessagesPage isAdmin={isAdmin} />;
   }
-  if (path === "/react/admin/roles" || path === "/Role" || path === "/Role/Create" || path.startsWith("/Role/Update")) {
+  if (path === "/react/admin/roles/new" || path === "/Role/Create") {
+    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={null} />;
+  }
+  const adminRoleEditorMatch = path.match(/^\/react\/admin\/roles\/([^/]+)\/edit$/);
+  if (adminRoleEditorMatch) {
+    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={decodeURIComponent(adminRoleEditorMatch[1])} />;
+  }
+  const oldRoleUpdateMatch = path.match(/^\/Role\/Update\/?([^/]*)$/);
+  if (oldRoleUpdateMatch && oldRoleUpdateMatch[1]) {
+    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={decodeURIComponent(oldRoleUpdateMatch[1])} />;
+  }
+  if (path === "/react/admin/roles" || path === "/Role") {
     return <AdminRolesPage isAdmin={isAdmin} />;
   }
   if (path === "/react/admin/events") {
-    const editId = Number(new URLSearchParams(route.search).get("edit"));
-    return <AdminContentPage type="EVENT" isAdmin={isAdmin} selectedId={Number.isFinite(editId) ? editId : null} />;
+    return <AdminContentPage type="EVENT" isAdmin={isAdmin} />;
+  }
+  const adminEventEditorMatch = path.match(/^\/react\/admin\/events\/(new|\d+\/edit)$/);
+  if (adminEventEditorMatch) {
+    const itemId = adminEventEditorMatch[1] === "new" ? null : Number(adminEventEditorMatch[1].split("/")[0]);
+    return <AdminContentEditorPage type="EVENT" isAdmin={isAdmin} itemId={itemId} />;
   }
   return <FrontPage />;
 }

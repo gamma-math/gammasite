@@ -15,6 +15,7 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+.tmp-build-check/
 x64/
 x86/
 build/
