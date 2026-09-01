@@ -94,12 +94,16 @@ export function ProductPaymentPage({ productId, user }) {
   return (
     <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
       <article className="menu-payment-card menu-payment-product-card">
-        <p className="menu-payment-kicker">Produktside</p>
-        <h1>{product.name}</h1>
-        <p className="muted">{product.description}</p>
-        {product.additional && <p>{product.additional}</p>}
-        {product.conditions && <p>Ved køb accepteres de gældende <a href={product.conditions}>{product.conditionsName || "betingelser"}</a>.</p>}
-        <button className="menu-payment-button" type="button" onClick={checkout}>Køb {product.name.toLowerCase()}</button>
+        <div className="menu-payment-product-hero">
+          <p className="menu-section-title">Betal medlemskab</p>
+          <h1>{product.name}</h1>
+        </div>
+        <div className="menu-payment-product-body">
+          <p className="muted">{product.description}</p>
+          {product.additional && <p>{product.additional}</p>}
+          <p>Ved køb accepteres de gældende <Link href="/react/betingelser">Betingelser og vedtægter</Link>.</p>
+          <button className="menu-payment-button" type="button" onClick={checkout}>Køb {product.name.toLowerCase()}</button>
+        </div>
       </article>
     </MenuLayout>
   );

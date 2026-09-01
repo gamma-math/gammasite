@@ -1319,11 +1319,25 @@ img {
 }
 
 .menu-payment-product-card {
-  max-width: 680px;
-  gap: 8px;
-  padding: 24px 26px;
+  max-width: 920px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   background: #ffffff;
   box-shadow: none;
+}
+
+.menu-payment-product-hero {
+  padding: 34px 36px 42px;
+  border-bottom: 1px solid #dbe4f2;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.86) 55%, rgba(207, 219, 255, 0.72) 100%);
+}
+
+.menu-payment-product-body {
+  display: grid;
+  gap: 10px;
+  padding: 28px 36px 34px;
 }
 
 .menu-payment-product-card h1 {
@@ -1369,8 +1383,52 @@ img {
 
 .static-copy {
   display: grid;
-  gap: 14px;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
   line-height: 1.65;
+}
+
+.static-copy-hero {
+  padding: 34px 36px 42px;
+  border-bottom: 1px solid #dbe4f2;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.86) 55%, rgba(207, 219, 255, 0.72) 100%);
+}
+
+.static-copy-body {
+  display: grid;
+  gap: 22px;
+  padding: 30px 36px 10px;
+}
+
+.static-copy-section {
+  display: grid;
+  gap: 10px;
+  max-width: 880px;
+}
+
+.static-copy-section h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: "Sora", "Segoe UI", sans-serif;
+}
+
+.static-copy-section p,
+.static-copy-section ol,
+.static-copy-section ul {
+  margin: 0;
+  color: var(--muted);
+}
+
+.static-copy-section ol,
+.static-copy-section ul {
+  padding-left: 1.4rem;
+}
+
+.static-copy > .frontpage-button {
+  justify-self: start;
+  margin: 18px 36px 32px;
 }
 
 .frontpage-footer-band {
