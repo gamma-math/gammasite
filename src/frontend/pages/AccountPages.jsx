@@ -380,7 +380,7 @@ function LogoutPanel() {
   return (
     <div className="account-form account-manage-form">
       <Status error={error} />
-      <p className="account-help-text">Log ud af din GamMa-bruger på denne enhed.</p>
+      <p className="account-help-text">Log ud af din bruger.</p>
       <button className="profile-button" type="button" onClick={logout} disabled={isSubmitting}>
         {isSubmitting ? "Logger ud..." : "Log ud"}
       </button>
