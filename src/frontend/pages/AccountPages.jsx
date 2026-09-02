@@ -166,6 +166,7 @@ export function AccountManagePage({ user, section = "profile" }) {
         aargang: result.aargang ?? "",
         phoneNumber: result.phoneNumber ?? "",
         beskaeftigelse: result.beskaeftigelse ?? "",
+        isStudent: Boolean(result.isStudent) || result.status === "STUDERENDE",
         visibility: Boolean(result.visibility)
       });
       setEmail(result.email ?? "");
@@ -192,6 +193,16 @@ export function AccountManagePage({ user, section = "profile" }) {
             event.preventDefault();
             await runSubmit(setMessage, setError, setIsSubmitting, async () => {
               const result = await accountApi.updateProfile({ ...profileForm, aargang: Number(profileForm.aargang) });
+              setProfile((current) => ({
+                ...current,
+                status: result.status ?? current?.status,
+                isStudent: result.isStudent ?? current?.isStudent,
+                membershipPaidAt: result.membershipPaidAt ?? current?.membershipPaidAt
+              }));
+              setProfileForm((current) => ({
+                ...current,
+                isStudent: result.isStudent ?? current?.isStudent
+              }));
               setMessage(result.message);
             });
           }} />
@@ -239,6 +250,10 @@ function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
       <Field label="Telefon" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} />
       <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} />
       <Field label="Brugerstatus" value={profile.status ?? ""} disabled />
+      <label className="account-checkbox">
+        <input type="checkbox" checked={Boolean(form.isStudent)} disabled={profile.status === "STUDERENDE"} onChange={(event) => setForm({ ...form, isStudent: event.target.checked })} />
+        <span>Jeg er stadig studerende</span>
+      </label>
       <label className="account-checkbox">
         <input type="checkbox" checked={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.checked })} />
         <span>Brugerinfo synlig for medlemmer</span>

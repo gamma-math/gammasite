@@ -179,6 +179,8 @@ namespace GamMaSite.Controllers
                 phoneNumber = await _userManager.GetPhoneNumberAsync(user),
                 beskaeftigelse = user.Beskaeftigelse,
                 status = user.Status.ToString(),
+                isStudent = user.Status == UserStatus.STUDERENDE,
+                membershipPaidAt = user.KontingentDato,
                 visibility = user.Visibility.IsVisible()
             });
         }
@@ -216,6 +218,11 @@ namespace GamMaSite.Controllers
             user.Aargang = request.Aargang;
             user.Beskaeftigelse = request.Beskaeftigelse;
             user.Visibility = request.Visibility.ToVisibility();
+            if (request.IsStudent && user.Status != UserStatus.STUDERENDE)
+            {
+                user.Status = UserStatus.STUDERENDE;
+                user.KontingentDato = DateTime.UtcNow;
+            }
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -224,7 +231,13 @@ namespace GamMaSite.Controllers
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            return Ok(new { message = "Din profil er blevet opdateret" });
+            return Ok(new
+            {
+                message = "Din profil er blevet opdateret",
+                status = user.Status.ToString(),
+                isStudent = user.Status == UserStatus.STUDERENDE,
+                membershipPaidAt = user.KontingentDato
+            });
         }
 
         [HttpPost("change-email")]

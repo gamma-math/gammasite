@@ -71,6 +71,8 @@ namespace GamMaSite.ViewModels.Api
         public string Beskaeftigelse { get; set; }
 
         public bool Visibility { get; set; }
+
+        public bool IsStudent { get; set; }
     }
 
     public sealed class ChangeEmailRequest
