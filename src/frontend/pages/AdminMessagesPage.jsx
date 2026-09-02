@@ -212,7 +212,7 @@ export function AdminMessagesPage({ isAdmin }) {
     : recipientPreview?.recipients ?? recipientPreview?.Recipients ?? [];
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/messages" canWrite={false}><p className="status-message">Kun ADMIN kan sende beskeder.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/messages" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan sende beskeder.</p></AdminLayout>;
   }
 
   return (
@@ -223,7 +223,7 @@ export function AdminMessagesPage({ isAdmin }) {
         </div>
       </div>
 
-      {message && <p className="status-message">{message}</p>}
+      {message && <p className={messageStatusClass(message)}>{message}</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
 
       <form className="admin-message-composer" onSubmit={requestSend}>
@@ -579,6 +579,19 @@ function renderLocalRelatedLinkButton(link) {
   const borderColor = isPayment ? "#4353f4" : "#c9d8ea";
 
   return `<a href="${escapeHtml(linkUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:${backgroundColor};color:${textColor};border:1px solid ${borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
+}
+
+function messageStatusClass(message) {
+  const text = String(message ?? "").toLowerCase();
+  if (text.includes("lokalt") || text.includes("tomt")) {
+    return "status-message status-message-warning";
+  }
+
+  if (text.includes("sender")) {
+    return "status-message";
+  }
+
+  return "status-message status-message-success";
 }
 
 const blockDesignRegex = /<!--\s*GammaEmailBlockDesign\s+eventColor="([^"]*)"\s+newsColor="([^"]*)"\s*-->/i;

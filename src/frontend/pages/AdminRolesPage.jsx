@@ -34,7 +34,7 @@ export function AdminRolesPage({ isAdmin }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message">Kun ADMIN kan administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan administrere roller.</p></AdminLayout>;
   }
 
   return (
@@ -152,7 +152,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message">Kun ADMIN kan administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan administrere roller.</p></AdminLayout>;
   }
 
   const selectedRole = roles.find((role) => role.id === roleId);
@@ -168,7 +168,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
         <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/roles">Tilbage til oversigt</Link>
       </div>
 
-      {message && <p className="status-message">{message}</p>}
+      {message && <p className="status-message status-message-success">{message}</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
 
       {isNew ? (

@@ -424,7 +424,7 @@ function Field({ label, value, onChange, type = "text", disabled = false, ...pro
 function Status({ message, error }) {
   return (
     <>
-      {message && <p className="status-message">{message}</p>}
+      {message && <p className="status-message status-message-success">{message}</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
     </>
   );

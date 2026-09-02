@@ -50,7 +50,7 @@ export function AdminTemplatesPage({ isAdmin }) {
   if (!isAdmin) {
     return (
       <AdminLayout active="/react/admin/templates" canWrite={false}>
-        <p className="status-message">Kun ADMIN kan redigere email templates.</p>
+        <p className="status-message status-message-warning">Kun ADMIN kan redigere email templates.</p>
       </AdminLayout>
     );
   }
@@ -194,7 +194,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
   if (!isAdmin) {
     return (
       <AdminLayout active="/react/admin/templates" canWrite={false}>
-        <p className="status-message">Kun ADMIN kan redigere email templates.</p>
+        <p className="status-message status-message-warning">Kun ADMIN kan redigere email templates.</p>
       </AdminLayout>
     );
   }
@@ -209,7 +209,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
         <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/templates">Tilbage til oversigt</Link>
       </div>
 
-      {message && <p className="status-message">{message}</p>}
+      {message && <p className="status-message status-message-success">{message}</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
 
       <form className="menu-editor-form admin-template-editor" onSubmit={save}>

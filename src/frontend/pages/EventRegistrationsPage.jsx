@@ -72,7 +72,7 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   if (error) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message">{error}</p></MenuLayout>;
+    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {

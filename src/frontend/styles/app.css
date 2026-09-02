@@ -396,6 +396,58 @@ img {
   color: var(--muted);
 }
 
+.status-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7dfe9;
+  border-radius: 5px;
+  background: #f8fbff;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.status-message::before {
+  content: "ℹ️";
+  flex: 0 0 auto;
+  font-weight: 900;
+}
+
+.status-message-success {
+  border-color: rgba(31, 157, 104, 0.32);
+  background: rgba(31, 157, 104, 0.1);
+  color: #146846;
+}
+
+.status-message-success::before {
+  content: "✅";
+}
+
+.status-message-error {
+  border-color: rgba(220, 53, 69, 0.34);
+  background: rgba(220, 53, 69, 0.1);
+  color: #8f1f2d;
+}
+
+.status-message-error::before {
+  content: "❌";
+}
+
+.status-message-warning {
+  border-color: rgba(230, 154, 35, 0.38);
+  background: rgba(230, 154, 35, 0.12);
+  color: #8a5513;
+}
+
+.status-message-warning::before {
+  content: "⚠";
+}
+
 .menu-section-title {
   margin: 0 0 10px;
   color: var(--action-blue);

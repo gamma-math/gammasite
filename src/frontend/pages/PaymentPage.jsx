@@ -80,7 +80,7 @@ export function ProductPaymentPage({ productId, user }) {
   if (error) {
     return (
       <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
-        <p className="status-message">{error}</p>
+        <p className="status-message status-message-error">{error}</p>
       </MenuLayout>
     );
   }

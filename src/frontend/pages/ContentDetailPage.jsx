@@ -34,7 +34,7 @@ export function ContentDetailPage({ slug, type, user }) {
   }, [item?.id, item?.type, user.isAuthenticated]);
 
   if (error) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message">{error}</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {

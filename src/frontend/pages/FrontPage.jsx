@@ -43,7 +43,7 @@ export function FrontPage({ mode, title, user }) {
           <button className="menu-arrow-button" type="button" aria-label="Forrige" disabled={currentPage === 0} onClick={() => setPageIndex((page) => Math.max(0, page - 1))}>&lt;</button>
           <button className="menu-arrow-button" type="button" aria-label="Næste" disabled={currentPage >= pageCount - 1} onClick={() => setPageIndex((page) => Math.min(pageCount - 1, page + 1))}>&gt;</button>
         </div>
-        {error && <p className="status-message">{error}</p>}
+        {error && <p className="status-message status-message-error">{error}</p>}
         <div className="menu-event-grid menu-event-grid-three">
           {visibleItems.map((item) => <ContentCard item={item} key={item.id} />)}
         </div>
@@ -80,7 +80,7 @@ export function FrontPage({ mode, title, user }) {
           <h2>Nyheder og events</h2>
           <Link className="frontpage-button frontpage-button-secondary" href="/react/events">Se mere</Link>
         </div>
-        {error && <p className="status-message">{error}</p>}
+        {error && <p className="status-message status-message-error">{error}</p>}
         <div className="frontpage-news-grid">
           {featured.map((item) => <ContentCard item={item} variant="frontpage" key={item.id} />)}
         </div>
