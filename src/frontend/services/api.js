@@ -1,11 +1,40 @@
+const CSRF_HEADER = "X-CSRF-TOKEN";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+
+async function getCsrfToken() {
+  const response = await fetch("/api/account/csrf-token", {
+    credentials: "same-origin",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("Kunne ikke hente sikkerhedstoken. Genindlæs siden og prøv igen.");
+  }
+
+  const payload = await response.json();
+  if (!payload?.token) {
+    throw new Error("Sikkerhedstoken mangler. Genindlæs siden og prøv igen.");
+  }
+
+  return payload.token;
+}
+
 async function request(path, options = {}) {
+  const method = (options.method ?? "GET").toUpperCase();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers ?? {})
+  };
+
+  if (!SAFE_METHODS.has(method) && !headers[CSRF_HEADER]) {
+    headers[CSRF_HEADER] = await getCsrfToken();
+  }
+
   const response = await fetch(path, {
     credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers ?? {})
-    },
-    ...options
+    ...options,
+    method,
+    headers
   });
 
   if (response.status === 204) {
@@ -16,6 +45,12 @@ async function request(path, options = {}) {
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
 
   if (!response.ok) {
+    if (response.status === 429) {
+      const error = new Error("Der er forsøgt for mange gange på kort tid. Vent lidt og prøv igen.");
+      error.status = response.status;
+      throw error;
+    }
+
     const message = typeof payload === "object"
       ? payload.error ?? flattenValidationErrors(payload.errors) ?? response.statusText
       : response.statusText;

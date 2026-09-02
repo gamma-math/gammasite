@@ -11,6 +11,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/content")]
+    [AutoValidateAntiforgeryToken]
     public class ApiContentController : ControllerBase
     {
         private const string AdminRoles = "Admin,ADMIN";

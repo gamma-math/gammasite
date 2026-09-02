@@ -12,6 +12,7 @@ namespace GamMaSite.Controllers
     [Route("api/[controller]")]
     [Authorize]
     [ApiController]
+    [AutoValidateAntiforgeryToken]
     public class StripeController : ControllerBase
     {
         private IStripeService _stripeService;

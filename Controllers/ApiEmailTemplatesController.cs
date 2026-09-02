@@ -11,6 +11,7 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/email-templates")]
     [Authorize(Roles = "Admin,ADMIN")]
+    [AutoValidateAntiforgeryToken]
     public class ApiEmailTemplatesController : ControllerBase
     {
         private readonly IEmailTemplateService _emailTemplateService;

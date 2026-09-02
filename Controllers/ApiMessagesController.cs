@@ -18,6 +18,7 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/messages")]
     [Authorize(Roles = "Admin,ADMIN")]
+    [AutoValidateAntiforgeryToken]
     public class ApiMessagesController : ControllerBase
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);

@@ -13,6 +13,7 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/members")]
     [Authorize]
+    [AutoValidateAntiforgeryToken]
     public class ApiMembersController : ControllerBase
     {
         private const string AdminRoles = "Admin,ADMIN";

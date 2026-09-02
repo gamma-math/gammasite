@@ -7,35 +7,49 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/account")]
+    [AutoValidateAntiforgeryToken]
     public class ApiAccountController : ControllerBase
     {
         private readonly SignInManager<SiteUser> _signInManager;
         private readonly UserManager<SiteUser> _userManager;
         private readonly IEmailSender _emailSender;
+        private readonly IAntiforgery _antiforgery;
 
         public ApiAccountController(
             SignInManager<SiteUser> signInManager,
             UserManager<SiteUser> userManager,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _emailSender = emailSender;
+            _antiforgery = antiforgery;
+        }
+
+        [HttpGet("csrf-token")]
+        [AllowAnonymous]
+        public IActionResult GetCsrfToken()
+        {
+            var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+            return Ok(new { token = tokens.RequestToken });
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken]
+        [EnableRateLimiting("auth-login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var returnUrl = SafeReturnUrl(request.ReturnUrl);
@@ -61,7 +75,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken]
+        [EnableRateLimiting("auth-email")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
             var returnUrl = SafeReturnUrl(request.ReturnUrl);
@@ -103,7 +117,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("forgot-password")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken]
+        [EnableRateLimiting("auth-email")]
         public async Task<IActionResult> ForgotPassword(EmailRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
@@ -128,7 +142,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("resend-email-confirmation")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken]
+        [EnableRateLimiting("auth-email")]
         public async Task<IActionResult> ResendEmailConfirmation(EmailRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
@@ -215,6 +229,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("change-email")]
         [Authorize]
+        [EnableRateLimiting("auth-email")]
         public async Task<IActionResult> ChangeEmail(ChangeEmailRequest request)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -248,6 +263,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("send-verification-email")]
         [Authorize]
+        [EnableRateLimiting("auth-email")]
         public async Task<IActionResult> SendVerificationEmail()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -268,6 +284,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("change-password")]
         [Authorize]
+        [EnableRateLimiting("account-sensitive")]
         public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -322,6 +339,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("delete")]
         [Authorize]
+        [EnableRateLimiting("account-sensitive")]
         public async Task<IActionResult> DeleteAccount(DeleteAccountRequest request)
         {
             var user = await _userManager.GetUserAsync(User);

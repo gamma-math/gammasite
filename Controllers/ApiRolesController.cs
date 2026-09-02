@@ -13,6 +13,7 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/roles")]
     [Authorize(Roles = "Admin,ADMIN")]
+    [AutoValidateAntiforgeryToken]
     public class ApiRolesController : ControllerBase
     {
         private readonly RoleManager<IdentityRole> _roleManager;
