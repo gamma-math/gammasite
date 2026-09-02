@@ -53,7 +53,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var returnUrl = SafeReturnUrl(request.ReturnUrl);
-            var result = await _signInManager.PasswordSignInAsync(request.Email, request.Password, request.RememberMe, lockoutOnFailure: false);
+            var result = await _signInManager.PasswordSignInAsync(request.Email, request.Password, request.RememberMe, lockoutOnFailure: true);
 
             if (result.Succeeded)
             {

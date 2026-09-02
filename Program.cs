@@ -1,9 +1,11 @@
 using System;
+using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -40,7 +42,13 @@ builder.Services.AddHsts(
 
 // Add Identity services
 builder.Services.AddDefaultIdentity<SiteUser>(
-    options => options.SignIn.RequireConfirmedAccount = true
+    options =>
+    {
+        options.SignIn.RequireConfirmedAccount = true;
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    }
 )
 .AddRoles<IdentityRole>()
 .AddRoleManager<RoleManager<IdentityRole>>()
@@ -129,6 +137,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 });
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").GetChildren())
+    {
+        if (IPAddress.TryParse(proxy.Value, out var address))
+        {
+            options.KnownProxies.Add(address);
+        }
+    }
+});
 
 
 /* Build application */
@@ -145,6 +165,7 @@ if (!env.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.MapStaticAssets();
 
