@@ -178,15 +178,15 @@ img {
 }
 
 .frontpage-intro {
-  margin-bottom: 28px;
-  padding: 38px 22px 8px;
+  margin-bottom: 20px;
+  padding: 18px 22px 4px;
 }
 
 .frontpage-intro-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 28px;
-  align-items: start;
+  gap: clamp(56px, 14vw, 220px);
+  align-items: center;
 }
 
 .frontpage-intro h1,
@@ -215,7 +215,7 @@ img {
 
 .frontpage-membership-card {
   align-self: start;
-  margin-top: -2px;
+  margin-top: 0;
   padding: 20px 22px;
   background: #ffffff;
   border: 1px solid var(--line);
@@ -600,13 +600,14 @@ img {
 .menu-detail-side-link {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   min-height: 42px;
   padding: 0 14px;
   border: 1px solid #cfd8e6;
   border-radius: 14px;
   color: var(--ink-strong);
   background: #ffffff;
+  text-align: center;
   font-weight: 700;
 }
 
@@ -2032,6 +2033,41 @@ img {
 .app-shell .account-readonly-row,
 .app-shell .account-danger-panel {
   border-radius: 5px !important;
+}
+
+.app-shell .frontpage-section,
+.app-shell .menu-content,
+.app-shell .frontpage-membership-card,
+.app-shell .frontpage-news-card,
+.app-shell .menu-event-card,
+.app-shell .menu-detail-card,
+.app-shell .menu-registration-card,
+.app-shell .menu-registration-add,
+.app-shell .admin-editor-shell,
+.app-shell .admin-split-card,
+.app-shell .admin-field-group,
+.app-shell .admin-rich-editor,
+.app-shell .admin-multi-select,
+.app-shell .admin-preview-modal,
+.app-shell .role-fieldset,
+.app-shell .menu-payment-card,
+.app-shell .menu-payment-choice-card,
+.app-shell .menu-payment-product-card,
+.app-shell .menu-loading-card,
+.app-shell .account-shell,
+.app-shell .account-card,
+.app-shell .account-readonly-row,
+.app-shell .account-danger-panel {
+  overflow: hidden;
+}
+
+.app-shell .menu-panel-header,
+.app-shell .menu-detail-hero,
+.app-shell .admin-rich-toolbar,
+.app-shell .admin-preview-modal-header,
+.app-shell .menu-payment-product-hero,
+.app-shell .static-copy-hero {
+  border-radius: 5px 5px 0 0 !important;
 }
 
 .app-shell .menu-table-wrap,

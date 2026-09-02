@@ -137,7 +137,6 @@ export function ContentDetailPage({ slug, type, user }) {
             {(item.links ?? []).map((link) => (
               <a className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`} href={link.url} key={link.id}>
                 <span>{shortLinkLabel(link.label)}</span>
-                <span aria-hidden="true">&gt;</span>
               </a>
             ))}
             </aside>

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Controllers
 {
@@ -29,6 +30,7 @@ namespace GamMaSite.Controllers
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IEmailService _emailService;
         private readonly ISmsSender _smsSender;
+        private readonly ILogger<ApiMessagesController> _logger;
 
         public ApiMessagesController(
             ApplicationDbContext db,
@@ -36,7 +38,8 @@ namespace GamMaSite.Controllers
             UserManager<SiteUser> userManager,
             IEmailTemplateService emailTemplateService,
             IEmailService emailService,
-            ISmsSender smsSender)
+            ISmsSender smsSender,
+            ILogger<ApiMessagesController> logger)
         {
             _db = db;
             _roleManager = roleManager;
@@ -44,6 +47,7 @@ namespace GamMaSite.Controllers
             _emailTemplateService = emailTemplateService;
             _emailService = emailService;
             _smsSender = smsSender;
+            _logger = logger;
         }
 
         [HttpGet("categories")]
@@ -82,33 +86,46 @@ namespace GamMaSite.Controllers
         [HttpPost("render")]
         public async Task<IActionResult> Render(RenderEmailMessageRequest request)
         {
-            var template = await _emailTemplateService.GetByIdAsync(request.TemplateId);
-            if (template == null)
+            try
             {
-                return NotFound();
+                if (request == null || request.TemplateId <= 0)
+                {
+                    return BadRequest(new { error = "Vælg en template først." });
+                }
+
+                var template = await _emailTemplateService.GetByIdAsync(request.TemplateId);
+                if (template == null)
+                {
+                    return NotFound(new { error = "Templaten blev ikke fundet." });
+                }
+
+                var subjectTemplate = string.IsNullOrWhiteSpace(request.Subject) ? template.Subject : request.Subject;
+                var htmlTemplate = string.IsNullOrWhiteSpace(request.BodyOverride) ? template.HtmlBody : request.BodyOverride;
+                var blockDesign = EmailBlockDesign.Parse(htmlTemplate);
+                htmlTemplate = EmailBlockDesign.RemoveMetadata(htmlTemplate);
+                var content = await GetSelectedContent(request.SelectedEventIds, request.SelectedNewsIds);
+                var values = BuildTemplateValues(content, blockDesign, GetPublicBaseUrl());
+                var hasContentPlaceholder = htmlTemplate.Contains("{{ContentBlocks}}", StringComparison.OrdinalIgnoreCase)
+                    || htmlTemplate.Contains("{{EventBlocks}}", StringComparison.OrdinalIgnoreCase)
+                    || htmlTemplate.Contains("{{NewsBlocks}}", StringComparison.OrdinalIgnoreCase);
+                var html = RenderTemplate(htmlTemplate, values);
+
+                if (!hasContentPlaceholder && !string.IsNullOrWhiteSpace(values["ContentBlocks"]))
+                {
+                    html = $"{html}{values["ContentBlocks"]}";
+                }
+
+                return Ok(new RenderEmailMessageDto
+                {
+                    Subject = RenderTemplate(subjectTemplate, values),
+                    Html = html
+                });
             }
-
-            var subjectTemplate = string.IsNullOrWhiteSpace(request.Subject) ? template.Subject : request.Subject;
-            var htmlTemplate = string.IsNullOrWhiteSpace(request.BodyOverride) ? template.HtmlBody : request.BodyOverride;
-            var blockDesign = EmailBlockDesign.Parse(htmlTemplate);
-            htmlTemplate = EmailBlockDesign.RemoveMetadata(htmlTemplate);
-            var content = await GetSelectedContent(request.SelectedEventIds, request.SelectedNewsIds);
-            var values = BuildTemplateValues(content, blockDesign, GetPublicBaseUrl());
-            var hasContentPlaceholder = htmlTemplate.Contains("{{ContentBlocks}}", StringComparison.OrdinalIgnoreCase)
-                || htmlTemplate.Contains("{{EventBlocks}}", StringComparison.OrdinalIgnoreCase)
-                || htmlTemplate.Contains("{{NewsBlocks}}", StringComparison.OrdinalIgnoreCase);
-            var html = RenderTemplate(htmlTemplate, values);
-
-            if (!hasContentPlaceholder && !string.IsNullOrWhiteSpace(values["ContentBlocks"]))
+            catch (Exception ex)
             {
-                html = $"{html}{values["ContentBlocks"]}";
+                _logger.LogError(ex, "Failed to render email message template {TemplateId}", request?.TemplateId);
+                return StatusCode(500, new { error = "Email-udkastet kunne ikke genereres på serveren. Tjek serverloggen for detaljer." });
             }
-
-            return Ok(new RenderEmailMessageDto
-            {
-                Subject = RenderTemplate(subjectTemplate, values),
-                Html = html
-            });
         }
 
         [HttpPost("send")]
@@ -242,9 +259,9 @@ namespace GamMaSite.Controllers
             var ids = (eventIds ?? Array.Empty<int>())
                 .Concat(newsIds ?? Array.Empty<int>())
                 .Distinct()
-                .ToArray();
+                .ToList();
 
-            if (ids.Length == 0)
+            if (ids.Count == 0)
             {
                 return Array.Empty<ContentItem>();
             }
@@ -299,17 +316,13 @@ namespace GamMaSite.Controllers
                 .Where(link => !string.IsNullOrWhiteSpace(link.Url))
                 .ToList() ?? new List<ContentLink>();
             var ctaText = isEvent ? "Tilmeld dig" : "Læs mere";
-            var linkItems = string.Concat(links.Select(link =>
-                $@"<li style=""margin:0 0 4px;""><a href=""{Html(link.Url)}"" target=""_blank"" style=""color:{Html(accentColor)};text-decoration:none;"">{Html(string.IsNullOrWhiteSpace(link.Label) ? link.Url : link.Label)}</a></li>"));
+            var linkItems = string.Concat(links.Select(RenderRelatedLinkButton));
             var eventMeta = isEvent
                 ? $@"
   {(string.IsNullOrWhiteSpace(item.Location) ? string.Empty : $@"<p style=""margin:0 0 6px;""><strong>Sted:</strong> {Html(item.Location)}</p>")}
   <p style=""margin:0 0 6px;""><strong>Start:</strong> {Html(FormatDate(item.StartDate))}</p>
   {(item.EndDate.HasValue ? $@"<p style=""margin:0 0 12px;""><strong>Slut:</strong> {Html(FormatDate(item.EndDate))}</p>" : string.Empty)}"
                 : string.Empty;
-            var subject = string.IsNullOrWhiteSpace(item.Summary)
-                ? string.Empty
-                : $@"<p style=""margin:0 0 10px;color:#4f5f73;""><strong>Subjekt:</strong> {Html(item.Summary)}</p>";
             var body = string.IsNullOrWhiteSpace(item.Body)
                 ? string.Empty
                 : $@"<div style=""margin:0 0 12px;color:#4f5f73;line-height:1.55;"">{item.Body}</div>";
@@ -317,12 +330,22 @@ namespace GamMaSite.Controllers
             return $@"
 <div style=""width:90%;margin:0 auto 18px auto;padding:16px;background-color:#f7fbff;border:1px solid #d9e7f5;border-left:6px solid {Html(accentColor)};border-radius:8px;color:#132238;"">
   <p style=""margin:0 0 8px;font-weight:bold;font-size:1.08rem;"">{Html(item.Title)}</p>
-  {subject}
   {eventMeta}
   {body}
-  {(linkItems.Length > 0 ? $@"<p style=""margin:0 0 6px;font-weight:bold;"">Links:</p><ul style=""margin:0 0 12px;padding-left:18px;"">{linkItems}</ul>" : string.Empty)}
+  {(linkItems.Length > 0 ? $@"<div style=""margin:0 0 12px;"">{linkItems}</div>" : string.Empty)}
   <a href=""{Html(url)}"" target=""_blank"" style=""display:block;width:100%;box-sizing:border-box;text-align:center;background-color:{Html(accentColor)};color:#ffffff;text-decoration:none;border-radius:8px;padding:12px 16px;font-size:0.95rem;font-weight:bold;"">{Html(ctaText)}</a>
 </div>";
+        }
+
+        private static string RenderRelatedLinkButton(ContentLink link)
+        {
+            var isPayment = string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase);
+            var label = string.IsNullOrWhiteSpace(link.Label) ? link.Url : link.Label;
+            var backgroundColor = isPayment ? "#4353f4" : "#ffffff";
+            var textColor = isPayment ? "#ffffff" : "#132238";
+            var borderColor = isPayment ? "#4353f4" : "#c9d8ea";
+
+            return $@"<a href=""{Html(link.Url)}"" target=""_blank"" style=""display:block;margin:0 0 10px;padding:12px 16px;background-color:{backgroundColor};color:{textColor};border:1px solid {borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;"">{Html(label)}</a>";
         }
 
         private static string RenderContentBlock(ContentItem item)

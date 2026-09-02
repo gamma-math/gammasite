@@ -551,11 +551,7 @@ function renderLocalContentBlock(item, design) {
   const ctaText = isEvent ? "Tilmeld dig" : "Læs mere";
   const linkItems = links
     .filter((link) => link.url || link.Url)
-    .map((link) => {
-      const linkUrl = link.url ?? link.Url;
-      const label = link.label ?? link.Label ?? linkUrl;
-      return `<li style="margin:0 0 4px;"><a href="${escapeHtml(linkUrl)}" target="_blank" style="color:${escapeHtml(accentColor)};text-decoration:none;">${escapeHtml(label)}</a></li>`;
-    })
+    .map(renderLocalRelatedLinkButton)
     .join("");
   const eventMeta = isEvent
     ? `
@@ -567,12 +563,22 @@ function renderLocalContentBlock(item, design) {
   return `
 <div style="width:90%;margin:0 auto 18px auto;padding:16px;background-color:#f7fbff;border:1px solid #d9e7f5;border-left:6px solid ${escapeHtml(accentColor)};border-radius:8px;color:#132238;">
   <p style="margin:0 0 8px;font-weight:bold;font-size:1.08rem;">${escapeHtml(item.title)}</p>
-  ${item.summary ? `<p style="margin:0 0 10px;color:#4f5f73;"><strong>Subjekt:</strong> ${escapeHtml(item.summary)}</p>` : ""}
   ${eventMeta}
   ${item.body ? `<div style="margin:0 0 12px;color:#4f5f73;line-height:1.55;">${item.body}</div>` : ""}
-  ${linkItems ? `<p style="margin:0 0 6px;font-weight:bold;">Links:</p><ul style="margin:0 0 12px;padding-left:18px;">${linkItems}</ul>` : ""}
+  ${linkItems ? `<div style="margin:0 0 12px;">${linkItems}</div>` : ""}
   <a href="${escapeHtml(url)}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:${escapeHtml(accentColor)};color:#ffffff;text-decoration:none;border-radius:8px;padding:12px 16px;font-size:0.95rem;font-weight:bold;">${escapeHtml(ctaText)}</a>
 </div>`;
+}
+
+function renderLocalRelatedLinkButton(link) {
+  const linkUrl = link.url ?? link.Url;
+  const label = link.label ?? link.Label ?? linkUrl;
+  const isPayment = String(link.type ?? link.Type ?? "").toUpperCase() === "PAYMENT";
+  const backgroundColor = isPayment ? "#4353f4" : "#ffffff";
+  const textColor = isPayment ? "#ffffff" : "#132238";
+  const borderColor = isPayment ? "#4353f4" : "#c9d8ea";
+
+  return `<a href="${escapeHtml(linkUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:${backgroundColor};color:${textColor};border:1px solid ${borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
 }
 
 const blockDesignRegex = /<!--\s*GammaEmailBlockDesign\s+eventColor="([^"]*)"\s+newsColor="([^"]*)"\s*-->/i;

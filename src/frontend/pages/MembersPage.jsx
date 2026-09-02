@@ -52,9 +52,9 @@ export function MembersPage({ user }) {
               <tr key={member.id}>
                 <td>{member.name}</td>
                 <td>{member.graduationYear || ""}</td>
-                <td>{member.occupation || "Skjult"}</td>
-                <td>{member.email || "Skjult"}</td>
-                <td>{member.phoneNumber || "Skjult"}</td>
+                <td>{member.occupation || ""}</td>
+                <td>{member.email || ""}</td>
+                <td>{member.phoneNumber || ""}</td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
