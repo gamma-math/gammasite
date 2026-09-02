@@ -86,5 +86,7 @@ export const paymentsApi = {
 
 export const messagesApi = {
   categories: () => request("/api/messages/categories"),
-  recipientPreview: (payload) => request("/api/messages/recipient-preview", { method: "POST", body: JSON.stringify(payload) })
+  recipientPreview: (payload) => request("/api/messages/recipient-preview", { method: "POST", body: JSON.stringify(payload) }),
+  render: (payload) => request("/api/messages/render", { method: "POST", body: JSON.stringify(payload) }),
+  send: (payload) => request("/api/messages/send", { method: "POST", body: JSON.stringify(payload) })
 };

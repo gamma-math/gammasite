@@ -80,6 +80,8 @@ namespace GamMaSite.ViewModels.Api
         public string[] Statuses { get; set; }
 
         public string[] Roles { get; set; }
+
+        public int[] RecipientEventIds { get; set; }
     }
 
     public class MessageRecipientPreviewDto
@@ -89,5 +91,62 @@ namespace GamMaSite.ViewModels.Api
         public int EmailCount { get; set; }
 
         public int SmsCount { get; set; }
+
+        public IReadOnlyList<MessageRecipientDto> Recipients { get; set; }
+    }
+
+    public class MessageRecipientDto
+    {
+        public string Name { get; set; }
+
+        public string Email { get; set; }
+    }
+
+    public class RenderEmailMessageRequest
+    {
+        public int TemplateId { get; set; }
+
+        public string Subject { get; set; }
+
+        public int[] SelectedEventIds { get; set; }
+
+        public int[] SelectedNewsIds { get; set; }
+
+        public string BodyOverride { get; set; }
+    }
+
+    public class RenderEmailMessageDto
+    {
+        public string Subject { get; set; }
+
+        public string Html { get; set; }
+    }
+
+    public class SendEmailMessageRequest
+    {
+        public string[] Statuses { get; set; }
+
+        public string[] Roles { get; set; }
+
+        public int[] RecipientEventIds { get; set; }
+
+        public string Channel { get; set; }
+
+        public string Subject { get; set; }
+
+        public string Html { get; set; }
+
+        public string SmsBody { get; set; }
+    }
+
+    public class SendEmailMessageResult
+    {
+        public int RecipientCount { get; set; }
+
+        public int EmailCount { get; set; }
+
+        public int SmsCount { get; set; }
+
+        public IReadOnlyList<MessageRecipientDto> Recipients { get; set; }
     }
 }

@@ -5,7 +5,7 @@ import { AdminContentEditorPage, AdminContentPage } from "../pages/AdminContentP
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
 import { AdminRolesEditorPage, AdminRolesPage } from "../pages/AdminRolesPage.jsx";
-import { AdminTemplatesPage } from "../pages/AdminTemplatesPage.jsx";
+import { AdminTemplateEditorPage, AdminTemplatesPage } from "../pages/AdminTemplatesPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -187,6 +187,11 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   }
   if (path === "/react/admin/templates") {
     return <AdminTemplatesPage isAdmin={isAdmin} />;
+  }
+  const adminTemplateEditorMatch = path.match(/^\/react\/admin\/templates\/(new|\d+\/edit)$/);
+  if (adminTemplateEditorMatch) {
+    const templateId = adminTemplateEditorMatch[1] === "new" ? null : Number(adminTemplateEditorMatch[1].split("/")[0]);
+    return <AdminTemplateEditorPage isAdmin={isAdmin} templateId={templateId} />;
   }
   if (path === "/react/admin/users" || path === "/Users/Expanded" || path === "/Users/UpdateMass") {
     return <AdminMembersPage isAdmin={isAdmin} />;

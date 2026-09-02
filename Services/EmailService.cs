@@ -40,6 +40,7 @@ namespace GamMaSite.Services
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
             using var client = new HttpClient(handler);
+            client.Timeout = TimeSpan.FromSeconds(20);
             var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"api:{this._apiKey}"));
             client.DefaultRequestHeaders.Add("Authorization", $"Basic {authToken}");
 
@@ -50,7 +51,12 @@ namespace GamMaSite.Services
                 new("html", htmlMessage ?? "<p></p>")
             };
 
-            await client.PostAsync(this._host, new FormUrlEncodedContent(keyValues));
+            var response = await client.PostAsync(this._host, new FormUrlEncodedContent(keyValues));
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Mailgun afviste mail til {toAddress}: {(int)response.StatusCode} {response.ReasonPhrase}. {responseBody}");
+            }
         }
     }
 }
