@@ -2,6 +2,7 @@ using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -116,6 +117,20 @@ app.UseAuthorization();
 // Controller routes and Razor pages
 app.MapControllers();
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
+app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/react/account/login{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/react/account/register{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/react/account/forgot-password"));
+app.MapGet("/Identity/Account/ResendEmailConfirmation", () => Results.Redirect("/react/account/resend-email-confirmation"));
+app.MapGet("/Identity/Account/Manage", () => Results.Redirect("/react/account/manage"));
+app.MapGet("/Identity/Account/Manage/Index", () => Results.Redirect("/react/account/manage"));
+app.MapGet("/Identity/Account/Manage/Email", () => Results.Redirect("/react/account/manage/email"));
+app.MapGet("/Identity/Account/Manage/ChangePassword", () => Results.Redirect("/react/account/manage/password"));
+app.MapGet("/Identity/Account/Manage/TwoFactorAuthentication", () => Results.Redirect("/react/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/GenerateRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/ShowRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/PersonalData", () => Results.Redirect("/react/account/manage/personal-data"));
+app.MapGet("/Identity/Account/Manage/DeletePersonalData", () => Results.Redirect("/react/account/manage/delete-personal-data"));
+app.MapGet("/Identity/Account/Logout", () => Results.Redirect("/react/account/manage/logout"));
 app.MapRazorPages().WithStaticAssets();
 
 

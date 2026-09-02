@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Menu, UserCircle } from "lucide-react";
+import { AccountManagePage, ForgotPasswordPage, LoginPage, RegisterPage, ResendEmailConfirmationPage } from "../pages/AccountPages.jsx";
 import { AdminContentEditorPage, AdminContentPage } from "../pages/AdminContentPage.jsx";
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
@@ -97,13 +98,13 @@ function Header({ user, isReadAdmin }) {
               {user.isLoading ? (
                 <span className="frontpage-auth-placeholder" aria-label="Henter brugerstatus" />
               ) : user.isAuthenticated ? (
-                <a className="frontpage-profile-link frontpage-profile-link-default" href="/Identity/Account/Manage" aria-label="Profil">
+                <Link className="frontpage-profile-link frontpage-profile-link-default" href="/react/account/manage" aria-label="Profil">
                   <UserCircle size={23} />
-                </a>
+                </Link>
               ) : (
                 <>
-                  <a className="frontpage-button frontpage-button-secondary" href="/Identity/Account/Login">Login</a>
-                  <a className="frontpage-button frontpage-button-primary" href="/Identity/Account/Register">Bliv medlem</a>
+                  <Link className="frontpage-button frontpage-button-secondary" href="/react/account/login">Login</Link>
+                  <Link className="frontpage-button frontpage-button-primary" href="/react/account/register">Bliv medlem</Link>
                 </>
               )}
             </div>
@@ -166,6 +167,39 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   }
   if (path === "/react/cookies" || path === "/Home/Cookies") {
     return <StaticPage page="cookies" />;
+  }
+  if (path === "/react/account/login") {
+    return <LoginPage />;
+  }
+  if (path === "/react/account/register") {
+    return <RegisterPage />;
+  }
+  if (path === "/react/account/forgot-password") {
+    return <ForgotPasswordPage />;
+  }
+  if (path === "/react/account/resend-email-confirmation") {
+    return <ResendEmailConfirmationPage />;
+  }
+  if (path === "/react/account/manage") {
+    return <AccountManagePage user={user} section="profile" />;
+  }
+  if (path === "/react/account/manage/email") {
+    return <AccountManagePage user={user} section="email" />;
+  }
+  if (path === "/react/account/manage/password") {
+    return <AccountManagePage user={user} section="password" />;
+  }
+  if (path === "/react/account/manage/two-factor") {
+    return <AccountManagePage user={user} section="two-factor" />;
+  }
+  if (path === "/react/account/manage/personal-data") {
+    return <AccountManagePage user={user} section="personal-data" />;
+  }
+  if (path === "/react/account/manage/delete-personal-data") {
+    return <AccountManagePage user={user} section="delete-personal-data" />;
+  }
+  if (path === "/react/account/manage/logout") {
+    return <AccountManagePage user={user} section="logout" />;
   }
   const eventRegistrationsMatch = path.match(/^\/react\/events\/([^/]+)\/registrations$/);
   if (eventRegistrationsMatch) {

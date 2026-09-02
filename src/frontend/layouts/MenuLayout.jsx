@@ -7,8 +7,9 @@ const userItems = [
   { href: "/react/pay", label: "Betal medlemskab", requiresAuth: true }
 ];
 
-export function MenuLayout({ active, title = "Menu", isAuthenticated = false, contentClassName = "", extraItems = [], children }) {
-  const items = [...userItems, ...extraItems].filter((item) => !item.requiresAuth || isAuthenticated);
+export function MenuLayout({ active, title = "Menu", isAuthenticated = false, contentClassName = "", extraItems = [], includeDefaultItems = true, children }) {
+  const baseItems = includeDefaultItems ? userItems : [];
+  const items = [...baseItems, ...extraItems].filter((item) => !item.requiresAuth || isAuthenticated);
 
   return (
     <main className="menu-shell">

@@ -76,7 +76,7 @@ export function LoginRequired({ title }) {
       <section className="page-shell frontpage-section">
         <h1>{title}</h1>
         <p className="muted">Du skal være logget ind for at se denne side.</p>
-        <a className="frontpage-button frontpage-button-primary" href="/Identity/Account/Login">Login</a>
+        <a className="frontpage-button frontpage-button-primary" href="/react/account/login">Login</a>
       </section>
     </main>
   );

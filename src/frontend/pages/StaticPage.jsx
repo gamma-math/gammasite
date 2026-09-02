@@ -57,10 +57,12 @@ const pages = {
     title: "Cookies",
     kicker: "Privatliv",
     body: (
-      <>
-        <p>Siden bruger cookies til ASP.NET Identity-login og sessionsbaserede funktioner.</p>
-        <p>React-frontenden genbruger samme cookies og introducerer ikke JWT-login.</p>
-      </>
+      <section className="static-copy-section">
+        <p>Alumneforeningen GamMa indsamler cookies i forbindelse med login på denne side. Ved login gives accept til, at dette må finde sted.</p>
+        <p>De indsamlede cookies anvendes alene til at muliggøre login på hjemmesiden.</p>
+        <p>GamMa benytter ikke information fra cookies til kommercielle eller statistiske formål, og data relateret til cookies videregives ikke til tredjeparter.</p>
+        <p>Denne hjemmesides loginsystem er baseret på <a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity" target="_blank" rel="noreferrer">ASP.NET Core Identity</a>, som kræver brug af cookies.</p>
+      </section>
     )
   }
 };

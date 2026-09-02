@@ -16,8 +16,12 @@ async function request(path, options = {}) {
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const message = typeof payload === "object" ? payload.error ?? response.statusText : response.statusText;
-    throw new Error(message);
+    const message = typeof payload === "object"
+      ? payload.error ?? flattenValidationErrors(payload.errors) ?? response.statusText
+      : response.statusText;
+    const error = new Error(message || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -25,6 +29,20 @@ async function request(path, options = {}) {
 
 export const meApi = {
   get: () => request("/api/me")
+};
+
+export const accountApi = {
+  login: (payload) => request("/api/account/login", { method: "POST", body: JSON.stringify(payload) }),
+  logout: () => request("/api/account/logout", { method: "POST" }),
+  register: (payload) => request("/api/account/register", { method: "POST", body: JSON.stringify(payload) }),
+  forgotPassword: (email) => request("/api/account/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resendEmailConfirmation: (email) => request("/api/account/resend-email-confirmation", { method: "POST", body: JSON.stringify({ email }) }),
+  profile: () => request("/api/account/profile"),
+  updateProfile: (payload) => request("/api/account/profile", { method: "PUT", body: JSON.stringify(payload) }),
+  changeEmail: (newEmail) => request("/api/account/change-email", { method: "POST", body: JSON.stringify({ newEmail }) }),
+  sendVerificationEmail: () => request("/api/account/send-verification-email", { method: "POST" }),
+  changePassword: (payload) => request("/api/account/change-password", { method: "POST", body: JSON.stringify(payload) }),
+  deleteAccount: (password) => request("/api/account/delete", { method: "POST", body: JSON.stringify({ password }) })
 };
 
 export const contentApi = {
@@ -90,3 +108,11 @@ export const messagesApi = {
   render: (payload) => request("/api/messages/render", { method: "POST", body: JSON.stringify(payload) }),
   send: (payload) => request("/api/messages/send", { method: "POST", body: JSON.stringify(payload) })
 };
+
+function flattenValidationErrors(errors) {
+  if (!errors || typeof errors !== "object") {
+    return "";
+  }
+
+  return Object.values(errors).flat().filter(Boolean).join(" ");
+}
