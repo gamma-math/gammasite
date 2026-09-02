@@ -10,7 +10,7 @@ export function FrontPage({ mode, title, user }) {
   const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
-    contentApi.listPublished(mode)
+    contentApi.listPublished(mode, { frontPage: !mode })
       .then(setItems)
       .catch((err) => setError(err.message));
   }, [mode]);
@@ -19,7 +19,7 @@ export function FrontPage({ mode, title, user }) {
     setPageIndex(0);
   }, [mode, items.length]);
 
-  const sortedItems = [...items].sort((left, right) => contentDateValue(right) - contentDateValue(left));
+  const sortedItems = [...items].sort((left, right) => compareContentItems(left, right, mode));
 
   if (mode) {
     const pageSize = 3;
@@ -92,4 +92,28 @@ export function FrontPage({ mode, title, user }) {
 function contentDateValue(item) {
   const value = item.type === "EVENT" ? item.startDate : item.publishedAt;
   return value ? new Date(value).getTime() : 0;
+}
+
+function compareContentItems(left, right, mode) {
+  if (mode === "EVENT") {
+    return compareNullableDates(contentDateValue(left), contentDateValue(right), "asc");
+  }
+
+  return compareNullableDates(contentDateValue(left), contentDateValue(right), "asc");
+}
+
+function compareNullableDates(left, right, direction) {
+  if (!left && !right) {
+    return 0;
+  }
+
+  if (!left) {
+    return 1;
+  }
+
+  if (!right) {
+    return -1;
+  }
+
+  return direction === "asc" ? left - right : right - left;
 }

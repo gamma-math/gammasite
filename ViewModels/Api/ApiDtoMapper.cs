@@ -18,6 +18,7 @@ namespace GamMaSite.ViewModels.Api
                 Tags = item.Tags,
                 Type = item.Type,
                 Status = item.Status,
+                ShowOnFrontPage = item.ShowOnFrontPage,
                 StartDate = item.StartDate,
                 EndDate = item.EndDate,
                 Location = item.Location,

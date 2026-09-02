@@ -28,9 +28,9 @@ namespace GamMaSite.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPublished([FromQuery] string type)
+        public async Task<IActionResult> GetPublished([FromQuery] string type, [FromQuery] bool frontPage = false)
         {
-            var items = await _contentService.GetPublishedAsync(type);
+            var items = await _contentService.GetPublishedAsync(type, frontPage);
             return Ok(items.Select(item => item.ToDto()));
         }
 

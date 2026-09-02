@@ -31,11 +31,18 @@ namespace GamMaSite.Services
             _db = db;
         }
 
-        public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type)
+        public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
         {
-            return await IncludeLinks(_db.ContentItems.AsNoTracking())
+            var query = IncludeLinks(_db.ContentItems.AsNoTracking())
                 .Where(item => item.Status == ContentStatuses.Published)
-                .Where(item => string.IsNullOrWhiteSpace(type) || item.Type == NormalizeType(type))
+                .Where(item => string.IsNullOrWhiteSpace(type) || item.Type == NormalizeType(type));
+
+            if (frontPageOnly)
+            {
+                query = query.Where(item => item.ShowOnFrontPage);
+            }
+
+            return await query
                 .OrderByDescending(item => item.PublishedAt ?? item.Created)
                 .ToListAsync();
         }
@@ -95,6 +102,7 @@ namespace GamMaSite.Services
                 Tags = request.Tags,
                 Type = NormalizeType(request.Type),
                 Status = status,
+                ShowOnFrontPage = request.ShowOnFrontPage,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
                 Location = request.Location,
@@ -133,6 +141,7 @@ namespace GamMaSite.Services
             item.Tags = request.Tags;
             item.Type = NormalizeType(request.Type);
             item.Status = status;
+            item.ShowOnFrontPage = request.ShowOnFrontPage;
             item.StartDate = request.StartDate;
             item.EndDate = request.EndDate;
             item.Location = request.Location;

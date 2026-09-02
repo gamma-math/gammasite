@@ -42,6 +42,7 @@ export function emptyContent(type) {
     tags: "",
     type,
     status: "DRAFT",
+    showOnFrontPage: true,
     startDate: "",
     endDate: "",
     publishedAt: "",

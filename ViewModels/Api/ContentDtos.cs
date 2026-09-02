@@ -36,6 +36,8 @@ namespace GamMaSite.ViewModels.Api
 
         public string Status { get; set; }
 
+        public bool ShowOnFrontPage { get; set; }
+
         public DateTime? StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }
@@ -70,6 +72,8 @@ namespace GamMaSite.ViewModels.Api
         public string Type { get; set; }
 
         public string Status { get; set; }
+
+        public bool ShowOnFrontPage { get; set; } = true;
 
         public DateTime? StartDate { get; set; }
 

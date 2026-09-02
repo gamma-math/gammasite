@@ -1,6 +1,8 @@
 using System;
+using System.Data;
 using System.Net;
 using System.Threading.RateLimiting;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
@@ -159,6 +161,11 @@ var app = builder.Build();
 
 var env = app.Environment;
 
+if (env.IsDevelopment())
+{
+    await EnsureContentItemsShowOnFrontPageColumnAsync(app.Services);
+}
+
 if (!env.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -197,3 +204,53 @@ app.MapRazorPages().WithStaticAssets();
 
 /* Run the application */
 app.Run();
+
+static async Task EnsureContentItemsShowOnFrontPageColumnAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var connection = db.Database.GetDbConnection();
+    var shouldClose = connection.State != ConnectionState.Open;
+
+    if (shouldClose)
+    {
+        await connection.OpenAsync();
+    }
+
+    try
+    {
+        if (!await SchemaValueExistsAsync(connection,
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContentItems' AND COLUMN_NAME = 'ShowOnFrontPage'"))
+        {
+            await ExecuteSchemaCommandAsync(connection, "ALTER TABLE `ContentItems` ADD COLUMN `ShowOnFrontPage` tinyint(1) NOT NULL DEFAULT 1 AFTER `Status`");
+        }
+
+        if (!await SchemaValueExistsAsync(connection,
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContentItems' AND INDEX_NAME = 'IX_ContentItems_ShowOnFrontPage'"))
+        {
+            await ExecuteSchemaCommandAsync(connection, "CREATE INDEX `IX_ContentItems_ShowOnFrontPage` ON `ContentItems` (`ShowOnFrontPage`)");
+        }
+    }
+    finally
+    {
+        if (shouldClose)
+        {
+            await connection.CloseAsync();
+        }
+    }
+}
+
+static async Task<bool> SchemaValueExistsAsync(System.Data.Common.DbConnection connection, string sql)
+{
+    await using var command = connection.CreateCommand();
+    command.CommandText = sql;
+    var result = await command.ExecuteScalarAsync();
+    return Convert.ToInt32(result) > 0;
+}
+
+static async Task ExecuteSchemaCommandAsync(System.Data.Common.DbConnection connection, string sql)
+{
+    await using var command = connection.CreateCommand();
+    command.CommandText = sql;
+    await command.ExecuteNonQueryAsync();
+}

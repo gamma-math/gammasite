@@ -7,7 +7,7 @@ namespace GamMaSite.Services
 {
     public interface IContentService
     {
-        Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type);
+        Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false);
 
         Task<IReadOnlyList<ContentItem>> GetAllAsync(string type, string status);
 

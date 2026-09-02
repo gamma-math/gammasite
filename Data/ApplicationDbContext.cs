@@ -64,6 +64,7 @@ namespace GamMaSite.Data
                 entity.HasIndex(m => m.Slug).IsUnique().HasDatabaseName("UX_ContentItems_Slug");
                 entity.HasIndex(m => m.Type).HasDatabaseName("IX_ContentItems_Type");
                 entity.HasIndex(m => m.Status).HasDatabaseName("IX_ContentItems_Status");
+                entity.HasIndex(m => m.ShowOnFrontPage).HasDatabaseName("IX_ContentItems_ShowOnFrontPage");
                 entity.HasIndex(m => m.StartDate).HasDatabaseName("IX_ContentItems_StartDate");
                 entity.HasIndex(m => m.PublishedAt).HasDatabaseName("IX_ContentItems_PublishedAt");
                 entity.HasIndex(m => m.CreatedByUserId).HasDatabaseName("IX_ContentItems_CreatedByUserId");
@@ -76,6 +77,7 @@ namespace GamMaSite.Data
                 entity.Property(m => m.Tags).HasMaxLength(512);
                 entity.Property(m => m.Type).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.Status).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.ShowOnFrontPage).HasDefaultValue(true);
                 entity.Property(m => m.Location).HasMaxLength(256);
                 entity.Property(m => m.CreatedByUserId).HasMaxLength(128);
                 entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");

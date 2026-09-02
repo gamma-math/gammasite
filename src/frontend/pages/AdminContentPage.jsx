@@ -17,7 +17,7 @@ export function AdminContentPage({ type, isAdmin }) {
 
   async function load() {
     const result = await contentApi.listAdmin(type);
-    setItems(result);
+    setItems(result.map((item) => normalizeContentItem(item, type)));
   }
 
   const sortedItems = useMemo(() => {
@@ -49,6 +49,7 @@ export function AdminContentPage({ type, isAdmin }) {
               <tr>
                 <SortableHeader label="Titel" sortKey="title" sort={sort} setSort={setSort} />
                 <SortableHeader label="Status" sortKey="status" sort={sort} setSort={setSort} />
+                <th>Forside</th>
                 <SortableHeader label="Dato" sortKey="date" sort={sort} setSort={setSort} />
                 <th></th>
               </tr>
@@ -58,6 +59,7 @@ export function AdminContentPage({ type, isAdmin }) {
                 <tr key={item.id}>
                   <td>{item.title}</td>
                   <td><span className="tag">{item.status}</span></td>
+                  <td>{isShownOnFrontPage(item) ? "Ja" : "Nej"}</td>
                   <td>{formatDate(item.startDate ?? item.publishedAt)}</td>
                   <td className="table-actions">
                     {isAdmin && <Link className="admin-table-button" href={`/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`}>Rediger</Link>}
@@ -87,7 +89,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     }
     contentApi.listAdmin(type).then((items) => {
       const match = items.find((item) => item.id === itemId);
-      if (match) setSelected(match);
+      if (match) setSelected(normalizeContentItem(match, type));
     }).catch((reason) => setError(reason.message));
   }, [type, itemId]);
 
@@ -95,9 +97,9 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     event.preventDefault();
     setError("");
     try {
-      const payload = { ...selected, type, startDate: selected.startDate || null, endDate: selected.endDate || null, links: normalizeLinks(selected.links) };
+      const payload = buildSavePayload(selected, type);
       const result = selected.id ? await contentApi.update(selected.id, payload) : await contentApi.create(payload);
-      setSelected(result);
+      setSelected(normalizeContentItem(result, type));
       setMessage("Gemt");
     } catch (reason) {
       setError(reason.message);
@@ -135,6 +137,10 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           <label className="admin-field"><span>Slug</span><input value={selected.slug ?? ""} onChange={(event) => update("slug", event.target.value)} required /></label>
           <label className="admin-field"><span>Status</span><select value={selected.status ?? "DRAFT"} onChange={(event) => update("status", event.target.value)}><option value="DRAFT">DRAFT</option><option value="PUBLISHED">PUBLISHED</option><option value="ARCHIVED">ARCHIVED</option></select></label>
         </div>
+        <label className="account-checkbox">
+          <input type="checkbox" checked={isShownOnFrontPage(selected)} onChange={(event) => update("showOnFrontPage", event.target.checked)} />
+          <span>Vis på forsiden</span>
+        </label>
         {type === "NEWS" && <label className="admin-field"><span>Dato</span><input type="datetime-local" value={toLocalInput(selected.publishedAt)} onChange={(event) => update("publishedAt", event.target.value)} /></label>}
         <label className="admin-field"><span>Summary</span><input value={selected.summary ?? ""} onChange={(event) => update("summary", event.target.value)} /></label>
         <RichTextEditor value={selected.body ?? ""} onChange={(value) => update("body", value)} />
@@ -254,6 +260,37 @@ function normalizeLinks(links) {
   return (links ?? [])
     .filter((link) => link.label && link.url)
     .map((link, index) => ({ ...link, sortOrder: index }));
+}
+
+function normalizeContentItem(item, type) {
+  return {
+    ...item,
+    type: item.type ?? item.Type ?? type,
+    showOnFrontPage: item.showOnFrontPage ?? item.ShowOnFrontPage ?? true
+  };
+}
+
+function isShownOnFrontPage(item) {
+  return item.showOnFrontPage ?? item.ShowOnFrontPage ?? true;
+}
+
+function buildSavePayload(item, type) {
+  return {
+    title: item.title ?? "",
+    slug: item.slug ?? "",
+    summary: item.summary ?? "",
+    body: item.body ?? "",
+    pictureUrl: item.pictureUrl ?? "",
+    tags: item.tags ?? "",
+    type,
+    status: item.status ?? "DRAFT",
+    showOnFrontPage: isShownOnFrontPage(item),
+    startDate: item.startDate || null,
+    endDate: item.endDate || null,
+    location: item.location ?? "",
+    publishedAt: item.publishedAt || null,
+    links: normalizeLinks(item.links)
+  };
 }
 
 function toLocalInput(value) {

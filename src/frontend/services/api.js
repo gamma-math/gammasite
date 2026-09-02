@@ -81,7 +81,16 @@ export const accountApi = {
 };
 
 export const contentApi = {
-  listPublished: (type) => request(`/api/content${type ? `?type=${encodeURIComponent(type)}` : ""}`),
+  listPublished: (type, options = {}) => {
+    const params = new URLSearchParams();
+    if (type) {
+      params.set("type", type);
+    }
+    if (options.frontPage) {
+      params.set("frontPage", "true");
+    }
+    return request(`/api/content${params.toString() ? `?${params}` : ""}`);
+  },
   listAdmin: (type) => request(`/api/content/admin${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   getBySlug: (slug) => request(`/api/content/slug/${encodeURIComponent(slug)}`),
   create: (payload) => request("/api/content", { method: "POST", body: JSON.stringify(payload) }),

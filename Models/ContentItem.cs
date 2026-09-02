@@ -23,6 +23,8 @@ namespace GamMaSite.Models
 
         public string Status { get; set; }
 
+        public bool ShowOnFrontPage { get; set; } = true;
+
         public DateTime? StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }
