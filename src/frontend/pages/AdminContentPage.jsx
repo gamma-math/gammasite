@@ -32,7 +32,6 @@ export function AdminContentPage({ type, isAdmin }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">{type === "EVENT" ? "Begivenheder" : "Nyheder"}</p>
-          <h1>{type === "EVENT" ? "Event-overblik" : "Nyheds-overblik"}</h1>
         </div>
         {isAdmin && (
           <Link className="menu-create-button" href={`/react/admin/${type === "EVENT" ? "events" : "news"}/new`}>
@@ -132,7 +131,18 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
       <form className="menu-editor-form admin-content-editor" onSubmit={save}>
         <label className="admin-field"><span>Titel</span><input value={selected.title ?? ""} onChange={(event) => update("title", event.target.value)} required /></label>
         <div className="menu-editor-grid">
-          <label className="admin-field"><span>Slug</span><input value={selected.slug ?? ""} onChange={(event) => update("slug", event.target.value)} required /></label>
+          <label className="admin-field">
+            <span className="admin-field-heading">
+              Slug
+              <span className="admin-info-tooltip" tabIndex="0" aria-label="Forklaring af slug">
+                ?
+                <span className="admin-info-tooltip-text" role="tooltip">
+                  Slug er enden på sidens URL. Brug små bogstaver, bindestreger og ingen mellemrum, fx faglig-aften.
+                </span>
+              </span>
+            </span>
+            <input value={selected.slug ?? ""} onChange={(event) => update("slug", event.target.value)} required />
+          </label>
           <label className="admin-field"><span>Status</span><select value={selected.status ?? "DRAFT"} onChange={(event) => update("status", event.target.value)}><option value="DRAFT">DRAFT</option><option value="PUBLISHED">PUBLISHED</option><option value="ARCHIVED">ARCHIVED</option></select></label>
         </div>
         <label className="account-checkbox">

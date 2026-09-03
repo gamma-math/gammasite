@@ -42,7 +42,6 @@ export function AdminRolesPage({ isAdmin }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Roller</p>
-          <h1>Rolleoversigt</h1>
         </div>
         <Link className="menu-create-button" href="/react/admin/roles/new">
           <Plus size={16} />

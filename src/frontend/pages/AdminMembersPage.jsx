@@ -68,7 +68,6 @@ export function AdminMembersPage({ isAdmin }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Medlemmer</p>
-          <h1>Medlemsadministration</h1>
         </div>
       </div>
       <form className="admin-mass-card" onSubmit={massUpdate}>

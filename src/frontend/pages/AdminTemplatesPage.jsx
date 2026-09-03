@@ -59,8 +59,7 @@ export function AdminTemplatesPage({ isAdmin }) {
     <AdminLayout active="/react/admin/templates" canWrite={isAdmin}>
       <div className="menu-panel-header">
         <div>
-          <p className="menu-section-title">Beskeder</p>
-          <h1>Email templates</h1>
+          <p className="menu-section-title">Besked Skabelon</p>
         </div>
         <Link className="menu-create-button" href="/react/admin/templates/new">
           <Plus size={16} />
