@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Menu, UserCircle } from "lucide-react";
+import { Instagram, Menu, UserCircle } from "lucide-react";
 import { AccountManagePage, ForgotPasswordPage, LoginPage, RegisterPage, ResendEmailConfirmationPage } from "../pages/AccountPages.jsx";
 import { AdminContentEditorPage, AdminContentPage } from "../pages/AdminContentPage.jsx";
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
@@ -274,7 +274,9 @@ function Footer() {
           <span className="frontpage-social-list">
             <a className="frontpage-social-link" href="https://www.linkedin.com/company/gamma-math-ucph/" aria-label="LinkedIn">in</a>
             <a className="frontpage-social-link" href="https://www.facebook.com/share/g/1Exv7epudc/" aria-label="Facebook">f</a>
-            <a className="frontpage-social-link" href="https://www.instagram.com/gamma_ku_2100" aria-label="Instagram">ig</a>
+            <a className="frontpage-social-link" href="https://www.instagram.com/gamma_ku_2100" aria-label="Instagram">
+              <Instagram size={18} />
+            </a>
           </span>
         </div>
       </div>
