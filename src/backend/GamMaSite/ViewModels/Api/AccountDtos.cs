@@ -40,10 +40,8 @@ namespace GamMaSite.ViewModels.Api
         [Range(1849, 2026, ErrorMessage = "Årstallet Årgang skal være mellem {1} og {2}.")]
         public int Aargang { get; set; }
 
-        [Required(ErrorMessage = "Beskæftigelse ved arbejdsgiver er obligatorisk")]
         public string Beskaeftigelse { get; set; }
 
-        [Required(ErrorMessage = "Adresse er obligatorisk")]
         public string Adresse { get; set; }
 
         public string ReturnUrl { get; set; }

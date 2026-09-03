@@ -22,7 +22,6 @@
         </li>
         <li>
             <p>Scan QR-koden eller indtast denne nøgle <kbd>@Model.SharedKey</kbd> i din to-faktor authentication app. Mellemrum og bogstavstørelse har ingen betydning.</p>
-            <div class="alert alert-info">Lær hvordan <a href="https://go.microsoft.com/fwlink/?Linkid=852423">QR-kode-generéring slås til</a>.</div>
             <div id="qrCode"></div>
             <div id="qrCodeData" data-url="@Model.AuthenticatorUri"></div>
         </li>
@@ -50,4 +49,21 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/thirdparty/qrcode.js" asp-append-version="true"></script>
+    <script>
+        const qrCodeElement = document.getElementById("qrCode");
+        const qrCodeDataElement = document.getElementById("qrCodeData");
+        const authenticatorUrl = qrCodeDataElement?.dataset?.url;
+
+        if (qrCodeElement && authenticatorUrl && window.QRCode?.toCanvas) {
+            window.QRCode.toCanvas(authenticatorUrl, { width: 180, margin: 1 }, function (error, canvas) {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+
+                qrCodeElement.appendChild(canvas);
+            });
+        }
+    </script>
 }

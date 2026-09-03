@@ -107,14 +107,14 @@ export function RegisterPage() {
     <AuthCard title="Opret ny bruger" wide>
       <form className="account-form account-form-compact" onSubmit={submit}>
         <Status message={message} error={error} />
-        <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
-        <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="new-password" required />
-        <Field label="Bekræft password" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
-        <Field label="Navn" value={form.navn} onChange={(value) => setForm({ ...form, navn: value })} autoComplete="name" required />
-        <Field label="Telefonnummer" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} autoComplete="tel" required />
-        <Field label="Årgang (start på studiet)" type="number" value={form.aargang} onChange={(value) => setForm({ ...form, aargang: value })} required />
-        <Field label="Beskæftigelse ved arbejdsgiver" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} autoComplete="organization-title" required />
-        <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} required />
+        <Field label="Email*" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
+        <Field label="Password*" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="new-password" required />
+        <Field label="Bekræft password*" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
+        <Field label="Navn*" value={form.navn} onChange={(value) => setForm({ ...form, navn: value })} autoComplete="name" required />
+        <Field label="Telefonnummer*" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} autoComplete="tel" required />
+        <Field label="Årgang* (start på studiet)" type="number" value={form.aargang} onChange={(value) => setForm({ ...form, aargang: value })} required />
+        <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} autoComplete="organization-title" />
+        <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Opretter..." : "Tilmeld"}</button>
         <p className="account-consent"><Link href="/react/betingelser">Brugerbetingelser</Link> og <Link href="/react/cookies">Cookie</Link>-politik accepteres ved tilmelding.</p>
       </form>
