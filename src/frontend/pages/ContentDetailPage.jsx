@@ -11,6 +11,7 @@ export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
   const [registration, setRegistration] = useState(null);
   const [registrations, setRegistrations] = useState([]);
+  const [calendarHref, setCalendarHref] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -33,6 +34,21 @@ export function ContentDetailPage({ slug, type, user }) {
     }
   }, [item?.id, item?.type, user.isAuthenticated]);
 
+  useEffect(() => {
+    if (item?.type !== "EVENT") {
+      setCalendarHref("");
+      return undefined;
+    }
+
+    const blob = new Blob([createCalendarContent(item)], { type: "text/calendar;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    setCalendarHref(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [item]);
+
   if (error) {
     return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
@@ -48,7 +64,6 @@ export function ContentDetailPage({ slug, type, user }) {
   const registrationsPath = `/react/events/${item.slug}/registrations`;
   const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
-  const calendarHref = isEvent ? createCalendarHref(item) : "";
 
   async function toggleRegistration() {
     if (registration) {
@@ -154,12 +169,12 @@ function shortLinkLabel(label) {
     .trim();
 }
 
-function createCalendarHref(item) {
+function createCalendarContent(item) {
   const startsAt = toIcsDate(item.startDate);
   const endsAt = toIcsDate(item.endDate || item.startDate);
   const body = htmlToText(item.body ?? item.summary ?? "");
   const uid = `gamma-${item.id || item.slug}@gammasite`;
-  const calendar = [
+  return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//GamMa//GamMa Site//DA",
@@ -176,8 +191,6 @@ function createCalendarHref(item) {
     "END:VEVENT",
     "END:VCALENDAR"
   ].filter(Boolean).join("\r\n");
-
-  return `data:text/calendar;charset=utf-8,${encodeURIComponent(calendar)}`;
 }
 
 function toIcsDate(value) {

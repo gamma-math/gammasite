@@ -139,7 +139,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetMyRegistration(int id)
         {
             var registration = await _registrationService.GetRegistrationAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
-            return registration == null ? NotFound() : Ok(registration.ToDto());
+            return registration == null ? NoContent() : Ok(registration.ToDto());
         }
 
         [HttpGet("{id:int}/registrations")]

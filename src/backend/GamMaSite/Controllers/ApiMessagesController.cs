@@ -217,11 +217,16 @@ namespace GamMaSite.Controllers
             var eventIds = (recipientEventIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().ToArray();
             if (eventIds.Length > 0)
             {
-                var eventRecipients = await _db.EventRegistrations
+                var eventUserIds = await _db.EventRegistrations
                     .AsNoTracking()
-                    .Include(registration => registration.User)
-                    .Where(registration => eventIds.Contains(registration.ContentItemId) && registration.Registered && registration.User != null)
-                    .Select(registration => registration.User)
+                    .Where(registration => eventIds.Contains(registration.ContentItemId) && registration.Registered)
+                    .Select(registration => registration.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                var eventRecipients = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(user => eventUserIds.Contains(user.Id))
                     .ToListAsync();
                 AddRecipients(recipients, eventRecipients);
             }

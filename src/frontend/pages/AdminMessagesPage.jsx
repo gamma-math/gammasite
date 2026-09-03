@@ -61,14 +61,12 @@ export function AdminMessagesPage({ isAdmin }) {
 
   async function updateRecipientPreview() {
     try {
-      const [preview, recipients] = await Promise.all([
-        messagesApi.recipientPreview(recipientPayload()),
-        resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds })
-      ]);
+      const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds });
       setRecipientDetails(recipients);
       setRecipientPreview({
-        ...preview,
         recipientCount: recipients.length,
+        emailCount: recipients.filter((recipient) => recipient.email).length,
+        smsCount: 0,
         recipients
       });
     } catch {
