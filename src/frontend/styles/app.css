@@ -2273,11 +2273,16 @@ img {
 }
 
 @media (max-width: 900px) {
+  .menu-editor-actions,
+  .menu-detail-footer-actions {
+    flex-wrap: wrap;
+  }
+
   .frontpage-topbar,
   .frontpage-topbar-actions,
   .frontpage-left-actions,
   .frontpage-right-actions {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .frontpage-intro-grid,
@@ -2300,6 +2305,66 @@ img {
 @media (max-width: 640px) {
   .frontpage-topbar {
     min-height: 72px;
+    gap: 8px;
+  }
+
+  .frontpage-topbar-actions,
+  .frontpage-left-actions,
+  .frontpage-right-actions {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .frontpage-topbar .brand img {
+    width: 94px;
+  }
+
+  .frontpage-topbar .frontpage-button {
+    width: auto;
+    min-height: 38px;
+    padding: 0 11px;
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .frontpage-topbar .frontpage-button-primary {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.84rem;
+  }
+
+  .frontpage-topbar .frontpage-profile-link {
+    width: 40px;
+    min-height: 40px;
+  }
+
+  .frontpage-footer-band {
+    padding: 30px 0;
+    background: #1f2d3d;
+  }
+
+  .frontpage-footer-inner {
+    display: grid;
+    gap: 24px;
+    align-items: start;
+    justify-content: stretch;
+  }
+
+  .frontpage-footer-band h2 {
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+  }
+
+  .frontpage-social-list {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .frontpage-social-link {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
   }
 
   .frontpage-button,
@@ -2309,9 +2374,176 @@ img {
     width: 100%;
   }
 
+  .menu-panel-header .menu-create-button,
+  .menu-panel-header .frontpage-button {
+    justify-self: start;
+    width: auto;
+    max-width: 100%;
+    min-height: 38px;
+    padding: 0 13px;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-panel-header {
+    display: grid;
+    gap: 14px;
+    margin: -20px -20px 18px;
+    padding: 20px;
+  }
+
+  .menu-panel-header > div,
+  .menu-panel-header h1 {
+    min-width: 0;
+  }
+
+  .menu-panel-header h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-message-fields,
+  .admin-message-fields-top,
+  .admin-message-recipient-filters,
+  .admin-message-content-picker {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .admin-message-fields-top {
+    padding-bottom: 6px;
+  }
+
+  .admin-message-recipient-filters {
+    padding-top: 6px;
+  }
+
+  .admin-message-generate-row {
+    justify-content: stretch;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .admin-message-generate-row .menu-create-button {
+    width: 100%;
+  }
+
+  .admin-message-recipient-preview {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
   .account-manage-form > .profile-button,
   .account-manage-form .frontpage-button {
     width: auto;
+  }
+
+  .menu-detail-hero {
+    padding: 20px 20px 18px;
+  }
+
+  .menu-detail-image {
+    aspect-ratio: 1.75 / 1;
+  }
+
+  .menu-detail-body {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .menu-detail-copy {
+    min-width: 0;
+  }
+
+  .menu-detail-copy h1 {
+    font-size: clamp(1.85rem, 9vw, 2.45rem);
+  }
+
+  .menu-detail-copy p,
+  .menu-detail-rich-body {
+    overflow-wrap: anywhere;
+  }
+
+  .menu-detail-bottom-bar {
+    display: grid;
+    gap: 18px;
+    justify-content: stretch;
+    margin-top: 22px;
+  }
+
+  .menu-attendee-preview {
+    justify-content: flex-start;
+  }
+
+  .menu-detail-footer-actions {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .menu-detail-footer-actions .menu-attend-button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .event-detail-schedule {
+    overflow-wrap: anywhere;
+  }
+
+  .event-detail-schedule strong {
+    min-width: 44px;
+  }
+
+  .menu-registration-add {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .menu-registration-add .admin-field,
+  .menu-registration-add .menu-attend-button,
+  .menu-registration-add .menu-registration-check {
+    width: 100%;
+  }
+
+  .menu-registration-add .menu-registration-check {
+    justify-content: flex-start;
+  }
+
+  .menu-registration-table {
+    min-width: 540px;
+  }
+
+  .menu-table-pagination {
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .menu-table-pagination > span:first-child {
+    display: none;
+  }
+
+  .menu-table-pagination-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .menu-table-pagination-actions .frontpage-button {
+    width: auto;
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .menu-table-pagination-actions span {
+    flex: 0 1 auto;
+    text-align: center;
+    line-height: 1.25;
   }
 
   .menu-content,

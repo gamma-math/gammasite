@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogIn, Plus } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
+import { Link } from "../routes/navigation.jsx";
 import { contentApi, membersApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
@@ -113,6 +114,9 @@ export function EventRegistrationsPage({ slug, user }) {
           <h1>{item.title}</h1>
           <p className="menu-panel-lead">Se tilmeldte</p>
         </div>
+        <Link className="frontpage-button frontpage-button-secondary" href={`/react/events/${item.slug}`}>
+          Begivenheden
+        </Link>
       </div>
 
       {isAdmin && (
