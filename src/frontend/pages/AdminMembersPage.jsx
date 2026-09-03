@@ -11,7 +11,7 @@ export function AdminMembersPage({ isAdmin }) {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ key: "name", direction: "asc" });
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [expandedMemberIds, setExpandedMemberIds] = useState(new Set());
   const [mass, setMass] = useState({ from: today(), to: today(1), status: "SKYLDER" });

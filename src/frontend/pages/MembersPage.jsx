@@ -6,7 +6,7 @@ export function MembersPage({ user }) {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ key: "name", direction: "asc" });
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
