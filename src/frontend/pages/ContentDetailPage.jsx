@@ -150,7 +150,7 @@ export function ContentDetailPage({ slug, type, user }) {
           {(item.links ?? []).length > 0 && (
             <aside className="menu-detail-side" aria-label="Event links">
             {(item.links ?? []).map((link) => (
-              <a className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`} href={link.url} key={link.id}>
+              <a className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`} href={link.url} target="_blank" rel="noreferrer" key={link.id}>
                 <span>{shortLinkLabel(link.label)}</span>
               </a>
             ))}
