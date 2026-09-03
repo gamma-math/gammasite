@@ -130,8 +130,6 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         <Link className="frontpage-button frontpage-button-secondary" href={basePath}>Tilbage til oversigt</Link>
       </div>
       <form className="menu-editor-form admin-content-editor" onSubmit={save}>
-        {message && <p className="status-message status-message-success">{message}</p>}
-        {error && <p className="status-message status-message-error">{error}</p>}
         <label className="admin-field"><span>Titel</span><input value={selected.title ?? ""} onChange={(event) => update("title", event.target.value)} required /></label>
         <div className="menu-editor-grid">
           <label className="admin-field"><span>Slug</span><input value={selected.slug ?? ""} onChange={(event) => update("slug", event.target.value)} required /></label>
@@ -151,6 +149,8 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         {type === "EVENT" && <div className="menu-editor-grid"><label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label><label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label><label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label></div>}
         <LinkEditor links={selected.links ?? []} onChange={(links) => update("links", links)} />
         <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button></div>
+        {message && <p className="status-message status-message-success">{message}</p>}
+        {error && <p className="status-message status-message-error">{error}</p>}
       </form>
     </AdminLayout>
   );

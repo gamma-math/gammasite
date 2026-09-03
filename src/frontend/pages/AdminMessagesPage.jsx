@@ -35,6 +35,7 @@ export function AdminMessagesPage({ isAdmin }) {
   const [recipientDetails, setRecipientDetails] = useState([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [lastAction, setLastAction] = useState("");
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -78,6 +79,7 @@ export function AdminMessagesPage({ isAdmin }) {
   async function renderEmail() {
     setError("");
     setMessage("");
+    setLastAction("generate");
     setIsGenerating(true);
 
     try {
@@ -123,6 +125,7 @@ export function AdminMessagesPage({ isAdmin }) {
     setError("");
     setMessage("");
     setSendError("");
+    setLastAction("send");
 
     if (!subject.trim()) {
       setError("Emne er obligatorisk før afsendelse.");
@@ -146,6 +149,7 @@ export function AdminMessagesPage({ isAdmin }) {
     setError("");
     setSendError("");
     setMessage("Sender besked...");
+    setLastAction("send");
     setIsSending(true);
 
     try {
@@ -173,6 +177,7 @@ export function AdminMessagesPage({ isAdmin }) {
 
   async function openRecipientModal() {
     setError("");
+    setLastAction("recipients");
     try {
       const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds });
       setRecipientDetails(recipients);
@@ -221,8 +226,7 @@ export function AdminMessagesPage({ isAdmin }) {
         </div>
       </div>
 
-      {message && <p className={messageStatusClass(message)}>{message}</p>}
-      {error && <p className="status-message status-message-error">{error}</p>}
+      {!lastAction && error && <p className="status-message status-message-error">{error}</p>}
 
       <form className="admin-message-composer" onSubmit={requestSend}>
         <section className="admin-editor-shell">
@@ -276,6 +280,7 @@ export function AdminMessagesPage({ isAdmin }) {
               </button>
             </div>
           )}
+          {lastAction === "recipients" && error && <p className="status-message status-message-error">{error}</p>}
         </section>
 
         <section className="admin-editor-shell">
@@ -304,6 +309,8 @@ export function AdminMessagesPage({ isAdmin }) {
               {isGenerating ? "Genererer..." : "Generer email"}
             </button>
           </div>
+          {lastAction === "generate" && message && <p className={messageStatusClass(message)}>{message}</p>}
+          {lastAction === "generate" && error && <p className="status-message status-message-error">{error}</p>}
         </section>
 
         <section className="admin-editor-shell">
@@ -333,6 +340,8 @@ export function AdminMessagesPage({ isAdmin }) {
             {isSending ? "Sender..." : "Send besked"}
           </button>
         </div>
+        {lastAction === "send" && message && <p className={messageStatusClass(message)}>{message}</p>}
+        {lastAction === "send" && error && <p className="status-message status-message-error">{error}</p>}
       </form>
 
       {showPreview && (

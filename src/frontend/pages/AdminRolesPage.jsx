@@ -168,9 +168,6 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
         <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/roles">Tilbage til oversigt</Link>
       </div>
 
-      {message && <p className="status-message status-message-success">{message}</p>}
-      {error && <p className="status-message status-message-error">{error}</p>}
-
       {isNew ? (
         <form className="menu-editor-form admin-role-editor" onSubmit={create}>
           <label className="admin-field">
@@ -180,6 +177,8 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
           <div className="menu-editor-actions">
             <button className="profile-button" type="submit"><Save size={16} /> Gem</button>
           </div>
+          {message && <p className="status-message status-message-success">{message}</p>}
+          {error && <p className="status-message status-message-error">{error}</p>}
         </form>
       ) : (
         <section className="admin-editor-shell">
@@ -189,9 +188,14 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
               <RoleCheckboxes title="Tilføj" name="addIds" users={filteredNonMembers} search={addSearch} onSearchChange={setAddSearch} />
               <RoleCheckboxes title="Fjern" name="deleteIds" users={membership.members} />
               <button className="profile-button" type="submit"><Save size={16} /> Gem</button>
+              {message && <p className="status-message status-message-success">{message}</p>}
+              {error && <p className="status-message status-message-error">{error}</p>}
             </form>
           ) : (
-            <p className="muted admin-role-loading">Henter medlemmer...</p>
+            <>
+              <p className="muted admin-role-loading">Henter medlemmer...</p>
+              {error && <p className="status-message status-message-error">{error}</p>}
+            </>
           )}
         </section>
       )}

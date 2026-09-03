@@ -448,6 +448,20 @@ img {
   content: "⚠";
 }
 
+.menu-editor-actions + .status-message,
+.profile-button + .status-message {
+  margin-top: 12px;
+}
+
+.admin-editor-shell > .status-message {
+  margin: 0 18px 18px;
+}
+
+.admin-mass-card .status-message {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .menu-section-title {
   margin: 0 0 10px;
   color: var(--action-blue);

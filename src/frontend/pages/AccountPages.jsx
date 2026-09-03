@@ -57,7 +57,6 @@ export function LoginPage() {
   return (
     <AuthCard title="Log ind" subtitle="Indtast dine login-oplysninger.">
       <form className="account-form" onSubmit={submit}>
-        <Status error={error} />
         <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
         <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="current-password" required />
         <label className="account-checkbox">
@@ -65,6 +64,7 @@ export function LoginPage() {
           <span>Husk mig?</span>
         </label>
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Logger ind..." : "Log ind"}</button>
+        <Status error={error} />
         <div className="account-links">
           <Link href="/react/account/forgot-password">Glemt dit password?</Link>
           <Link href="/react/account/register">Tilmeld dig som ny bruger</Link>
@@ -106,7 +106,6 @@ export function RegisterPage() {
   return (
     <AuthCard title="Opret ny bruger" wide>
       <form className="account-form account-form-compact" onSubmit={submit}>
-        <Status message={message} error={error} />
         <Field label="Email*" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
         <Field label="Password*" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="new-password" required />
         <Field label="Bekræft password*" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
@@ -116,6 +115,7 @@ export function RegisterPage() {
         <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} autoComplete="organization-title" />
         <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Opretter..." : "Tilmeld"}</button>
+        <Status message={message} error={error} />
         <p className="account-consent"><Link href="/react/betingelser">Brugerbetingelser</Link> og <Link href="/react/cookies">Cookie</Link>-politik accepteres ved tilmelding.</p>
       </form>
     </AuthCard>
@@ -192,7 +192,6 @@ export function AccountManagePage({ user, section = "profile" }) {
         </div>
       </div>
       <section className="account-manage-card">
-        <Status message={message} error={error} />
         {section === "profile" && profileForm && (
           <ProfileForm form={profileForm} setForm={setProfileForm} profile={profile} isSubmitting={isSubmitting} onSubmit={async (event) => {
             event.preventDefault();
@@ -240,6 +239,7 @@ export function AccountManagePage({ user, section = "profile" }) {
         {section === "personal-data" && <PersonalDataPanel />}
         {section === "delete-personal-data" && <DeletePersonalDataPanel />}
         {section === "logout" && <LogoutPanel />}
+        <Status message={message} error={error} />
       </section>
     </MenuLayout>
   );
@@ -349,7 +349,6 @@ function DeletePersonalDataPanel() {
 
   return (
     <form className="account-form account-manage-form" onSubmit={deleteAccount}>
-      <Status error={error} />
       <div className="account-danger-panel">
         <strong>Sletning er permanent.</strong>
         <span>Din bruger og dine personlige oplysninger fjernes, og handlingen kan ikke fortrydes.</span>
@@ -362,6 +361,7 @@ function DeletePersonalDataPanel() {
       <button className="profile-button profile-button-danger" type="submit" disabled={isSubmitting}>
         <Trash2 size={16} /> {isSubmitting ? "Sletter..." : "Slet bruger"}
       </button>
+      <Status error={error} />
     </form>
   );
 }
@@ -385,11 +385,11 @@ function LogoutPanel() {
 
   return (
     <div className="account-form account-manage-form">
-      <Status error={error} />
       <p className="account-help-text">Log ud af din bruger.</p>
       <button className="profile-button" type="button" onClick={logout} disabled={isSubmitting}>
         {isSubmitting ? "Logger ud..." : "Log ud"}
       </button>
+      <Status error={error} />
     </div>
   );
 }
@@ -411,9 +411,9 @@ function EmailActionPage({ title, subtitle, buttonLabel, submit }) {
   return (
     <AuthCard title={title} subtitle={subtitle}>
       <form className="account-form" onSubmit={onSubmit}>
-        <Status message={message} error={error} />
         <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="username" required />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sender..." : buttonLabel}</button>
+        <Status message={message} error={error} />
       </form>
     </AuthCard>
   );

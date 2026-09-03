@@ -72,11 +72,11 @@ export function AdminMembersPage({ isAdmin }) {
         </div>
       </div>
       <form className="admin-mass-card" onSubmit={massUpdate}>
-        {message && <p className="status-message status-message-success">{message}</p>}
         <label className="admin-field"><span>Kontingentdato fra</span><input type="date" value={mass.from} onChange={(event) => setMass({ ...mass, from: event.target.value })} /></label>
         <label className="admin-field"><span>Kontingentdato til</span><input type="date" value={mass.to} onChange={(event) => setMass({ ...mass, to: event.target.value })} /></label>
         <label className="admin-field"><span>Status</span><select value={mass.status} onChange={(event) => setMass({ ...mass, status: event.target.value })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
         <button className="profile-button" type="submit">Skift status</button>
+        {message && <p className="status-message status-message-success">{message}</p>}
       </form>
       <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} />
       <div className="menu-table-wrap">

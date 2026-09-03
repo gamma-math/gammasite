@@ -209,9 +209,6 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
         <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/templates">Tilbage til oversigt</Link>
       </div>
 
-      {message && <p className="status-message status-message-success">{message}</p>}
-      {error && <p className="status-message status-message-error">{error}</p>}
-
       <form className="menu-editor-form admin-template-editor" onSubmit={save}>
         <div className="admin-form-row admin-form-row-two">
           <label className="admin-field">
@@ -259,6 +256,8 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
           <button className="admin-action-button" type="button" onClick={renderPreview}><Eye size={16} /> Preview</button>
           <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>
         </div>
+        {message && <p className="status-message status-message-success">{message}</p>}
+        {error && <p className="status-message status-message-error">{error}</p>}
       </form>
 
       {showPreview && preview && (
