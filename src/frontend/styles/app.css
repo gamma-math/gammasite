@@ -2460,9 +2460,12 @@ img {
 
   .menu-detail-copy h1 {
     font-size: clamp(1.85rem, 9vw, 2.45rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .menu-detail-copy p,
+  .menu-detail-meta,
   .menu-detail-rich-body {
     overflow-wrap: anywhere;
   }
