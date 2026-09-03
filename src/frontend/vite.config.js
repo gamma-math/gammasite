@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: "/react-assets/",
   build: {
-    outDir: path.resolve(__dirname, "../../wwwroot/react-assets"),
+    outDir: path.resolve(__dirname, "../backend/GamMaSite/wwwroot/react-assets"),
     emptyOutDir: true,
     rollupOptions: {
       output: {

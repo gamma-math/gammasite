@@ -5,28 +5,20 @@
       "path": "."
     },
     {
-      "name": "Controllers",
-      "path": "./Controllers"
+      "name": "Backend",
+      "path": "./src/backend/GamMaSite"
     },
     {
-      "name": "Services",
-      "path": "./Services"
+      "name": "Frontend",
+      "path": "./src/frontend"
     },
     {
-      "name": "Views",
-      "path": "./Views"
+      "name": "SQL",
+      "path": "./SQL"
     },
     {
-      "name": "ViewModels",
-      "path": "./ViewModels"
-    },
-    {
-      "name": "Models",
-      "path": "./Models"
-    },
-    {
-      "name": "Properties (Settings)",
-      "path": "./Properties"
+      "name": "Docs",
+      "path": "./docs"
     }
     ],
     "settings":

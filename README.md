@@ -17,12 +17,19 @@
 * If needed, urgent fixes can be created in `fix/*` and merged directly into `master` via Pull Requests.
 * Direct pushes to `master` and `staging` are not allowed.
 
+## Repository layout
+
+* `src/backend/GamMaSite/` contains the ASP.NET Core application, Razor/Identity pages, controllers, services, data models, and deployed `wwwroot` assets.
+* `src/frontend/` contains the React/Vite application. Production assets are built into `src/backend/GamMaSite/wwwroot/react-assets/`.
+* `SQL/` contains database scripts and test seed data.
+* `docs/` contains design mockups and project documentation.
+
 ## Getting started
 
 ### Prerequisites
 
 * [.NET 10 SDK](https://dotnet.microsoft.com/download) (`dotnet --version` should show `10.x`)
-* MySQL 8.0+ server running and accessible via the connection string in `appsettings.json`
+* MySQL 8.0+ server running and accessible via the connection string in `src/backend/GamMaSite/appsettings.json`
 
 ### Build and run
 
@@ -51,7 +58,7 @@ The application starts on **https://localhost:5001** (HTTP: http://localhost:500
 Alternatively, using `dotnet` directly:
 
 ```bash
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project GamMaSite.csproj
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/backend/GamMaSite/GamMaSite.csproj
 ```
 
 ### VS Code
