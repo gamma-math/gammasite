@@ -57,6 +57,7 @@ multiproject.code-workspace
 .env.*
 *.log
 run-local.*
+legacy-cleanup-notes.txt
 
 # Frontend dependencies
 node_modules/

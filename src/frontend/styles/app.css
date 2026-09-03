@@ -1679,34 +1679,43 @@ img {
 }
 
 .menu-payment-choice-card {
-  padding: 46px;
+  padding: 34px 42px 40px;
   border-radius: 28px;
   background: #ffffff;
-}
-
-.menu-payment-choice-card h1 {
-  font-size: clamp(2.4rem, 5vw, 4.2rem);
-  line-height: 1;
 }
 
 .payment-choice-actions {
   display: grid;
   justify-items: center;
-  gap: 18px;
-  margin-top: 36px;
+  gap: 16px;
+  width: min(100%, 520px);
+  margin-top: 26px;
 }
 
 .payment-choice-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
   color: var(--muted);
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
+.payment-choice-divider::before,
+.payment-choice-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #d7dfe9;
+}
+
 .menu-payment-button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
+  justify-self: start;
   min-height: 48px;
   padding: 0 18px;
   border: 1px solid var(--accent);
@@ -1717,10 +1726,9 @@ img {
 }
 
 .menu-payment-button-large {
-  width: min(100%, 520px);
-  min-height: 76px;
-  border-radius: 22px;
-  font-size: 1.35rem;
+  width: 100%;
+  min-height: 56px;
+  font-size: 1rem;
 }
 
 .menu-payment-button-secondary {
@@ -1749,6 +1757,10 @@ img {
   display: grid;
   gap: 10px;
   padding: 28px 36px 34px;
+}
+
+.menu-payment-status-card > .frontpage-button {
+  justify-self: start;
 }
 
 .menu-payment-product-card h1 {

@@ -18,6 +18,40 @@ a {
   border-color: #1861ac;
 }
 
+.gamma-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 999px;
+  color: #1f2d3d;
+  background: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gamma-action-button:hover {
+  color: #1f2d3d;
+  text-decoration: none;
+}
+
+.gamma-action-button-primary {
+  color: #ffffff;
+  border-color: #18a8e6;
+  background: #18a8e6;
+}
+
+.gamma-action-button-primary:hover {
+  color: #ffffff;
+}
+
+.gamma-action-button-secondary {
+  border-color: #cfd8e6;
+}
+
 .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
   color: #fff;
   background-color: #1b6ec2;

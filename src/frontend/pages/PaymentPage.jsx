@@ -31,7 +31,6 @@ export function PaymentPage({ user }) {
 
       <article className="menu-payment-card menu-payment-choice-card">
         <p className="menu-payment-kicker">Vælg betalingsform</p>
-        <h1>Betal dit medlemskab</h1>
         <div className="payment-choice-actions">
           {membershipProduct ? (
             <Link className="menu-payment-button menu-payment-button-large" href={`/react/pay/products/${membershipProduct.id}`}>
@@ -141,7 +140,7 @@ export function PaymentStatusPage({ status, user }) {
   const success = status === "success" || status === "kontingent-success";
   return (
     <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated}>
-      <article className="menu-payment-card">
+      <article className="menu-payment-card menu-payment-status-card">
         <p className="menu-payment-kicker">Betaling</p>
         <h1>{success ? "Køb gennemført" : "Køb annulleret"}</h1>
         <p className="muted">{status === "kontingent-success" ? "Du har nu købt et kontingent." : success ? "Dit køb blev gennemført." : "Dit køb blev annulleret."}</p>

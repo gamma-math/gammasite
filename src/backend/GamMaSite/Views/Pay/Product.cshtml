@@ -64,5 +64,5 @@
     <input type="hidden" id="user" value="@UserManager.FindByIdAsync(UserManager.GetUserId(User)).Result.Id" />
     <input type="hidden" id="product" value="@Model.Product.Id" />
     <input type="hidden" id="apiKey" value="@Model.ApiKey" />
-    <button type="submit" class="btn btn-primary" id="checkout-button">Køb @Model.Product.Name.ToLower()</button>
+    <button type="submit" class="gamma-action-button gamma-action-button-primary" id="checkout-button">Køb @Model.Product.Name.ToLower()</button>
 </section>
