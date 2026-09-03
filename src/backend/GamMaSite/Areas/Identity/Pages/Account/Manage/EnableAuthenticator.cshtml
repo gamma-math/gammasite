@@ -3,49 +3,50 @@
 @{
     ViewData["Title"] = "Konfigurér authentication app";
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+    ViewData["HideManageNavigation"] = true;
 }
 
-<partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div>
-    <p>For at anvende en authentication app skal følgende trin gennemføres:</p>
-    <ol class="list">
-        <li>
-            <p>
-                Download en to-faktor authentication app såsom Microsoft Authenticator til
-                <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Android</a> og
-                <a href="https://go.microsoft.com/fwlink/?Linkid=825073">iOS</a> eller
-                Google Authenticator til
-                <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&amp;hl=en">Android</a> og
-                <a href="https://itunes.apple.com/us/app/google-authenticator/id388497605?mt=8">iOS</a>.
-            </p>
-        </li>
-        <li>
-            <p>Scan QR-koden eller indtast denne nøgle <kbd>@Model.SharedKey</kbd> i din to-faktor authentication app. Mellemrum og bogstavstørelse har ingen betydning.</p>
-            <div id="qrCode"></div>
-            <div id="qrCodeData" data-url="@Model.AuthenticatorUri"></div>
-        </li>
-        <li>
-            <p>
-                Så snart du har scannet QR-koden eller inputtet foroven vil din to-faktor authentication app
-                tildele dig en unik kode. Indtast denne kode i bekræftelsesvinduet forneden.
-            </p>
-            <div class="row">
-                <div class="col-md-6">
-                    <form id="send-code" method="post">
-                        <div class="form-floating">
-                            <input asp-for="Input.Code" class="form-control" autocomplete="off" />
-                            <label asp-for="Input.Code" class="control-label form-label">Godkendelseskode</label>
-                            <span asp-validation-for="Input.Code" class="text-danger"></span>
-                        </div>
-                        <button type="submit" class="w-100 btn btn-lg btn-primary">Bekræft</button>
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                    </form>
+<section class="legacy-auth-card legacy-auth-card-wide">
+    <div class="legacy-card-hero">
+        <p class="legacy-kicker">To-faktor authentication</p>
+        <h1>Konfigurér authentication app</h1>
+        <p>Scan QR-koden med din authenticator app og indtast koden for at aktivere ekstra sikkerhed på din konto.</p>
+    </div>
+
+    <div class="legacy-card-body legacy-authenticator-body">
+        <partial name="_StatusMessage" for="StatusMessage" />
+        <div class="legacy-authenticator-grid">
+            <div class="legacy-authenticator-copy">
+                <h2>Sådan gør du</h2>
+                <p>
+                    Brug Microsoft Authenticator eller Google Authenticator på
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Android</a> /
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825073">iOS</a>.
+                </p>
+                <p>Scan QR-koden eller indtast nøglen manuelt. Mellemrum og bogstavstørrelse har ingen betydning.</p>
+                <div class="legacy-secret-key">
+                    <span>Nøgle</span>
+                    <kbd>@Model.SharedKey</kbd>
                 </div>
             </div>
-        </li>
-    </ol>
-</div>
+
+            <div class="legacy-qr-panel">
+                <div id="qrCode" class="legacy-qr-code"></div>
+                <div id="qrCodeData" data-url="@Model.AuthenticatorUri"></div>
+            </div>
+        </div>
+
+        <form id="send-code" method="post" class="legacy-auth-form">
+            <label class="legacy-form-field">
+                <span>Godkendelseskode</span>
+                <input asp-for="Input.Code" autocomplete="off" placeholder="Indtast kode fra appen" />
+                <span asp-validation-for="Input.Code" class="legacy-validation-message"></span>
+            </label>
+            <button type="submit" class="legacy-primary-button">Bekræft</button>
+            <div asp-validation-summary="ModelOnly" class="legacy-validation-message"></div>
+        </form>
+    </div>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

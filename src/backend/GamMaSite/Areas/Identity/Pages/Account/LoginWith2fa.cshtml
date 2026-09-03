@@ -4,37 +4,37 @@
     ViewData["Title"] = "To-faktor authentication";
 }
 
-<h1>@ViewData["Title"]</h1>
-<hr />
-<p>Dit login er beskyttet med en authenticator app. Indtast din authentication-kode forneden.</p>
-<div class="row">
-    <div class="col-md-4">
-        <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
+<section class="legacy-centered-page">
+    <article class="legacy-auth-card">
+        <div class="legacy-card-hero">
+            <p class="legacy-kicker">Sikkert login</p>
+            <h1>To-faktor authentication</h1>
+            <p>Dit login er beskyttet med en authenticator app. Indtast koden fra appen for at fortsætte.</p>
+        </div>
+
+        <div class="legacy-card-body legacy-simple-body">
+            <form method="post" asp-route-returnUrl="@Model.ReturnUrl" class="legacy-auth-form">
             <input asp-for="RememberMe" type="hidden" />
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-floating">
-                <input asp-for="Input.TwoFactorCode" class="form-control" autocomplete="off" />
-                <label asp-for="Input.TwoFactorCode" class="form-label"></label>
-                <span asp-validation-for="Input.TwoFactorCode" class="text-danger"></span>
-            </div>
-            <div>
-                <div class="checkbox">
-                    <label asp-for="Input.RememberMachine" class="form-label">
-                        <input asp-for="Input.RememberMachine" />
-                        @Html.DisplayNameFor(m => m.Input.RememberMachine)
-                    </label>
-                </div>
-            </div>
-            <div>
-                <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-            </div>
-        </form>
-    </div>
-</div>
-<p>
-    Mangler du adgang til din authentication-enhed? Du kan
-    <a id="recovery-code-login" asp-page="./LoginWithRecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">logge ind med en recovery-kode</a>.
-</p>
+                <div asp-validation-summary="ModelOnly" class="legacy-validation-message"></div>
+                <label class="legacy-form-field">
+                    <span>Authenticator-kode</span>
+                    <input asp-for="Input.TwoFactorCode" autocomplete="one-time-code" placeholder="Indtast 6-cifret kode" />
+                    <span asp-validation-for="Input.TwoFactorCode" class="legacy-validation-message"></span>
+                </label>
+                <label asp-for="Input.RememberMachine" class="legacy-checkbox">
+                    <input asp-for="Input.RememberMachine" />
+                    <span>@Html.DisplayNameFor(m => m.Input.RememberMachine)</span>
+                </label>
+                <button type="submit" class="legacy-primary-button">Log ind</button>
+            </form>
+
+            <p class="legacy-help-text">
+                Mangler du adgang til din authentication-enhed?
+                <a id="recovery-code-login" asp-page="./LoginWithRecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">Log ind med en recovery-kode</a>.
+            </p>
+        </div>
+    </article>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

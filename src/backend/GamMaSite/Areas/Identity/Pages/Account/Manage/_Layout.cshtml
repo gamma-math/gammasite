@@ -9,11 +9,19 @@
     }
 }
 
-<h2>Administrér din bruger</h2>
+@{
+    var hideManageNavigation = ViewData["HideManageNavigation"] as bool? == true;
+}
 
-<div>
-    <h4>Skift dine brugerindstillinger</h4>
-    <hr />
+@if (hideManageNavigation)
+{
+    <div class="legacy-centered-page">
+        @RenderBody()
+    </div>
+}
+else
+{
+    <h2>Administrér din bruger</h2>
     <div class="row">
         <div class="col-md-3">
             <partial name="_ManageNav" />
@@ -22,7 +30,7 @@
             @RenderBody()
         </div>
     </div>
-</div>
+}
 
 @section Scripts {
     @await RenderSectionAsync("Scripts", required: false)

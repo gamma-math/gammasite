@@ -4,17 +4,21 @@
     ViewData["Title"] = "Email bekræftet";
 }
 
-<h1>@ViewData["Title"]</h1>
-<hr />
-<div>
-    <p>
-        Din mail er bekræftet, og din profil er hermed oprettet i GamMas system.
-    </p>
-    <p>
-        Et bestyrelsesmedlem vil herefter tjekke, om du er berettiget til medlemskab.
-        Kontakt gerne <a href="mailto:bestyrelsen@gam-ma.dk?Subject=GamMa-brugeroprettelse" target="_top">bestyrelsen@gam-ma.dk</a> for at sætte skub i processen.
-    </p>
-    <p> 
-        Du kan allerede nu <a asp-area="Identity" asp-page="/Account/Login">logge ind</a> på din profil.
-    </p>
-</div>
+<section class="legacy-centered-page">
+    <article class="legacy-auth-card">
+        <div class="legacy-card-hero">
+            <p class="legacy-kicker">Profil oprettet</p>
+            <h1>Email bekræftet</h1>
+            <p>Din mail er bekræftet, og din profil er nu oprettet i GamMas system.</p>
+        </div>
+
+        <div class="legacy-card-body legacy-simple-body">
+            <p>
+                Et bestyrelsesmedlem vil herefter tjekke, om du er berettiget til medlemskab.
+                Kontakt gerne <a href="mailto:bestyrelsen@gam-ma.dk?Subject=GamMa-brugeroprettelse" target="_top">bestyrelsen@gam-ma.dk</a>
+                for at sætte skub i processen.
+            </p>
+            <a class="legacy-primary-button" asp-area="Identity" asp-page="/Account/Login">Log ind</a>
+        </div>
+    </article>
+</section>

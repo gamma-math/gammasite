@@ -3,22 +3,28 @@
 @{
     ViewData["Title"] = "Nulstil authentication-nøgle";
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+    ViewData["HideManageNavigation"] = true;
 }
 
-<partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div class="alert alert-warning" role="alert">
-    <p>
-        <span class="glyphicon glyphicon-warning-sign"></span>
-        <strong>Hvis du nulstiller din authentication-nøgles vil din authentication app holde op med at virke indtil du rekonfigurérer den.</strong>
-    </p>
-    <p>
-        Denne proces deaktivérer 2FA indtil du godkender din authentication app.
-        Hvis du ikke gennemfører din authentication app konfiguration mister du potentielt adgangen til din profil.
-    </p>
-</div>
-<div>
-    <form id="reset-authenticator-form" method="post">
-        <button id="reset-authenticator-button" class="btn btn-danger" type="submit">Nulstil authentication-nøgle</button>
-    </form>
-</div>
+<section class="legacy-auth-card">
+    <div class="legacy-card-hero">
+        <p class="legacy-kicker">To-faktor authentication</p>
+        <h1>Nulstil authentication-nøgle</h1>
+        <p>Brug dette hvis du vil opsætte din authenticator app forfra.</p>
+    </div>
+
+    <div class="legacy-card-body legacy-simple-body">
+        <partial name="_StatusMessage" for="StatusMessage" />
+        <div class="legacy-warning-box" role="alert">
+            <strong>Din nuværende authentication app stopper med at virke.</strong>
+            <p>
+                Denne proces deaktiverer 2FA, indtil du godkender en ny authentication app.
+                Hvis du ikke gennemfører opsætningen bagefter, kan du potentielt miste adgangen til din profil.
+            </p>
+        </div>
+
+        <form id="reset-authenticator-form" method="post" class="legacy-auth-form">
+            <button id="reset-authenticator-button" class="legacy-danger-button" type="submit">Nulstil authentication-nøgle</button>
+        </form>
+    </div>
+</section>

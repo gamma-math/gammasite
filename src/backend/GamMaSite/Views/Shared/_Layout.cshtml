@@ -33,73 +33,56 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <img src="~/lib/logo_blue.png" alt="GamMa-logo" width="90" />
+    <header class="legacy-site-header">
+        <div class="legacy-page-shell legacy-topbar">
+            <a class="legacy-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                <img src="~/lib/logo_blue.png" alt="GamMa-logo" />
+            </a>
+            <nav class="legacy-topbar-actions" aria-label="Navigation">
+                <a class="legacy-header-button" href="/react/events">
+                    <span aria-hidden="true">☰</span>
+                    Menu
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
-                    <partial name="_LoginPartial" />
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Arrangementer">Arrangementer</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" target="_blank" href="https://www.facebook.com/groups/gammamath/">Facebook</a>
-                        </li>
-                        @if (SignInManager.IsSignedIn(User))
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Menu
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="adminDropdown">
-                                    @if (User.IsInRole("Admin"))
-                                    {
-                                        <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Expanded">Medlemmer</a>
-                                    }
-                                    else
-                                    {
-                                        <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Index">Medlemmer</a>
-                                    }
-                                    <a class="dropdown-item" asp-area="" asp-controller="Pay" asp-action="Index">Betal</a>
-                                    <a class="dropdown-item" asp-area="" asp-controller="Library" asp-action="Index">Bibliotek</a>
-                                    <a class="dropdown-item" asp-area="" asp-controller="Calendar" asp-action="Index">Kalender</a>
-                                </div>
-                            </li>
-                        }
-                        @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Admin
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="adminDropdown">
-                                    <a class="dropdown-item" asp-area="" asp-controller="Messages" asp-action="Index">Beskeder</a>
-                                    <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="UpdateMass">Massebehandling</a>
-                                    <a class="dropdown-item" asp-area="" asp-controller="Role" asp-action="Index">Roller</a>
-                                </div>
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        </nav>
+                @if (SignInManager.IsSignedIn(User) && (User.IsInRole("Admin") || User.IsInRole("ADMIN") || User.IsInRole("READ_ADMIN")))
+                {
+                    <a class="legacy-header-button" href="/react/admin/events">Admin</a>
+                }
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <a class="legacy-profile-link" href="/react/account/manage" aria-label="Profil">
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="10" r="3"></circle>
+                            <path d="M7 20.66c1.3-2.05 3.05-3.08 5-3.08s3.7 1.03 5 3.08"></path>
+                        </svg>
+                    </a>
+                }
+                else
+                {
+                    <a class="legacy-header-button" href="/react/account/login">Login</a>
+                    <a class="legacy-header-button legacy-header-button-primary" href="/react/account/register">Bliv medlem</a>
+                }
+            </nav>
+        </div>
     </header>
-    <div class="container" style="border-radius: 15px;">
-        <main role="main" class="pb-3">
+    <div class="legacy-page-shell legacy-main-shell">
+        <main role="main">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; @DateTime.UtcNow.Year.ToString() - Alumneforeningen GamMa - <a href="https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768">CVR: 34637768</a> - Kontakt <a href= "mailto: bestyrelsen@gam-ma.dk"> bestyrelsen@gam-ma.dk </a>
+    <footer class="legacy-footer">
+        <div class="legacy-page-shell legacy-footer-inner">
+            <div>
+                <h2>Alumneforeningen GamMa</h2>
+                <p>CVR: <a href="https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768">34637768</a></p>
+                <p>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></p>
+            </div>
+            <div class="legacy-footer-socials">
+                <a href="https://www.linkedin.com/company/gamma-math-ucph/" aria-label="LinkedIn">in</a>
+                <a href="https://www.facebook.com/share/g/1Exv7epudc/" aria-label="Facebook">f</a>
+                <a href="https://www.instagram.com/gamma_ku_2100" aria-label="Instagram">ig</a>
+            </div>
         </div>
     </footer>
     <script src="~/js/site.js" asp-append-version="true"></script>
