@@ -173,6 +173,11 @@ export function AccountManagePage({ user, section = "profile" }) {
     }).catch((err) => setError(err.message));
   }, [user.isAuthenticated]);
 
+  useEffect(() => {
+    setMessage("");
+    setError("");
+  }, [section]);
+
   if (!user.isAuthenticated) {
     return <AccountRequired />;
   }
@@ -296,6 +301,7 @@ function PasswordForm({ form, setForm, isSubmitting, onSubmit }) {
 function TwoFactorPanel() {
   return (
     <div className="account-form account-manage-form">
+      <p className="account-help-text">To-faktor authentication giver din konto et ekstra lag sikkerhed. Du kan opsætte en authenticator app eller nulstille opsætningen, hvis du har fået ny telefon.</p>
       <div className="account-action-row">
         <a className="frontpage-button frontpage-button-primary" href="/Identity/Account/Manage/EnableAuthenticator">Indstil authentication app</a>
         <a className="frontpage-button frontpage-button-secondary" href="/Identity/Account/Manage/ResetAuthenticator">Reset authentication app</a>
