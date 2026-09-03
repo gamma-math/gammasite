@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
@@ -23,18 +22,18 @@ namespace GamMaSite.Areas.Identity.Pages.Account
         private readonly SignInManager<SiteUser> _signInManager;
         private readonly UserManager<SiteUser> _userManager;
         private readonly ILogger<RegisterModel> _logger;
-        private readonly IEmailSender _emailSender;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
         public RegisterModel(
             UserManager<SiteUser> userManager,
             SignInManager<SiteUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            ISystemEmailTemplateService systemEmailTemplateService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
-            _emailSender = emailSender;
+            _systemEmailTemplateService = systemEmailTemplateService;
         }
 
         [BindProperty]
@@ -128,11 +127,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                         values: new { area = "Identity", userId = user.Id, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
-                    await _emailSender.SendEmailAsync(Input.Email, "Bekræft din email",
-                        $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
-                        $"For at blive godkendt som medlem, kan du kontakte foreningens bestyrelse på bestyrelsen@gam-ma.dk." +
-                        $"Gør i den forbindelse opmærksom på, om du er studerende eller har færdiggjort dine studier."
-                    );
+                    await _systemEmailTemplateService.SendRegistrationConfirmationAsync(Input.Email, user.Navn, callbackUrl);
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {

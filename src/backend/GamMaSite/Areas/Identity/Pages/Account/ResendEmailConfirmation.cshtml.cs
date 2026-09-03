@@ -1,13 +1,12 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
@@ -18,12 +17,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     public class ResendEmailConfirmationModel : PageModel
     {
         private readonly UserManager<SiteUser> _userManager;
-        private readonly IEmailSender _emailSender;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
-        public ResendEmailConfirmationModel(UserManager<SiteUser> userManager, IEmailSender emailSender)
+        public ResendEmailConfirmationModel(UserManager<SiteUser> userManager, ISystemEmailTemplateService systemEmailTemplateService)
         {
             _userManager = userManager;
-            _emailSender = emailSender;
+            _systemEmailTemplateService = systemEmailTemplateService;
         }
 
         [BindProperty]
@@ -62,10 +61,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                 pageHandler: null,
                 values: new { userId = userId, code = code },
                 protocol: Request.Scheme);
-            await _emailSender.SendEmailAsync(
-                Input.Email,
-                "Bekræft din email",
-                $"Bekræft venligst din profil ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+            await _systemEmailTemplateService.SendEmailConfirmationAsync(Input.Email, user.Navn, callbackUrl);
 
             ModelState.AddModelError(string.Empty, "Bekræftelsesmail afsendt. Tjek venligst din mail.");
             return Page();

@@ -75,6 +75,7 @@ StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
 
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>

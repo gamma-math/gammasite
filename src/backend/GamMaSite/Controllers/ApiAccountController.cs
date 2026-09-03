@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
@@ -24,18 +23,18 @@ namespace GamMaSite.Controllers
     {
         private readonly SignInManager<SiteUser> _signInManager;
         private readonly UserManager<SiteUser> _userManager;
-        private readonly IEmailSender _emailSender;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
         private readonly IAntiforgery _antiforgery;
 
         public ApiAccountController(
             SignInManager<SiteUser> signInManager,
             UserManager<SiteUser> userManager,
-            IEmailSender emailSender,
+            ISystemEmailTemplateService systemEmailTemplateService,
             IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
             _userManager = userManager;
-            _emailSender = emailSender;
+            _systemEmailTemplateService = systemEmailTemplateService;
             _antiforgery = antiforgery;
         }
 
@@ -101,10 +100,7 @@ namespace GamMaSite.Controllers
             }
 
             var callbackUrl = await BuildEmailConfirmationUrl(user, returnUrl);
-            await _emailSender.SendEmailAsync(request.Email, "Bekræft din email",
-                $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.<br /><br />" +
-                "For at blive godkendt som medlem, kan du kontakte foreningens bestyrelse på bestyrelsen@gam-ma.dk." +
-                "Gør i den forbindelse opmærksom på, om du er studerende eller har færdiggjort dine studier.");
+            await _systemEmailTemplateService.SendRegistrationConfirmationAsync(request.Email, user.Navn, callbackUrl);
 
             if (_userManager.Options.SignIn.RequireConfirmedAccount)
             {
@@ -131,10 +127,7 @@ namespace GamMaSite.Controllers
                     values: new { area = "Identity", code },
                     protocol: Request.Scheme);
 
-                await _emailSender.SendEmailAsync(
-                    request.Email,
-                    "Nulstil Password",
-                    $"Nulstil venligst kodeord ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+                await _systemEmailTemplateService.SendPasswordResetAsync(request.Email, user.Navn, callbackUrl);
             }
 
             return Ok(new { message = "Hvis emailen findes hos os, er der sendt et link til nulstilling." });
@@ -149,10 +142,7 @@ namespace GamMaSite.Controllers
             if (user != null)
             {
                 var callbackUrl = await BuildEmailConfirmationUrl(user, "/react");
-                await _emailSender.SendEmailAsync(
-                    request.Email,
-                    "Bekræft din email",
-                    $"Bekræft venligst din profil ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+                await _systemEmailTemplateService.SendEmailConfirmationAsync(request.Email, user.Navn, callbackUrl);
             }
 
             return Ok(new { message = "Hvis emailen findes hos os, er bekræftelsesmailen sendt." });
@@ -266,10 +256,7 @@ namespace GamMaSite.Controllers
                 values: new { area = "Identity", userId, email = request.NewEmail, code },
                 protocol: Request.Scheme);
 
-            await _emailSender.SendEmailAsync(
-                request.NewEmail,
-                "Bekræft email",
-                $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+            await _systemEmailTemplateService.SendEmailChangeConfirmationAsync(request.NewEmail, user.Navn, callbackUrl);
 
             return Ok(new { message = "Bekræftelseslink er blevet sendt til din email. Tjek venligst din email." });
         }
@@ -287,10 +274,7 @@ namespace GamMaSite.Controllers
 
             var email = await _userManager.GetEmailAsync(user);
             var callbackUrl = await BuildEmailConfirmationUrl(user, "/react/account/manage/email");
-            await _emailSender.SendEmailAsync(
-                email,
-                "Bekræft din email",
-                $"Bekræft venligst din profil ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+            await _systemEmailTemplateService.SendEmailConfirmationAsync(email, user.Navn, callbackUrl);
 
             return Ok(new { message = "Bekræftelsesmail afsendt. Tjek venligst din mail." });
         }

@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Encodings.Web;
 using System.Text;
 using System.Threading.Tasks;
+using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
-using GamMaSite.Models;
 
 namespace GamMaSite.Areas.Identity.Pages.Account
 {
@@ -18,12 +17,12 @@ namespace GamMaSite.Areas.Identity.Pages.Account
     public class ForgotPasswordModel : PageModel
     {
         private readonly UserManager<SiteUser> _userManager;
-        private readonly IEmailSender _emailSender;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
-        public ForgotPasswordModel(UserManager<SiteUser> userManager, IEmailSender emailSender)
+        public ForgotPasswordModel(UserManager<SiteUser> userManager, ISystemEmailTemplateService systemEmailTemplateService)
         {
             _userManager = userManager;
-            _emailSender = emailSender;
+            _systemEmailTemplateService = systemEmailTemplateService;
         }
 
         [BindProperty]
@@ -57,10 +56,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account
                     values: new { area = "Identity", code },
                     protocol: Request.Scheme);
 
-                await _emailSender.SendEmailAsync(
-                    Input.Email,
-                    "Nulstil Password",
-                    $"Nulstil venligst kodeord ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+                await _systemEmailTemplateService.SendPasswordResetAsync(Input.Email, user.Navn, callbackUrl);
 
                 return RedirectToPage("./ForgotPasswordConfirmation");
             }

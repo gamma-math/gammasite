@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
@@ -15,16 +14,16 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
     {
         private readonly UserManager<SiteUser> _userManager;
         private readonly SignInManager<SiteUser> _signInManager;
-        private readonly IEmailSender _emailSender;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
         public EmailModel(
             UserManager<SiteUser> userManager,
             SignInManager<SiteUser> signInManager,
-            IEmailSender emailSender)
+            ISystemEmailTemplateService systemEmailTemplateService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _emailSender = emailSender;
+            _systemEmailTemplateService = systemEmailTemplateService;
         }
 
         public string Username { get; set; }
@@ -97,10 +96,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                     pageHandler: null,
                     values: new { area = "Identity", userId = userId, email = Input.NewEmail, code = code },
                     protocol: Request.Scheme);
-                await _emailSender.SendEmailAsync(
-                    Input.NewEmail,
-                    "Bekræft email",
-                    $"Bekræft venligst din GamMa-bruger ved at <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>klikke her</a>.");
+                await _systemEmailTemplateService.SendEmailChangeConfirmationAsync(Input.NewEmail, user.Navn, callbackUrl);
 
                 StatusMessage = "Bekræftelseslink er blevet sendt til din email. Tjek venligst din email.";
                 return RedirectToPage();
@@ -133,10 +129,7 @@ namespace GamMaSite.Areas.Identity.Pages.Account.Manage
                 pageHandler: null,
                 values: new { area = "Identity", userId = userId, code = code },
                 protocol: Request.Scheme);
-            await _emailSender.SendEmailAsync(
-                email,
-                "Confirm your email",
-                $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+            await _systemEmailTemplateService.SendEmailConfirmationAsync(email, user.Navn, callbackUrl);
 
             StatusMessage = "Verification email sent. Please check your email.";
             return RedirectToPage();
