@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `AspNetRoles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `AspNetRoleClaims` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `ClaimType` longtext,
   `ClaimValue` longtext,
   `RoleId` varchar(127) NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `AspNetRoleClaims` (
 --
 
 CREATE TABLE IF NOT EXISTS `AspNetUserClaims` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `UserId` varchar(128) NOT NULL,
   `ClaimType` longtext,
   `ClaimValue` longtext,
@@ -81,24 +81,24 @@ CREATE TABLE IF NOT EXISTS `AspNetUsers` (
   `Id` varchar(128) NOT NULL,
   `ConcurrencyStamp` varchar(256) DEFAULT NULL,
   `Email` varchar(256) DEFAULT NULL,
-  `EmailConfirmed` tinyint(1) NOT NULL,
+  `EmailConfirmed` tinyint NOT NULL,
   `PasswordHash` longtext,
   `SecurityStamp` longtext,
   `PhoneNumber` longtext,
-  `PhoneNumberConfirmed` tinyint(1) NOT NULL,
-  `TwoFactorEnabled` tinyint(1) NOT NULL,
+  `PhoneNumberConfirmed` tinyint NOT NULL,
+  `TwoFactorEnabled` tinyint NOT NULL,
   `LockoutEndDateUtc` datetime DEFAULT NULL,
-  `LockoutEnabled` tinyint(1) NOT NULL,
-  `AccessFailedCount` int(11) NOT NULL,
+  `LockoutEnabled` tinyint NOT NULL,
+  `AccessFailedCount` int NOT NULL,
   `UserName` varchar(256) NOT NULL,
   `LockoutEnd` datetime DEFAULT NULL,
   `NormalizedEmail` varchar(256) DEFAULT NULL,
   `NormalizedUserName` varchar(256) DEFAULT NULL,
   `Navn` varchar(256) NOT NULL,
   `Adresse` mediumtext,
-  `Status` int(11) NOT NULL DEFAULT '0',
-  `Visibility` int(11) NOT NULL DEFAULT '1',
-  `Aargang` int(11) NOT NULL,
+  `Status` int NOT NULL DEFAULT '0',
+  `Visibility` int NOT NULL DEFAULT '1',
+  `Aargang` int NOT NULL,
   `Beskaeftigelse` longtext,
   `KontingentDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `OprettetDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
 --
 
 CREATE TABLE IF NOT EXISTS `ContentItems` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `Title` varchar(256) NOT NULL,
   `Slug` varchar(256) NOT NULL,
   `Summary` varchar(512) DEFAULT NULL,
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS `ContentItems` (
   `Tags` varchar(512) DEFAULT NULL,
   `Type` varchar(32) NOT NULL,
   `Status` varchar(32) NOT NULL,
-  `ShowOnFrontPage` tinyint(1) NOT NULL DEFAULT 1,
+  `ShowOnFrontPage` tinyint NOT NULL DEFAULT 1,
   `StartDate` datetime DEFAULT NULL,
   `EndDate` datetime DEFAULT NULL,
   `Location` varchar(256) DEFAULT NULL,
@@ -202,12 +202,12 @@ CREATE TABLE IF NOT EXISTS `ContentItems` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `ContentLinks` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `ContentItemId` int(11) NOT NULL,
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int NOT NULL,
   `Label` varchar(128) NOT NULL,
   `Url` varchar(1024) NOT NULL,
   `Type` varchar(32) NOT NULL,
-  `SortOrder` int(11) NOT NULL DEFAULT '0',
+  `SortOrder` int NOT NULL DEFAULT '0',
   `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
@@ -218,11 +218,11 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `EventRegistrations` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `ContentItemId` int(11) NOT NULL,
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int NOT NULL,
   `UserId` varchar(128) NOT NULL,
   `RegistrationType` varchar(32) NOT NULL,
-  `Registered` tinyint(1) NOT NULL DEFAULT '1',
+  `Registered` tinyint NOT NULL DEFAULT '1',
   `ResponseText` varchar(1024) DEFAULT NULL,
   `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -239,14 +239,14 @@ CREATE TABLE IF NOT EXISTS `EventRegistrations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `EmailTemplates` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `Name` varchar(128) NOT NULL,
   `Subject` varchar(256) NOT NULL,
   `Preheader` varchar(256) DEFAULT NULL,
   `HtmlBody` longtext NOT NULL,
   `TextBody` longtext,
   `TemplateType` varchar(32) NOT NULL,
-  `IsActive` tinyint(1) NOT NULL DEFAULT '1',
+  `IsActive` tinyint NOT NULL DEFAULT '1',
   `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
