@@ -1,5 +1,11 @@
 ﻿@model UserCategories
 
+@*
+    LEGACY MVC VIEW:
+    Message sending has moved to the React admin messages page. Keep this file
+    only as a temporary fallback/reference until the old /Messages flow is removed.
+*@
+
 <h1>Send besked</h1>
 <form asp-action="Send" asp-controller="Messages" method="post" id="messageForm">
     <div class="d-grid gap-1">

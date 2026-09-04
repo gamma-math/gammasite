@@ -8,6 +8,12 @@ using Microsoft.Extensions.Logging;
 using GamMaSite.Models;
 using Microsoft.AspNetCore.Authorization;
 
+/*
+ * LEGACY MVC NOTE:
+ * Most Home MVC pages have been replaced by the React shell through ReactController.
+ * Keep this controller for now because the Error action is still used by ASP.NET
+ * exception handling, and the old actions are retained as fallback cleanup targets.
+ */
 namespace GamMaSite.Controllers
 {
     public class HomeController : Controller

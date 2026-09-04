@@ -6,6 +6,12 @@ using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+/*
+ * LEGACY MVC NOTE:
+ * Library browsing is no longer part of the primary React user flow.
+ * Keep this controller temporarily as a fallback/reference until the old MVC
+ * library feature is reviewed and either replaced or removed.
+ */
 namespace GamMaSite.Controllers
 {
     [Authorize]

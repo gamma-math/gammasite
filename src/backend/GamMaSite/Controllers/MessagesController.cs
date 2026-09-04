@@ -8,6 +8,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+/*
+ * LEGACY MVC NOTE:
+ * Message sending has moved to the React admin messages page and API controllers.
+ * Keep this controller temporarily as a fallback/reference until the old MVC
+ * message flow is fully removed.
+ */
 namespace GamMaSite.Controllers
 {
     [Authorize(Roles = "Admin")]

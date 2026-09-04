@@ -7,6 +7,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+/*
+ * LEGACY MVC NOTE:
+ * User administration has moved to the React admin pages and API controllers.
+ * Keep this controller temporarily as a fallback/reference until the legacy MVC
+ * cleanup pass removes old /Users routes and views.
+ */
 namespace GamMaSite.Controllers
 {
     public class UsersController : Controller

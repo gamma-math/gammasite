@@ -8,6 +8,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+/*
+ * LEGACY MVC NOTE:
+ * Role administration has moved to the React admin pages and API controllers.
+ * Keep this controller temporarily as a fallback/reference until the legacy MVC
+ * cleanup pass removes old /Role routes and views.
+ */
 namespace GamMaSite.Controllers
 {
     [Authorize(Roles = "Admin")]

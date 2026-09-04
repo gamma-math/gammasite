@@ -10,6 +10,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
+/*
+ * LEGACY MVC NOTE:
+ * Most payment UI pages have moved behind React routes and Stripe API endpoints.
+ * Review this controller carefully before removal because some success/cancel
+ * payment routes may still be used by Stripe redirects or legacy links.
+ */
 namespace GamMaSite.Controllers
 {
     [Authorize]
