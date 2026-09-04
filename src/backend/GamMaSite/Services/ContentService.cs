@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Encapsulates event/news persistence, filtering, and related-link updates.
+     */
     public class ContentService : IContentService
     {
         private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)

@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines Google Calendar access for integrations that need calendar events.
+     */
     public interface IGoogleCalendarService
     {
         public Task<Events> GetUpcommingEvents();
@@ -19,6 +22,9 @@ namespace GamMaSite.Services
 
     }
 
+    /*
+     * Reads upcoming events from the configured Google Calendar feed.
+     */
     public class GoogleCalendarService : IGoogleCalendarService
     {
         private readonly JsonCredentialParameters _googleCredentials;

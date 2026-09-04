@@ -12,6 +12,9 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/content")]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React with CRUD and publishing endpoints for events, news, and related links.
+     */
     public class ApiContentController : ControllerBase
     {
         private const string AdminRoles = "Admin,ADMIN";

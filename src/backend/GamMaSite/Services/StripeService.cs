@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines Stripe product, price, session, and checkout operations.
+     */
     public interface IStripeService
     {
         string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl);
@@ -29,6 +32,9 @@ namespace GamMaSite.Services
         Task<Price> GetPriceAsync(string product);
     }
 
+    /*
+     * Wraps Stripe SDK calls used by payment APIs and legacy payment redirects.
+     */
     public class StripeService : IStripeService
     {
         public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl)

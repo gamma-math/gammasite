@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Stores a publishable event or news item shown by React pages.
+     */
     public class ContentItem
     {
         public int Id { get; set; }

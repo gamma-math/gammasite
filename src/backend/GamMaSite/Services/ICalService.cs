@@ -11,6 +11,9 @@ using System.Web;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines calendar-feed access for legacy and React calendar data.
+     */
     public interface IICalService
     {
         public Task<IEnumerable<CalendarEvent>> FetchCalendarEvents();
@@ -20,6 +23,9 @@ namespace GamMaSite.Services
         public Task<EventsWrapper> GetEventsWrapper();
     }
 
+    /*
+     * Reads and parses the configured iCal feed into application event data.
+     */
     public class ICalService : IICalService
     {
         private readonly string _icalAddress;
@@ -67,6 +73,9 @@ namespace GamMaSite.Services
         }
     }
 
+    /*
+     * Groups calendar events for views and API mapping.
+     */
     public class EventsWrapper
     {
         public IEnumerable<CalendarEvent> Events { get; set; }
@@ -82,6 +91,9 @@ namespace GamMaSite.Services
         }
     }
 
+    /*
+     * Converts external iCal event data into site-friendly calendar models.
+     */
     public static class ICalExtensions
     {
         public static string ToStartLocalDateTime(this CalendarEvent calendar)

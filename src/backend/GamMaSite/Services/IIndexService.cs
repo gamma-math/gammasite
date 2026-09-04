@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines document index and file retrieval used by the protected library.
+     */
     public interface IIndexService
     {
         public Task<List<ContentMeta>> GetContentMetasAsync(string query);
@@ -13,6 +16,9 @@ namespace GamMaSite.Services
         public Task<ContentType> GetContentAsync(string query);
     }
 
+    /*
+     * Represents one file or folder entry in the external document index.
+     */
     public class ContentMeta
     {
         public string Name { get; set; }
@@ -25,6 +31,9 @@ namespace GamMaSite.Services
         }
     }
 
+    /*
+     * Wraps document index entries for library views and API responses.
+     */
     public class ContentMetas
     {
         public IList<ContentMeta> Metas { get; set; }
@@ -46,6 +55,9 @@ namespace GamMaSite.Services
         public bool HasParent() => Metas.Count > 0 && Metas[0].Path.Split("/").Length > 1;
     }
 
+    /*
+     * Represents downloaded file content and its MIME type.
+     */
     public class ContentType
     {
         public string MimeType { get; set; }

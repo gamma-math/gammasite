@@ -13,6 +13,9 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace GamMaSite.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
+    /*
+     * Handles email confirmation links issued by ASP.NET Identity.
+     */
     public class ConfirmEmailModel : PageModel
     {
         private readonly UserManager<SiteUser> _userManager;

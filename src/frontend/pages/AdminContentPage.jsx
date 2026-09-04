@@ -7,6 +7,9 @@ import { detailPath, emptyContent, formatDate } from "../utils/format.js";
 import { sanitizeHtml } from "../utils/richText.js";
 import { SortableHeader } from "./MembersPage.jsx";
 
+/**
+ * Admin overview for event and news content.
+ */
 export function AdminContentPage({ type, isAdmin }) {
   const [items, setItems] = useState([]);
   const [sort, setSort] = useState({ key: "date", direction: "desc" });
@@ -74,6 +77,9 @@ export function AdminContentPage({ type, isAdmin }) {
 
 }
 
+/**
+ * Admin editor for creating and updating event or news content.
+ */
 export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [selected, setSelected] = useState(emptyContent(type));
   const [message, setMessage] = useState("");
@@ -168,6 +174,9 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   function update(field, value) { setSelected((current) => ({ ...current, [field]: value })); }
 }
 
+/**
+ * Minimal rich text editor wrapper used by content body fields.
+ */
 function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const lastEditorValue = useRef(null);
@@ -229,6 +238,9 @@ function RichTextEditor({ value, onChange }) {
   );
 }
 
+/**
+ * Editor for related content links such as payment, calendar, or external URLs.
+ */
 function LinkEditor({ links, onChange }) {
   function update(index, field, value) {
     onChange(links.map((link, currentIndex) => currentIndex === index ? { ...link, [field]: value } : link));

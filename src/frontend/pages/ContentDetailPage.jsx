@@ -7,6 +7,9 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 
+/**
+ * Shows a single event or news article with registration and related-link actions.
+ */
 export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
   const [registration, setRegistration] = useState(null);

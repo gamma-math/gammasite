@@ -5,6 +5,9 @@ using GamMaSite.ViewModels.Api;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines email template operations used by the React admin template flow.
+     */
     public interface IEmailTemplateService
     {
         Task<IReadOnlyList<EmailTemplate>> GetAllAsync(string templateType, bool? isActive);

@@ -14,6 +14,9 @@ namespace GamMaSite.Controllers
     [Route("api/members")]
     [Authorize]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React endpoints for the member directory and admin membership updates.
+     */
     public class ApiMembersController : ControllerBase
     {
         private const string AdminRoles = "Admin,ADMIN";

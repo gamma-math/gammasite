@@ -20,6 +20,9 @@ const emptyTemplate = {
   isActive: true
 };
 
+/**
+ * Admin overview for reusable email/message templates.
+ */
 export function AdminTemplatesPage({ isAdmin }) {
   const [templates, setTemplates] = useState([]);
   const [error, setError] = useState("");
@@ -107,6 +110,9 @@ export function AdminTemplatesPage({ isAdmin }) {
   );
 }
 
+/**
+ * Admin editor for email templates and their block styling metadata.
+ */
 export function AdminTemplateEditorPage({ isAdmin, templateId }) {
   const [selected, setSelected] = useState(emptyTemplate);
   const [preview, setPreview] = useState(null);
@@ -310,6 +316,9 @@ function normalizeColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(value ?? "") ? value : fallback;
 }
 
+/**
+ * Rich text editor wrapper used by template HTML fields.
+ */
 function TemplateRichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const sourceRef = useRef(null);

@@ -1,6 +1,9 @@
 const CSRF_HEADER = "X-CSRF-TOKEN";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 
+/**
+ * Reads the antiforgery token emitted by the ASP.NET host page.
+ */
 async function getCsrfToken() {
   const response = await fetch("/api/account/csrf-token", {
     credentials: "same-origin",
@@ -19,6 +22,9 @@ async function getCsrfToken() {
   return payload.token;
 }
 
+/**
+ * Shared JSON/form request helper for all React-to-ASP.NET API calls.
+ */
 async function request(path, options = {}) {
   const method = (options.method ?? "GET").toUpperCase();
   const headers = {
@@ -62,10 +68,16 @@ async function request(path, options = {}) {
   return payload;
 }
 
+/**
+ * Current-user API used for authentication state and roles.
+ */
 export const meApi = {
   get: () => request("/api/me")
 };
 
+/**
+ * Account API used by React account management screens.
+ */
 export const accountApi = {
   login: (payload) => request("/api/account/login", { method: "POST", body: JSON.stringify(payload) }),
   logout: () => request("/api/account/logout", { method: "POST" }),
@@ -80,6 +92,9 @@ export const accountApi = {
   deleteAccount: (password) => request("/api/account/delete", { method: "POST", body: JSON.stringify({ password }) })
 };
 
+/**
+ * Content API for events, news, links, and publishing status.
+ */
 export const contentApi = {
   listPublished: (type, options = {}) => {
     const params = new URLSearchParams();
@@ -98,6 +113,9 @@ export const contentApi = {
   delete: (id) => request(`/api/content/${id}`, { method: "DELETE" })
 };
 
+/**
+ * Event registration API for signups and attendee administration.
+ */
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
   register: (contentId, payload) => request(`/api/content/${contentId}/registrations`, { method: "POST", body: JSON.stringify(payload) }),
@@ -107,6 +125,9 @@ export const registrationsApi = {
   update: (contentId, registrationId, payload) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "PUT", body: JSON.stringify(payload) })
 };
 
+/**
+ * Email template API for admin template management.
+ */
 export const emailTemplatesApi = {
   list: () => request("/api/email-templates"),
   create: (payload) => request("/api/email-templates", { method: "POST", body: JSON.stringify(payload) }),
@@ -115,6 +136,9 @@ export const emailTemplatesApi = {
   preview: (id, values) => request(`/api/email-templates/${id}/preview`, { method: "POST", body: JSON.stringify({ values }) })
 };
 
+/**
+ * Member API for directory and admin member operations.
+ */
 export const membersApi = {
   list: () => request("/api/members"),
   listAdmin: () => request("/api/members/admin"),
@@ -122,6 +146,9 @@ export const membersApi = {
   massUpdateStatus: (payload) => request("/api/members/admin/mass-status", { method: "POST", body: JSON.stringify(payload) })
 };
 
+/**
+ * Role API for admin role management.
+ */
 export const rolesApi = {
   list: () => request("/api/roles"),
   create: (name) => request("/api/roles", { method: "POST", body: JSON.stringify({ name }) }),
@@ -130,14 +157,23 @@ export const rolesApi = {
   updateMembers: (id, payload) => request(`/api/roles/${id}/members`, { method: "PUT", body: JSON.stringify(payload) })
 };
 
+/**
+ * Calendar API for member-facing event calendar data.
+ */
 export const calendarApi = {
   upcoming: () => request("/api/calendar")
 };
 
+/**
+ * Library API for browsing protected document listings.
+ */
 export const libraryApi = {
   listing: (path = "") => request(`/api/library${path ? `?path=${encodeURIComponent(path)}` : ""}`)
 };
 
+/**
+ * Payment API for Stripe product and checkout flows.
+ */
 export const paymentsApi = {
   config: () => request("/api/payments/config"),
   products: () => request("/api/payments/products"),
@@ -146,6 +182,9 @@ export const paymentsApi = {
   startGenericCheckout: (product, price, description, user) => request(`/api/Stripe/Generic?product=${encodeURIComponent(product)}&price=${encodeURIComponent(price)}&description=${encodeURIComponent(description)}&user=${encodeURIComponent(user)}`, { method: "POST" })
 };
 
+/**
+ * Message API for recipient previews, template rendering, and sending.
+ */
 export const messagesApi = {
   categories: () => request("/api/messages/categories"),
   recipientPreview: (payload) => request("/api/messages/recipient-preview", { method: "POST", body: JSON.stringify(payload) }),

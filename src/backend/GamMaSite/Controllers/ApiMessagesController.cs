@@ -20,6 +20,9 @@ namespace GamMaSite.Controllers
     [Route("api/messages")]
     [Authorize(Roles = "Admin,ADMIN")]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React admin endpoints for recipient previews, message rendering, and email sending.
+     */
     public class ApiMessagesController : ControllerBase
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);

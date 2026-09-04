@@ -19,6 +19,9 @@ import { Link } from "../routes/navigation.jsx";
 import { meApi } from "../services/api.js";
 import "../styles/app.css";
 
+/**
+ * Tracks the current browser path for the lightweight client-side router.
+ */
 function useRoute() {
   const [route, setRoute] = useState({ path: window.location.pathname, search: window.location.search });
 
@@ -35,6 +38,9 @@ function useRoute() {
   return route;
 }
 
+/**
+ * Loads the signed-in user once so navigation and page access can react to roles.
+ */
 function useCurrentUser() {
   const [user, setUser] = useState({ isLoading: true, isAuthenticated: false, roles: [] });
 
@@ -57,6 +63,9 @@ function useCurrentUser() {
   return user;
 }
 
+/**
+ * Root React application that composes the shared chrome and current route page.
+ */
 function App() {
   const route = useRoute();
   const user = useCurrentUser();
@@ -73,6 +82,9 @@ function App() {
   );
 }
 
+/**
+ * Shared site header used across public, account, and admin React pages.
+ */
 function Header({ user, isReadAdmin }) {
   return (
     <header className="site-header frontpage-header">
@@ -115,6 +127,9 @@ function Header({ user, isReadAdmin }) {
   );
 }
 
+/**
+ * Maps legacy and React URLs to their active React page components.
+ */
 function renderRoute(route, user, isAdmin, isReadAdmin) {
   const path = route.path;
 
@@ -258,6 +273,9 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   return <FrontPage />;
 }
 
+/**
+ * Shared footer with association contact and social links.
+ */
 function Footer() {
   return (
     <section className="frontpage-footer-band">

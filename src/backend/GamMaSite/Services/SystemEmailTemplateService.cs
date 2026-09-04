@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Renders system-owned emails such as account and membership messages.
+     */
     public class SystemEmailTemplateService : ISystemEmailTemplateService
     {
         public const string RegistrationConfirmation = "SYSTEM_REGISTRATION_CONFIRMATION";

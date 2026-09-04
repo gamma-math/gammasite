@@ -10,6 +10,9 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/calendar")]
     [Authorize]
+    /*
+     * Provides calendar data used by the React member calendar page.
+     */
     public class ApiCalendarController : ControllerBase
     {
         private readonly IICalService _icalService;

@@ -67,6 +67,9 @@ const pages = {
   }
 };
 
+/**
+ * Renders static public content that replaced the old MVC informational pages.
+ */
 export function StaticPage({ page }) {
   const content = pages[page] ?? pages.about;
 

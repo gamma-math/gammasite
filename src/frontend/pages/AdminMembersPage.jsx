@@ -7,6 +7,9 @@ import { Pagination, SearchToolbar, SortableHeader, useFilteredMembers, usePaged
 
 const statuses = ["OPRETTET", "BETALT", "SKYLDER", "INAKTIV", "STUDERENDE"];
 
+/**
+ * Admin member overview for searching, filtering, and updating membership data.
+ */
 export function AdminMembersPage({ isAdmin }) {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");

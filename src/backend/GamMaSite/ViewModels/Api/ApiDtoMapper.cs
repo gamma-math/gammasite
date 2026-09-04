@@ -3,6 +3,9 @@ using GamMaSite.Models;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * Maps EF/domain models into DTOs returned by React API endpoints.
+     */
     public static class ApiDtoMapper
     {
         public static ContentItemDto ToDto(this ContentItem item)

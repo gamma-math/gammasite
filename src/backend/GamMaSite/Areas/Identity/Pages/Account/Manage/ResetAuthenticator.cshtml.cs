@@ -10,6 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
+    /*
+     * Handles resetting an existing authenticator app setup for the current user.
+     */
     public class ResetAuthenticatorModel : PageModel
     {
         UserManager<SiteUser> _userManager;

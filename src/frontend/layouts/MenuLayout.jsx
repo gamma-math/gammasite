@@ -7,6 +7,9 @@ const userItems = [
   { href: "/react/pay", label: "Betal medlemskab", requiresAuth: true }
 ];
 
+/**
+ * Shared two-column layout for member-facing React pages.
+ */
 export function MenuLayout({ active, title = "Menu", isAuthenticated = false, contentClassName = "", extraItems = [], includeDefaultItems = true, children }) {
   const baseItems = includeDefaultItems ? userItems : [];
   const items = [...baseItems, ...extraItems].filter((item) => !item.requiresAuth || isAuthenticated);

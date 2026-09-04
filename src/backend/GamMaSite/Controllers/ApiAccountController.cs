@@ -19,6 +19,9 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/account")]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React account endpoints for profile, email, password, and personal data flows.
+     */
     public class ApiAccountController : ControllerBase
     {
         private readonly SignInManager<SiteUser> _signInManager;

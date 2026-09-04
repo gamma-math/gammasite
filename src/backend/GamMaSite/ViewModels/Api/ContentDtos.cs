@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for event/news content, related links, and admin save requests.
+     */
     public class ContentLinkDto
     {
         public int Id { get; set; }

@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Message channel values used by admin email/SMS sending flows.
+     */
     public enum MessageMedia
     {
         Email,

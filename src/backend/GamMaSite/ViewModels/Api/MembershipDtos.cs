@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for member directory, membership status updates, and role assignment.
+     */
     public class MemberDto
     {
         public string Id { get; set; }

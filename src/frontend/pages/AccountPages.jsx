@@ -24,6 +24,9 @@ const manageItems = [
   { href: "/react/account/manage/logout", label: "Log ud" }
 ];
 
+/**
+ * React login form that posts to the legacy Identity login endpoint.
+ */
 export function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "", rememberMe: false });
   const [error, setError] = useState("");
@@ -76,6 +79,9 @@ export function LoginPage() {
   );
 }
 
+/**
+ * React registration form for new members.
+ */
 export function RegisterPage() {
   const [form, setForm] = useState(initialRegister);
   const [message, setMessage] = useState("");
@@ -122,6 +128,9 @@ export function RegisterPage() {
   );
 }
 
+/**
+ * Account recovery page for starting a password reset email flow.
+ */
 export function ForgotPasswordPage() {
   return (
     <EmailActionPage
@@ -133,6 +142,9 @@ export function ForgotPasswordPage() {
   );
 }
 
+/**
+ * Account recovery page for resending the email confirmation message.
+ */
 export function ResendEmailConfirmationPage() {
   return (
     <EmailActionPage
@@ -144,6 +156,9 @@ export function ResendEmailConfirmationPage() {
   );
 }
 
+/**
+ * React account management hub for profile, email, password, 2FA, and data actions.
+ */
 export function AccountManagePage({ user, section = "profile" }) {
   const [profile, setProfile] = useState(null);
   const [profileForm, setProfileForm] = useState(null);
@@ -394,6 +409,9 @@ function LogoutPanel() {
   );
 }
 
+/**
+ * Shared one-field account form used by email recovery flows.
+ */
 function EmailActionPage({ title, subtitle, buttonLabel, submit }) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");

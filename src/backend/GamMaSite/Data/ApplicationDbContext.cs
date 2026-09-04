@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace GamMaSite.Data
 {
+    /*
+     * EF Core database context for Identity, content, templates, and event registrations.
+     */
     public class ApplicationDbContext : IdentityDbContext<SiteUser>
     {
         public DbSet<ContentItem> ContentItems { get; set; }
@@ -153,6 +156,9 @@ namespace GamMaSite.Data
         }
     }
 
+    /*
+     * Configures persisted metadata conversion for SiteUser profile fields.
+     */
     public class UserConfiguration : IEntityTypeConfiguration<SiteUser>
     {
         public void Configure(EntityTypeBuilder<SiteUser> builder)

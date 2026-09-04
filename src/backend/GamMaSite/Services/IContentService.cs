@@ -5,6 +5,9 @@ using GamMaSite.ViewModels.Api;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines content operations used by API controllers and React admin screens.
+     */
     public interface IContentService
     {
         Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false);

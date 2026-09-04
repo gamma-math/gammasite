@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for React login, registration, account, and personal data requests.
+     */
     public sealed class LoginRequest
     {
         [Required(ErrorMessage = "Email er obligatorisk")]

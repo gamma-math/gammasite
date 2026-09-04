@@ -2,6 +2,9 @@ using System;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Stores one user's relationship to an event, including role and attendance status.
+     */
     public class EventRegistration
     {
         public int Id { get; set; }

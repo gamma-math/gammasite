@@ -11,6 +11,9 @@ using System.Web;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Legacy-compatible document index provider for GitLab-backed library content.
+     */
     public class GitlabService : IIndexService
     {
         private readonly string _contentApi;

@@ -14,6 +14,9 @@ namespace GamMaSite.Controllers
     [Route("api/roles")]
     [Authorize(Roles = "Admin,ADMIN")]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React admin endpoints for role listing, editing, and membership assignment.
+     */
     public class ApiRolesController : ControllerBase
     {
         private readonly RoleManager<IdentityRole> _roleManager;

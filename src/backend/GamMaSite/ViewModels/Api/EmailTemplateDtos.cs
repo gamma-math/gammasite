@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for reusable email template editing and preview rendering.
+     */
     public class EmailTemplateDto
     {
         public int Id { get; set; }

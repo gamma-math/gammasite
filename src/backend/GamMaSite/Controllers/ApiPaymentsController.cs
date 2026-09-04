@@ -12,6 +12,9 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/payments")]
     [Authorize]
+    /*
+     * Provides product, configuration, and checkout session endpoints for React payments.
+     */
     public class ApiPaymentsController : ControllerBase
     {
         private readonly IStripeService _stripeService;

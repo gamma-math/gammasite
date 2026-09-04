@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Encapsulates event registration lookup, signup, and admin attendee updates.
+     */
     public class EventRegistrationService : IEventRegistrationService
     {
         private static readonly HashSet<string> AllowedRegistrationTypes = new(StringComparer.OrdinalIgnoreCase)

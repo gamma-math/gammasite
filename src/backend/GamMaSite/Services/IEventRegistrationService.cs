@@ -5,6 +5,9 @@ using GamMaSite.ViewModels.Api;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines event registration operations for user signups and admin attendee lists.
+     */
     public interface IEventRegistrationService
     {
         Task<EventRegistration> RegisterAsync(int contentItemId, string userId, SaveEventRegistrationRequest request);

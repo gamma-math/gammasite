@@ -3,6 +3,9 @@ import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { calendarApi } from "../services/api.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
+/**
+ * Member-facing calendar overview backed by the calendar API.
+ */
 export function CalendarPage({ user }) {
   const [events, setEvents] = useState([]);
 

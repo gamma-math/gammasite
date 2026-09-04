@@ -7,11 +7,17 @@ export const adminItems = [
   { href: "/react/admin/templates", label: "Besked Skabeloner" }
 ];
 
+/**
+ * Updates the URL and notifies the app router without a full page reload.
+ */
 export function navigate(href) {
   window.history.pushState({}, "", href);
   window.dispatchEvent(new Event("gammasite:navigate"));
 }
 
+/**
+ * Internal link component for React routes with normal anchor fallback behavior.
+ */
 export function Link({ href, className, children, ...props }) {
   return (
     <a

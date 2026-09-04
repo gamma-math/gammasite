@@ -13,6 +13,9 @@ const registrationTypes = [
   { value: "DECLINED", label: "Afmeldt" }
 ];
 
+/**
+ * Admin/member view for event attendees, including mobile-friendly row editing.
+ */
 export function EventRegistrationsPage({ slug, user }) {
   const [item, setItem] = useState(null);
   const [registrations, setRegistrations] = useState([]);

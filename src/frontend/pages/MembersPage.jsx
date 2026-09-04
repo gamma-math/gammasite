@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { membersApi } from "../services/api.js";
 
+/**
+ * Member directory with search, sorting, and pagination.
+ */
 export function MembersPage({ user }) {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
@@ -70,6 +73,9 @@ export function MembersPage({ user }) {
   );
 }
 
+/**
+ * Shared prompt shown when a member-only page requires login.
+ */
 export function LoginRequired({ title }) {
   return (
     <main className="frontpage-main">
@@ -82,6 +88,9 @@ export function LoginRequired({ title }) {
   );
 }
 
+/**
+ * Search and page-size controls reused by member tables.
+ */
 export function SearchToolbar({ search, setSearch, pageSize, setPageSize }) {
   return (
     <div className="menu-table-toolbar">
@@ -102,6 +111,9 @@ export function SearchToolbar({ search, setSearch, pageSize, setPageSize }) {
   );
 }
 
+/**
+ * Table header button that cycles sorting for one column.
+ */
 export function SortableHeader({ label, sortKey, sort, setSort }) {
   const active = sort.key === sortKey;
   const indicator = active ? (sort.direction === "asc" ? "↑" : "↓") : "↕";
@@ -123,6 +135,9 @@ export function SortableHeader({ label, sortKey, sort, setSort }) {
   );
 }
 
+/**
+ * Compact pagination controls for table-based pages.
+ */
 export function Pagination({ page, pageCount, total, pageSize, setPage }) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);

@@ -2,6 +2,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Defines rendering for system-owned email templates.
+     */
     public interface ISystemEmailTemplateService
     {
         Task SendRegistrationConfirmationAsync(string email, string name, string confirmationUrl);

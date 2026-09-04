@@ -4,6 +4,9 @@ import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi } from "../services/api.js";
 
+/**
+ * Shows the public front page or a filtered public overview for events/news.
+ */
 export function FrontPage({ mode, title, user }) {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");

@@ -14,6 +14,9 @@ using GamMaSite.Models;
 
 namespace GamMaSite.Areas.Identity.Pages.Account.Manage
 {
+    /*
+     * Handles authenticator app setup, verification, and recovery code generation.
+     */
     public class EnableAuthenticatorModel : PageModel
     {
         private readonly UserManager<SiteUser> _userManager;

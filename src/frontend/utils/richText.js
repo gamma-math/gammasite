@@ -1,6 +1,9 @@
 const allowedTags = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "H2", "H3", "UL", "OL", "LI", "A", "BLOCKQUOTE"]);
 const removedTags = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "FORM"]);
 
+/**
+ * Sanitizes user-editable HTML before rendering it in React.
+ */
 export function sanitizeHtml(value = "") {
   value = typeof value === "string" ? value : String(value ?? "");
   if (typeof window === "undefined" || !value.includes("<")) {
@@ -36,6 +39,9 @@ function sanitizeChildren(parent) {
   });
 }
 
+/**
+ * Converts HTML content into plain text for summaries and generated files.
+ */
 export function htmlToText(value = "") {
   if (!value.includes("<")) return value;
   const documentFragment = new DOMParser().parseFromString(value, "text/html");

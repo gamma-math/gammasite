@@ -6,6 +6,9 @@ import { LoginRequired } from "./MembersPage.jsx";
 
 const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
 
+/**
+ * Member payment overview that lists available Stripe products.
+ */
 export function PaymentPage({ user }) {
   const [products, setProducts] = useState([]);
 
@@ -51,6 +54,9 @@ export function PaymentPage({ user }) {
   );
 }
 
+/**
+ * Product payment page that creates a Stripe checkout session.
+ */
 export function ProductPaymentPage({ productId, user }) {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
@@ -108,6 +114,9 @@ export function ProductPaymentPage({ productId, user }) {
   );
 }
 
+/**
+ * Generic payment page for custom amount Stripe checkout.
+ */
 export function GenericPaymentPage({ user }) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -136,6 +145,9 @@ export function GenericPaymentPage({ user }) {
   );
 }
 
+/**
+ * Displays payment success, membership success, or cancellation states.
+ */
 export function PaymentStatusPage({ status, user }) {
   const success = status === "success" || status === "kontingent-success";
   return (

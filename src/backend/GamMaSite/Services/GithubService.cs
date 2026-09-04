@@ -9,6 +9,9 @@ using MimeTypes;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Reads protected library listings and files from the configured GitHub content API.
+     */
     public class GithubService : IIndexService
     {
         private readonly string _contentApi;

@@ -12,6 +12,9 @@ namespace GamMaSite.Controllers
     [Route("api/email-templates")]
     [Authorize(Roles = "Admin,ADMIN")]
     [AutoValidateAntiforgeryToken]
+    /*
+     * Provides React admin endpoints for managing reusable email templates.
+     */
     public class ApiEmailTemplatesController : ControllerBase
     {
         private readonly IEmailTemplateService _emailTemplateService;

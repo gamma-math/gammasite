@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Encapsulates reusable email template storage, validation, and rendering.
+     */
     public class EmailTemplateService : IEmailTemplateService
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);

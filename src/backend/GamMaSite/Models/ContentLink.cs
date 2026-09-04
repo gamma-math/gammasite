@@ -2,6 +2,9 @@ using System;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Stores a related action link for an event or news item.
+     */
     public class ContentLink
     {
         public int Id { get; set; }

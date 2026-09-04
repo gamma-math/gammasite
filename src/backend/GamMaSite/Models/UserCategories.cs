@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Legacy MVC helper that groups member statuses and roles for message forms.
+     */
     public class UserCategories
     {
         public UserStatus[] Status { get; private set; }

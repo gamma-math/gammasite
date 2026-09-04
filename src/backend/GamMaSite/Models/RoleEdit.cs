@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Legacy MVC view model for editing role membership.
+     */
     public class RoleEdit
     {
         public IdentityRole Role { get; set; }

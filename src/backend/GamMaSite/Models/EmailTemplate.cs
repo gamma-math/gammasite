@@ -2,6 +2,9 @@ using System;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Stores reusable message templates edited by admins and rendered for email.
+     */
     public class EmailTemplate
     {
         public int Id { get; set; }

@@ -4,6 +4,9 @@ import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { rolesApi } from "../services/api.js";
 
+/**
+ * Admin role overview for creating, editing, and deleting roles.
+ */
 export function AdminRolesPage({ isAdmin }) {
   const [roles, setRoles] = useState([]);
   const [error, setError] = useState("");
@@ -87,6 +90,9 @@ export function AdminRolesPage({ isAdmin }) {
   );
 }
 
+/**
+ * Admin role editor for assigning members to a role.
+ */
 export function AdminRolesEditorPage({ isAdmin, roleId }) {
   const [roles, setRoles] = useState([]);
   const [name, setName] = useState("");
@@ -202,6 +208,9 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
   );
 }
 
+/**
+ * Searchable checkbox list used by the role membership editor.
+ */
 function RoleCheckboxes({ title, name, users, search, onSearchChange }) {
   return (
     <fieldset className="role-fieldset">

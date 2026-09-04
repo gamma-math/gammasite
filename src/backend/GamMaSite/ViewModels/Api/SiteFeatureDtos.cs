@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for calendar, library, payment, and message features exposed to React.
+     */
     public class CalendarEventDto
     {
         public string Id { get; set; }

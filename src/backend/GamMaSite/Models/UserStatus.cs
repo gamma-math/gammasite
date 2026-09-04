@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Membership status values used for member filtering, payment state, and admin updates.
+     */
     public enum UserStatus
     {
         OPRETTET = 0,

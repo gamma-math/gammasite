@@ -4,6 +4,9 @@ import { Link } from "../routes/navigation.jsx";
 import { libraryApi } from "../services/api.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
+/**
+ * Member-only library browser for documents exposed through the library API.
+ */
 export function LibraryPage({ user }) {
   const params = new URLSearchParams(window.location.search);
   const path = params.get("path") ?? "";

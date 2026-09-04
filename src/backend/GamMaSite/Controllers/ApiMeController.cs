@@ -9,6 +9,9 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/me")]
+    /*
+     * Returns the current authentication and role state for the React application.
+     */
     public class ApiMeController : ControllerBase
     {
         private readonly UserManager<SiteUser> _userManager;

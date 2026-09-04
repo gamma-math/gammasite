@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GamMaSite.Controllers
 {
+    /*
+     * Serves the React shell for both new /react routes and selected legacy MVC URLs.
+     */
     public class ReactController : Controller
     {
         [HttpGet("/")]

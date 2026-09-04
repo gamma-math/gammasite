@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Sends SMS messages through the configured gateway provider.
+     */
     public class SmsSender : ISmsSender
     {
         private string host;

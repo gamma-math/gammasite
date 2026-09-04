@@ -13,6 +13,9 @@ using Microsoft.Extensions.Logging;
 namespace GamMaSite.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
+    /*
+     * Handles the second step of login for users with authenticator-based 2FA enabled.
+     */
     public class LoginWith2faModel : PageModel
     {
         private readonly SignInManager<SiteUser> _signInManager;

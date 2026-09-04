@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.ViewModels
 {
+    /*
+     * View model used by legacy Stripe product pages.
+     */
     public class ProductInfo
     { 
         public Product Product { get; set; }

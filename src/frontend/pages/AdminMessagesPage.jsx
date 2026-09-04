@@ -10,6 +10,9 @@ const channels = [
   { value: "EmailSMS", label: "Email & SMS" }
 ];
 
+/**
+ * Admin message composer for recipient previews, template generation, and sending.
+ */
 export function AdminMessagesPage({ isAdmin }) {
   const [categories, setCategories] = useState({ statuses: [], roles: [] });
   const [templates, setTemplates] = useState([]);
@@ -426,6 +429,9 @@ export function AdminMessagesPage({ isAdmin }) {
   );
 }
 
+/**
+ * Reusable dropdown for multi-select filters in message setup.
+ */
 function MultiSelectDropdown({ label, placeholder, items, selectedIds, onChange, showMeta = true, searchable = false }) {
   const [search, setSearch] = useState("");
   const selectedItems = (items ?? []).filter((item) => selectedIds.includes(item.id));
@@ -491,6 +497,9 @@ function MultiSelectDropdown({ label, placeholder, items, selectedIds, onChange,
   );
 }
 
+/**
+ * Loads recipient names/emails for the current local preview selections.
+ */
 async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds }) {
   const [allMembers, roles] = await Promise.all([membersApi.listAdmin(), rolesApi.list()]);
   const recipients = new Map();
@@ -631,6 +640,9 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+/**
+ * Rich text editor wrapper used by the final editable message body.
+ */
 function MessageRichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const sourceRef = useRef(null);

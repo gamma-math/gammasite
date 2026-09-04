@@ -10,6 +10,9 @@ namespace GamMaSite.Controllers
     [ApiController]
     [Route("api/library")]
     [Authorize]
+    /*
+     * Provides protected library listings and file downloads to React.
+     */
     public class ApiLibraryController : ControllerBase
     {
         private readonly IIndexService _indexService;

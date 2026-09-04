@@ -8,6 +8,9 @@ using System.Text;
 
 namespace GamMaSite.Services
 {
+    /*
+     * Sends application emails through the configured SMTP/API provider.
+     */
     public class EmailService : IEmailService
     {
         private readonly string _host;

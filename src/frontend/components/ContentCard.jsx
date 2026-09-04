@@ -3,6 +3,9 @@ import { Link } from "../routes/navigation.jsx";
 import { contentMetaLabel, detailPath } from "../utils/format.js";
 import { sanitizeHtml } from "../utils/richText.js";
 
+/**
+ * Displays a news or event teaser card used on overview and front page sections.
+ */
 export function ContentCard({ item, variant }) {
   const hasImage = Boolean(item.pictureUrl);
   const image = hasImage ? item.pictureUrl : "/lib/logo_blue.png";

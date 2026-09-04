@@ -5,12 +5,18 @@ using System.Threading.Tasks;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Member profile visibility values used by the public member directory.
+     */
     public enum VisibilityStatus
     {
         NONVISIBLE,
         VISIBLE
     }
 
+    /*
+     * Converts between stored visibility values and boolean UI state.
+     */
     public static class VisibilityExtensions
     {
         public static bool IsVisible(this VisibilityStatus visibility)

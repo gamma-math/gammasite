@@ -1,5 +1,8 @@
 import { adminItems, Link } from "../routes/navigation.jsx";
 
+/**
+ * Shared admin layout that hides write-only sections from read-only admins.
+ */
 export function AdminLayout({ active, canWrite, children }) {
   return (
     <main className="menu-shell">

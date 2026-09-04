@@ -2,6 +2,9 @@ using System;
 
 namespace GamMaSite.ViewModels.Api
 {
+    /*
+     * DTOs for event registration display, signup, and admin attendee updates.
+     */
     public class EventRegistrationDto
     {
         public int Id { get; set; }

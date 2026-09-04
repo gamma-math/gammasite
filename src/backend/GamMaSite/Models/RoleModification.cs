@@ -7,6 +7,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Legacy MVC post model for adding and removing users from a role.
+     */
     public class RoleModification
     {
         [Required(ErrorMessage = "{0} er obligatorisk")]

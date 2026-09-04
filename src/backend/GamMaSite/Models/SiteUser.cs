@@ -7,6 +7,9 @@ using System.Text.Json;
 
 namespace GamMaSite.Models
 {
+    /*
+     * Extends ASP.NET Identity users with GamMa membership profile fields.
+     */
     public class SiteUser : IdentityUser
     {
         [PersonalData]
