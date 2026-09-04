@@ -836,6 +836,11 @@ img {
   padding: 0 12px;
 }
 
+.menu-registration-mobile-toggle,
+.menu-registration-mobile-detail-row {
+  display: none;
+}
+
 .admin-split {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
@@ -2517,7 +2522,69 @@ img {
   }
 
   .menu-registration-table {
-    min-width: 540px;
+    min-width: 0;
+  }
+
+  .menu-registration-table th:nth-child(2),
+  .menu-registration-table th:nth-child(3),
+  .menu-registration-desktop-cell {
+    display: none;
+  }
+
+  .menu-registration-table th:first-child {
+    width: 100%;
+  }
+
+  .menu-registration-table th,
+  .menu-registration-table td {
+    padding: 12px;
+  }
+
+  .menu-registration-person {
+    width: 100%;
+    gap: 9px;
+  }
+
+  .menu-registration-person > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .menu-registration-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    color: var(--action-blue);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .menu-registration-mobile-detail-row {
+    display: table-row;
+  }
+
+  .menu-registration-mobile-detail-row td {
+    background: #f8fbff;
+  }
+
+  .menu-registration-mobile-details {
+    display: grid;
+    gap: 12px;
+  }
+
+  .menu-registration-mobile-details .menu-registration-select,
+  .menu-registration-mobile-details .menu-registration-check {
+    width: 100%;
+  }
+
+  .menu-registration-mobile-details .menu-registration-check {
+    justify-content: flex-start;
   }
 
   .menu-table-pagination {

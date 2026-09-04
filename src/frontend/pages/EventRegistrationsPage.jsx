@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { LogIn, Plus } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
+import { CircleMinus, CirclePlus, LogIn, Plus } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, membersApi, registrationsApi } from "../services/api.js";
@@ -19,6 +19,7 @@ export function EventRegistrationsPage({ slug, user }) {
   const [members, setMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: true });
+  const [expandedRegistrationIds, setExpandedRegistrationIds] = useState(new Set());
   const [error, setError] = useState("");
   const roles = new Set(user.roles ?? []);
   const isAdmin = roles.has("Admin") || roles.has("ADMIN");
@@ -70,6 +71,18 @@ export function EventRegistrationsPage({ slug, user }) {
     });
     setAddForm({ userId: "", registrationType: "ATTENDEE", registered: true });
     setMemberSearch("");
+  }
+
+  function toggleRegistrationDetails(registrationId) {
+    setExpandedRegistrationIds((current) => {
+      const next = new Set(current);
+      if (next.has(registrationId)) {
+        next.delete(registrationId);
+      } else {
+        next.add(registrationId);
+      }
+      return next;
+    });
   }
 
   if (error) {
@@ -172,35 +185,59 @@ export function EventRegistrationsPage({ slug, user }) {
             </tr>
           </thead>
           <tbody>
-            {registrations.map((registration) => (
-              <tr key={registration.id}>
-                <td>
-                  <div className="menu-registration-person">
-                    <span className="menu-registration-avatar">{attendeeInitials(registration)}</span>
-                    <span>{attendeeName(registration)}</span>
-                  </div>
-                </td>
-                <td>
-                  {isAdmin ? (
-                    <select className="menu-registration-select" value={registration.registrationType} onChange={(event) => updateRegistration(registration, { registrationType: event.target.value })}>
-                      {registrationTypes.map((type) => <option value={type.value} key={type.value}>{type.label}</option>)}
-                    </select>
-                  ) : (
-                    <span className="menu-role-badge menu-role-badge-attendee">{registrationLabel(registration.registrationType)}</span>
+            {registrations.map((registration) => {
+              const isExpanded = expandedRegistrationIds.has(registration.id);
+              return (
+                <Fragment key={registration.id}>
+                  <tr>
+                    <td>
+                      <div className="menu-registration-person">
+                        {isAdmin && (
+                          <button
+                            className="menu-registration-mobile-toggle"
+                            type="button"
+                            aria-label={isExpanded ? "Skjul detaljer" : "Vis detaljer"}
+                            aria-expanded={isExpanded}
+                            onClick={() => toggleRegistrationDetails(registration.id)}
+                          >
+                            {isExpanded ? <CircleMinus size={18} /> : <CirclePlus size={18} />}
+                          </button>
+                        )}
+                        <span className="menu-registration-avatar">{attendeeInitials(registration)}</span>
+                        <span>{attendeeName(registration)}</span>
+                      </div>
+                    </td>
+                    <td className="menu-registration-desktop-cell">
+                      {isAdmin ? (
+                        <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
+                      ) : (
+                        <span className="menu-role-badge menu-role-badge-attendee">{registrationLabel(registration.registrationType)}</span>
+                      )}
+                    </td>
+                    <td className="menu-registration-desktop-cell">
+                      {isAdmin ? (
+                        <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                      ) : (
+                        <span>{registration.registered ? "Ja" : "Nej"}</span>
+                      )}
+                    </td>
+                  </tr>
+                  {isAdmin && isExpanded && (
+                    <tr className="menu-registration-mobile-detail-row">
+                      <td colSpan="3">
+                        <div className="menu-registration-mobile-details">
+                          <label className="admin-field">
+                            <span>Rolle</span>
+                            <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
+                          </label>
+                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td>
-                  {isAdmin ? (
-                    <label className="menu-registration-check">
-                      <input type="checkbox" checked={registration.registered} onChange={(event) => updateRegistration(registration, { registered: event.target.checked })} />
-                      <span>{registration.registered ? "Ja" : "Nej"}</span>
-                    </label>
-                  ) : (
-                    <span>{registration.registered ? "Ja" : "Nej"}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
             {registrations.length === 0 && (
               <tr>
                 <td colSpan="3">Der er ingen tilmeldte endnu.</td>
@@ -210,6 +247,23 @@ export function EventRegistrationsPage({ slug, user }) {
         </table>
       </div>
     </MenuLayout>
+  );
+}
+
+function RegistrationTypeSelect({ registration, updateRegistration }) {
+  return (
+    <select className="menu-registration-select" value={registration.registrationType} onChange={(event) => updateRegistration(registration, { registrationType: event.target.value })}>
+      {registrationTypes.map((type) => <option value={type.value} key={type.value}>{type.label}</option>)}
+    </select>
+  );
+}
+
+function RegistrationRegisteredToggle({ registration, updateRegistration }) {
+  return (
+    <label className="menu-registration-check">
+      <input type="checkbox" checked={registration.registered} onChange={(event) => updateRegistration(registration, { registered: event.target.checked })} />
+      <span>{registration.registered ? "Ja" : "Nej"}</span>
+    </label>
   );
 }
 
