@@ -19,7 +19,7 @@ env:
   WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
   APP_PATH: ${{ vars.SITE_DOMAIN }}
   DEPLOY_SERIVICE_URL: nt37.unoeuro.com
-  CS_PROJ: .\GamMaSite.csproj
+  CS_PROJ: .\src\backend\GamMaSite\GamMaSite.csproj
   RUNTIME: win-x86
   FRAMEWORK: net10.0
   CONFIGURATION: Release
@@ -30,15 +30,21 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - name: Check-out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Add dotnet
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Add Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'src/frontend/package-lock.json'
       - name: Variable substitutions
         uses: microsoft/variable-substitution@v1
         with:
-          files: 'appsettings.json'
+          files: 'src/backend/GamMaSite/appsettings.json'
         env:
           ConnectionStrings.DefaultConnection: ${{ secrets.CONNECTION_STRING }}
           EmailSender.Host: ${{ secrets.MAILGUN_HOST }}
@@ -50,6 +56,12 @@ jobs:
           GitHub.Token: ${{ secrets.GH_API_KEY }}
           GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
           ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}
+      - name: Restore frontend packages
+        working-directory: src/frontend
+        run: npm ci
+      - name: Build frontend assets
+        working-directory: src/frontend
+        run: npm run build
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app

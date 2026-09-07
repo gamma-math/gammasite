@@ -1,0 +1,30 @@
+﻿@page
+@model ResetAuthenticatorModel
+@{
+    ViewData["Title"] = "Nulstil authentication-nøgle";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+    ViewData["HideManageNavigation"] = true;
+}
+
+<section class="legacy-auth-card">
+    <div class="legacy-card-hero">
+        <p class="legacy-kicker">To-faktor authentication</p>
+        <h1>Nulstil authentication-nøgle</h1>
+        <p>Brug dette hvis du vil opsætte din authenticator app forfra.</p>
+    </div>
+
+    <div class="legacy-card-body legacy-simple-body">
+        <partial name="_StatusMessage" for="StatusMessage" />
+        <div class="legacy-warning-box" role="alert">
+            <strong>Din nuværende authentication app stopper med at virke.</strong>
+            <p>
+                Denne proces deaktiverer 2FA, indtil du godkender en ny authentication app.
+                Hvis du ikke gennemfører opsætningen bagefter, kan du potentielt miste adgangen til din profil.
+            </p>
+        </div>
+
+        <form id="reset-authenticator-form" method="post" class="legacy-auth-form">
+            <button id="reset-authenticator-button" class="legacy-danger-button" type="submit">Nulstil authentication-nøgle</button>
+        </form>
+    </div>
+</section>

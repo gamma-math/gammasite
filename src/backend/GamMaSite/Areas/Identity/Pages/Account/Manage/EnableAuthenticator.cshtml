@@ -1,0 +1,70 @@
+﻿@page
+@model EnableAuthenticatorModel
+@{
+    ViewData["Title"] = "Konfigurér authentication app";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+    ViewData["HideManageNavigation"] = true;
+}
+
+<section class="legacy-auth-card legacy-auth-card-wide">
+    <div class="legacy-card-hero">
+        <p class="legacy-kicker">To-faktor authentication</p>
+        <h1>Konfigurér authentication app</h1>
+        <p>Scan QR-koden med din authenticator app og indtast koden for at aktivere ekstra sikkerhed på din konto.</p>
+    </div>
+
+    <div class="legacy-card-body legacy-authenticator-body">
+        <partial name="_StatusMessage" for="StatusMessage" />
+        <div class="legacy-authenticator-grid">
+            <div class="legacy-authenticator-copy">
+                <h2>Sådan gør du</h2>
+                <p>
+                    Brug Microsoft Authenticator eller Google Authenticator på
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Android</a> /
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825073">iOS</a>.
+                </p>
+                <p>Scan QR-koden eller indtast nøglen manuelt. Mellemrum og bogstavstørrelse har ingen betydning.</p>
+                <div class="legacy-secret-key">
+                    <span>Nøgle</span>
+                    <kbd>@Model.SharedKey</kbd>
+                </div>
+            </div>
+
+            <div class="legacy-qr-panel">
+                <div id="qrCode" class="legacy-qr-code"></div>
+                <div id="qrCodeData" data-url="@Model.AuthenticatorUri"></div>
+            </div>
+        </div>
+
+        <form id="send-code" method="post" class="legacy-auth-form">
+            <label class="legacy-form-field">
+                <span>Godkendelseskode</span>
+                <input asp-for="Input.Code" autocomplete="off" placeholder="Indtast kode fra appen" />
+                <span asp-validation-for="Input.Code" class="legacy-validation-message"></span>
+            </label>
+            <button type="submit" class="legacy-primary-button">Bekræft</button>
+            <div asp-validation-summary="ModelOnly" class="legacy-validation-message"></div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/thirdparty/qrcode.js" asp-append-version="true"></script>
+    <script>
+        const qrCodeElement = document.getElementById("qrCode");
+        const qrCodeDataElement = document.getElementById("qrCodeData");
+        const authenticatorUrl = qrCodeDataElement?.dataset?.url;
+
+        if (qrCodeElement && authenticatorUrl && window.QRCode?.toCanvas) {
+            window.QRCode.toCanvas(authenticatorUrl, { width: 180, margin: 1 }, function (error, canvas) {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+
+                qrCodeElement.appendChild(canvas);
+            });
+        }
+    </script>
+}
