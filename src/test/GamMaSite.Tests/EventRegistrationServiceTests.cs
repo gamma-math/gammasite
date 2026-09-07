@@ -70,6 +70,52 @@ public class EventRegistrationServiceTests
         Assert.False(registration.Registered);
     }
 
+    [Fact]
+    public async Task UnregisterAsync_ReturnsFalseWhenUserHasNoRegistration()
+    {
+        await using var db = CreateDb();
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+
+        var result = await new EventRegistrationService(db).UnregisterAsync(1, "missing-user");
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task AddAsync_RejectsUnknownUser()
+    {
+        await using var db = CreateDb();
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new EventRegistrationService(db).AddAsync(1,
+            new AddEventRegistrationRequest { UserId = "missing-user" }));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsNullForUnknownRegistration()
+    {
+        await using var db = CreateDb();
+
+        var result = await new EventRegistrationService(db).UpdateAsync(1, 99,
+            new UpdateEventRegistrationRequest { RegistrationType = RegistrationTypes.Attendee });
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_RejectsUnknownRegistrationType()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new EventRegistrationService(db).RegisterAsync(1, "user-1",
+            new SaveEventRegistrationRequest { RegistrationType = "UNKNOWN" }));
+    }
+
     private static ContentItem Event(string status, DateTime endDate) => new()
     {
         Title = "Event", Slug = "event", Type = ContentTypes.Event, Status = status,

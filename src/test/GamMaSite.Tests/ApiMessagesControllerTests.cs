@@ -64,6 +64,25 @@ public class ApiMessagesControllerTests
         Assert.Contains("ingen modtagere", badRequest.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task GetCategories_ReturnsStatusesAndRoles()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(User("member"));
+        db.Roles.Add(new IdentityRole("Board"));
+        await db.SaveChangesAsync();
+        var users = TestDoubles.UserManager();
+        var roles = TestDoubles.RoleManager();
+        users.SetupGet(value => value.Users).Returns(db.Users);
+        roles.SetupGet(value => value.Roles).Returns(db.Roles);
+
+        var result = await CreateController(db, roles, users).GetCategories();
+
+        var categories = Assert.IsType<MessageCategoriesDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Contains(UserStatus.BETALT.ToString(), categories.Statuses);
+        Assert.Contains("Board", categories.Roles);
+    }
+
     private static ApiMessagesController CreateController(ApplicationDbContext db,
         Mock<RoleManager<IdentityRole>> roleManager, Mock<UserManager<SiteUser>> userManager)
     {

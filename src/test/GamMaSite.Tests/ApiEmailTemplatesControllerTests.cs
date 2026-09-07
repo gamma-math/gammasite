@@ -37,4 +37,27 @@ public class ApiEmailTemplatesControllerTests
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
+
+    [Fact]
+    public async Task Update_ReturnsNotFoundWhenTemplateDoesNotExist()
+    {
+        var service = new Mock<IEmailTemplateService>();
+        service.Setup(value => value.UpdateAsync(99, It.IsAny<SaveEmailTemplateRequest>()))
+            .ReturnsAsync((EmailTemplate?)null);
+
+        var result = await new ApiEmailTemplatesController(service.Object).Update(99, new SaveEmailTemplateRequest());
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task Delete_ReturnsNoContentWhenTemplateWasDeleted()
+    {
+        var service = new Mock<IEmailTemplateService>();
+        service.Setup(value => value.DeleteAsync(1)).ReturnsAsync(true);
+
+        var result = await new ApiEmailTemplatesController(service.Object).Delete(1);
+
+        Assert.IsType<NoContentResult>(result);
+    }
 }

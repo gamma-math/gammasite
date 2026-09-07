@@ -61,6 +61,54 @@ public class ApiMembersControllerTests
         manager.Verify(value => value.UpdateAsync(user), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdateStatus_RejectsInvalidStatus()
+    {
+        var manager = TestDoubles.UserManager();
+
+        var result = await new ApiMembersController(manager.Object).UpdateStatus("member",
+            new UpdateMemberStatusRequest { Status = "INVALID" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        manager.Verify(value => value.FindByIdAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_ReturnsNotFoundForUnknownUser()
+    {
+        var manager = TestDoubles.UserManager();
+        manager.Setup(value => value.FindByIdAsync("missing")).ReturnsAsync((SiteUser?)null);
+
+        var result = await new ApiMembersController(manager.Object).UpdateStatus("missing",
+            new UpdateMemberStatusRequest { Status = UserStatus.BETALT.ToString() });
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task UpdateMassStatus_UpdatesUsersInDateRange()
+    {
+        await using var db = CreateDb();
+        var first = User("first", UserStatus.SKYLDER, true, VisibilityStatus.VISIBLE);
+        first.KontingentDato = new DateTime(2025, 1, 1);
+        var second = User("second", UserStatus.BETALT, true, VisibilityStatus.VISIBLE);
+        second.KontingentDato = new DateTime(2025, 2, 1);
+        db.Users.AddRange(first, second);
+        await db.SaveChangesAsync();
+        var manager = TestDoubles.UserManager();
+        manager.SetupGet(value => value.Users).Returns(db.Users);
+        manager.Setup(value => value.UpdateAsync(It.IsAny<SiteUser>())).ReturnsAsync(IdentityResult.Success);
+
+        var result = await new ApiMembersController(manager.Object).UpdateMassStatus(new MassUpdateMemberStatusRequest
+        {
+            From = new DateTime(2025, 1, 1), To = new DateTime(2025, 2, 1), Status = UserStatus.BETALT.ToString()
+        });
+
+        var response = Assert.IsType<MassUpdateMemberStatusResult>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(1, response.Updated);
+        Assert.Equal(UserStatus.BETALT, first.Status);
+    }
+
     private static SiteUser User(string name, UserStatus status, bool confirmed, VisibilityStatus visibility) => new()
     {
         Id = name, UserName = name, Navn = name, Email = $"{name}@example.com", EmailConfirmed = confirmed,

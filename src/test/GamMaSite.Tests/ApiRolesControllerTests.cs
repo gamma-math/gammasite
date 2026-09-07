@@ -1,9 +1,11 @@
 using System.Threading.Tasks;
+using System.Linq;
 using GamMaSite.Controllers;
 using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -37,5 +39,21 @@ public class ApiRolesControllerTests
 
         Assert.IsType<BadRequestObjectResult>(result);
         roles.Verify(value => value.DeleteAsync(It.IsAny<IdentityRole>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetRoles_ReturnsRolesOrderedByName()
+    {
+        await using var db = new GamMaSite.Data.ApplicationDbContext(new DbContextOptionsBuilder<GamMaSite.Data.ApplicationDbContext>()
+            .UseInMemoryDatabase(System.Guid.NewGuid().ToString()).Options);
+        db.Roles.AddRange(new IdentityRole("Zeta"), new IdentityRole("Alpha"));
+        await db.SaveChangesAsync();
+        var roles = TestDoubles.RoleManager();
+        roles.SetupGet(value => value.Roles).Returns(db.Roles);
+
+        var result = await new ApiRolesController(roles.Object, TestDoubles.UserManager().Object).GetRoles();
+        var values = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<RoleDto>>(Assert.IsType<OkObjectResult>(result).Value);
+
+        Assert.Equal(new[] { "Alpha", "Zeta" }, values.Select(value => value.Name));
     }
 }
