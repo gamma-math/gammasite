@@ -62,3 +62,5 @@ dotnet test GamMaSite.sln --filter FullyQualifiedName~GamMaSite.Tests
 External integrations are not called by the unit tests. Stripe, SMTP, Google Calendar, and other external services are mocked or tested through local validation and mapping rules.
 
 The test project is included in `GamMaSite.sln`, so running the solution-level command also builds the application and executes this test project.
+
+Authorization attributes, antiforgery middleware, rate limiting, and full HTTP routing are not covered by the current unit-test setup. These remain known integration-test risks and require a separate `WebApplicationFactory` setup.

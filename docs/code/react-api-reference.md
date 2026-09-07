@@ -21,7 +21,7 @@ This document describes the backend APIs currently used by the React pages. The 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
 | POST | `/api/account/login` | Login page | `AspNetUsers`, Identity login data | Authenticates a user and creates the application cookie. | [ApiAccountControllerTests.cs](../../src/test/GamMaSite.Tests/ApiAccountControllerTests.cs) |
-| POST | `/api/account/register` | Registration page | `AspNetUsers`, Identity tables | Creates a new user account and starts email confirmation. | [RegisterModelTests.cs](../../src/test/GamMaSite.Tests/RegisterModelTests.cs) |
+| POST | `/api/account/register` | Registration page | `AspNetUsers`, Identity tables | Creates a new user account and starts email confirmation. | Not yet covered |
 | POST | `/api/account/logout` | Account management page | Authentication cookie | Signs out the current user. | [ApiAccountControllerTests.cs](../../src/test/GamMaSite.Tests/ApiAccountControllerTests.cs) |
 | POST | `/api/account/forgot-password` | Forgot password page | `AspNetUsers` | Starts the password reset flow for a confirmed email. | [ApiAccountControllerTests.cs](../../src/test/GamMaSite.Tests/ApiAccountControllerTests.cs) |
 | POST | `/api/account/resend-email-confirmation` | Resend confirmation page | `AspNetUsers` | Sends a new email confirmation link. | Not yet covered |

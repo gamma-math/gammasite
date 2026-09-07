@@ -62,6 +62,20 @@ jobs:
       - name: Build frontend assets
         working-directory: src/frontend
         run: npm run build
+      - name: Restore solution packages
+        run: dotnet restore .\GamMaSite.sln
+      - name: Run backend tests
+        run: >
+          dotnet test .\src\test\GamMaSite.Tests\GamMaSite.Tests.csproj
+          --no-restore --configuration Release
+          --logger "trx;LogFileName=backend-tests.trx"
+          --results-directory .\TestResults
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: .\TestResults
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
       - name: Build and release app
