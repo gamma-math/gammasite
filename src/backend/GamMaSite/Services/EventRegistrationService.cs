@@ -37,6 +37,8 @@ namespace GamMaSite.Services
                 throw new ArgumentException("Content item is not an event");
             }
 
+            EnsureRegistrationOpen(content);
+
             var now = DateTime.UtcNow;
             var registrationType = NormalizeRegistrationType(request?.RegistrationType);
             var registration = await _db.EventRegistrations
@@ -115,6 +117,14 @@ namespace GamMaSite.Services
 
         public async Task<bool> UnregisterAsync(int contentItemId, string userId)
         {
+            var content = await _db.ContentItems.FindAsync(contentItemId);
+            if (content == null || content.Type != ContentTypes.Event)
+            {
+                return false;
+            }
+
+            EnsureRegistrationOpen(content);
+
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
 
@@ -126,6 +136,20 @@ namespace GamMaSite.Services
             _db.EventRegistrations.Remove(registration);
             await _db.SaveChangesAsync();
             return true;
+        }
+
+        private static void EnsureRegistrationOpen(ContentItem content)
+        {
+            if (!string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Registration is only available for published events");
+            }
+
+            var deadline = content.EndDate ?? content.StartDate;
+            if (!deadline.HasValue || deadline.Value <= DateTime.UtcNow)
+            {
+                throw new ArgumentException("Registration for this event is closed");
+            }
         }
 
         public async Task<EventRegistration> GetRegistrationAsync(int contentItemId, string userId)

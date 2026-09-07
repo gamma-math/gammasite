@@ -45,9 +45,20 @@ namespace GamMaSite.Services
                 query = query.Where(item => item.ShowOnFrontPage);
             }
 
-            return await query
-                .OrderByDescending(item => item.PublishedAt ?? item.Created)
-                .ToListAsync();
+            var items = await query.ToListAsync();
+            if (string.Equals(type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase))
+            {
+                var now = DateTime.UtcNow;
+                return items
+                    .OrderBy(item => item.StartDate.HasValue && item.StartDate.Value > now ? 0 : 1)
+                    .ThenBy(item => item.StartDate.HasValue && item.StartDate.Value > now ? item.StartDate : DateTime.MaxValue)
+                    .ThenByDescending(item => item.StartDate ?? item.Created)
+                    .ToList();
+            }
+
+            return items
+                .OrderBy(item => item.PublishedAt ?? item.Created)
+                .ToList();
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetAllAsync(string type, string status)

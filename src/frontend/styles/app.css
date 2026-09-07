@@ -621,6 +621,26 @@ img {
   font-weight: 700;
 }
 
+.menu-detail-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #e2a2ab;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.menu-detail-status-closed {
+  color: #8f1f2d;
+  background: #dc35451a;
+}
+
+.menu-detail-hero > .menu-detail-status {
+  flex-shrink: 0;
+}
+
 .menu-detail-image {
   width: 100%;
   aspect-ratio: 4.4 / 1;
@@ -2665,6 +2685,13 @@ img {
 
   .menu-detail-hero {
     padding: 20px 20px 18px;
+  }
+
+  .menu-detail-hero > .menu-detail-status {
+    max-width: 45%;
+    padding: 0 9px;
+    font-size: 0.78rem;
+    text-align: center;
   }
 
   .menu-detail-image {

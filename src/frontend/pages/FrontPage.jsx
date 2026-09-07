@@ -98,11 +98,39 @@ function contentDateValue(item) {
 }
 
 function compareContentItems(left, right, mode) {
-  if (mode === "EVENT") {
-    return compareNullableDates(contentDateValue(left), contentDateValue(right), "asc");
+  if (mode === "EVENT" || (left.type === "EVENT" && right.type === "EVENT")) {
+    return compareEvents(left, right);
+  }
+
+  if (!mode && left.type !== right.type) {
+    return left.type === "EVENT" ? -1 : 1;
   }
 
   return compareNullableDates(contentDateValue(left), contentDateValue(right), "asc");
+}
+
+function compareEvents(left, right) {
+  const now = Date.now();
+  const leftStart = dateTimestamp(left.startDate);
+  const rightStart = dateTimestamp(right.startDate);
+  const leftFuture = leftStart > now;
+  const rightFuture = rightStart > now;
+
+  if (leftFuture !== rightFuture) {
+    return leftFuture ? -1 : 1;
+  }
+
+  if (leftFuture) {
+    return leftStart - rightStart;
+  }
+
+  return rightStart - leftStart;
+}
+
+function dateTimestamp(value) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
 function compareNullableDates(left, right, direction) {

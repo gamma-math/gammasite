@@ -133,8 +133,15 @@ namespace GamMaSite.Controllers
         [Authorize]
         public async Task<IActionResult> Unregister(int id)
         {
-            var deleted = await _registrationService.UnregisterAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
-            return deleted ? NoContent() : NotFound();
+            try
+            {
+                var deleted = await _registrationService.UnregisterAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpGet("{id:int}/registrations/me")]

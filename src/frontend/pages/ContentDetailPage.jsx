@@ -67,6 +67,7 @@ export function ContentDetailPage({ slug, type, user }) {
   const registrationsPath = `/react/events/${item.slug}/registrations`;
   const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
+  const registrationOpen = isRegistrationOpen(item);
 
   async function toggleRegistration() {
     if (registration) {
@@ -92,6 +93,7 @@ export function ContentDetailPage({ slug, type, user }) {
             <p className="menu-section-title">{isEvent ? "Begivenheder" : "Nyheder"}</p>
             <p className="menu-panel-lead">{isEvent ? "Se selve eventet og læs mere om programmet." : "Læs nyheden fra foreningen."}</p>
           </div>
+          {isEvent && !registrationOpen && <p className="menu-detail-status menu-detail-status-closed">Arrangementet er afsluttet</p>}
         </div>
         <img className={`menu-detail-image ${hasImage ? "" : "content-logo-fallback"}`.trim()} src={hasImage ? item.pictureUrl : "/lib/logo_blue.png"} alt="" />
         <div className="menu-detail-body">
@@ -119,17 +121,17 @@ export function ContentDetailPage({ slug, type, user }) {
                   ))}
                 </div>
                 <div className="menu-detail-footer-actions">
-                  {user.isAuthenticated ? (
+                  {registrationOpen && user.isAuthenticated ? (
                     <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
                       {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
                       {registration ? "Afmeld" : "Tilmeld"}
                     </button>
-                  ) : (
+                  ) : registrationOpen ? (
                     <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
                       <LogIn size={16} />
                       Tilmeld
                     </a>
-                  )}
+                  ) : null}
                   {user.isAuthenticated && (
                     <Link className="menu-attend-button" href={registrationsPath}>
                       <Users size={16} />
@@ -163,6 +165,12 @@ export function ContentDetailPage({ slug, type, user }) {
       </article>
     </MenuLayout>
   );
+}
+
+function isRegistrationOpen(item) {
+  if (item.status !== "PUBLISHED") return false;
+  const deadline = item.endDate || item.startDate;
+  return Boolean(deadline && new Date(deadline).getTime() > Date.now());
 }
 
 function shortLinkLabel(label) {
