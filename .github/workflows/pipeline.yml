@@ -1,4 +1,5 @@
 name: Build and deploy
+run-name: Build and deploy to ${{ inputs.environment }}
 on:
   workflow_dispatch:
     inputs:
@@ -26,11 +27,16 @@ env:
   SELF_CONTAINED: true
 jobs:
   build-deploy:
+    name: Build and deploy to ${{ inputs.environment }}
     runs-on: windows-2025
     environment: ${{ inputs.environment }}
     steps:
       - name: Check-out repository
         uses: actions/checkout@v4
+      - name: Show deployment target
+        run: Write-Host "Deployment target: $env:DEPLOY_ENVIRONMENT"
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
       - name: Add dotnet
         uses: actions/setup-dotnet@v4
         with:
