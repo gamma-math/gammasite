@@ -106,7 +106,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.RegisterAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), request);
-                return Ok(registration.ToDto());
+                return Ok(registration.ToDto(User.IsInRole("Admin") || User.IsInRole("ADMIN")));
             }
             catch (ArgumentException ex)
             {
@@ -121,7 +121,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.AddAsync(id, request);
-                return Ok(registration.ToDto());
+                return Ok(registration.ToDto(true));
             }
             catch (ArgumentException ex)
             {
@@ -149,7 +149,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetMyRegistration(int id)
         {
             var registration = await _registrationService.GetRegistrationAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
-            return registration == null ? NoContent() : Ok(registration.ToDto());
+            return registration == null ? NoContent() : Ok(registration.ToDto(User.IsInRole("Admin") || User.IsInRole("ADMIN")));
         }
 
         [HttpGet("{id:int}/registrations")]
@@ -157,7 +157,8 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetRegistrations(int id)
         {
             var registrations = await _registrationService.GetRegistrationsAsync(id);
-            return Ok(registrations.Select(registration => registration.ToDto()));
+            var includePrivateDetails = User.IsInRole("Admin") || User.IsInRole("ADMIN");
+            return Ok(registrations.Select(registration => registration.ToDto(includePrivateDetails)));
         }
 
         [HttpPut("{id:int}/registrations/{registrationId:int}")]
@@ -167,7 +168,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.UpdateAsync(id, registrationId, request);
-                return registration == null ? NotFound() : Ok(registration.ToDto());
+                return registration == null ? NotFound() : Ok(registration.ToDto(true));
             }
             catch (ArgumentException ex)
             {

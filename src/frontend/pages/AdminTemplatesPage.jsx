@@ -285,7 +285,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
                 <X size={20} />
               </button>
             </div>
-            <iframe className="admin-template-preview-frame" title="Template preview" srcDoc={preview.htmlBody || "<p>Ingen preview endnu.</p>"} />
+            <iframe className="admin-template-preview-frame" title="Template preview" sandbox="" srcDoc={preview.htmlBody || "<p>Ingen preview endnu.</p>"} />
           </section>
         </div>
       )}

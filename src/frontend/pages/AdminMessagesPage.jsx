@@ -380,7 +380,7 @@ export function AdminMessagesPage({ isAdmin }) {
                 <X size={20} />
               </button>
             </div>
-            <iframe className="admin-template-preview-frame" title="Email preview" srcDoc={html || "<p>Generer mailen for at se preview.</p>"} />
+            <iframe className="admin-template-preview-frame" title="Email preview" sandbox="" srcDoc={html || "<p>Generer mailen for at se preview.</p>"} />
           </section>
         </div>
       )}

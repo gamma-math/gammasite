@@ -194,13 +194,24 @@ namespace GamMaSite.Services
                 .Select(link => new ContentLink
                 {
                     Label = Required(link.Label, nameof(link.Label)),
-                    Url = Required(link.Url, nameof(link.Url)),
+                    Url = SecureUrl(link.Url),
                     Type = Required(link.Type, nameof(link.Type)).ToUpperInvariant(),
                     SortOrder = link.SortOrder,
                     Created = now,
                     Updated = now
                 })
                 .ToList();
+        }
+
+        private static string SecureUrl(string value)
+        {
+            var url = Required(value, nameof(value));
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new ArgumentException("Content links must use an absolute HTTPS URL");
+            }
+
+            return url;
         }
 
         private static string NormalizeType(string type)
