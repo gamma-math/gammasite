@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Plus, Save, Trash2 } from "lucide-react";
+import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { contentApi } from "../services/api.js";
@@ -157,7 +158,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         </label>
         {type === "NEWS" && <label className="admin-field"><span>Dato</span><input type="datetime-local" value={toLocalInput(selected.publishedAt)} onChange={(event) => update("publishedAt", event.target.value)} /></label>}
         <label className="admin-field"><span>Summary</span><input value={selected.summary ?? ""} onChange={(event) => update("summary", event.target.value)} /></label>
-        <RichTextEditor value={selected.body ?? ""} onChange={(value) => update("body", value)} />
+        <SharedRichTextEditor label="Tekst" value={selected.body ?? ""} onChange={(value) => update("body", value)} />
         <div className="menu-editor-grid">
           <label className="admin-field"><span>Billede URL</span><input value={selected.pictureUrl ?? ""} onChange={(event) => update("pictureUrl", event.target.value)} /></label>
           <label className="admin-field"><span>Tags</span><input value={selected.tags ?? ""} onChange={(event) => update("tags", event.target.value)} placeholder="event,karriere" /></label>

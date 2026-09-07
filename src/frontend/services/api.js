@@ -68,6 +68,26 @@ async function request(path, options = {}) {
   return payload;
 }
 
+async function uploadRequest(path, file) {
+  const headers = { [CSRF_HEADER]: await getCsrfToken() };
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(path, {
+    method: "POST",
+    credentials: "same-origin",
+    headers,
+    body: formData
+  });
+
+  const contentType = response.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+  if (!response.ok) {
+    const message = typeof payload === "object" ? payload.error ?? response.statusText : response.statusText;
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
 /**
  * Current-user API used for authentication state and roles.
  */
@@ -190,6 +210,13 @@ export const messagesApi = {
   recipientPreview: (payload) => request("/api/messages/recipient-preview", { method: "POST", body: JSON.stringify(payload) }),
   render: (payload) => request("/api/messages/render", { method: "POST", body: JSON.stringify(payload) }),
   send: (payload) => request("/api/messages/send", { method: "POST", body: JSON.stringify(payload) })
+};
+
+/**
+ * Upload API for images inserted into admin rich text fields.
+ */
+export const editorApi = {
+  uploadImage: (file) => uploadRequest("/api/editor/images", file)
 };
 
 function flattenValidationErrors(errors) {

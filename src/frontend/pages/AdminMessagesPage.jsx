@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Mail, Search, Send, X } from "lucide-react";
+import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { contentApi, emailTemplatesApi, membersApi, messagesApi, registrationsApi, rolesApi } from "../services/api.js";
 import { formatDate } from "../utils/format.js";
@@ -9,6 +10,8 @@ const channels = [
   { value: "SMS", label: "SMS" },
   { value: "EmailSMS", label: "Email & SMS" }
 ];
+
+const messageTemplateTypes = new Set(["EVENT", "NEWSLETTER", "SYSTEM"]);
 
 /**
  * Admin message composer for recipient previews, template generation, and sending.
@@ -22,6 +25,8 @@ export function AdminMessagesPage({ isAdmin }) {
   const [recipientGroups, setRecipientGroups] = useState([]);
   const [recipientRoles, setRecipientRoles] = useState([]);
   const [recipientEventIds, setRecipientEventIds] = useState([]);
+  const [recipientMemberIds, setRecipientMemberIds] = useState([]);
+  const [members, setMembers] = useState([]);
   const [channel, setChannel] = useState("Email");
   const [selectedEventIds, setSelectedEventIds] = useState([]);
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
@@ -47,13 +52,17 @@ export function AdminMessagesPage({ isAdmin }) {
       messagesApi.categories(),
       emailTemplatesApi.list(),
       contentApi.listAdmin("EVENT"),
-      contentApi.listAdmin("NEWS")
+      contentApi.listAdmin("NEWS"),
+      membersApi.listAdmin()
     ])
-      .then(([nextCategories, nextTemplates, nextEvents, nextNews]) => {
+      .then(([nextCategories, nextTemplates, nextEvents, nextNews, nextMembers]) => {
         setCategories(nextCategories);
-        setTemplates(nextTemplates);
+        setTemplates(nextTemplates.filter((template) => messageTemplateTypes.has(
+          String(template.templateType ?? template.TemplateType ?? "").toUpperCase()
+        )));
         setEvents(nextEvents);
         setNews(nextNews);
+        setMembers(nextMembers);
       })
       .catch((reason) => setError(reason.message));
   }, [isAdmin]);
@@ -61,11 +70,11 @@ export function AdminMessagesPage({ isAdmin }) {
   useEffect(() => {
     if (!isAdmin) return;
     updateRecipientPreview();
-  }, [isAdmin, recipientGroups, recipientRoles, recipientEventIds, categories.statuses.length]);
+  }, [isAdmin, recipientGroups, recipientRoles, recipientEventIds, recipientMemberIds, categories.statuses.length]);
 
   async function updateRecipientPreview() {
     try {
-      const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds });
+      const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds, recipientMemberIds });
       setRecipientDetails(recipients);
       setRecipientPreview({
         recipientCount: recipients.length,
@@ -182,7 +191,7 @@ export function AdminMessagesPage({ isAdmin }) {
     setError("");
     setLastAction("recipients");
     try {
-      const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds });
+      const recipients = await resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds, recipientMemberIds });
       setRecipientDetails(recipients);
       setRecipientPreview((current) => ({
         ...(current ?? {}),
@@ -205,7 +214,7 @@ export function AdminMessagesPage({ isAdmin }) {
       ? categories.statuses
       : recipientGroups;
     const roles = recipientRoles;
-    return { statuses, roles, recipientEventIds };
+    return { statuses, roles, recipientEventIds, recipientMemberIds };
   }
 
   const groupOptions = [
@@ -213,6 +222,11 @@ export function AdminMessagesPage({ isAdmin }) {
     ...categories.statuses.map((status) => ({ id: status, title: status }))
   ];
   const roleOptions = categories.roles.map((role) => ({ id: role, title: role }));
+  const memberOptions = members.map((member) => ({
+    id: member.id ?? member.Id,
+    title: member.name ?? member.Name ?? member.email ?? member.Email,
+    summary: member.email ?? member.Email
+  }));
   const previewRecipients = recipientDetails.length > 0
     ? recipientDetails
     : recipientPreview?.recipients ?? recipientPreview?.Recipients ?? [];
@@ -234,7 +248,7 @@ export function AdminMessagesPage({ isAdmin }) {
       <form className="admin-message-composer" onSubmit={requestSend}>
         <section className="admin-editor-shell">
           <div className="admin-editor-toolbar"><strong>Opsætning</strong></div>
-          <div className="admin-message-fields admin-message-fields-top">
+          <div className="admin-message-setup-grid">
             <label className="admin-field">
               <span>Template</span>
               <select value={templateId} onChange={(event) => setTemplateId(event.target.value)} required>
@@ -248,8 +262,6 @@ export function AdminMessagesPage({ isAdmin }) {
                 {channels.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
               </select>
             </label>
-          </div>
-          <div className="admin-message-recipient-filters">
             <MultiSelectDropdown
               label="Modtagergruppe"
               placeholder="Vælg grupper"
@@ -272,6 +284,15 @@ export function AdminMessagesPage({ isAdmin }) {
               items={events}
               selectedIds={recipientEventIds}
               onChange={setRecipientEventIds}
+              searchable
+            />
+            <MultiSelectDropdown
+              label="Specifikke medlemmer"
+              placeholder="Vælg medlemmer"
+              items={memberOptions}
+              selectedIds={recipientMemberIds}
+              onChange={setRecipientMemberIds}
+              showMeta={false}
               searchable
             />
           </div>
@@ -323,7 +344,7 @@ export function AdminMessagesPage({ isAdmin }) {
               <span>Emne</span>
               <input value={subject} onChange={(event) => setSubject(event.target.value)} required />
             </label>
-            <MessageRichTextEditor value={html} onChange={setHtml} />
+            <SharedRichTextEditor className="admin-message-rich-editor" value={html} onChange={setHtml} sanitize={false} />
             {(channel === "SMS" || channel === "EmailSMS") && (
               <label className="admin-field">
                 <span>SMS tekst</span>
@@ -500,7 +521,7 @@ function MultiSelectDropdown({ label, placeholder, items, selectedIds, onChange,
 /**
  * Loads recipient names/emails for the current local preview selections.
  */
-async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds }) {
+async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds, recipientMemberIds }) {
   const [allMembers, roles] = await Promise.all([membersApi.listAdmin(), rolesApi.list()]);
   const recipients = new Map();
 
@@ -535,6 +556,10 @@ async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipi
       .filter((registration) => registration.registered ?? registration.Registered)
       .forEach(add);
   }
+
+  allMembers
+    .filter((member) => recipientMemberIds.includes(member.id ?? member.Id))
+    .forEach(add);
 
   return [...recipients.values()].sort((left, right) => String(left.name ?? "").localeCompare(String(right.name ?? ""), "da-DK"));
 }

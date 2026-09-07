@@ -175,6 +175,7 @@ if (!env.IsDevelopment())
 
 app.UseForwardedHeaders();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.MapStaticAssets();
 
 app.UseRouting();

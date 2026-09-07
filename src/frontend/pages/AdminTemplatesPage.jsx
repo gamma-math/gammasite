@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Plus, Save, Trash2, X } from "lucide-react";
+import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { emailTemplatesApi } from "../services/api.js";
@@ -247,7 +248,13 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
             <input type="color" value={blockDesign.newsColor} onChange={(event) => updateBlockDesign("newsColor", event.target.value)} />
           </label>
         </div>
-        <TemplateRichTextEditor value={selected.htmlBody ?? ""} onChange={(value) => update("htmlBody", value)} />
+        <SharedRichTextEditor
+          className="admin-template-rich-editor"
+          value={selected.htmlBody ?? ""}
+          onChange={(value) => update("htmlBody", value)}
+          sanitize={false}
+          snippets={["{{ContentBlocks}}", "{{EventBlocks}}", "{{NewsBlocks}}", "{{EventTitle}}", "{{EventStartDate}}", "{{EventRegisterUrl}}", "{{ProfileUrl}}"]}
+        />
         <label className="admin-field">
           <span>Tekstversion</span>
           <textarea value={selected.textBody ?? ""} onChange={(event) => update("textBody", event.target.value)} />

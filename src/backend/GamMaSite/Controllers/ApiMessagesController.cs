@@ -75,7 +75,16 @@ namespace GamMaSite.Controllers
         [HttpPost("recipient-preview")]
         public async Task<IActionResult> PreviewRecipients(MessageRecipientPreviewRequest request)
         {
-            var recipients = await ResolveRecipients(request?.Statuses, request?.Roles, request?.RecipientEventIds);
+            HashSet<SiteUser> recipients;
+            try
+            {
+                recipients = await ResolveRecipients(request?.Statuses, request?.Roles, request?.RecipientEventIds, request?.RecipientMemberIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve message recipients for preview");
+                return StatusCode(500, new { error = "Modtagerne kunne ikke hentes. Tjek serverloggen for detaljer." });
+            }
 
             return Ok(new MessageRecipientPreviewDto
             {
@@ -139,7 +148,16 @@ namespace GamMaSite.Controllers
                 return BadRequest(new { error = "Emne og indhold er obligatorisk" });
             }
 
-            var recipients = await ResolveRecipients(request.Statuses, request.Roles, request.RecipientEventIds);
+            HashSet<SiteUser> recipients;
+            try
+            {
+                recipients = await ResolveRecipients(request.Statuses, request.Roles, request.RecipientEventIds, request.RecipientMemberIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve message recipients for sending");
+                return StatusCode(500, new { error = "Modtagerne kunne ikke hentes. Tjek serverloggen for detaljer." });
+            }
             var channel = NormalizeChannel(request.Channel);
             var emailCount = recipients.Count(user => !string.IsNullOrWhiteSpace(user.Email));
             var smsCount = recipients.Count(user => !string.IsNullOrWhiteSpace(user.PhoneNumber));
@@ -163,12 +181,17 @@ namespace GamMaSite.Controllers
             {
                 if (channel == MessageMedia.Email || channel == MessageMedia.EmailSMS)
                 {
-                    var emails = recipients
+                    var emailRecipients = recipients
                         .Where(user => !string.IsNullOrWhiteSpace(user.Email))
-                        .Select(user => user.Email)
-                        .Distinct()
+                        .GroupBy(user => user.Email, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => group.First())
                         .ToArray();
-                    await _emailService.SendEmailAsync(emails, request.Subject, request.Html);
+                    var mailTasks = emailRecipients.Select(user =>
+                        _emailService.SendEmailAsync(
+                            user.Email,
+                            Personalize(request.Subject, user),
+                            Personalize(request.Html, user)));
+                    await Task.WhenAll(mailTasks);
                 }
 
                 if (channel == MessageMedia.SMS || channel == MessageMedia.EmailSMS)
@@ -195,7 +218,7 @@ namespace GamMaSite.Controllers
             });
         }
 
-        private async Task<HashSet<SiteUser>> ResolveRecipients(string[] statuses, string[] roles, int[] recipientEventIds)
+        private async Task<HashSet<SiteUser>> ResolveRecipients(string[] statuses, string[] roles, int[] recipientEventIds, string[] recipientMemberIds)
         {
             var recipients = new Dictionary<string, SiteUser>();
             var requestedStatuses = (statuses ?? Array.Empty<string>())
@@ -232,6 +255,19 @@ namespace GamMaSite.Controllers
                     .Where(user => eventUserIds.Contains(user.Id))
                     .ToListAsync();
                 AddRecipients(recipients, eventRecipients);
+            }
+
+            var memberIds = (recipientMemberIds ?? Array.Empty<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            if (memberIds.Count > 0)
+            {
+                var selectedMembers = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(user => memberIds.Contains(user.Id))
+                    .ToListAsync();
+                AddRecipients(recipients, selectedMembers);
             }
 
             return recipients.Values.ToHashSet();
@@ -386,6 +422,15 @@ namespace GamMaSite.Controllers
             {
                 var key = match.Groups[1].Value;
                 return values.TryGetValue(key, out var value) ? value ?? string.Empty : match.Value;
+            });
+        }
+
+        private static string Personalize(string template, SiteUser user)
+        {
+            var name = string.IsNullOrWhiteSpace(user.Navn) ? user.UserName : user.Navn;
+            return RenderTemplate(template, new Dictionary<string, string>
+            {
+                ["Name"] = string.IsNullOrWhiteSpace(name) ? "medlem" : name.Trim()
             });
         }
 

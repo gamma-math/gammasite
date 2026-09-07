@@ -85,6 +85,8 @@ namespace GamMaSite.ViewModels.Api
         public string[] Roles { get; set; }
 
         public int[] RecipientEventIds { get; set; }
+
+        public string[] RecipientMemberIds { get; set; }
     }
 
     public class MessageRecipientPreviewDto
@@ -132,6 +134,8 @@ namespace GamMaSite.ViewModels.Api
         public string[] Roles { get; set; }
 
         public int[] RecipientEventIds { get; set; }
+
+        public string[] RecipientMemberIds { get; set; }
 
         public string Channel { get; set; }
 
