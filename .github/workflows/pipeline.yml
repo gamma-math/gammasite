@@ -34,7 +34,7 @@ jobs:
       - name: Check-out repository
         uses: actions/checkout@v4
       - name: Show deployment target
-        run: Write-Host "Deployment target: $env:DEPLOY_ENVIRONMENT"
+        run: 'Write-Host "Deployment target: $env:DEPLOY_ENVIRONMENT"'
         env:
           DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
       - name: Add dotnet
