@@ -134,7 +134,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   const path = route.path;
 
   if (path === "/" || path === "/Home" || path === "/Home/Index") {
-    return <FrontPage />;
+    return <FrontPage user={user} />;
   }
   if (path === "/react/events" || path === "/react/arrangementer" || path === "/Home/Arrangementer") {
     return <FrontPage mode="EVENT" title="Begivenheder" user={user} />;

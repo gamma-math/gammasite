@@ -32,7 +32,7 @@ namespace GamMaSite.Controllers
         {
             var members = await _userManager.Users
                 .AsNoTracking()
-                .Where(user => user.Status == UserStatus.BETALT || user.Status == UserStatus.SKYLDER || user.Status == UserStatus.STUDERENDE)
+                .Where(user => user.Status != UserStatus.INAKTIV && user.Status != UserStatus.OPRETTET && user.EmailConfirmed)
                 .OrderBy(user => user.Navn)
                 .ToListAsync();
 
