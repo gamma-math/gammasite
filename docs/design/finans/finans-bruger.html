@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Finans – Mit regnskab</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="finans.css">
+</head>
+<body class="menu-page-body finance-page">
+  <header class="site-header frontpage-header">
+    <div class="page-shell"><div class="frontpage-topbar">
+      <a class="brand" href="../index.html"><img src="../../../src/backend/GamMaSite/wwwroot/lib/logo_blue.png" alt="GamMa logo"></a>
+      <div class="frontpage-topbar-actions" aria-label="Bruger navigation">
+        <div class="frontpage-left-actions"><a class="frontpage-button frontpage-button-secondary" href="../user/begivenheder.html">Menu</a></div>
+        <div class="frontpage-right-actions"><a class="frontpage-profile-link" href="finans-profil.html" aria-label="Profil"><img class="frontpage-avatar-image" src="https://i.pravatar.cc/88?img=12" alt="Profilbillede"></a></div>
+      </div>
+    </div></div>
+  </header>
+
+  <main class="finance-main">
+    <div class="finance-workspace finance-layout">
+      <aside class="finance-sidebar">
+        <h2>Menu</h2>
+        <nav class="finance-nav" aria-label="Menu sektioner">
+          <a href="../user/begivenheder.html">Begivenheder</a>
+          <a href="../user/nyheder.html">Nyheder</a>
+          <a href="../user/medlemmer.html">Medlemmer</a>
+          <a href="../user/betal-medlemskab.html">Betal medlemskab</a>
+          <a class="is-active" href="finans-bruger.html">Finans</a>
+        </nav>
+      </aside>
+
+      <section class="finance-content">
+        <div class="finance-hero">
+          <div><p class="finance-eyebrow">Finans</p></div>
+          <div class="finance-hero-meta"><p class="finance-last-updated">Senest opdateret<br><strong>03. september 2026 kl. 10.42</strong></p><div class="finance-year-toggle" data-year-toggle aria-label="Vælg år"><button class="is-active" data-period="current" data-year="2026">Dette år</button><button data-period="previous" data-year="2025">Sidste år</button></div></div>
+        </div>
+
+        <div class="finance-grid finance-grid-3">
+          <article class="finance-card"><div class="finance-card-head"><h3>Indbetalinger</h3><span class="finance-status-dot"></span></div><div class="finance-metric finance-metric-positive">18.078 kr.</div></article>
+          <article class="finance-card"><div class="finance-card-head"><h3>Udgifter</h3><span class="finance-status-dot" style="background:var(--finance-red)"></span></div><div class="finance-metric finance-metric-negative">(4.979 kr.)</div></article>
+          <article class="finance-card"><div class="finance-card-head"><h3>Nettoresultat</h3><span class="finance-status-dot" style="background:var(--finance-blue)"></span></div><div class="finance-metric finance-metric-positive">13.099 kr.</div></article>
+        </div>
+
+        <div class="finance-grid" style="margin-top:16px">
+          <section class="finance-panel finance-chart"><div class="finance-card-head"><div><p class="finance-kicker">Månedlig udvikling</p></div><span class="finance-badge">2026</span></div><div class="finance-chart-wrap"><div class="finance-chart-axis"><span>20k</span><span>10k</span><span>0</span></div><div class="finance-bars"><div class="finance-bar-col"><div class="finance-bar" style="height:35%"></div><span class="finance-bar-label">Jan</span></div><div class="finance-bar-col"><div class="finance-bar" style="height:52%"></div><span class="finance-bar-label">Feb</span></div><div class="finance-bar-col"><div class="finance-bar is-negative" style="height:27%"></div><span class="finance-bar-label">Mar</span></div><div class="finance-bar-col"><div class="finance-bar" style="height:68%"></div><span class="finance-bar-label">Apr</span></div><div class="finance-bar-col"><div class="finance-bar is-negative" style="height:42%"></div><span class="finance-bar-label">Maj</span></div><div class="finance-bar-col"><div class="finance-bar" style="height:78%"></div><span class="finance-bar-label">Jun</span></div></div></div><div class="finance-legend"><span><i class="finance-source-dot"></i> Indbetalinger</span><span><i class="finance-source-dot" style="background:var(--finance-red)"></i> Udgifter</span></div></section>
+
+          <section class="finance-panel finance-pnl-panel"><div class="finance-panel-head"><div><p class="finance-kicker">Resultatopgørelse</p></div></div><div class="finance-panel-body"><div class="finance-table-scroll"><table class="finance-table finance-pnl-table"><thead><tr><th>Konto</th><th class="number"><span data-year-label="realized">Realiseret YTD</span></th><th class="number"><span data-year-label="budget">Budget (<span data-selected-year>2026</span>)</span></th><th class="number"><span data-year-label="previous">Sidste år YTD</span></th></tr></thead><tbody>
+            <tr class="finance-pnl-section"><th colspan="4">Arrangement</th></tr>
+            <tr class="finance-pnl-parent" data-pnl-parent="deltagerbetaling"><td><button class="finance-pnl-toggle" type="button" data-pnl-toggle="deltagerbetaling" aria-expanded="false">+</button><strong>Deltagerbetaling</strong></td><td class="number positive">3.500 kr.</td><td class="number positive">20.000 kr.</td><td class="number positive">4.850 kr.</td></tr>
+            <tr class="finance-pnl-detail-head" data-pnl-detail-head="deltagerbetaling" hidden><td colspan="4"><button class="finance-pnl-toggle" type="button" data-pnl-toggle="deltagerbetaling" aria-expanded="true">−</button><strong>Deltagerbetaling</strong></td></tr>
+            <tr data-pnl-child="deltagerbetaling" hidden><td>Indtægt</td><td class="number positive">3.500 kr.</td><td class="number positive">20.000 kr.</td><td class="number positive">4.850 kr.</td></tr>
+            <tr data-pnl-child="deltagerbetaling" hidden><td>Udgift</td><td class="number">—</td><td class="number">—</td><td class="number negative">(3.850 kr.)</td></tr>
+            <tr data-pnl-child="deltagerbetaling" class="finance-pnl-subtotal" hidden><td>Total</td><td class="number positive">3.500 kr.</td><td class="number positive">20.000 kr.</td><td class="number positive">1.000 kr.</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Hytteleje</td><td class="number negative">(2.920 kr.)</td><td class="number negative">(7.000 kr.)</td><td class="number">—</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Lokale</td><td class="number negative">(810 kr.)</td><td class="number negative">(5.000 kr.)</td><td class="number">—</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Mad og drikke</td><td class="number negative">(407 kr.)</td><td class="number negative">(22.000 kr.)</td><td class="number negative">(7.327 kr.)</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Øvrige</td><td class="number negative">(420 kr.)</td><td class="number negative">(1.000 kr.)</td><td class="number positive">1.349 kr.</td></tr>
+            <tr class="finance-pnl-total"><td>Total Arrangement</td><td class="number negative">(1.057 kr.)</td><td class="number negative">(15.000 kr.)</td><td class="number negative">(4.979 kr.)</td></tr>
+            <tr class="finance-pnl-section"><th colspan="4">Drift</th></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Bank</td><td class="number negative">(246 kr.)</td><td class="number negative">(1.000 kr.)</td><td class="number negative">(525 kr.)</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Bestyrelse</td><td class="number">—</td><td class="number negative">(3.000 kr.)</td><td class="number negative">(2.975 kr.)</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>IT</td><td class="number negative">(244 kr.)</td><td class="number negative">(1.200 kr.)</td><td class="number negative">(109 kr.)</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Mobilepay</td><td class="number negative">(126 kr.)</td><td class="number negative">(300 kr.)</td><td class="number negative">(173 kr.)</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Øvrige</td><td class="number negative">(349 kr.)</td><td class="number">—</td><td class="number negative">(20 kr.)</td></tr>
+            <tr class="finance-pnl-total"><td>Total Drift</td><td class="number negative">(965 kr.)</td><td class="number negative">(5.500 kr.)</td><td class="number negative">(3.802 kr.)</td></tr>
+            <tr class="finance-pnl-section"><th colspan="4">Kontingent</th></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Medlemskontingent</td><td class="number positive">10.350 kr.</td><td class="number positive">11.250 kr.</td><td class="number positive">11.407 kr.</td></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Virksomhedskontingent</td><td class="number positive">10.000 kr.</td><td class="number positive">10.000 kr.</td><td class="number">—</td></tr>
+            <tr class="finance-pnl-total"><td>Total Kontingent</td><td class="number positive">20.350 kr.</td><td class="number positive">21.250 kr.</td><td class="number positive">11.407 kr.</td></tr>
+            <tr class="finance-pnl-section"><th colspan="4">Øvrige</th></tr>
+            <tr class="finance-pnl-parent"><td><button class="finance-pnl-toggle" type="button" aria-label="Åbn detaljer">+</button>Rekruttering</td><td class="number negative">(250 kr.)</td><td class="number negative">(1.000 kr.)</td><td class="number negative">(286 kr.)</td></tr>
+            <tr class="finance-pnl-total"><td>Total Øvrige</td><td class="number negative">(250 kr.)</td><td class="number negative">(1.000 kr.)</td><td class="number negative">(286 kr.)</td></tr>
+            <tr class="finance-pnl-grand-total"><td>Total</td><td class="number positive">18.078 kr.</td><td class="number negative">(250 kr.)</td><td class="number positive">2.340 kr.</td></tr>
+          </tbody></table></div><p class="finance-note">Realiseret, budget og sidste års tal er vist pr. konto. Klik på Deltagerbetaling for at folde underposter ud eller sammen.</p></div></section>
+        </div>
+      </section>
+    </div>
+  </main>
+  <div class="finance-toast" data-finance-toast role="status"></div>
+  <script src="finans.js"></script>
+</body>
+</html>

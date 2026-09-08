@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Profil – Mine posteringer</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="finans.css">
+</head>
+<body class="menu-page-body finance-page">
+  <header class="site-header frontpage-header">
+    <div class="page-shell">
+      <div class="frontpage-topbar">
+        <a class="brand" href="../index.html">
+          <img src="../../../src/backend/GamMaSite/wwwroot/lib/logo_blue.png" alt="GamMa logo">
+        </a>
+        <div class="frontpage-topbar-actions">
+          <div class="frontpage-left-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="../user/begivenheder.html">Menu</a>
+          </div>
+          <div class="frontpage-right-actions">
+            <a class="frontpage-profile-link" href="finans-profil.html" aria-label="Profil">
+              <img class="frontpage-avatar-image" src="https://i.pravatar.cc/88?img=12" alt="Profilbillede">
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="finance-main">
+    <div class="finance-workspace finance-layout">
+      <aside class="finance-sidebar">
+        <h2>Profil</h2>
+        <nav class="finance-nav" aria-label="Profil sektioner">
+          <a href="../user/profil.html">Profil</a>
+          <a href="../user/profil-email.html">Email</a>
+          <a href="../user/profil-password.html">Password</a>
+          <a class="is-active" href="finans-profil.html">Min finans</a>
+          <a href="../user/profil-privat-data.html">Privat data</a>
+        </nav>
+      </aside>
+
+      <section class="finance-content">
+        <div class="finance-hero">
+          <div>
+            <h1>Mine posteringer</h1>
+          </div>
+        </div>
+
+        <section class="finance-panel">
+          <div class="finance-table-scroll">
+            <table class="finance-table" id="profile-table">
+              <thead>
+                <tr>
+                  <th>Dato</th>
+                  <th>Beløb</th>
+                  <th>Tekst</th>
+                  <th>Kilde/type</th>
+                  <th>Konto</th>
+                  <th>Postering group</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>02. sep. 2026</td>
+                  <td class="number positive">+150,00 kr.</td>
+                  <td>MP TRANS: Payment/Københavnermuren</td>
+                  <td><span class="finance-badge success">MobilePay</span></td>
+                  <td>Kontingent</td>
+                  <td>Medlemskontingent</td>
+                </tr>
+                <tr>
+                  <td>25. aug. 2026</td>
+                  <td class="number positive">+50,00 kr.</td>
+                  <td>MP TRANS: Payment/Københavnermuren</td>
+                  <td><span class="finance-badge success">MobilePay</span></td>
+                  <td>Arrangement</td>
+                  <td>Deltagerbetaling</td>
+                </tr>
+                <tr>
+                  <td>18. aug. 2026</td>
+                  <td class="number negative">(50,00 kr.)</td>
+                  <td>BANK: Københavnermuren refundering</td>
+                  <td><span class="finance-badge dark">Bank</span></td>
+                  <td>Arrangement</td>
+                  <td>Deltagerbetaling</td>
+                </tr>
+                <tr>
+                  <td>13. juli 2026</td>
+                  <td class="number positive">+1.670,10 kr.</td>
+                  <td>BANK:202606062</td>
+                  <td><span class="finance-badge dark">Bank</span></td>
+                  <td>Øvrige</td>
+                  <td>Rekruttering</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <div class="finance-toast" data-finance-toast role="status"></div>
+  <script src="finans.js"></script>
+</body>
+</html>

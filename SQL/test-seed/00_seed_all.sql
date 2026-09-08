@@ -150,57 +150,6 @@ INSERT INTO `ContentItems` (
   '2026-09-01 12:00:00',
   '2026-09-01 12:00:00',
   '2026-09-01 12:00:00'
-),
-(
-  'Nyt backendlag til events og nyheder',
-  'nyt-backendlag-events-nyheder',
-  'GAMMASITE har fået nye tabeller og API’er til content, tilmeldinger og email templates.',
-  'Det nye backendlag gør det muligt at bygge React-frontenden ovenpå eksisterende login, roller og MySQL-database uden at ændre Identity-strukturen.',
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
-  'nyhed,backend,react',
-  'NEWS',
-  'PUBLISHED',
-  NULL,
-  NULL,
-  NULL,
-  'user-admin-test',
-  '2026-08-18 14:20:00',
-  '2026-08-18 14:20:00',
-  '2026-08-18 14:20:00'
-),
-(
-  'React-migrationen er i gang',
-  'react-migrationen-er-i-gang',
-  'De første almindelige sider findes nu som React-sider ovenpå ASP.NET Core API’er.',
-  'Migrationen bevarer ASP.NET Identity-login, cookies og roller, mens frontend gradvist flyttes til React.',
-  'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
-  'nyhed,react,migration',
-  'NEWS',
-  'PUBLISHED',
-  NULL,
-  NULL,
-  NULL,
-  'user-admin-test',
-  '2026-08-26 08:45:00',
-  '2026-08-26 08:45:00',
-  '2026-08-26 08:45:00'
-),
-(
-  'Bestyrelsen søger input til 2027',
-  'bestyrelsen-soeger-input-2027',
-  'Har du ideer til arrangementer, formater eller samarbejder, så vil vi gerne høre fra dig.',
-  'Send gerne forslag til bestyrelsen. Vi samler input til næste års program og prioriterer events, der binder studerende og alumner tættere sammen.',
-  'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
-  'nyhed,bestyrelse,input',
-  'NEWS',
-  'DRAFT',
-  NULL,
-  NULL,
-  NULL,
-  'user-admin-test',
-  '2026-08-28 16:10:00',
-  '2026-08-28 16:10:00',
-  NULL
 );
 
 INSERT INTO `ContentLinks` (`ContentItemId`, `Label`, `Url`, `Type`, `SortOrder`, `Created`, `Updated`) VALUES
@@ -208,8 +157,7 @@ INSERT INTO `ContentLinks` (`ContentItemId`, `Label`, `Url`, `Type`, `SortOrder`
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'faglig-aften-juni-2026' LIMIT 1), 'Facebook-event', 'https://www.facebook.com/events/1352011586978094/', 'FACEBOOK', 0, '2026-04-20 10:05:00', '2026-04-20 10:05:00'),
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'sommer-bingo-banko-fest-2026' LIMIT 1), 'Facebook-event', 'https://facebook.com/events/s/gamma-sommer-bingo-banko-fest/1731919154816779/', 'FACEBOOK', 0, '2026-07-10 09:35:00', '2026-07-10 09:35:00'),
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'koebenhavnermuren-2026' LIMIT 1), 'Facebook-event', 'https://www.facebook.com/events/1528726255308131/', 'FACEBOOK', 0, '2026-08-15 10:05:00', '2026-08-15 10:05:00'),
-((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'koebenhavnermuren-2026' LIMIT 1), 'Tilmeld dig - betal 50 kr.', 'https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=50&comment=K%C3%B8benhavnermuren', 'PAYMENT', 1, '2026-08-15 10:05:00', '2026-08-15 10:05:00'),
-((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'react-migrationen-er-i-gang' LIMIT 1), 'Læs projektstatus', 'https://github.com/gamma-math', 'OTHER', 0, '2026-08-26 08:50:00', '2026-08-26 08:50:00');
+((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'koebenhavnermuren-2026' LIMIT 1), 'Tilmeld dig - betal 50 kr.', 'https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=50&comment=K%C3%B8benhavnermuren', 'PAYMENT', 1, '2026-08-15 10:05:00', '2026-08-15 10:05:00');
 
 INSERT INTO `EventRegistrations` (`ContentItemId`, `UserId`, `RegistrationType`, `Registered`, `ResponseText`, `Created`, `Updated`) VALUES
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'bastard-fyraftenscafe-2026' LIMIT 1), 'user-member-test', 'ATTENDEE', 1, 'Kommer forbi til en øl og et spil.', '2026-04-16 09:15:00', '2026-04-16 09:15:00'),
@@ -583,3 +531,39 @@ GamMas bestyrelse',
 );
 
 SET FOREIGN_KEY_CHECKS=1;
+
+INSERT INTO `ContentItems` (
+  `Title`, `Slug`, `Summary`, `Body`, `PictureUrl`, `Tags`, `Type`, `Status`,
+  `StartDate`, `EndDate`, `Location`, `CreatedByUserId`, `Created`, `Updated`, `PublishedAt`
+) VALUES (
+  'Ny hjemmeside',
+  'ny-hjemmeside-2026',
+  'GamMa har fået en ny hjemmeside med bedre overblik over arrangementer, nyheder og fællesskab.',
+  CONCAT(
+    '<h2>Ny hjemmeside - mere liv, flere arrangementer og bedre fællesskab</h2>',
+    '<p>GamMa har fået en ny hjemmeside!</p>',
+    '<p>Den nye hjemmeside gør det nemmere at følge med i, hvad der sker i foreningen, og giver os bedre muligheder for at skabe mere aktivitet omkring GamMa.</p>',
+    '<p>På hjemmesiden kan du blandt andet:</p>',
+    '<ul>',
+    '<li>Se kommende arrangementer og tilmelde dig direkte.</li>',
+    '<li>Læse nyheder fra foreningen.</li>',
+    '<li>Få et bedre overblik over faglige og sociale aktiviteter.</li>',
+    '<li>Følge med i tidligere og kommende initiativer.</li>',
+    '<li>Finde information om GamMa og vores fællesskab.</li>',
+    '</ul>',
+    '<p>Vi arbejder løbende på at udbygge hjemmesiden, så den bliver det naturlige sted at finde information om arrangementer, nyheder og aktiviteter i foreningen.</p>',
+    '<p>Tag et kig rundt på den nye hjemmeside, og husk at holde øje med både nyheder og arrangementer.</p>',
+    '<p>Vi glæder os til at se dig online - og selvfølgelig til GamMa''s kommende arrangementer!</p>'
+  ),
+  'https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/img/nyheder/new_homepage.png?raw=true',
+  'nyhed,hjemmeside',
+  'NEWS',
+  'PUBLISHED',
+  NULL,
+  NULL,
+  NULL,
+  'user-admin-test',
+  '2026-09-08 10:00:00',
+  '2026-09-08 10:00:00',
+  '2026-09-08 10:00:00'
+);
