@@ -10,6 +10,7 @@ import { AdminTemplateEditorPage, AdminTemplatesPage } from "../pages/AdminTempl
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
+import { FinancePage } from "../pages/FinancePage.jsx";
 import { FrontPage } from "../pages/FrontPage.jsx";
 import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
@@ -153,6 +154,9 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   }
   if (path === "/react/pay" || path === "/Pay" || path === "/Pay/Index") {
     return <PaymentPage user={user} />;
+  }
+  if (path === "/react/finance") {
+    return <FinancePage user={user} />;
   }
   if (path === "/react/pay/generic" || path === "/Pay/Generisk") {
     return <GenericPaymentPage user={user} />;

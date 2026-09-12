@@ -14,10 +14,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Stripe;
+using GamMaSite.Configuration;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
 
+
+LocalEnvironment.Load();
 
 /* Create WebApplicationBuilder */
 var builder = WebApplication.CreateBuilder(args);
@@ -76,6 +79,7 @@ builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
+builder.Services.AddScoped<FinanceReportService>();
 
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>
