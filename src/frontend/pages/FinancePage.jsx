@@ -82,10 +82,11 @@ function FinanceHeader({ currentYear, lastUpdated, setYear, year }) {
     <div className="menu-panel-header finance-live-hero">
       <div>
         <p className="menu-section-title">Finans</p>
-        <p className="menu-panel-lead menu-panel-lead-inline">Et enkelt overblik over din økonomi i det valgte år.</p>
+        <p className="menu-panel-lead menu-panel-lead-inline">Foreningens Økonomi</p>
       </div>
       <div className="finance-live-hero-meta">
         <p className="finance-live-last-updated">Senest opdateret<br /><strong>{lastUpdated ?? "Henter..."}</strong></p>
+        <a className="finance-live-profile-link" href="/react/account/manage/finance">Mine posteringer</a>
         <div className="finance-live-year-toggle" aria-label="Vælg år">
           <button className={year === currentYear ? "is-active" : ""} onClick={() => setYear(currentYear)}>Dette år</button>
           <button className={year === currentYear - 1 ? "is-active" : ""} onClick={() => setYear(currentYear - 1)}>Sidste år</button>

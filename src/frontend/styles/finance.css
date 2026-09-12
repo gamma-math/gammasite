@@ -23,6 +23,8 @@
 .finance-live-hero-meta { justify-content: flex-end; gap: 18px; }
 .finance-live-last-updated { margin: 0; color: #7a889b; font-size: 0.78rem; line-height: 1.45; text-align: right; }
 .finance-live-last-updated strong { color: var(--ink-strong); font-size: 0.82rem; }
+.finance-live-profile-link { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border: 1px solid var(--action-line); border-radius: 14px; color: var(--action-blue); background: #fff; font-weight: 800; white-space: nowrap; }
+.finance-live-profile-link:hover { text-decoration: none; background: var(--action-soft); }
 
 .finance-live-year-toggle { display: inline-flex; padding: 4px; border: 1px solid var(--action-line); border-radius: 14px; background: var(--action-soft); }
 .finance-live-year-toggle button { padding: 9px 13px; border: 0; border-radius: 10px; color: #60708a; background: transparent; font-weight: 700; cursor: pointer; }
@@ -83,6 +85,7 @@
   .finance-live-metrics { grid-template-columns: 1fr; }
   .finance-live-hero-meta { align-items: stretch; flex-direction: column; }
   .finance-live-last-updated { text-align: left; }
+  .finance-live-profile-link { width: 100%; }
   .finance-live-year-toggle { width: 100%; }
   .finance-live-year-toggle button { flex: 1; }
   .finance-live-chart { gap: 4px; }

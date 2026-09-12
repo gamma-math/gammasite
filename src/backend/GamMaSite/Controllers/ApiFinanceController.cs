@@ -38,5 +38,17 @@ namespace GamMaSite.Controllers
 
             return Ok(await _financeReportService.GetOverviewAsync(userId, selectedYear, cancellationToken));
         }
+
+        [HttpGet("postings")]
+        public async Task<IActionResult> GetPostings(CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            return Ok(await _financeReportService.GetUserPostingsAsync(userId, cancellationToken));
+        }
     }
 }

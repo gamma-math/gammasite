@@ -2501,6 +2501,67 @@ img {
   margin: 0;
 }
 
+.account-finance-last-updated {
+  margin: 0;
+  color: #7a889b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.account-finance-last-updated strong {
+  color: var(--ink-strong);
+  font-size: 0.82rem;
+}
+
+.account-finance-table-wrap {
+  width: 100%;
+}
+
+.account-finance-table {
+  min-width: 900px;
+}
+
+.account-finance-table th:nth-child(2),
+.account-finance-table td:nth-child(2) {
+  text-align: right;
+}
+
+.account-finance-amount {
+  font-weight: 750;
+}
+
+.account-finance-amount.is-positive {
+  color: var(--success);
+}
+
+.account-finance-amount.is-negative {
+  color: var(--danger);
+}
+
+.account-finance-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #53627a;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.account-finance-source.is-mobilepay {
+  background: rgba(31, 157, 104, 0.12);
+  color: #08775a;
+}
+
+@media (max-width: 620px) {
+  .account-finance-last-updated {
+    text-align: left;
+  }
+}
+
 @media (max-width: 1100px) {
   .menu-event-grid,
   .frontpage-news-grid {

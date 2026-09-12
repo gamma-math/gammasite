@@ -91,7 +91,7 @@ export function LoginRequired({ title }) {
 /**
  * Search and page-size controls reused by member tables.
  */
-export function SearchToolbar({ search, setSearch, pageSize, setPageSize }) {
+export function SearchToolbar({ search, setSearch, pageSize, setPageSize, searchPlaceholder = "Navn" }) {
   return (
     <div className="menu-table-toolbar">
       {pageSize && setPageSize && (
@@ -105,7 +105,7 @@ export function SearchToolbar({ search, setSearch, pageSize, setPageSize }) {
       )}
       <label className="menu-table-search">
         <span>Søg</span>
-        <input type="search" placeholder="Navn" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <input type="search" placeholder={searchPlaceholder} value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>
     </div>
   );

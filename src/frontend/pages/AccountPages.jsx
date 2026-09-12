@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
+import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./MembersPage.jsx";
 import { accountApi } from "../services/api.js";
+import { financeApi } from "../services/financeApi.js";
 import { Link, navigate } from "../routes/navigation.jsx";
 
 const initialRegister = {
@@ -167,6 +169,7 @@ export function AccountManagePage({ user, section = "profile" }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [financeLastUpdated, setFinanceLastUpdated] = useState(null);
 
   useEffect(() => {
     if (!user.isAuthenticated) {
@@ -191,20 +194,32 @@ export function AccountManagePage({ user, section = "profile" }) {
   useEffect(() => {
     setMessage("");
     setError("");
+    if (section === "finance") {
+      setFinanceLastUpdated(null);
+    }
   }, [section]);
 
   if (!user.isAuthenticated) {
     return <AccountRequired />;
   }
 
+  const isFinanceSection = section === "finance";
+
   return (
     <MenuLayout active={`/react/account/manage${section === "profile" ? "" : `/${section}`}`} title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>Administrér din bruger</h1>
-          <p className="menu-panel-lead menu-panel-lead-inline">Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se.</p>
+          <h1>{isFinanceSection ? "Mine posteringer" : "Administrér din bruger"}</h1>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            {isFinanceSection
+              ? "Se dine egne finansposteringer i GamMa."
+              : "Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se."}
+          </p>
         </div>
+        {isFinanceSection && (
+          <p className="account-finance-last-updated">Senest opdateret<br /><strong>{financeLastUpdated ?? "Henter..."}</strong></p>
+        )}
       </div>
       <section className="account-manage-card">
         {section === "profile" && profileForm && (
@@ -251,6 +266,7 @@ export function AccountManagePage({ user, section = "profile" }) {
           }} />
         )}
         {section === "two-factor" && <TwoFactorPanel />}
+        {section === "finance" && <FinancePostingsPanel setLastUpdated={setFinanceLastUpdated} />}
         {section === "personal-data" && <PersonalDataPanel />}
         {section === "delete-personal-data" && <DeletePersonalDataPanel />}
         {section === "logout" && <LogoutPanel />}
@@ -280,6 +296,96 @@ function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
       </label>
       <button className="profile-button" type="submit" disabled={isSubmitting}><Save size={16} /> {isSubmitting ? "Gemmer..." : "Gem"}</button>
     </form>
+  );
+}
+
+function FinancePostingsPanel({ setLastUpdated }) {
+  const [postings, setPostings] = useState([]);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [sort, setSort] = useState({ key: "date", direction: "desc" });
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const filtered = useFilteredPostings(postings, search);
+  const sorted = useMemo(() => sortPostings(filtered, sort), [filtered, sort]);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setError("");
+    financeApi.postings()
+      .then((result) => {
+        if (active) {
+          setPostings(result.postings ?? []);
+          setLastUpdated(result.lastUpdated ?? null);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [setLastUpdated]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize, sort.key, sort.direction]);
+
+  if (isLoading) {
+    return <p className="muted">Henter dine posteringer...</p>;
+  }
+
+  if (error) {
+    return <p className="status-message status-message-error">{error}</p>;
+  }
+
+  return (
+    <>
+      <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} searchPlaceholder="Tekst" />
+      <div className="menu-table-wrap account-finance-table-wrap">
+        <table className="menu-member-table account-finance-table">
+          <thead>
+            <tr>
+              <SortableHeader label="Dato" sortKey="date" sort={sort} setSort={setSort} />
+              <SortableHeader label="Beløb" sortKey="amount" sort={sort} setSort={setSort} />
+              <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kilde/type" sortKey="sourceType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Konto" sortKey="account" sort={sort} setSort={setSort} />
+              <SortableHeader label="Postering group" sortKey="postingGroup" sort={sort} setSort={setSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {visibleItems.map((posting) => (
+              <tr key={posting.id}>
+                <td>{formatPostingDate(posting.date)}</td>
+                <td className={posting.amount < 0 ? "account-finance-amount is-negative" : "account-finance-amount is-positive"}>{formatPostingAmount(posting.amount)}</td>
+                <td>{posting.text}</td>
+                <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
+                <td>{posting.account}</td>
+                <td>{posting.postingGroup}</td>
+              </tr>
+            ))}
+            {visibleItems.length === 0 && (
+              <tr>
+                <td colSpan="6">{postings.length === 0 ? "Der er ingen posteringer knyttet til din bruger endnu." : "Ingen posteringer matcher søgningen."}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
+    </>
   );
 }
 
@@ -449,6 +555,70 @@ function AuthCard({ title, subtitle, wide = false, children }) {
       </section>
     </main>
   );
+}
+
+function formatPostingDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(date);
+}
+
+function formatPostingAmount(value) {
+  const amount = Number(value ?? 0);
+  const formatted = new Intl.NumberFormat("da-DK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Math.abs(amount));
+
+  return amount < 0 ? `(${formatted} kr.)` : `+${formatted} kr.`;
+}
+
+function useFilteredPostings(postings, search) {
+  return useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) {
+      return postings;
+    }
+
+    return postings.filter((posting) => [
+      formatPostingDate(posting.date),
+      formatPostingAmount(posting.amount),
+      posting.text,
+      posting.sourceType,
+      posting.account,
+      posting.postingGroup
+    ].some((value) => String(value ?? "").toLowerCase().includes(term)));
+  }, [postings, search]);
+}
+
+function sortPostings(postings, sort) {
+  return [...postings].sort((left, right) => {
+    const result = comparePostingValues(left[sort.key], right[sort.key], sort.key);
+    return sort.direction === "asc" ? result : -result;
+  });
+}
+
+function comparePostingValues(left, right, key) {
+  if (key === "amount") {
+    return Number(left ?? 0) - Number(right ?? 0);
+  }
+
+  if (key === "date") {
+    return new Date(left || 0).getTime() - new Date(right || 0).getTime();
+  }
+
+  return String(left ?? "").localeCompare(String(right ?? ""), "da-DK", { sensitivity: "base" });
 }
 
 function Field({ label, value, onChange, type = "text", disabled = false, ...props }) {

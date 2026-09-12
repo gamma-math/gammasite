@@ -66,6 +66,58 @@ namespace GamMaSite.Services
             };
         }
 
+        public async Task<FinanceUserPostingsDto> GetUserPostingsAsync(string userId, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            var postings = new List<FinancePostingDto>();
+            await using var command = new NpgsqlCommand(@"
+                SELECT
+                    p.id,
+                    TO_CHAR(COALESCE(p.posterings_date, p.date), 'YYYY-MM-DD') AS posting_date,
+                    COALESCE(p.amount, 0) AS amount,
+                    COALESCE(p.text, '') AS text,
+                    CASE
+                        WHEN p.mp_key IS NOT NULL THEN 'MobilePay'
+                        WHEN p.bank_account_key IS NOT NULL THEN 'Bank'
+                        ELSE 'Manuel'
+                    END AS source_type,
+                    COALESCE(a.main_account, '') AS account,
+                    COALESCE(pg.posting_group, '') AS posting_group
+                FROM public.posteringer p
+                LEFT JOIN public.account a ON a.id = p.account_number
+                LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
+                WHERE p.user_id = @user_id
+                ORDER BY COALESCE(p.posterings_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
+
+            AddText(command, "user_id", userId);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                postings.Add(new FinancePostingDto
+                {
+                    Id = reader.GetString(0),
+                    Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    Amount = reader.GetFieldValue<decimal>(2),
+                    Text = reader.GetString(3),
+                    SourceType = reader.GetString(4),
+                    Account = reader.GetString(5),
+                    PostingGroup = reader.GetString(6)
+                });
+            }
+
+            await reader.CloseAsync();
+            var lastUpdated = await ReadLastUpdatedAsync(connection, cancellationToken);
+
+            return new FinanceUserPostingsDto
+            {
+                LastUpdated = lastUpdated,
+                Postings = postings
+            };
+        }
+
         private static async Task<FinanceSummaryDto> ReadSummaryAsync(NpgsqlConnection connection, DateTime actualStart, DateTime actualEnd, CancellationToken cancellationToken)
         {
             await using var command = new NpgsqlCommand(@"
@@ -247,5 +299,22 @@ namespace GamMaSite.Services
         public decimal Realized { get; set; }
         public decimal Budget { get; set; }
         public decimal PreviousYear { get; set; }
+    }
+
+    public sealed class FinancePostingDto
+    {
+        public string Id { get; set; } = "";
+        public string Date { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Text { get; set; } = "";
+        public string SourceType { get; set; } = "";
+        public string Account { get; set; } = "";
+        public string PostingGroup { get; set; } = "";
+    }
+
+    public sealed class FinanceUserPostingsDto
+    {
+        public string LastUpdated { get; set; }
+        public IReadOnlyList<FinancePostingDto> Postings { get; set; } = Array.Empty<FinancePostingDto>();
     }
 }

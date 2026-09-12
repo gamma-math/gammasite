@@ -211,6 +211,9 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/account/manage/two-factor") {
     return <AccountManagePage user={user} section="two-factor" />;
   }
+  if (path === "/react/account/manage/finance") {
+    return <AccountManagePage user={user} section="finance" />;
+  }
   if (path === "/react/account/manage/personal-data") {
     return <AccountManagePage user={user} section="personal-data" />;
   }
