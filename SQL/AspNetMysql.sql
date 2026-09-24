@@ -160,6 +160,125 @@ CREATE TABLE `__EFMigrationsHistory` (
   `MigrationId` text NOT NULL,
   `ProductVersion` text NOT NULL,
   PRIMARY KEY (`MigrationId`(255)));
+
+--
+-- Content tables for news, events, registrations and email templates
+--
+
+CREATE TABLE IF NOT EXISTS `ContentItems` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `Title` varchar(256) NOT NULL,
+  `Slug` varchar(256) NOT NULL,
+  `Summary` varchar(512) DEFAULT NULL,
+  `Body` longtext,
+  `PictureUrl` varchar(1024) DEFAULT NULL,
+  `Tags` varchar(512) DEFAULT NULL,
+  `Type` varchar(32) NOT NULL,
+  `Status` varchar(32) NOT NULL,
+  `ShowOnFrontPage` tinyint NOT NULL DEFAULT 1,
+  `StartDate` datetime DEFAULT NULL,
+  `EndDate` datetime DEFAULT NULL,
+  `Location` varchar(256) DEFAULT NULL,
+
+  `CreatedByUserId` varchar(128)
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_general_ci
+    DEFAULT NULL,
+
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+  `PublishedAt` datetime DEFAULT NULL,
+
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_ContentItems_Slug` (`Slug`),
+  KEY `IX_ContentItems_Type` (`Type`),
+  KEY `IX_ContentItems_Status` (`Status`),
+  KEY `IX_ContentItems_ShowOnFrontPage` (`ShowOnFrontPage`),
+  KEY `IX_ContentItems_StartDate` (`StartDate`),
+  KEY `IX_ContentItems_PublishedAt` (`PublishedAt`),
+  KEY `IX_ContentItems_CreatedByUserId` (`CreatedByUserId`),
+
+  CONSTRAINT `FK_ContentItems_AspNetUsers_CreatedByUserId`
+    FOREIGN KEY (`CreatedByUserId`)
+    REFERENCES `AspNetUsers` (`Id`)
+    ON DELETE SET NULL
+    ON UPDATE NO ACTION
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `ContentLinks` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int NOT NULL,
+  `Label` varchar(128) NOT NULL,
+  `Url` varchar(1024) NOT NULL,
+  `Type` varchar(32) NOT NULL,
+  `SortOrder` int NOT NULL DEFAULT '0',
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  KEY `IX_ContentLinks_ContentItemId` (`ContentItemId`),
+  CONSTRAINT `FK_ContentLinks_ContentItems_ContentItemId`
+    FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `EventRegistrations` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int NOT NULL,
+
+  `UserId` varchar(128)
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_general_ci
+    NOT NULL,
+
+  `RegistrationType` varchar(32) NOT NULL,
+  `Registered` tinyint NOT NULL DEFAULT 1,
+  `ResponseText` varchar(1024) DEFAULT NULL,
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_EventRegistrations_ContentItemId_UserId`
+    (`ContentItemId`, `UserId`),
+  KEY `IX_EventRegistrations_ContentItemId` (`ContentItemId`),
+  KEY `IX_EventRegistrations_UserId` (`UserId`),
+
+  CONSTRAINT `FK_EventRegistrations_ContentItems_ContentItemId`
+    FOREIGN KEY (`ContentItemId`)
+    REFERENCES `ContentItems` (`Id`)
+    ON DELETE CASCADE
+    ON UPDATE NO ACTION,
+
+  CONSTRAINT `FK_EventRegistrations_AspNetUsers_UserId`
+    FOREIGN KEY (`UserId`)
+    REFERENCES `AspNetUsers` (`Id`)
+    ON DELETE CASCADE
+    ON UPDATE NO ACTION
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `EmailTemplates` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `Name` varchar(128) NOT NULL,
+  `Subject` varchar(256) NOT NULL,
+  `Preheader` varchar(256) DEFAULT NULL,
+  `HtmlBody` longtext NOT NULL,
+  `TextBody` longtext,
+  `TemplateType` varchar(32) NOT NULL,
+  `IsActive` tinyint NOT NULL DEFAULT '1',
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  KEY `IX_EmailTemplates_TemplateType` (`TemplateType`),
+  KEY `IX_EmailTemplates_IsActive` (`IsActive`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 --
 -- Constraints for dumped tables
 --
