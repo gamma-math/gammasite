@@ -352,8 +352,27 @@ img {
 
 .menu-side-nav {
   display: grid;
-  gap: 10px;
+  gap: 18px;
   margin-top: 18px;
+}
+
+.menu-nav-section {
+  display: grid;
+  gap: 10px;
+}
+
+.menu-nav-section + .menu-nav-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.menu-nav-section-title {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .menu-side-link {

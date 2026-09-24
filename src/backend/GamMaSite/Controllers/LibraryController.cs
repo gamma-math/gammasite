@@ -8,9 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 
 /*
  * LEGACY MVC NOTE:
- * Library browsing is no longer part of the primary React user flow.
- * Keep this controller temporarily as a fallback/reference until the old MVC
- * library feature is reviewed and either replaced or removed.
+ * React handles Bibliotek navigation through the protected library API.
+ * This controller remains the fallback for direct /library file downloads.
  */
 namespace GamMaSite.Controllers
 {

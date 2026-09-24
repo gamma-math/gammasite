@@ -53,7 +53,10 @@ namespace GamMaSite.Services
                 SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12
             };
             using var client = new HttpClient(handler);
-            client.DefaultRequestHeaders.Add("Authorization", $"token {_token}");
+            if (!string.IsNullOrWhiteSpace(_token))
+            {
+                client.DefaultRequestHeaders.Add("Authorization", $"token {_token}");
+            }
             client.DefaultRequestHeaders.Add("User-Agent", "GamMaSite");
 
             var response = await client.GetAsync($"{_contentApi}{query}");

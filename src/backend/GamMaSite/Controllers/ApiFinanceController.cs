@@ -50,5 +50,55 @@ namespace GamMaSite.Controllers
 
             return Ok(await _financeReportService.GetUserPostingsAsync(userId, cancellationToken));
         }
+
+        [HttpGet("admin/overview")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminOverview([FromQuery] int? year, CancellationToken cancellationToken)
+        {
+            var currentYear = DateTime.Today.Year;
+            var selectedYear = year ?? currentYear;
+            if (selectedYear != currentYear && selectedYear != currentYear - 1)
+            {
+                return BadRequest(new { error = "Der kan kun vÃ¦lges dette Ã¥r eller sidste Ã¥r." });
+            }
+
+            return Ok(await _financeReportService.GetAdminOverviewAsync(selectedYear, cancellationToken));
+        }
+
+        [HttpGet("admin/postings")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
+        {
+            var currentYear = DateTime.Today.Year;
+            var selectedYear = year ?? currentYear;
+            if (selectedYear != currentYear && selectedYear != currentYear - 1)
+            {
+                return BadRequest(new { error = "Der kan kun vÃ¦lges dette Ã¥r eller sidste Ã¥r." });
+            }
+
+            return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, cancellationToken));
+        }
+
+        [HttpGet("admin/postings/options")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPostingEditorOptions(CancellationToken cancellationToken)
+        {
+            return Ok(await _financeReportService.GetPostingEditorOptionsAsync(cancellationToken));
+        }
+
+        [HttpGet("admin/postings/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminPosting(string id, CancellationToken cancellationToken)
+        {
+            var posting = await _financeReportService.GetAdminPostingDetailAsync(id, cancellationToken);
+            return posting == null ? NotFound() : Ok(posting);
+        }
+
+        [HttpPut("admin/postings/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateAdminPosting(string id, [FromBody] FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
+        {
+            return await _financeReportService.UpdateAdminPostingAsync(id, update, cancellationToken) ? NoContent() : NotFound();
+        }
     }
 }
