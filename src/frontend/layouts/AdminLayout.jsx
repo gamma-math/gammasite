@@ -1,5 +1,53 @@
 import { adminItems, Link } from "../routes/navigation.jsx";
 
+const financeSections = [
+  {
+    items: [
+      { href: "/react/admin/finance", label: "Overblik" },
+      { href: "/react/admin/finance/postings", label: "Posteringer" },
+    ],
+  },
+  {
+    label: "Rediger finanser",
+    items: [
+      { href: "/react/admin/finance/csv-import", label: "CSV-import" },
+      {
+        href: "/react/admin/finance/postings/edit",
+        label: "Posteringer",
+      },
+      { href: "/react/admin/finance/chart-of-accounts", label: "Kontoplan" },
+      {
+        href: "/react/admin/finance/posting-groups",
+        label: "Posteringsgrupper",
+      },
+      { href: "/react/admin/finance/budgets", label: "Budgetter" },
+    ],
+  },
+];
+
+function financeActivePath(pathname) {
+  if (pathname === "/react/admin/finance") return "/react/admin/finance";
+  if (pathname === "/react/admin/finance/postings") {
+    return "/react/admin/finance/postings";
+  }
+  if (pathname.startsWith("/react/admin/finance/postings/")) {
+    return "/react/admin/finance/postings/edit";
+  }
+  if (pathname.startsWith("/react/admin/finance/chart-of-accounts")) {
+    return "/react/admin/finance/chart-of-accounts";
+  }
+  if (pathname.startsWith("/react/admin/finance/posting-groups")) {
+    return "/react/admin/finance/posting-groups";
+  }
+  if (pathname.startsWith("/react/admin/finance/budgets")) {
+    return "/react/admin/finance/budgets";
+  }
+  if (pathname.startsWith("/react/admin/finance/csv-import")) {
+    return "/react/admin/finance/csv-import";
+  }
+  return "/react/admin/finance";
+}
+
 /**
  * Shared admin layout that hides write-only sections from read-only admins.
  */
@@ -9,26 +57,47 @@ export function AdminLayout({
   children,
   contentClassName = "",
 }) {
+  const isFinanceAdmin = window.location.pathname.startsWith(
+    "/react/admin/finance",
+  );
+  const sections = isFinanceAdmin
+    ? financeSections
+    : [
+        {
+          items: adminItems.filter((item) => canWrite || item.readAdmin),
+        },
+      ];
+  const activePath = isFinanceAdmin
+    ? financeActivePath(window.location.pathname)
+    : active;
+
   return (
     <main className="menu-shell">
       <section className="menu-workspace">
         <aside className="menu-sidebar">
-          <h2 className="menu-sidebar-title">Admin</h2>
+          <h2 className="menu-sidebar-title">
+            {isFinanceAdmin ? "Finans admin" : "Admin"}
+          </h2>
           <nav className="menu-side-nav" aria-label="Admin sektioner">
-            {adminItems.map((item) => {
-              if (!canWrite && !item.readAdmin) {
-                return null;
-              }
-              return (
-                <Link
-                  className={`menu-side-link ${active === item.href ? "is-active" : ""}`}
-                  href={item.href}
-                  key={item.href}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            {sections.map((section, index) => (
+              <div
+                className="menu-nav-section"
+                key={section.label ?? `section-${index}`}
+              >
+                {section.label && (
+                  <p className="menu-nav-section-title">{section.label}</p>
+                )}
+                {section.items.map((item) => (
+                  <Link
+                    className={`menu-side-link ${activePath === item.href ? "is-active" : ""}`}
+                    href={item.href}
+                    key={item.href}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ))}
           </nav>
         </aside>
         <section className={`menu-content ${contentClassName}`.trim()}>

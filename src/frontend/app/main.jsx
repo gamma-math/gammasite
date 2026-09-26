@@ -13,7 +13,13 @@ import {
   AdminContentPage,
 } from "../pages/AdminContentPage.jsx";
 import {
+  FinanceAdminBudgetDetailPage,
+  FinanceAdminBudgetsPage,
+  FinanceAdminAccountsPage,
+  FinanceAdminCashierPostingsPage,
   FinanceAdminOverviewPage,
+  FinanceAdminPostingGroupDetailPage,
+  FinanceAdminPostingGroupsPage,
   FinanceAdminPostingDetailPage,
   FinanceAdminPostingsPage,
 } from "../pages/AdminFinancePage.jsx";
@@ -335,11 +341,50 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={isAdmin} search={route.search} />;
   }
-  if (path === "/react/admin/finance/posteringer") {
+  if (path === "/react/admin/finance/postings") {
     return <FinanceAdminPostingsPage isAdmin={isAdmin} search={route.search} />;
   }
+  if (path === "/react/admin/finance/postings/edit") {
+    return (
+      <FinanceAdminCashierPostingsPage
+        isAdmin={isAdmin}
+        search={route.search}
+      />
+    );
+  }
+  if (path === "/react/admin/finance/budgets") {
+    return <FinanceAdminBudgetsPage isAdmin={isAdmin} />;
+  }
+  if (path === "/react/admin/finance/chart-of-accounts") {
+    return <FinanceAdminAccountsPage isAdmin={isAdmin} />;
+  }
+  if (path === "/react/admin/finance/posting-groups") {
+    return <FinanceAdminPostingGroupsPage isAdmin={isAdmin} />;
+  }
+  const adminFinancePostingGroupMatch = path.match(
+    /^\/react\/admin\/finance\/posting-groups\/([^/]+)$/,
+  );
+  if (adminFinancePostingGroupMatch) {
+    return (
+      <FinanceAdminPostingGroupDetailPage
+        isAdmin={isAdmin}
+        id={decodeURIComponent(adminFinancePostingGroupMatch[1])}
+      />
+    );
+  }
+  const adminFinanceBudgetMatch = path.match(
+    /^\/react\/admin\/finance\/budgets\/([^/]+)$/,
+  );
+  if (adminFinanceBudgetMatch) {
+    return (
+      <FinanceAdminBudgetDetailPage
+        isAdmin={isAdmin}
+        id={decodeURIComponent(adminFinanceBudgetMatch[1])}
+      />
+    );
+  }
   const adminFinancePostingMatch = path.match(
-    /^\/react\/admin\/finance\/posteringer\/([^/]+)$/,
+    /^\/react\/admin\/finance\/postings\/([^/]+)$/,
   );
   if (adminFinancePostingMatch) {
     return (

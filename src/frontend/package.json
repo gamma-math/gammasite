@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.2",
-    "vite": "^7.1.4",
-    "typescript": "^5.9.2",
+    "lucide-react": "^0.542.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "lucide-react": "^0.542.0"
-  },
-  "devDependencies": {}
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "xlsx": "^0.18.5"
+  }
 }

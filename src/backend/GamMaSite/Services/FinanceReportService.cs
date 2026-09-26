@@ -70,6 +70,144 @@ namespace GamMaSite.Services
             };
         }
 
+        public async Task<FinanceAdminBudgetsDto> GetAdminBudgetsAsync(CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            return new FinanceAdminBudgetsDto
+            {
+                Budgets = await ReadBudgetsAsync(connection, cancellationToken),
+                Accounts = await ReadSelectOptionsAsync(connection, "SELECT id, CONCAT_WS(' · ', NULLIF(main_account, ''), NULLIF(sub_account, ''), NULLIF(context, '')) FROM public.account ORDER BY account_key, sub_account_key, context;", cancellationToken),
+                PostingGroups = await ReadSelectOptionsAsync(connection, "SELECT id, CONCAT_WS(' · ', NULLIF(posting_group, ''), NULLIF(context, '')) FROM public.postering_group ORDER BY posting_group, context;", cancellationToken)
+            };
+        }
+
+        public async Task<IReadOnlyList<FinanceAccountPlanDto>> GetAdminAccountsAsync(CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            return await ReadAccountPlanAsync(connection, cancellationToken);
+        }
+
+        public async Task<FinanceBudgetDto> GetAdminBudgetAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            return await ReadBudgetAsync(connection, id, cancellationToken);
+        }
+
+        public async Task<FinanceBudgetDto> CreateAdminBudgetAsync(FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
+        {
+            ValidateBudget(update);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await EnsureBudgetReferencesAsync(connection, update, cancellationToken);
+            await using var command = new NpgsqlCommand(@"
+                INSERT INTO public.forecast (id, account_id, postering_group_id, year_actual, forecast, forecast_type)
+                VALUES (@id, @account_id, @posting_group_id, @year_actual, @forecast, @forecast_type);", connection);
+            AddText(command, "id", update.Id.Trim());
+            AddText(command, "account_id", update.AccountId.Trim());
+            AddNullableText(command, "posting_group_id", update.PostingGroupId);
+            AddInteger(command, "year_actual", update.YearActual);
+            AddNumeric(command, "forecast", update.Forecast);
+            AddNullableText(command, "forecast_type", update.ForecastType);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return await ReadBudgetAsync(connection, update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<FinanceBudgetDto> UpdateAdminBudgetAsync(string originalId, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
+        {
+            ValidateBudget(update);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await EnsureBudgetReferencesAsync(connection, update, cancellationToken);
+            await using var command = new NpgsqlCommand(@"
+                UPDATE public.forecast
+                SET id = @new_id,
+                    account_id = @account_id,
+                    postering_group_id = @posting_group_id,
+                    year_actual = @year_actual,
+                    forecast = @forecast,
+                    forecast_type = @forecast_type
+                WHERE id = @original_id;", connection);
+            AddText(command, "original_id", originalId);
+            AddText(command, "new_id", update.Id.Trim());
+            AddText(command, "account_id", update.AccountId.Trim());
+            AddNullableText(command, "posting_group_id", update.PostingGroupId);
+            AddInteger(command, "year_actual", update.YearActual);
+            AddNumeric(command, "forecast", update.Forecast);
+            AddNullableText(command, "forecast_type", update.ForecastType);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) return null;
+            return await ReadBudgetAsync(connection, update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<bool> DeleteAdminBudgetAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("DELETE FROM public.forecast WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+
+        public async Task<IReadOnlyList<FinancePostingGroupDto>> GetAdminPostingGroupsAsync(CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            return await ReadPostingGroupDefinitionsAsync(connection, cancellationToken);
+        }
+
+        public async Task<FinancePostingGroupDto> GetAdminPostingGroupAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("SELECT id, COALESCE(posting_group, ''), COALESCE(context, '') FROM public.postering_group WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            return await reader.ReadAsync(cancellationToken)
+                ? new FinancePostingGroupDto { Id = reader.GetString(0), PostingGroup = reader.GetString(1), Context = reader.GetString(2) }
+                : null;
+        }
+
+        public async Task<FinancePostingGroupDto> CreateAdminPostingGroupAsync(FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
+        {
+            ValidatePostingGroup(update);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("INSERT INTO public.postering_group (id, posting_group, context) VALUES (@id, @posting_group, @context);", connection);
+            AddText(command, "id", update.Id.Trim());
+            AddNullableText(command, "posting_group", update.PostingGroup);
+            AddNullableText(command, "context", update.Context);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return await GetAdminPostingGroupAsync(update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<FinancePostingGroupDto> UpdateAdminPostingGroupAsync(string originalId, FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
+        {
+            ValidatePostingGroup(update);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand(@"
+                UPDATE public.postering_group
+                SET id = @new_id, posting_group = @posting_group, context = @context
+                WHERE id = @original_id;", connection);
+            AddText(command, "original_id", originalId);
+            AddText(command, "new_id", update.Id.Trim());
+            AddNullableText(command, "posting_group", update.PostingGroup);
+            AddNullableText(command, "context", update.Context);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) return null;
+            return await GetAdminPostingGroupAsync(update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<bool> DeleteAdminPostingGroupAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("DELETE FROM public.postering_group WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+
         private async Task<FinanceOverviewDto> GetOverviewCoreAsync(int year, CancellationToken cancellationToken)
         {
             var today = DateTime.Today;
@@ -117,8 +255,10 @@ namespace GamMaSite.Services
                     COALESCE(p.text, '') AS text,
                     COALESCE(p.amount, 0) AS amount,
                     COALESCE(p.user_id, '') AS user_id,
-                    COALESCE(a.main_account, '') AS account,
-                    COALESCE(pg.posting_group, '') AS posting_group,
+                    COALESCE(p.account_number, '') AS account_id,
+                    CONCAT_WS(' · ', NULLIF(a.main_account, ''), NULLIF(a.sub_account, ''), NULLIF(a.context, '')) AS account,
+                    COALESCE(p.posting_group_id, '') AS posting_group_id,
+                    CONCAT_WS(' · ', NULLIF(pg.posting_group, ''), NULLIF(pg.context, '')) AS posting_group,
                     COALESCE(p.document, '') AS document,
                     CASE
                         WHEN p.mp_key IS NOT NULL THEN 'MobilePay'
@@ -160,11 +300,13 @@ namespace GamMaSite.Services
                     Text = reader.GetString(3),
                     Amount = reader.GetFieldValue<decimal>(4),
                     UserId = reader.GetString(5),
-                    Account = reader.GetString(6),
-                    PostingGroup = reader.GetString(7),
-                    Document = reader.GetString(8),
-                    SourceType = reader.GetString(9),
-                    Status = reader.GetString(10)
+                    AccountId = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    Account = reader.GetString(7),
+                    PostingGroupId = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                    PostingGroup = reader.GetString(9),
+                    Document = reader.GetString(10),
+                    SourceType = reader.GetString(11),
+                    Status = reader.GetString(12)
                 });
             }
 
@@ -185,7 +327,8 @@ namespace GamMaSite.Services
                        COALESCE(p.text, ''), COALESCE(p.amount, 0), COALESCE(p.user_id, ''), COALESCE(p.account_number, ''),
                        COALESCE(p.posting_group_id, ''), COALESCE(p.document, ''),
                        CASE WHEN p.mp_key IS NOT NULL THEN 'MobilePay' WHEN p.bank_account_key IS NOT NULL THEN 'Bank' ELSE 'Manuel' END,
-                       COALESCE(a.main_account, ''), COALESCE(pg.posting_group, ''),
+                       CONCAT_WS(' · ', NULLIF(a.main_account, ''), NULLIF(a.sub_account, ''), NULLIF(a.context, '')),
+                       CONCAT_WS(' · ', NULLIF(pg.posting_group, ''), NULLIF(pg.context, '')),
                        COALESCE(p.bank_account_key::text, ''), COALESCE(p.mp_key::text, ''),
                        CASE
                          WHEN NULLIF(TRIM(COALESCE(p.account_number, '')), '') IS NULL OR NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NULL THEN 'Ukategoriseret'
@@ -218,6 +361,7 @@ namespace GamMaSite.Services
 
         public async Task<bool> UpdateAdminPostingAsync(string id, FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
         {
+            ValidatePostingUpdate(update, requireId: false);
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
@@ -225,11 +369,76 @@ namespace GamMaSite.Services
                 SET account_number = @account_id,
                     posting_group_id = @posting_group_id,
                     user_id = @user_id,
+                    text = @text,
+                    amount = @amount,
                     posterings_date = @posterings_date,
                     document = CASE WHEN mp_key IS NOT NULL THEN NULL ELSE @document END
                 WHERE id = @id;", connection);
-            AddText(command, "id", id); AddNullableText(command, "account_id", update.AccountId); AddNullableText(command, "posting_group_id", update.PostingGroupId); AddNullableText(command, "user_id", update.UserId); AddNullableDate(command, "posterings_date", update.PostingDate); AddNullableText(command, "document", update.Document);
+            AddText(command, "id", id); AddNullableText(command, "account_id", update.AccountId); AddNullableText(command, "posting_group_id", update.PostingGroupId); AddNullableText(command, "user_id", update.UserId); AddNullableText(command, "text", update.Text); AddNumeric(command, "amount", update.Amount); AddNullableDate(command, "posterings_date", update.PostingDate); AddNullableText(command, "document", update.Document);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+
+        public async Task<FinanceAdminPostingDetailDto> CreateAdminPostingAsync(FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
+        {
+            ValidatePostingUpdate(update, requireId: true);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand(@"
+                INSERT INTO public.posteringer
+                    (id, date, posting_date, text, amount, user_id, account_number, posting_group_id, document, posterings_date)
+                VALUES
+                    (@id, @date, @date, @text, @amount, @user_id, @account_id, @posting_group_id, @document, @posterings_date);", connection);
+            AddText(command, "id", update.Id.Trim());
+            AddNullableDate(command, "date", string.IsNullOrWhiteSpace(update.Date) ? update.PostingDate : update.Date);
+            AddNullableText(command, "text", update.Text);
+            AddNumeric(command, "amount", update.Amount);
+            AddNullableText(command, "user_id", update.UserId);
+            AddNullableText(command, "account_id", update.AccountId);
+            AddNullableText(command, "posting_group_id", update.PostingGroupId);
+            AddNullableText(command, "document", update.Document);
+            AddNullableDate(command, "posterings_date", update.PostingDate);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            return await GetAdminPostingDetailAsync(update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<FinanceAdminPostingDetailDto> DuplicateAdminPostingAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            var newId = $"{id}-COPY";
+            await using var command = new NpgsqlCommand(@"
+                INSERT INTO public.posteringer
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date)
+                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date
+                FROM public.posteringer
+                WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            AddText(command, "new_id", newId);
+            try
+            {
+                if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) return null;
+            }
+            catch (PostgresException exception) when (exception.SqlState == "23505")
+            {
+                throw new ArgumentException($"Posteringen {newId} findes allerede.");
+            }
+            return await GetAdminPostingDetailAsync(newId, cancellationToken);
+        }
+
+        public async Task<bool> DeleteAdminPostingAsync(string id, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("DELETE FROM public.posteringer WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+
+        private static void ValidatePostingUpdate(FinanceAdminPostingUpdateDto update, bool requireId)
+        {
+            if (update == null) throw new ArgumentException("Posteringen mangler.");
+            if (requireId && string.IsNullOrWhiteSpace(update.Id)) throw new ArgumentException("ID må ikke være tomt.");
+            if (update.Amount != update.Amount || update.Amount == decimal.MaxValue || update.Amount == decimal.MinValue) throw new ArgumentException("Beløbet er ugyldigt.");
         }
 
         private static async Task<IReadOnlyList<FinanceSelectOptionDto>> ReadSelectOptionsAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
@@ -239,6 +448,76 @@ namespace GamMaSite.Services
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken)) result.Add(new FinanceSelectOptionDto { Id = reader.GetString(0), Label = reader.IsDBNull(1) ? reader.GetString(0) : reader.GetString(1) });
             return result;
+        }
+
+        private static async Task<IReadOnlyList<FinancePostingGroupDto>> ReadPostingGroupDefinitionsAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+        {
+            var result = new List<FinancePostingGroupDto>();
+            await using var command = new NpgsqlCommand("SELECT id, COALESCE(posting_group, ''), COALESCE(context, '') FROM public.postering_group ORDER BY posting_group, context, id;", connection);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) result.Add(new FinancePostingGroupDto { Id = reader.GetString(0), PostingGroup = reader.GetString(1), Context = reader.GetString(2) });
+            return result;
+        }
+
+        private static void ValidatePostingGroup(FinancePostingGroupUpdateDto update)
+        {
+            if (update == null || string.IsNullOrWhiteSpace(update.Id)) throw new ArgumentException("ID må ikke være tomt.");
+        }
+
+        private static async Task<IReadOnlyList<FinanceBudgetDto>> ReadBudgetsAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+        {
+            var result = new List<FinanceBudgetDto>();
+            await using var command = new NpgsqlCommand(@"
+                SELECT id, COALESCE(account_id, ''), COALESCE(postering_group_id, ''), COALESCE(year_actual, 0),
+                       COALESCE(forecast, 0), COALESCE(forecast_type, '')
+                FROM public.forecast
+                ORDER BY year_actual DESC, id;", connection);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) result.Add(MapBudget(reader));
+            return result;
+        }
+
+        private static async Task<FinanceBudgetDto> ReadBudgetAsync(NpgsqlConnection connection, string id, CancellationToken cancellationToken)
+        {
+            await using var command = new NpgsqlCommand(@"
+                SELECT id, COALESCE(account_id, ''), COALESCE(postering_group_id, ''), COALESCE(year_actual, 0),
+                       COALESCE(forecast, 0), COALESCE(forecast_type, '')
+                FROM public.forecast WHERE id = @id;", connection);
+            AddText(command, "id", id);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            return await reader.ReadAsync(cancellationToken) ? MapBudget(reader) : null;
+        }
+
+        private static FinanceBudgetDto MapBudget(NpgsqlDataReader reader) => new()
+        {
+            Id = reader.GetString(0),
+            AccountId = reader.GetString(1),
+            PostingGroupId = reader.GetString(2),
+            YearActual = reader.GetInt32(3),
+            Forecast = reader.GetFieldValue<decimal>(4),
+            ForecastType = reader.GetString(5)
+        };
+
+        private static void ValidateBudget(FinanceBudgetUpdateDto update)
+        {
+            if (update == null) throw new ArgumentException("Budgetposten mangler.");
+            if (string.IsNullOrWhiteSpace(update.Id)) throw new ArgumentException("ID må ikke være tomt.");
+            if (string.IsNullOrWhiteSpace(update.AccountId)) throw new ArgumentException("Account ID må ikke være tomt.");
+            if (update.YearActual < 1) throw new ArgumentException("År skal være gyldigt.");
+        }
+
+        private static async Task EnsureBudgetReferencesAsync(NpgsqlConnection connection, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
+        {
+            await using var command = new NpgsqlCommand(@"
+                SELECT
+                    EXISTS (SELECT 1 FROM public.account WHERE id = @account_id),
+                    (@posting_group_id IS NULL OR EXISTS (SELECT 1 FROM public.postering_group WHERE id = @posting_group_id));", connection);
+            AddText(command, "account_id", update.AccountId.Trim());
+            AddNullableText(command, "posting_group_id", update.PostingGroupId);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
+            if (!reader.GetBoolean(0)) throw new ArgumentException("Account ID findes ikke i kontoplanen.");
+            if (!reader.GetBoolean(1)) throw new ArgumentException("Posteringsgruppe findes ikke.");
         }
 
         public async Task<FinanceUserPostingsDto> GetUserPostingsAsync(string userId, CancellationToken cancellationToken)
@@ -424,6 +703,44 @@ namespace GamMaSite.Services
             return result;
         }
 
+        private static async Task<IReadOnlyList<FinanceAccountPlanDto>> ReadAccountPlanAsync(
+            NpgsqlConnection connection,
+            CancellationToken cancellationToken)
+        {
+            var result = new List<FinanceAccountPlanDto>();
+            await using var command = new NpgsqlCommand(@"
+                SELECT
+                    id,
+                    main_account,
+                    account_key,
+                    sub_account,
+                    sub_account_key,
+                    context,
+                    context_key
+                FROM public.account
+                ORDER BY account_key NULLS LAST,
+                         sub_account_key NULLS LAST,
+                         context_key NULLS LAST,
+                         id;", connection);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                result.Add(new FinanceAccountPlanDto
+                {
+                    Id = reader.GetString(0),
+                    MainAccount = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    AccountKey = reader.IsDBNull(2) ? null : reader.GetInt64(2),
+                    SubAccount = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    SubAccountKey = reader.IsDBNull(4) ? null : reader.GetInt64(4),
+                    Context = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                    ContextKey = reader.IsDBNull(6) ? null : reader.GetInt64(6)
+                });
+            }
+
+            return result;
+        }
+
         private static async Task<string> ReadLastUpdatedAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
         {
             await using var command = new NpgsqlCommand(@"
@@ -482,7 +799,8 @@ namespace GamMaSite.Services
                         b.id,
                         TO_CHAR(b.date, 'YYYY-MM-DD'),
                         COALESCE(b.text, ''),
-                        COALESCE(b.amount, 0)
+                        COALESCE(b.amount, 0),
+                        COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.bank_account_key = b.id), 0)
                     FROM public.bank_account b
                     WHERE b.date >= @start_date AND b.date <= @end_date
                     ORDER BY b.date DESC NULLS LAST, b.id DESC;"
@@ -495,7 +813,8 @@ namespace GamMaSite.Services
                             m.transaction_type,
                             ''
                         ),
-                        COALESCE(m.amount, 0)
+                        COALESCE(m.amount, 0),
+                        COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.mp_key = m.id), 0)
                     FROM public.mobilepay m
                     WHERE m.date >= @start_date AND m.date <= @end_date
                     ORDER BY m.date DESC NULLS LAST, m.id DESC;";
@@ -512,6 +831,7 @@ namespace GamMaSite.Services
                     Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
                     Text = reader.GetString(2),
                     Amount = reader.GetFieldValue<decimal>(3),
+                    PostedAmount = reader.GetFieldValue<decimal>(4),
                     SourceId = sourceId,
                     SourceType = sourceType
                 });
@@ -549,6 +869,7 @@ namespace GamMaSite.Services
         private static void AddText(NpgsqlCommand command, string name, string value) => command.Parameters.Add(name, NpgsqlDbType.Text).Value = value;
         private static void AddNullableText(NpgsqlCommand command, string name, string value) => command.Parameters.Add(name, NpgsqlDbType.Text).Value = string.IsNullOrWhiteSpace(value) ? DBNull.Value : value;
         private static void AddNullableLong(NpgsqlCommand command, string name, long? value) => command.Parameters.Add(name, NpgsqlDbType.Bigint).Value = value ?? (object)DBNull.Value;
+        private static void AddNumeric(NpgsqlCommand command, string name, decimal value) => command.Parameters.Add(name, NpgsqlDbType.Numeric).Value = value;
         private static void AddNullableDate(NpgsqlCommand command, string name, string value)
         {
             var parameter = command.Parameters.Add(name, NpgsqlDbType.Date);
@@ -584,6 +905,58 @@ namespace GamMaSite.Services
         public IReadOnlyList<FinanceSourcePostingDto> MobilePayTransfers { get; set; } = Array.Empty<FinanceSourcePostingDto>();
     }
 
+    public sealed class FinanceAdminBudgetsDto
+    {
+        public IReadOnlyList<FinanceBudgetDto> Budgets { get; set; } = Array.Empty<FinanceBudgetDto>();
+        public IReadOnlyList<FinanceSelectOptionDto> Accounts { get; set; } = Array.Empty<FinanceSelectOptionDto>();
+        public IReadOnlyList<FinanceSelectOptionDto> PostingGroups { get; set; } = Array.Empty<FinanceSelectOptionDto>();
+    }
+
+    public sealed class FinanceAccountPlanDto
+    {
+        public string Id { get; set; } = "";
+        public string MainAccount { get; set; } = "";
+        public long? AccountKey { get; set; }
+        public string SubAccount { get; set; } = "";
+        public long? SubAccountKey { get; set; }
+        public string Context { get; set; } = "";
+        public long? ContextKey { get; set; }
+    }
+
+    public sealed class FinanceBudgetDto
+    {
+        public string Id { get; set; } = "";
+        public string AccountId { get; set; } = "";
+        public string PostingGroupId { get; set; } = "";
+        public int YearActual { get; set; }
+        public decimal Forecast { get; set; }
+        public string ForecastType { get; set; } = "";
+    }
+
+    public sealed class FinanceBudgetUpdateDto
+    {
+        public string Id { get; set; } = "";
+        public string AccountId { get; set; } = "";
+        public string PostingGroupId { get; set; } = "";
+        public int YearActual { get; set; }
+        public decimal Forecast { get; set; }
+        public string ForecastType { get; set; } = "";
+    }
+
+    public sealed class FinancePostingGroupDto
+    {
+        public string Id { get; set; } = "";
+        public string PostingGroup { get; set; } = "";
+        public string Context { get; set; } = "";
+    }
+
+    public sealed class FinancePostingGroupUpdateDto
+    {
+        public string Id { get; set; } = "";
+        public string PostingGroup { get; set; } = "";
+        public string Context { get; set; } = "";
+    }
+
     public sealed class FinanceDataQualityDto
     {
         public int TotalPostings { get; set; }
@@ -607,6 +980,7 @@ namespace GamMaSite.Services
         public string Date { get; set; } = "";
         public string Text { get; set; } = "";
         public decimal Amount { get; set; }
+        public decimal PostedAmount { get; set; }
         public long SourceId { get; set; }
         public string SourceType { get; set; } = "";
     }
@@ -656,7 +1030,9 @@ namespace GamMaSite.Services
         public string Text { get; set; } = "";
         public decimal Amount { get; set; }
         public string UserId { get; set; } = "";
+        public string AccountId { get; set; } = "";
         public string Account { get; set; } = "";
+        public string PostingGroupId { get; set; } = "";
         public string PostingGroup { get; set; } = "";
         public string Document { get; set; } = "";
         public string SourceType { get; set; } = "";
@@ -677,5 +1053,16 @@ namespace GamMaSite.Services
 
     public sealed class FinanceSelectOptionDto { public string Id { get; set; } = ""; public string Label { get; set; } = ""; }
     public sealed class FinancePostingEditorOptionsDto { public IReadOnlyList<FinanceSelectOptionDto> Accounts { get; set; } = Array.Empty<FinanceSelectOptionDto>(); public IReadOnlyList<FinanceSelectOptionDto> PostingGroups { get; set; } = Array.Empty<FinanceSelectOptionDto>(); }
-    public sealed class FinanceAdminPostingUpdateDto { public string AccountId { get; set; } = ""; public string PostingGroupId { get; set; } = ""; public string UserId { get; set; } = ""; public string PostingDate { get; set; } = ""; public string Document { get; set; } = ""; }
+    public sealed class FinanceAdminPostingUpdateDto
+    {
+        public string Id { get; set; } = "";
+        public string Date { get; set; } = "";
+        public string AccountId { get; set; } = "";
+        public string PostingGroupId { get; set; } = "";
+        public string UserId { get; set; } = "";
+        public string PostingDate { get; set; } = "";
+        public string Text { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Document { get; set; } = "";
+    }
 }

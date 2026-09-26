@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import {
   Pagination,
@@ -10,6 +10,7 @@ import {
 import { Link, navigate } from "../routes/navigation.jsx";
 import { membersApi } from "../services/api.js";
 import { financeApi } from "../services/financeApi.js";
+import * as XLSX from "xlsx";
 import "../styles/finance.css";
 
 const months = [
@@ -48,18 +49,284 @@ const filters = (s) => {
   };
 };
 
-function SearchableSelect({ label, options, value, onChange, placeholder }) {
+const excelEscape = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+
+const excelFormula = (formula, value, style = "Number") => ({
+  __excelFormula: true,
+  formula,
+  value,
+  style,
+});
+const excelNumericValue = (value) =>
+  value && typeof value === "object" && value.__excelFormula ? value.value : value;
+
+function excelCell(value, numeric = false, style = "") {
+  const isFormula = value && typeof value === "object" && value.__excelFormula;
+  const rawValue = isFormula ? value.value : value;
+  const resolvedStyle = isFormula ? value.style || style : style;
+  if (rawValue === null || rawValue === undefined || rawValue === "") {
+    return `<Cell${resolvedStyle ? ` ss:StyleID="${resolvedStyle}"` : ""} />`;
+  }
+  const type = numeric ? "Number" : "String";
+  const data = numeric && Number.isFinite(Number(rawValue)) ? Number(rawValue) : rawValue;
+  const formulaAttribute = isFormula ? ` ss:Formula="${excelEscape(value.formula)}"` : "";
+  return `<Cell${resolvedStyle ? ` ss:StyleID="${resolvedStyle}"` : ""}${formulaAttribute}><Data ss:Type="${type}">${excelEscape(data)}</Data></Cell>`;
+}
+
+function excelSheet(name, headers, rows, numericColumns = new Set()) {
+  const headerXml = `<Row>${headers.map((header) => excelCell(header, false, "Header")).join("")}</Row>`;
+  const rowXml = rows
+    .map(
+      (row) =>
+        `<Row>${row
+          .map((value, index) =>
+            excelCell(value, numericColumns.has(index), numericColumns.has(index) ? "Number" : ""),
+          )
+          .join("")}</Row>`,
+    )
+    .join("");
+  return `<Worksheet ss:Name="${excelEscape(name)}"><Table>${headerXml}${rowXml}</Table></Worksheet>`;
+}
+
+function buildFinanceWorkbook({ year, postings, overview }) {
+  const accountRows = (overview?.accounts || []).map((row) => [
+    row.mainAccount || row.accountId,
+    row.subAccount,
+    row.context,
+    row.realized,
+    row.budget,
+    row.previousYear,
+  ]);
+  if (accountRows.length) {
+    const totalRow = accountRows.length + 2;
+    accountRows.push([
+      "",
+      "",
+      "TOTAL",
+      excelFormula(`=SUM(R2C4:R${totalRow - 1}C4)`, accountRows.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
+      excelFormula(`=SUM(R2C5:R${totalRow - 1}C5)`, accountRows.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
+      excelFormula(`=SUM(R2C6:R${totalRow - 1}C6)`, accountRows.reduce((sum, row) => sum + Number(row[5] || 0), 0)),
+    ]);
+  }
+
+  const groupRows = (overview?.postingGroups || []).map((row) => [
+    row.name,
+    row.context,
+    row.amount,
+    row.previousAmount,
+  ]);
+  if (groupRows.length) {
+    const totalRow = groupRows.length + 2;
+    groupRows.push([
+      "",
+      "TOTAL",
+      excelFormula(`=SUM(R2C3:R${totalRow - 1}C3)`, groupRows.reduce((sum, row) => sum + Number(row[2] || 0), 0)),
+      excelFormula(`=SUM(R2C4:R${totalRow - 1}C4)`, groupRows.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
+    ]);
+  }
+
+  const sourceRows = (rows) =>
+    (rows || []).map((row) => [
+      row.id,
+      row.date,
+      row.text,
+      row.amount,
+      row.postedAmount,
+      excelFormula(
+        "=RC[-2]-RC[-1]",
+        Number(row.amount || 0) - Number(row.postedAmount || 0),
+      ),
+    ]);
+  const sourceWithTotal = (rows) => {
+    const values = sourceRows(rows);
+    if (values.length) {
+      const totalRow = values.length + 2;
+      values.push([
+        "",
+        "",
+        "TOTAL",
+        excelFormula(`=SUM(R2C4:R${totalRow - 1}C4)`, values.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
+        excelFormula(`=SUM(R2C5:R${totalRow - 1}C5)`, values.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
+        excelFormula(
+          `=SUM(R2C6:R${totalRow - 1}C6)`,
+          values.reduce((sum, row) => sum + Number(excelNumericValue(row[5]) || 0), 0),
+        ),
+      ]);
+    }
+    return values;
+  };
+
+  const postingRows = (postings || []).map((row) => [
+    row.id,
+    row.date,
+    row.postingDate,
+    row.text,
+    row.amount,
+    row.userId,
+    row.account,
+    row.postingGroup,
+    row.status,
+  ]);
+  const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles><Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#EAF0FA" ss:Pattern="Solid"/></Style><Style ss:ID="Number"><NumberFormat ss:Format="#,##0.00"/></Style></Styles>
+${excelSheet("Posteringer", ["ID", "Dato", "Posteringsdato", "Tekst", "Beløb", "Bruger", "Konto", "Posteringsgruppe", "Status"], postingRows, new Set([4]))}
+${excelSheet("Resultatopgørelse", ["Konto", "Underkonto", "Kontekst", "Realiseret", "Budget", "Sidste år"], accountRows, new Set([3, 4, 5]))}
+${excelSheet("Posteringsgrupper", ["Gruppe", "Kontekst", "Realiseret", "Sidste år"], groupRows, new Set([2, 3]))}
+${excelSheet("Bankoverførsler", ["ID", "Dato", "Tekst", "Beløb fra bank", "Bogført beløb", "Difference"], sourceWithTotal(overview?.bankTransfers), new Set([3, 4, 5]))}
+${excelSheet("MobilePay", ["ID", "Dato", "Tekst", "Beløb fra MobilePay", "Bogført beløb", "Difference"], sourceWithTotal(overview?.mobilePayTransfers), new Set([3, 4, 5]))}
+</Workbook>`;
+  return xml;
+}
+
+const xlsxFormula = (formula, value) => ({
+  __xlsxFormula: true,
+  formula: formula.replace(/^=/, ""),
+  value: Number(value || 0),
+});
+
+const xlsxValue = (value) =>
+  value && typeof value === "object" && value.__xlsxFormula ? value.value : value;
+
+function appendXlsxSheet(workbook, name, headers, rows, numericColumns = new Set()) {
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+  rows.forEach((row, rowIndex) => {
+    row.forEach((value, columnIndex) => {
+      const address = XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex });
+      if (value && typeof value === "object" && value.__xlsxFormula) {
+        sheet[address] = { t: "n", v: value.value, f: value.formula, z: "#,##0.00" };
+      } else if (numericColumns.has(columnIndex) && value !== "" && value !== null && value !== undefined) {
+        sheet[address] = { t: "n", v: Number(value), z: "#,##0.00" };
+      }
+    });
+  });
+  sheet["!autofilter"] = { ref: XLSX.utils.encode_range(range) };
+  sheet["!cols"] = headers.map((header, index) => {
+    const lengths = [header, ...rows.map((row) => row[index])]
+      .map((value) => String(xlsxValue(value) ?? "").length);
+    return { wch: Math.min(42, Math.max(12, ...lengths) + 2) };
+  });
+  XLSX.utils.book_append_sheet(workbook, sheet, name);
+}
+
+function buildFinanceWorkbookXlsx({ postings, overview }) {
+  const workbook = XLSX.utils.book_new();
+  const accountRows = (overview?.accounts || []).map((row) => [
+    row.accountId,
+    row.mainAccount,
+    row.subAccount,
+    row.context,
+    row.realized,
+    row.budget,
+    row.previousYear,
+  ]);
+  if (accountRows.length) {
+    const totalRow = accountRows.length + 2;
+    accountRows.push([
+      "", "", "", "TOTAL",
+      xlsxFormula(`SUM(E2:E${totalRow - 1})`, accountRows.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
+      xlsxFormula(`SUM(F2:F${totalRow - 1})`, accountRows.reduce((sum, row) => sum + Number(row[5] || 0), 0)),
+      xlsxFormula(`SUM(G2:G${totalRow - 1})`, accountRows.reduce((sum, row) => sum + Number(row[6] || 0), 0)),
+    ]);
+  }
+
+  const groupRows = (overview?.postingGroups || []).map((row) => [
+    row.id,
+    row.name,
+    row.context,
+    row.amount,
+    row.previousAmount,
+  ]);
+  if (groupRows.length) {
+    const totalRow = groupRows.length + 2;
+    groupRows.push([
+      "", "", "TOTAL",
+      xlsxFormula(`SUM(D2:D${totalRow - 1})`, groupRows.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
+      xlsxFormula(`SUM(E2:E${totalRow - 1})`, groupRows.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
+    ]);
+  }
+
+  const sourceRows = (rows) => (rows || []).map((row, index) => [
+    row.id,
+    row.date,
+    row.text,
+    row.amount,
+    row.postedAmount,
+    xlsxFormula(`D${index + 2}-E${index + 2}`, Number(row.amount || 0) - Number(row.postedAmount || 0)),
+  ]);
+  const sourceWithTotal = (rows) => {
+    const values = sourceRows(rows);
+    if (values.length) {
+      const totalRow = values.length + 2;
+      values.push([
+        "", "", "TOTAL",
+        xlsxFormula(`SUM(D2:D${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
+        xlsxFormula(`SUM(E2:E${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
+        xlsxFormula(`SUM(F2:F${totalRow - 1})`, values.reduce((sum, row) => sum + Number(xlsxValue(row[5]) || 0), 0)),
+      ]);
+    }
+    return values;
+  };
+
+  const postingRows = (postings || []).map((row) => [
+    row.id,
+    row.date,
+    row.postingDate,
+    row.text,
+    row.amount,
+    row.userId,
+    row.accountId,
+    row.account,
+    row.postingGroupId,
+    row.postingGroup,
+    row.status,
+  ]);
+
+  appendXlsxSheet(workbook, "Posteringer", [
+    "ID", "Dato", "Posteringsdato", "Tekst", "Beløb", "Bruger", "Konto ID", "Konto", "Posteringsgruppe ID", "Posteringsgruppe", "Status",
+  ], postingRows, new Set([4]));
+  appendXlsxSheet(workbook, "Resultatopgørelse", [
+    "Konto ID", "Konto", "Underkonto", "Kontekst", "Realiseret", "Budget", "Sidste år",
+  ], accountRows, new Set([4, 5, 6]));
+  appendXlsxSheet(workbook, "Posteringsgrupper", [
+    "Posteringsgruppe ID", "Posteringsgruppe", "Kontekst", "Realiseret", "Sidste år",
+  ], groupRows, new Set([3, 4]));
+  appendXlsxSheet(workbook, "Bankoverførsler", [
+    "ID", "Dato", "Tekst", "Beløb fra bank", "Bogført beløb", "Difference",
+  ], sourceWithTotal(overview?.bankTransfers), new Set([3, 4, 5]));
+  appendXlsxSheet(workbook, "MobilePay", [
+    "ID", "Dato", "Tekst", "Beløb fra MobilePay", "Bogført beløb", "Difference",
+  ], sourceWithTotal(overview?.mobilePayTransfers), new Set([3, 4, 5]));
+  workbook.Workbook = {
+    CalcPr: { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true },
+  };
+  return XLSX.write(workbook, { bookType: "xlsx", type: "array", compression: true });
+}
+
+function SearchableSelect({ label, options = [], value, onChange, placeholder, compact = false }) {
   const [query, setQuery] = useState("");
   const selected = options.find((option) => option.id === value);
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(query.toLowerCase()),
+    String(option.label ?? option.id ?? "").toLowerCase().includes(query.toLowerCase()),
   );
+  const displayPlaceholder = compact && label === "Konto"
+    ? "V\u00e6lg konto..."
+    : compact && label === "Posteringsgruppe"
+      ? "V\u00e6lg gruppe..."
+      : placeholder;
   return (
-    <div className="finance-admin-detail-field finance-admin-detail-field-full">
-      <span>{label}</span>
-      <details className="admin-multi-select finance-admin-single-select">
+    <div className={compact ? "finance-admin-table-select" : "finance-admin-detail-field finance-admin-detail-field-full"}>
+      {!compact && <span>{label}</span>}
+      <details className={`admin-multi-select finance-admin-single-select${compact ? " finance-admin-table-select-details" : ""}`}>
         <summary>
-          <strong>{selected?.label || placeholder}</strong>
+          <strong>{selected?.label || displayPlaceholder}</strong>
         </summary>
         <div className="admin-multi-select-menu">
           <label className="admin-multi-select-search">
@@ -79,7 +346,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder }) {
               event.currentTarget.closest("details")?.removeAttribute("open");
             }}
           >
-            {placeholder}
+            {displayPlaceholder}
           </button>
           {filteredOptions.map((option) => (
             <button
@@ -97,6 +364,48 @@ function SearchableSelect({ label, options, value, onChange, placeholder }) {
         </div>
       </details>
     </div>
+  );
+}
+
+function FinanceResizableHeader({
+  label,
+  sortKey,
+  sort,
+  setSort,
+  width,
+  onResizeStart,
+}) {
+  const active = sort.key === sortKey;
+  const indicator = active
+    ? sort.direction === "asc"
+      ? "↑"
+      : "↓"
+    : "↕";
+  return (
+    <th style={{ width }}>
+      <button
+        className="menu-table-sort-button"
+        type="button"
+        onClick={() =>
+          setSort((current) => ({
+            key: sortKey,
+            direction:
+              current.key === sortKey && current.direction === "asc"
+                ? "desc"
+                : "asc",
+          }))
+        }
+      >
+        {label}
+        <span>{indicator}</span>
+      </button>
+      <span
+        className="finance-admin-column-resize-handle"
+        onMouseDown={(event) => onResizeStart(sortKey, event)}
+        role="separator"
+        aria-label={`Juster bredden på ${label}`}
+      />
+    </th>
   );
 }
 const total = (rows, key) =>
@@ -209,7 +518,7 @@ function AccountTable({ overview, year }) {
                       <td>
                         <Link
                           className="finance-admin-table-link"
-                          href={`/react/admin/finance/posteringer?year=${year}&accountId=${encodeURIComponent(sub.rows[0].accountId)}`}
+                          href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(sub.rows[0].accountId)}`}
                         >
                           Se posteringer
                         </Link>
@@ -234,7 +543,7 @@ function AccountTable({ overview, year }) {
                           <td>
                             <Link
                               className="finance-admin-table-link"
-                              href={`/react/admin/finance/posteringer?year=${year}&accountId=${encodeURIComponent(row.accountId)}`}
+                              href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(row.accountId)}`}
                             >
                               Se posteringer
                             </Link>
@@ -369,7 +678,7 @@ function SourceTable({ title, rows, year }) {
                 <td>
                   <Link
                     className="finance-admin-table-link"
-                    href={`/react/admin/finance/posteringer?year=${year}&${r.sourceType === "Bank" ? "bankKey" : "mobilePayKey"}=${r.sourceId}`}
+                    href={`/react/admin/finance/postings?year=${year}&${r.sourceType === "Bank" ? "bankKey" : "mobilePayKey"}=${r.sourceId}`}
                   >
                     Se posteringer
                   </Link>
@@ -460,7 +769,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
                   <td>
                     <Link
                       className="finance-admin-table-link"
-                      href={`/react/admin/finance/posteringer?year=${year}&search=${encodeURIComponent(name)}`}
+                      href={`/react/admin/finance/postings?year=${year}&search=${encodeURIComponent(name)}`}
                     >
                       Se posteringer
                     </Link>
@@ -480,7 +789,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
                       <td>
                         <Link
                           className="finance-admin-table-link"
-                          href={`/react/admin/finance/posteringer?year=${year}&search=${encodeURIComponent(row.context)}`}
+                          href={`/react/admin/finance/postings?year=${year}&search=${encodeURIComponent(row.context)}`}
                         >
                           Se posteringer
                         </Link>
@@ -620,7 +929,7 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
   );
 }
 
-export function FinanceAdminPostingsPage({ isAdmin, search }) {
+export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
   const initial = filters(search),
     now = new Date().getFullYear();
   const [year, setYear] = useState(initial.year),
@@ -636,14 +945,73 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
     [pageSize, setPageSize] = useState(25),
     [page, setPage] = useState(1),
     [data, setData] = useState(null),
+    [rows, setRows] = useState([]),
+    [options, setOptions] = useState(null),
     [members, setMembers] = useState([]),
+    [saving, setSaving] = useState(""),
     [error, setError] = useState("");
+  const [columnWidths, setColumnWidths] = useState({
+    id: 150,
+    date: 150,
+    postingDate: 170,
+    text: 250,
+    amount: 130,
+    userId: 180,
+    account: 190,
+    postingGroup: 210,
+    status: 155,
+  });
+  const resizeRef = useRef(null);
+  const columns = [
+    ["ID", "id"],
+    ["Dato", "date"],
+    ["Posteringsdato", "postingDate"],
+    ["Tekst", "text"],
+    ["Beløb", "amount"],
+    ["Bruger", "userId"],
+    ["Konto", "account"],
+    ["Posteringsgruppe", "postingGroup"],
+    ["Status", "status"],
+  ];
+  const startResize = (key, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    resizeRef.current = {
+      key,
+      startX: event.clientX,
+      startWidth: columnWidths[key],
+    };
+  };
   useEffect(() => {
-    if (isAdmin)
-      financeApi
-        .adminPostings(year, accountId, bankKey, mobilePayKey)
-        .then(setData)
-        .catch((e) => setError(e.message));
+    const handleMove = (event) => {
+      if (!resizeRef.current) return;
+      const { key, startX, startWidth } = resizeRef.current;
+      setColumnWidths((current) => ({
+        ...current,
+        [key]: Math.max(90, startWidth + event.clientX - startX),
+      }));
+    };
+    const handleUp = () => {
+      resizeRef.current = null;
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, []);
+  const load = () =>
+    Promise.all([
+      financeApi.adminPostings(year, accountId, bankKey, mobilePayKey),
+      financeApi.adminPostingOptions(),
+    ]).then(([result, editorOptions]) => {
+      setData(result);
+      setRows(result.postings || []);
+      setOptions(editorOptions);
+    });
+  useEffect(() => {
+    if (isAdmin) load().catch((e) => setError(e.message));
   }, [isAdmin, year, accountId, bankKey, mobilePayKey]);
   useEffect(() => {
     if (!isAdmin) return;
@@ -652,7 +1020,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
       .then(setMembers)
       .catch(() => setMembers([]));
   }, [isAdmin]);
-  const postings = data?.postings || [];
+  const postings = rows;
   const userNames = useMemo(
     () =>
       new Map(
@@ -714,6 +1082,72 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
     setBankKey("");
     setMobilePayKey("");
   };
+  const updateRow = (row, field, value) =>
+    setRows((current) =>
+      current.map((item) => (item === row ? { ...item, [field]: value } : item)),
+    );
+  const saveRow = async (row) => {
+    setSaving(row.id);
+    setError("");
+    try {
+      await financeApi.updateAdminPosting(row.id, {
+        accountId: row.accountId || "",
+        postingGroupId: row.postingGroupId || "",
+        userId: row.userId || "",
+        postingDate: row.postingDate || "",
+        text: row.text || "",
+        amount: Number(row.amount || 0),
+        document: row.document || "",
+      });
+      await load();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving("");
+    }
+  };
+  const duplicateRow = async (row) => {
+    setError("");
+    try {
+      const copy = await financeApi.duplicateAdminPosting(row.id);
+      await load();
+      navigate(`/react/admin/finance/postings/${encodeURIComponent(copy.id)}`);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+  const deleteRow = async (row) => {
+    if (!window.confirm(`Slet posteringen ${row.id}?`)) return;
+    setError("");
+    try {
+      await financeApi.deleteAdminPosting(row.id);
+      await load();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+  const updateSelectAndSave = (row, field, value) => {
+    updateRow(row, field, value);
+    saveRow({ ...row, [field]: value });
+  };
+  const userOptions = useMemo(() => {
+    const values = members.map((member) => ({
+      id: member.id ?? member.Id,
+      label:
+        member.name ??
+        member.Name ??
+        member.email ??
+        member.Email ??
+        member.id ??
+        member.Id,
+    }));
+    for (const row of rows) {
+      if (row.userId && !values.some((option) => option.id === row.userId)) {
+        values.push({ id: row.userId, label: row.userId });
+      }
+    }
+    return values;
+  }, [members, rows]);
   if (!isAdmin)
     return (
       <AdminLayout active="" canWrite={false}>
@@ -724,9 +1158,27 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
     );
   return (
     <AdminLayout active="" canWrite={true}>
-      <div className="menu-panel-header">
+      <div className="menu-panel-header finance-admin-postings-header">
         <div>
           <p className="menu-section-title">Posteringer</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            Redigér finansposteringer
+          </p>
+        </div>
+        <div className="finance-admin-header-actions">
+          <Link
+            className="finance-live-profile-link"
+            href="/react/admin/finance/postings"
+          >
+            Se posteringer
+          </Link>
+          <button
+            className="menu-create-button"
+            type="button"
+            onClick={() => navigate("/react/admin/finance/postings/new")}
+          >
+            + Manuel postering
+          </button>
         </div>
       </div>
       <div className="finance-admin-filters">
@@ -792,7 +1244,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
         <div className="finance-live-loading">Henter posteringer...</div>
       )}
       {data && (
-        <div className="finance-live-panel finance-admin-postings-table">
+        <div className="finance-live-panel finance-admin-postings-table finance-admin-cashier-table">
           <div className="finance-admin-table-controls">
             <label className="menu-table-page-size">
               <span>Vis</span>
@@ -814,66 +1266,198 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
           </div>
           <div className="finance-live-table-scroll">
             <table className="finance-live-table">
+              <colgroup>
+                {columns.map(([, key]) => (
+                  <col key={key} style={{ width: columnWidths[key] }} />
+                ))}
+                <col style={{ width: 285 }} />
+              </colgroup>
               <thead>
                 <tr>
-                  {[
-                    ["ID", "id"],
-                    ["Dato", "date"],
-                    ["Posteringsdato", "postingDate"],
-                    ["Tekst", "text"],
-                    ["Beløb", "amount"],
-                    ["Bruger", "userId"],
-                    ["Konto", "account"],
-                    ["Posteringsgruppe", "postingGroup"],
-                    ["Bilag", "document"],
-                    ["Kilde", "sourceType"],
-                    ["Status", "status"],
-                  ].map(([label, key]) => (
-                    <SortableHeader
+                  {columns.map(([label, key]) => (
+                    <FinanceResizableHeader
                       key={key}
                       label={label}
                       sortKey={key}
                       sort={sort}
                       setSort={setSort}
+                      width={columnWidths[key]}
+                      onResizeStart={startResize}
                     />
                   ))}
+                  <th style={{ width: 285 }}>Handling</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleItems.map((p) => (
-                  <tr
-                    className="finance-admin-clickable-row"
-                    key={p.id}
-                    onClick={() =>
-                      navigate(
-                        `/react/admin/finance/posteringer/${encodeURIComponent(p.id)}`,
-                      )
-                    }
-                    onKeyDown={(event) =>
-                      event.key === "Enter" &&
-                      navigate(
-                        `/react/admin/finance/posteringer/${encodeURIComponent(p.id)}`,
-                      )
-                    }
-                    role="link"
-                    tabIndex="0"
-                  >
-                    <td>{p.id}</td>
-                    <td>{p.date}</td>
-                    <td>{p.postingDate}</td>
-                    <td>{p.text}</td>
-                    <td className={cls(p.amount)}>{money(p.amount)}</td>
-                    <td>{p.userId ? userLabel(p.userId) : "—"}</td>
-                    <td>{p.account || "—"}</td>
-                    <td>{p.postingGroup || "—"}</td>
-                    <td>{p.document ? "Ja" : "—"}</td>
-                    <td>{p.sourceType}</td>
-                    <td>{p.status}</td>
+                  <tr key={p.id}>
+                    <td>
+                      <input
+                        className="finance-admin-inline-input is-readonly"
+                        value={p.id}
+                        readOnly
+                        aria-label={`ID for ${p.id}`}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="finance-admin-inline-input is-readonly"
+                        value={p.date || ""}
+                        readOnly
+                        aria-label={`Dato for ${p.id}`}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="finance-admin-inline-input"
+                        type="date"
+                        value={p.postingDate || ""}
+                        onChange={(event) =>
+                          updateRow(p, "postingDate", event.target.value)
+                        }
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Posteringsdato for ${p.id}`}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="finance-admin-inline-input"
+                        value={p.text || ""}
+                        onChange={(event) => updateRow(p, "text", event.target.value)}
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Tekst for ${p.id}`}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="finance-admin-inline-input finance-admin-amount-input"
+                        type="number"
+                        step="0.01"
+                        value={p.amount ?? ""}
+                        onChange={(event) => updateRow(p, "amount", event.target.value)}
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Beløb for ${p.id}`}
+                      />
+                    </td>
+                    <td>
+                      <SearchableSelect
+                        label="Bruger"
+                        options={userOptions}
+                        value={p.userId || ""}
+                        onChange={(value) => updateSelectAndSave(p, "userId", value)}
+                        placeholder="Ingen bruger"
+                        compact
+                      />
+                      <select
+                        style={{ display: "none" }}
+                        className="finance-admin-inline-input"
+                        value={p.userId || ""}
+                        onChange={(event) => updateRow(p, "userId", event.target.value)}
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Bruger for ${p.id}`}
+                      >
+                        <option value="">Ingen bruger</option>
+                        {userOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <SearchableSelect
+                        label="Konto"
+                        options={options?.accounts || []}
+                        value={p.accountId || ""}
+                        onChange={(value) => updateSelectAndSave(p, "accountId", value)}
+                        placeholder="VÃ¦lg konto..."
+                        compact
+                      />
+                      <select
+                        style={{ display: "none" }}
+                        className="finance-admin-inline-input"
+                        value={p.accountId || ""}
+                        onChange={(event) => updateRow(p, "accountId", event.target.value)}
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Konto for ${p.id}`}
+                      >
+                        <option value="">Vælg konto...</option>
+                        {(options?.accounts || []).map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <SearchableSelect
+                        label="Posteringsgruppe"
+                        options={options?.postingGroups || []}
+                        value={p.postingGroupId || ""}
+                        onChange={(value) => updateSelectAndSave(p, "postingGroupId", value)}
+                        placeholder="VÃ¦lg gruppe..."
+                        compact
+                      />
+                      <select
+                        style={{ display: "none" }}
+                        className="finance-admin-inline-input"
+                        value={p.postingGroupId || ""}
+                        onChange={(event) =>
+                          updateRow(p, "postingGroupId", event.target.value)
+                        }
+                        onBlur={() => saveRow(p)}
+                        aria-label={`Posteringsgruppe for ${p.id}`}
+                      >
+                        <option value="">Vælg gruppe...</option>
+                        {(options?.postingGroups || []).map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <span
+                        className={`finance-admin-status is-${p.status
+                          .toLowerCase()
+                          .replaceAll(" ", "-")}`}
+                      >
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="finance-admin-posting-actions">
+                      <button
+                        className="finance-admin-row-more"
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            `/react/admin/finance/postings/${encodeURIComponent(p.id)}`,
+                          )
+                        }
+                      >
+                        Se mere
+                      </button>
+                      <button
+                        className="finance-admin-row-copy"
+                        type="button"
+                        disabled={saving === p.id}
+                        onClick={() => duplicateRow(p)}
+                      >
+                        Dupliker
+                      </button>
+                      <button
+                        className="finance-admin-row-delete"
+                        type="button"
+                        onClick={() => deleteRow(p)}
+                      >
+                        Slet
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {visibleItems.length === 0 && (
                   <tr>
-                    <td colSpan="11" className="finance-admin-empty">
+                    <td colSpan="10" className="finance-admin-empty">
                       Ingen posteringer matcher filtrene.
                     </td>
                   </tr>
@@ -894,7 +1478,1254 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   );
 }
 
+export function FinanceAdminPostingsPage({ isAdmin, search }) {
+  const initial = filters(search);
+  const now = new Date().getFullYear();
+  const [year, setYear] = useState(initial.year);
+  const [accountId, setAccountId] = useState(initial.accountId);
+  const [bankKey, setBankKey] = useState(initial.bankKey);
+  const [mobilePayKey, setMobilePayKey] = useState(initial.mobilePayKey);
+  const [query, setQuery] = useState(initial.query);
+  const [status, setStatus] = useState("");
+  const [account, setAccount] = useState("");
+  const [group, setGroup] = useState("");
+  const [user, setUser] = useState("");
+  const [sort, setSort] = useState({ key: "postingDate", direction: "desc" });
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    financeApi
+      .adminPostings(year, accountId, bankKey, mobilePayKey)
+      .then(setData)
+      .catch((requestError) => setError(requestError.message));
+  }, [isAdmin, year, accountId, bankKey, mobilePayKey]);
+  useEffect(() => {
+    if (isAdmin) membersApi.listAdmin().then(setMembers).catch(() => setMembers([]));
+  }, [isAdmin]);
+
+  const postings = data?.postings || [];
+  const userNames = useMemo(
+    () =>
+      new Map(
+        members.map((member) => [
+          member.id ?? member.Id,
+          member.name ?? member.Name ?? member.email ?? member.Email ?? member.id ?? member.Id,
+        ]),
+      ),
+    [members],
+  );
+  const userLabel = (userId) => userNames.get(userId) || userId;
+  const values = (key) => [...new Set(postings.map((p) => p[key]).filter(Boolean))].sort();
+  const shown = postings.filter(
+    (p) =>
+      (!query || [p.id, p.text, p.account, p.postingGroup].join(" ").toLowerCase().includes(query.toLowerCase())) &&
+      (!status || p.status === status) &&
+      (!account || p.account === account) &&
+      (!group || p.postingGroup === group) &&
+      (!user || p.userId === user),
+  );
+  const sorted = useSortedMembers(shown, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+  useEffect(() => setPage(1), [query, status, account, group, user, year, pageSize, sort.key, sort.direction]);
+  const reset = () => {
+    setYear(now);
+    setQuery("");
+    setStatus("");
+    setAccount("");
+    setGroup("");
+    setUser("");
+    setAccountId("");
+    setBankKey("");
+    setMobilePayKey("");
+  };
+  const exportRows = async () => {
+    setExporting(true);
+    setError("");
+    try {
+      const overview = await financeApi.adminOverview(year);
+      const workbook = buildFinanceWorkbookXlsx({
+        year,
+        postings: sorted,
+        overview,
+      });
+      const blob = new Blob([workbook], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `finans-${year}-eksport.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">Kun ADMIN har adgang til Finans admin.</p>
+      </AdminLayout>
+    );
+  return (
+    <AdminLayout active="" canWrite={true}>
+      <div className="menu-panel-header">
+        <div><p className="menu-section-title">Posteringer</p></div>
+        <div className="finance-admin-header-actions">
+          <button
+            className="menu-create-button"
+            type="button"
+            onClick={exportRows}
+            disabled={exporting}
+          >
+            {exporting ? "Eksporterer..." : "Eksporter"}
+          </button>
+          <Link
+            className="finance-live-profile-link"
+            href="/react/admin/finance/postings/edit"
+          >
+            Redigér posteringer
+          </Link>
+        </div>
+      </div>
+      <div className="finance-admin-filters">
+        <label>År<select value={year} onChange={(event) => setYear(Number(event.target.value))}><option>{now}</option><option>{now - 1}</option></select></label>
+        <label>Søg<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ID, tekst, konto..." /></label>
+        <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Alle</option><option>Ukategoriseret</option><option>Mangler bilag</option><option>Bogført</option></select></label>
+        <label>Konto<select value={account} onChange={(event) => setAccount(event.target.value)}><option value="">Alle konti</option>{values("account").map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label>Posteringsgruppe<select value={group} onChange={(event) => setGroup(event.target.value)}><option value="">Alle grupper</option>{values("postingGroup").map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label>Bruger<select value={user} onChange={(event) => setUser(event.target.value)}><option value="">Alle brugere</option>{values("userId").map((value) => <option key={value} value={value}>{userLabel(value)}</option>)}</select></label>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      {!data && !error && <div className="finance-live-loading">Henter posteringer...</div>}
+      {data && (
+        <div className="finance-live-panel finance-admin-postings-table">
+          <div className="finance-admin-table-controls">
+            <label className="menu-table-page-size"><span>Vis</span><select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>{[10, 25, 50, 100].map((size) => <option value={size} key={size}>{size}</option>)}</select><span>pr. side</span></label>
+            <button className="finance-admin-clear-filter" type="button" onClick={reset}>Nulstil</button>
+          </div>
+          <div className="finance-live-table-scroll">
+            <table className="finance-live-table">
+              <thead><tr>{[["ID", "id"], ["Dato", "date"], ["Posteringsdato", "postingDate"], ["Tekst", "text"], ["Beløb", "amount"], ["Bruger", "userId"], ["Konto", "account"], ["Posteringsgruppe", "postingGroup"], ["Bilag", "document"], ["Kilde", "sourceType"], ["Status", "status"]].map(([label, key]) => <SortableHeader key={key} label={label} sortKey={key} sort={sort} setSort={setSort} />)}</tr></thead>
+              <tbody>
+                {visibleItems.map((posting) => (
+                  <tr className="finance-admin-clickable-row" key={posting.id} onClick={() => navigate(`/react/admin/finance/postings/${encodeURIComponent(posting.id)}`)} onKeyDown={(event) => event.key === "Enter" && navigate(`/react/admin/finance/postings/${encodeURIComponent(posting.id)}`)} role="link" tabIndex="0">
+                    <td>{posting.id}</td><td>{posting.date}</td><td>{posting.postingDate}</td><td>{posting.text}</td><td className={cls(posting.amount)}>{money(posting.amount)}</td><td>{posting.userId ? userLabel(posting.userId) : "—"}</td><td>{posting.account || "—"}</td><td>{posting.postingGroup || "—"}</td><td>{posting.document ? "Ja" : "—"}</td><td>{posting.sourceType}</td><td>{posting.status}</td>
+                  </tr>
+                ))}
+                {visibleItems.length === 0 && <tr><td colSpan="11" className="finance-admin-empty">Ingen posteringer matcher filtrene.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={currentPage} pageCount={pageCount} total={shown.length} pageSize={pageSize} setPage={setPage} />
+        </div>
+      )}
+    </AdminLayout>
+  );
+}
+
+export function FinanceAdminAccountsPage({ isAdmin }) {
+  const [rows, setRows] = useState([]);
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState({ key: "accountKey", direction: "asc" });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setLoading(true);
+    financeApi
+      .adminAccounts()
+      .then(setRows)
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, [isAdmin]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((row) =>
+      [
+        row.id,
+        row.mainAccount,
+        row.accountKey,
+        row.subAccount,
+        row.subAccountKey,
+        row.context,
+        row.contextKey,
+      ]
+        .map((value) => String(value ?? ""))
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [rows, search]);
+  const sorted = useSortedMembers(filtered, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(
+    sorted,
+    page,
+    pageSize,
+  );
+
+  useEffect(() => setPage(1), [search, pageSize, sort.key, sort.direction]);
+
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til Finans admin.
+        </p>
+      </AdminLayout>
+    );
+
+  return (
+    <AdminLayout active="" canWrite={true}>
+      <div className="menu-panel-header finance-admin-account-plan-header">
+        <div>
+          <p className="menu-section-title">Konti</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            Se kontoplan
+          </p>
+        </div>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      {loading && !error && (
+        <div className="finance-live-loading">Henter kontoplan...</div>
+      )}
+      {!loading && !error && (
+        <>
+          <SearchToolbar
+            search={search}
+            setSearch={setSearch}
+            pageSize={pageSize}
+            setPageSize={setPageSize}
+            searchPlaceholder="Søg i kontoplan"
+          />
+          <div className="finance-live-panel finance-admin-account-plan-table">
+            <div className="finance-live-table-scroll">
+              <table className="finance-live-table">
+                <thead>
+                  <tr>
+                    <SortableHeader
+                      label="ID"
+                      sortKey="id"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Main account"
+                      sortKey="mainAccount"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Account key"
+                      sortKey="accountKey"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Sub account"
+                      sortKey="subAccount"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Sub account key"
+                      sortKey="subAccountKey"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Context"
+                      sortKey="context"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                    <SortableHeader
+                      label="Context key"
+                      sortKey="contextKey"
+                      sort={sort}
+                      setSort={setSort}
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleItems.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.id || "—"}</td>
+                      <td>{row.mainAccount || "—"}</td>
+                      <td>{row.accountKey ?? "—"}</td>
+                      <td>{row.subAccount || "—"}</td>
+                      <td>{row.subAccountKey ?? "—"}</td>
+                      <td>{row.context || "—"}</td>
+                      <td>{row.contextKey ?? "—"}</td>
+                    </tr>
+                  ))}
+                  {visibleItems.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="finance-admin-empty">
+                        Ingen konti matcher søgningen.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <Pagination
+            page={currentPage}
+            pageCount={pageCount}
+            total={sorted.length}
+            pageSize={pageSize}
+            setPage={setPage}
+          />
+        </>
+      )}
+    </AdminLayout>
+  );
+}
+
+function newBudgetRow() {
+  return {
+    id: "",
+    accountId: "",
+    postingGroupId: "",
+    yearActual: new Date().getFullYear(),
+    forecast: 0,
+    forecastType: "",
+    _new: true,
+  };
+}
+
+export function FinanceAdminBudgetsPage({ isAdmin }) {
+  const [data, setData] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState({ key: "yearActual", direction: "desc" });
+  const [saving, setSaving] = useState("");
+  const [error, setError] = useState("");
+  const [rowErrors, setRowErrors] = useState({});
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    financeApi
+      .adminBudgets()
+      .then((result) => {
+        setData(result);
+        setRows(
+          (result.budgets || []).map((row) => ({
+            ...row,
+            _originalId: row.id,
+          })),
+        );
+      })
+      .catch((requestError) => setError(requestError.message));
+  }, [isAdmin]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((row) =>
+      [
+        row.id,
+        row.accountId,
+        row.postingGroupId,
+        row.yearActual,
+        row.forecast,
+        row.forecastType,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [rows, search]);
+  const sorted = useSortedMembers(filtered, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(
+    sorted,
+    page,
+    pageSize,
+  );
+
+  useEffect(() => setPage(1), [search, pageSize, sort.key, sort.direction]);
+
+  const accountOptions = data?.accounts || [];
+  const groupOptions = data?.postingGroups || [];
+  const updateRow = (row, field, value) => {
+    setRows((current) =>
+      current.map((item) =>
+        item === row ? { ...item, [field]: value } : item,
+      ),
+    );
+    setRowErrors((current) => ({
+      ...current,
+      [row._originalId || row.id]: "",
+    }));
+  };
+  const addRow = () => {
+    setRows((current) => [newBudgetRow(), ...current]);
+    setPage(1);
+  };
+  const removeDraft = (row) =>
+    setRows((current) => current.filter((item) => item !== row));
+  const deleteRow = async (row) => {
+    if (!window.confirm(`Slet budgetposten ${row.id}?`)) return;
+    try {
+      await financeApi.deleteAdminBudget(row.id);
+      setRows((current) => current.filter((item) => item.id !== row.id));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+  const saveRow = async (row) => {
+    const key = row._originalId || row.id || "new";
+    if (!row.id.trim()) {
+      setRowErrors((current) => ({
+        ...current,
+        [key]: "ID må ikke være tomt.",
+      }));
+      return;
+    }
+    if (!row.accountId) {
+      setRowErrors((current) => ({
+        ...current,
+        [key]: "Account ID skal vælges.",
+      }));
+      return;
+    }
+    setSaving(key);
+    setError("");
+    try {
+      const payload = {
+        id: row.id.trim(),
+        accountId: row.accountId,
+        postingGroupId: row.postingGroupId || "",
+        yearActual: Number(row.yearActual),
+        forecast: Number(row.forecast),
+        forecastType: row.forecastType || "",
+      };
+      const saved = row._new
+        ? await financeApi.createAdminBudget(payload)
+        : await financeApi.updateAdminBudget(
+            row._originalId || row.id,
+            payload,
+          );
+      setRows((current) =>
+        current.map((item) =>
+          item === row ? { ...saved, _originalId: saved.id } : item,
+        ),
+      );
+      setRowErrors((current) => ({ ...current, [key]: "" }));
+    } catch (requestError) {
+      setRowErrors((current) => ({ ...current, [key]: requestError.message }));
+    } finally {
+      setSaving("");
+    }
+  };
+
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til Finans admin.
+        </p>
+      </AdminLayout>
+    );
+
+  return (
+    <AdminLayout active="" canWrite={true}>
+      <div className="menu-panel-header finance-admin-budget-header finance-admin-budgets-header">
+        <div>
+          <p className="menu-section-title">Budgetter</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            Administrér budgetlinjer
+          </p>
+        </div>
+        <button
+          className="menu-create-button"
+          type="button"
+          onClick={() => navigate("/react/admin/finance/budgets/new")}
+        >
+          + Ny post
+        </button>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      {!data && !error && (
+        <div className="finance-live-loading">Henter budgetter...</div>
+      )}
+      {data && (
+        <>
+          <SearchToolbar
+            search={search}
+            setSearch={setSearch}
+            pageSize={pageSize}
+            setPageSize={setPageSize}
+            searchPlaceholder="Søg i budgetter"
+          />
+          <div className="finance-live-panel finance-admin-budget-table finance-admin-budgets-table">
+            <div className="finance-live-table-scroll">
+              <table className="finance-live-table">
+                <thead>
+                  <tr>
+                    {[
+                      "id",
+                      "accountId",
+                      "postingGroupId",
+                      "yearActual",
+                      "forecast",
+                      "forecastType",
+                    ].map((key) => (
+                      <SortableHeader
+                        key={key}
+                        label={
+                          {
+                            id: "ID",
+                            accountId: "Account ID",
+                            postingGroupId: "Posteringsgruppe",
+                            yearActual: "År",
+                            forecast: "Beløb",
+                            forecastType: "Budgettype",
+                          }[key]
+                        }
+                        sortKey={key}
+                        sort={sort}
+                        setSort={setSort}
+                      />
+                    ))}
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleItems.map((row) => {
+                    const key = row._originalId || row.id || "new";
+                    return (
+                      <tr key={key}>
+                        <td>
+                          <input
+                            value={row.id}
+                            onChange={(event) =>
+                              updateRow(row, "id", event.target.value)
+                            }
+                            aria-label="ID"
+                          />
+                        </td>
+                        <td>
+                          <SearchableSelect
+                            label="Konto"
+                            options={accountOptions}
+                            value={row.accountId}
+                            onChange={(value) => updateRow(row, "accountId", value)}
+                            placeholder="VÃ¦lg konto..."
+                            compact
+                          />
+                          <select
+                            style={{ display: "none" }}
+                            value={row.accountId}
+                            onChange={(event) =>
+                              updateRow(row, "accountId", event.target.value)
+                            }
+                            aria-label="Account ID"
+                            required
+                          >
+                            <option value="">Vælg konto...</option>
+                            {accountOptions.map((option) => (
+                              <option value={option.id} key={option.id}>
+                                {option.id}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <SearchableSelect
+                            label="Posteringsgruppe"
+                            options={groupOptions}
+                            value={row.postingGroupId || ""}
+                            onChange={(value) => updateRow(row, "postingGroupId", value)}
+                            placeholder="Ingen posteringsgruppe"
+                            compact
+                          />
+                          <select
+                            style={{ display: "none" }}
+                            value={row.postingGroupId || ""}
+                            onChange={(event) =>
+                              updateRow(
+                                row,
+                                "postingGroupId",
+                                event.target.value,
+                              )
+                            }
+                            aria-label="Posteringsgruppe"
+                          >
+                            <option value="">Ingen posteringsgruppe</option>
+                            {groupOptions.map((option) => (
+                              <option value={option.id} key={option.id}>
+                                {option.id}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={row.yearActual}
+                            onChange={(event) =>
+                              updateRow(row, "yearActual", event.target.value)
+                            }
+                            aria-label="År"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.forecast}
+                            onChange={(event) =>
+                              updateRow(row, "forecast", event.target.value)
+                            }
+                            aria-label="Beløb"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={row.forecastType}
+                            onChange={(event) =>
+                              updateRow(row, "forecastType", event.target.value)
+                            }
+                            aria-label="Budgettype"
+                          />
+                        </td>
+                        <td className="finance-admin-budget-actions">
+                          <button
+                            className="finance-admin-save-button"
+                            type="button"
+                            disabled={saving === key}
+                            onClick={() => saveRow(row)}
+                          >
+                            {saving === key ? "Gemmer..." : "Gem"}
+                          </button>
+                          {!row._new && (
+                            <button
+                              className="finance-admin-delete-button"
+                              type="button"
+                              onClick={() => deleteRow(row)}
+                            >
+                              Slet
+                            </button>
+                          )}
+                          {row._new && (
+                            <button
+                              className="finance-admin-cancel-button"
+                              type="button"
+                              onClick={() => removeDraft(row)}
+                            >
+                              Fjern
+                            </button>
+                          )}
+                          {rowErrors[key] && (
+                            <small className="finance-admin-row-error">
+                              {rowErrors[key]}
+                            </small>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {visibleItems.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="finance-admin-empty">
+                        Ingen budgetposter fundet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <Pagination
+            page={currentPage}
+            pageCount={pageCount}
+            total={sorted.length}
+            pageSize={pageSize}
+            setPage={setPage}
+          />
+        </>
+      )}
+    </AdminLayout>
+  );
+}
+
+export function FinanceAdminBudgetDetailPage({ isAdmin, id }) {
+  const isNew = id === "new";
+  const [options, setOptions] = useState(null);
+  const [form, setForm] = useState(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    Promise.all([
+      financeApi.adminBudgets(),
+      isNew ? Promise.resolve(newBudgetRow()) : financeApi.adminBudget(id),
+    ])
+      .then(([budgetData, budget]) => {
+        setOptions(budgetData);
+        setForm({
+          id: budget.id || "",
+          accountId: budget.accountId || "",
+          postingGroupId: budget.postingGroupId || "",
+          yearActual: budget.yearActual || new Date().getFullYear(),
+          forecast: budget.forecast ?? 0,
+          forecastType: budget.forecastType || "",
+        });
+      })
+      .catch((requestError) => setError(requestError.message));
+  }, [id, isAdmin, isNew]);
+
+  const update = (field, value) =>
+    setForm((current) => ({ ...current, [field]: value }));
+
+  async function save(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    if (!form.id.trim()) return setError("ID må ikke være tomt.");
+    if (!form.accountId) return setError("Account ID skal vælges.");
+    if (
+      !Number.isInteger(Number(form.yearActual)) ||
+      Number(form.yearActual) < 1
+    ) {
+      return setError("År skal være gyldigt.");
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        id: form.id.trim(),
+        accountId: form.accountId,
+        postingGroupId: form.postingGroupId || "",
+        yearActual: Number(form.yearActual),
+        forecast: Number(form.forecast),
+        forecastType: form.forecastType || "",
+      };
+      if (isNew) await financeApi.createAdminBudget(payload);
+      else await financeApi.updateAdminBudget(id, payload);
+      navigate("/react/admin/finance/budgets");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (isNew || !window.confirm(`Slet budgetposten ${id}?`)) return;
+    try {
+      await financeApi.deleteAdminBudget(id);
+      navigate("/react/admin/finance/budgets");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til Finans admin.
+        </p>
+      </AdminLayout>
+    );
+
+  return (
+    <AdminLayout
+      active=""
+      canWrite={true}
+      contentClassName="finance-admin-detail-content"
+    >
+      <div className="menu-panel-header finance-admin-detail-header finance-admin-budget-detail-header">
+        <div>
+          <p className="menu-section-title">Budget</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            {isNew ? "Opret budgetpost" : "Redigér budgetpost"}
+          </p>
+        </div>
+        <Link
+          className="finance-live-profile-link"
+          href="/react/admin/finance/budgets"
+        >
+          Tilbage til budgetter
+        </Link>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      {!form && !error && (
+        <div className="finance-live-loading">Henter budgetpost...</div>
+      )}
+      {form && options && (
+        <form
+          className="finance-admin-budget-detail-form finance-admin-budget-detail-editor"
+          onSubmit={save}
+        >
+          <div className="finance-admin-detail-form-heading">
+            <div>
+              <p className="finance-live-kicker">Budgetlinje</p>
+              <h2>{isNew ? "Ny budgetpost" : form.id}</h2>
+            </div>
+          </div>
+          <div className="finance-admin-detail-fields">
+            <label>
+              ID
+              <input
+                value={form.id}
+                onChange={(event) => update("id", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              År
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.yearActual}
+                onChange={(event) => update("yearActual", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Account ID
+              <select
+                value={form.accountId}
+                onChange={(event) => update("accountId", event.target.value)}
+                required
+              >
+                <option value="">Vælg konto...</option>
+                {(options.accounts || []).map((option) => (
+                  <option value={option.id} key={option.id}>
+                    {option.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Posteringsgruppe
+              <select
+                value={form.postingGroupId}
+                onChange={(event) =>
+                  update("postingGroupId", event.target.value)
+                }
+              >
+                <option value="">Ingen posteringsgruppe</option>
+                {(options.postingGroups || []).map((option) => (
+                  <option value={option.id} key={option.id}>
+                    {option.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Beløb
+              <input
+                type="number"
+                step="0.01"
+                value={form.forecast}
+                onChange={(event) => update("forecast", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Budgettype
+              <input
+                value={form.forecastType}
+                onChange={(event) => update("forecastType", event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="finance-admin-detail-actions">
+            <button className="profile-button" type="submit" disabled={saving}>
+              {saving ? "Gemmer..." : "Gem ændringer"}
+            </button>
+            {!isNew && (
+              <button
+                className="finance-admin-delete-button"
+                type="button"
+                onClick={remove}
+              >
+                Slet budgetpost
+              </button>
+            )}
+            {message && (
+              <p className="status-message status-message-success">{message}</p>
+            )}
+          </div>
+        </form>
+      )}
+    </AdminLayout>
+  );
+}
+
+function newPostingGroup() {
+  return { id: "", postingGroup: "", context: "", _new: true };
+}
+
+export function FinanceAdminPostingGroupsPage({ isAdmin }) {
+  const [rows, setRows] = useState([]);
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState({ key: "postingGroup", direction: "asc" });
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState("");
+
+  const load = () =>
+    financeApi
+      .adminPostingGroups()
+      .then((result) =>
+        setRows(result.map((row) => ({ ...row, _originalId: row.id }))),
+      );
+  useEffect(() => {
+    if (isAdmin) load().catch((requestError) => setError(requestError.message));
+  }, [isAdmin]);
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return rows.filter(
+      (row) =>
+        !term ||
+        [row.id, row.postingGroup, row.context]
+          .join(" ")
+          .toLowerCase()
+          .includes(term),
+    );
+  }, [rows, search]);
+  const sorted = useSortedMembers(filtered, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(
+    sorted,
+    page,
+    pageSize,
+  );
+  useEffect(() => setPage(1), [search, pageSize, sort.key, sort.direction]);
+  const updateRow = (row, field, value) =>
+    setRows((current) =>
+      current.map((item) =>
+        item === row ? { ...item, [field]: value } : item,
+      ),
+    );
+  const saveRow = async (row) => {
+    if (!row.id.trim()) return setError("ID må ikke være tomt.");
+    const key = row._originalId || row.id;
+    setSaving(key);
+    setError("");
+    try {
+      const payload = {
+        id: row.id.trim(),
+        postingGroup: row.postingGroup || "",
+        context: row.context || "",
+      };
+      const saved = row._new
+        ? await financeApi.createAdminPostingGroup(payload)
+        : await financeApi.updateAdminPostingGroup(
+            row._originalId || row.id,
+            payload,
+          );
+      setRows((current) =>
+        current.map((item) =>
+          item === row ? { ...saved, _originalId: saved.id } : item,
+        ),
+      );
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving("");
+    }
+  };
+  const deleteRow = async (row) => {
+    if (!window.confirm(`Slet posteringsgruppen ${row.id}?`)) return;
+    try {
+      await financeApi.deleteAdminPostingGroup(row.id);
+      setRows((current) => current.filter((item) => item !== row));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til Finans admin.
+        </p>
+      </AdminLayout>
+    );
+  return (
+    <AdminLayout active="" canWrite={true}>
+      <div className="menu-panel-header finance-admin-budget-header finance-admin-groups-header">
+        <div>
+          <p className="menu-section-title">Posteringsgrupper</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            Redigér posteringsgrupper
+          </p>
+        </div>
+        <button
+          className="menu-create-button"
+          type="button"
+          onClick={() => navigate("/react/admin/finance/posting-groups/new")}
+        >
+          + Ny post
+        </button>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      <SearchToolbar
+        search={search}
+        setSearch={setSearch}
+        pageSize={pageSize}
+        setPageSize={setPageSize}
+        searchPlaceholder="Søg i posteringsgrupper"
+      />
+      <div className="finance-live-panel finance-admin-budget-table finance-admin-groups-table">
+        <div className="finance-live-table-scroll">
+          <table className="finance-live-table">
+            <thead>
+              <tr>
+                <SortableHeader
+                  label="ID"
+                  sortKey="id"
+                  sort={sort}
+                  setSort={setSort}
+                />
+                <SortableHeader
+                  label="Posting group"
+                  sortKey="postingGroup"
+                  sort={sort}
+                  setSort={setSort}
+                />
+                <SortableHeader
+                  label="Context"
+                  sortKey="context"
+                  sort={sort}
+                  setSort={setSort}
+                />
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleItems.map((row) => {
+                const key = row._originalId || row.id || "new";
+                return (
+                  <tr key={key}>
+                    <td>
+                      <input
+                        value={row.id}
+                        onChange={(event) =>
+                          updateRow(row, "id", event.target.value)
+                        }
+                        aria-label="ID"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={row.postingGroup}
+                        onChange={(event) =>
+                          updateRow(row, "postingGroup", event.target.value)
+                        }
+                        aria-label="Posting group"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={row.context}
+                        onChange={(event) =>
+                          updateRow(row, "context", event.target.value)
+                        }
+                        aria-label="Context"
+                      />
+                    </td>
+                    <td className="finance-admin-budget-actions">
+                      <button
+                        className="finance-admin-save-button"
+                        type="button"
+                        disabled={saving === key}
+                        onClick={() => saveRow(row)}
+                      >
+                        {saving === key ? "Gemmer..." : "Gem"}
+                      </button>
+                      <button
+                        className="finance-admin-delete-button"
+                        type="button"
+                        onClick={() => deleteRow(row)}
+                      >
+                        Slet
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {visibleItems.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="finance-admin-empty">
+                    Ingen posteringsgrupper fundet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <Pagination
+        page={currentPage}
+        pageCount={pageCount}
+        total={sorted.length}
+        pageSize={pageSize}
+        setPage={setPage}
+      />
+    </AdminLayout>
+  );
+}
+
+export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
+  const isNew = id === "new";
+  const [form, setForm] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!isAdmin) return;
+    (isNew
+      ? Promise.resolve(newPostingGroup())
+      : financeApi.adminPostingGroup(id)
+    )
+      .then(setForm)
+      .catch((requestError) => setError(requestError.message));
+  }, [id, isAdmin, isNew]);
+  const update = (field, value) =>
+    setForm((current) => ({ ...current, [field]: value }));
+  async function save(event) {
+    event.preventDefault();
+    if (!form.id.trim()) return setError("ID må ikke være tomt.");
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        id: form.id.trim(),
+        postingGroup: form.postingGroup || "",
+        context: form.context || "",
+      };
+      if (isNew) await financeApi.createAdminPostingGroup(payload);
+      else await financeApi.updateAdminPostingGroup(id, payload);
+      navigate("/react/admin/finance/posting-groups");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function remove() {
+    if (isNew || !window.confirm(`Slet posteringsgruppen ${id}?`)) return;
+    try {
+      await financeApi.deleteAdminPostingGroup(id);
+      navigate("/react/admin/finance/posting-groups");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+  if (!isAdmin)
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til Finans admin.
+        </p>
+      </AdminLayout>
+    );
+  return (
+    <AdminLayout
+      active=""
+      canWrite={true}
+      contentClassName="finance-admin-detail-content"
+    >
+      <div className="menu-panel-header finance-admin-detail-header finance-admin-posting-group-detail-header">
+        <div>
+          <p className="menu-section-title">Posteringsgruppe</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">
+            {isNew ? "Opret posteringsgruppe" : "Redigér posteringsgruppe"}
+          </p>
+        </div>
+        <Link
+          className="finance-live-profile-link"
+          href="/react/admin/finance/posting-groups"
+        >
+          Tilbage til posteringsgrupper
+        </Link>
+      </div>
+      {error && <p className="finance-live-error">{error}</p>}
+      {!form && !error && (
+        <div className="finance-live-loading">Henter posteringsgruppe...</div>
+      )}
+      {form && (
+        <form
+          className="finance-admin-budget-detail-form finance-admin-posting-group-detail-form"
+          onSubmit={save}
+        >
+          <p className="finance-live-kicker">Redigering</p>
+          <h2>{isNew ? "Ny posteringsgruppe" : form.id}</h2>
+          <div className="finance-admin-detail-fields">
+            <label>
+              ID
+              <input
+                value={form.id}
+                onChange={(event) => update("id", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Posting group
+              <input
+                value={form.postingGroup}
+                onChange={(event) => update("postingGroup", event.target.value)}
+              />
+            </label>
+            <label className="finance-admin-detail-field-full">
+              Context
+              <input
+                value={form.context}
+                onChange={(event) => update("context", event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="finance-admin-detail-actions">
+            <button className="profile-button" type="submit" disabled={saving}>
+              {saving ? "Gemmer..." : "Gem ændringer"}
+            </button>
+            {!isNew && (
+              <button
+                className="finance-admin-delete-button"
+                type="button"
+                onClick={remove}
+              >
+                Slet posteringsgruppe
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+    </AdminLayout>
+  );
+}
+
 export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
+  const isNew = id === "new";
   const [posting, setPosting] = useState(null);
   const [options, setOptions] = useState(null);
   const [form, setForm] = useState(null);
@@ -904,7 +2735,25 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
   useEffect(() => {
     if (!isAdmin) return;
     Promise.all([
-      financeApi.adminPosting(id),
+      isNew
+        ? Promise.resolve({
+            id: "",
+            date: "",
+            postingDate: "",
+            text: "",
+            amount: 0,
+            userId: "",
+            accountId: "",
+            postingGroupId: "",
+            document: "",
+            sourceType: "Manuel",
+            account: "",
+            postingGroup: "",
+            bankReference: "",
+            mobilePayReference: "",
+            status: "Ukategoriseret",
+          })
+        : financeApi.adminPosting(id),
       financeApi.adminPostingOptions(),
       membersApi.listAdmin(),
     ])
@@ -928,6 +2777,10 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
         setPosting(detail);
         setOptions({ ...editorOptions, users });
         setForm({
+          id: detail.id || "",
+          date: detail.date || "",
+          text: detail.text || "",
+          amount: detail.amount ?? 0,
           accountId: detail.accountId || "",
           postingGroupId: detail.postingGroupId || "",
           userId: detail.userId || "",
@@ -944,6 +2797,11 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
     event.preventDefault();
     setMessage("");
     try {
+      if (isNew) {
+        await financeApi.createAdminPosting(form);
+        navigate("/react/admin/finance/postings");
+        return;
+      }
       await financeApi.updateAdminPosting(id, form);
       setMessage("Ændringerne er gemt.");
       const refreshed = await financeApi.adminPosting(id);
@@ -976,7 +2834,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
         </div>
         <Link
           className="finance-live-profile-link"
-          href="/react/admin/finance/posteringer"
+          href="/react/admin/finance/postings"
         >
           Tilbage til posteringer
         </Link>
@@ -989,7 +2847,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
         <div className="finance-admin-detail-grid">
           <form className="finance-admin-detail-form" onSubmit={save}>
             <div className="finance-admin-detail-form-heading">
-              <h2>{posting.text || posting.id}</h2>
+            <h2>{isNew ? "Ny manuel postering" : posting.text || posting.id}</h2>
               <span
                 className={`finance-admin-status is-${posting.status
                   .toLowerCase()
@@ -1001,7 +2859,12 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
             <div className="finance-admin-detail-fields">
               <label>
                 Postering ID
-                <input value={posting.id} readOnly />
+                <input
+                  value={isNew ? form.id : posting.id}
+                  readOnly={!isNew}
+                  onChange={(event) => update("id", event.target.value)}
+                  required={isNew}
+                />
               </label>
               <label>
                 Kilde
@@ -1009,13 +2872,30 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
               </label>
               <label>
                 Dato
-                <input value={posting.date} readOnly />
+                <input
+                  type={isNew ? "date" : "text"}
+                  value={isNew ? form.date : posting.date}
+                  readOnly={!isNew}
+                  onChange={(event) => update("date", event.target.value)}
+                />
               </label>
               <label>
                 Beløb
-                <input value={money(posting.amount)} readOnly />
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.amount}
+                  onChange={(event) => update("amount", event.target.value)}
+                />
               </label>
-              <label>
+              <label className="finance-admin-detail-field-full">
+                Tekst
+                <input
+                  value={form.text}
+                  onChange={(event) => update("text", event.target.value)}
+                />
+              </label>
+              {!isNew && <label>
                 Bankoverførsel
                 <input
                   value={
@@ -1025,8 +2905,8 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
                   }
                   readOnly
                 />
-              </label>
-              <label>
+              </label>}
+              {!isNew && <label>
                 MobilePay
                 <input
                   value={
@@ -1036,7 +2916,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
                   }
                   readOnly
                 />
-              </label>
+              </label>}
               <label className="finance-admin-detail-field-full">
                 Posteringsdato
                 <input

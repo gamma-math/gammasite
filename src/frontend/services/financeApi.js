@@ -53,6 +53,164 @@ export const financeApi = {
 
     return response.json();
   },
+  adminBudgets: async () => {
+    const response = await fetch("/api/finance/admin/budgets", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(
+        response.status === 403
+          ? "Du har ikke adgang til budgetter."
+          : "Budgetterne kunne ikke hentes.",
+      );
+    }
+    return response.json();
+  },
+  adminAccounts: async () => {
+    const response = await fetch("/api/finance/admin/accounts", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(
+        response.status === 403
+          ? "Du har ikke adgang til kontoplanen."
+          : "Kontoplanen kunne ikke hentes.",
+      );
+    }
+    return response.json();
+  },
+  adminBudget: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok)
+      throw new Error(
+        response.status === 404
+          ? "Budgetposten blev ikke fundet."
+          : "Budgetposten kunne ikke hentes.",
+      );
+    return response.json();
+  },
+  createAdminBudget: async (values) => {
+    const response = await fetch("/api/finance/admin/budgets", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Budgetposten kunne ikke oprettes.");
+    return payload;
+  },
+  updateAdminBudget: async (id, values) => {
+    const response = await fetch(
+      `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
+      {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      },
+    );
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Budgetposten kunne ikke gemmes.");
+    return payload;
+  },
+  deleteAdminBudget: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        credentials: "same-origin",
+      },
+    );
+    if (!response.ok) throw new Error("Budgetposten kunne ikke slettes.");
+  },
+  adminPostingGroups: async () => {
+    const response = await fetch("/api/finance/admin/posteringsgrupper", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Posteringsgrupperne kunne ikke hentes.");
+    return response.json();
+  },
+  adminPostingGroup: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok)
+      throw new Error(
+        response.status === 404
+          ? "Posteringsgruppen blev ikke fundet."
+          : "Posteringsgruppen kunne ikke hentes.",
+      );
+    return response.json();
+  },
+  createAdminPostingGroup: async (values) => {
+    const response = await fetch("/api/finance/admin/posteringsgrupper", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(
+        payload?.error || "Posteringsgruppen kunne ikke oprettes.",
+      );
+    return payload;
+  },
+  updateAdminPostingGroup: async (id, values) => {
+    const response = await fetch(
+      `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
+      {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      },
+    );
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringsgruppen kunne ikke gemmes.");
+    return payload;
+  },
+  deleteAdminPostingGroup: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        credentials: "same-origin",
+      },
+    );
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(
+        payload?.error || "Posteringsgruppen kunne ikke slettes.",
+      );
+  },
   adminPostings: async (
     year,
     accountId = "",
@@ -102,6 +260,20 @@ export const financeApi = {
     if (!response.ok) throw new Error("Valgmulighederne kunne ikke hentes.");
     return response.json();
   },
+  createAdminPosting: async (values) => {
+    const response = await fetch("/api/finance/admin/postings", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringen kunne ikke oprettes.");
+    return payload;
+  },
   updateAdminPosting: async (id, values) => {
     const response = await fetch(
       `/api/finance/admin/postings/${encodeURIComponent(id)}`,
@@ -112,6 +284,29 @@ export const financeApi = {
         body: JSON.stringify(values),
       },
     );
-    if (!response.ok) throw new Error("Posteringen kunne ikke gemmes.");
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringen kunne ikke gemmes.");
+  },
+  duplicateAdminPosting: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/postings/${encodeURIComponent(id)}/duplicate`,
+      { method: "POST", credentials: "same-origin" },
+    );
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringen kunne ikke duplikeres.");
+    return payload;
+  },
+  deleteAdminPosting: async (id) => {
+    const response = await fetch(
+      `/api/finance/admin/postings/${encodeURIComponent(id)}`,
+      { method: "DELETE", credentials: "same-origin" },
+    );
+    if (!response.ok) throw new Error("Posteringen kunne ikke slettes.");
   },
 };
