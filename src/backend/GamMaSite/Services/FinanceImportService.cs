@@ -22,11 +22,11 @@ namespace GamMaSite.Services
 
         public FinanceImportService(IConfiguration configuration)
         {
-            var host = configuration["Finance:Host"];
-            var database = configuration["Finance:Database"];
-            var username = configuration["Finance:Username"];
-            var password = configuration["Finance:Password"];
-            var portValue = configuration["Finance:Port"];
+            var host = configuration["FinanceWrite:Host"] ?? configuration["Finance:Host"];
+            var database = configuration["FinanceWrite:Database"] ?? configuration["Finance:Database"];
+            var username = configuration["FinanceWrite:Username"] ?? configuration["Finance:Username"];
+            var password = configuration["FinanceWrite:Password"] ?? configuration["Finance:Password"];
+            var portValue = configuration["FinanceWrite:Port"] ?? configuration["Finance:Port"];
 
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(database) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
@@ -39,7 +39,8 @@ namespace GamMaSite.Services
                 Port = int.TryParse(portValue, out var port) ? port : 5432,
                 Database = database,
                 Username = username,
-                Password = password
+                Password = password,
+                ApplicationName = "GamMaSite Finance Write"
             }.ConnectionString;
         }
 

@@ -11,14 +11,15 @@ namespace GamMaSite.Services
     public sealed class FinanceReportService
     {
         private readonly string _connectionString;
+        private readonly string _writeConnectionString;
 
         public FinanceReportService(IConfiguration configuration)
         {
-            var host = configuration["Finance:Host"];
-            var database = configuration["Finance:Database"];
-            var username = configuration["Finance:Username"];
-            var password = configuration["Finance:Password"];
-            var portValue = configuration["Finance:Port"];
+            var host = configuration["FinanceRead:Host"] ?? configuration["Finance:Host"];
+            var database = configuration["FinanceRead:Database"] ?? configuration["Finance:Database"];
+            var username = configuration["FinanceRead:Username"] ?? configuration["Finance:Username"];
+            var password = configuration["FinanceRead:Password"] ?? configuration["Finance:Password"];
+            var portValue = configuration["FinanceRead:Port"] ?? configuration["Finance:Port"];
 
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(database) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
@@ -31,7 +32,29 @@ namespace GamMaSite.Services
                 Port = int.TryParse(portValue, out var port) ? port : 5432,
                 Database = database,
                 Username = username,
-                Password = password
+                Password = password,
+                ApplicationName = "GamMaSite Finance Read"
+            }.ConnectionString;
+
+            var writeHost = configuration["FinanceWrite:Host"] ?? configuration["Finance:Host"];
+            var writeDatabase = configuration["FinanceWrite:Database"] ?? configuration["Finance:Database"];
+            var writeUsername = configuration["FinanceWrite:Username"] ?? configuration["Finance:Username"];
+            var writePassword = configuration["FinanceWrite:Password"] ?? configuration["Finance:Password"];
+            var writePortValue = configuration["FinanceWrite:Port"] ?? configuration["Finance:Port"];
+
+            if (string.IsNullOrWhiteSpace(writeHost) || string.IsNullOrWhiteSpace(writeDatabase) || string.IsNullOrWhiteSpace(writeUsername) || string.IsNullOrWhiteSpace(writePassword))
+            {
+                throw new InvalidOperationException("Finance-skriveadgangen mangler. KontrollÃ©r .env.local.");
+            }
+
+            _writeConnectionString = new NpgsqlConnectionStringBuilder
+            {
+                Host = writeHost,
+                Port = int.TryParse(writePortValue, out var writePort) ? writePort : 5432,
+                Database = writeDatabase,
+                Username = writeUsername,
+                Password = writePassword,
+                ApplicationName = "GamMaSite Finance Write"
             }.ConnectionString;
         }
 
@@ -99,7 +122,7 @@ namespace GamMaSite.Services
         public async Task<FinanceBudgetDto> CreateAdminBudgetAsync(FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
         {
             ValidateBudget(update);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await EnsureBudgetReferencesAsync(connection, update, cancellationToken);
             await using var command = new NpgsqlCommand(@"
@@ -118,7 +141,7 @@ namespace GamMaSite.Services
         public async Task<FinanceBudgetDto> UpdateAdminBudgetAsync(string originalId, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
         {
             ValidateBudget(update);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await EnsureBudgetReferencesAsync(connection, update, cancellationToken);
             await using var command = new NpgsqlCommand(@"
@@ -144,7 +167,7 @@ namespace GamMaSite.Services
 
         public async Task<bool> DeleteAdminBudgetAsync(string id, CancellationToken cancellationToken)
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand("DELETE FROM public.forecast WHERE id = @id;", connection);
             AddText(command, "id", id);
@@ -173,7 +196,7 @@ namespace GamMaSite.Services
         public async Task<FinancePostingGroupDto> CreateAdminPostingGroupAsync(FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
         {
             ValidatePostingGroup(update);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand("INSERT INTO public.postering_group (id, posting_group, context, created_at, updated_at) VALUES (@id, @posting_group, @context, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
             AddText(command, "id", update.Id.Trim());
@@ -186,7 +209,7 @@ namespace GamMaSite.Services
         public async Task<FinancePostingGroupDto> UpdateAdminPostingGroupAsync(string originalId, FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
         {
             ValidatePostingGroup(update);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 UPDATE public.postering_group
@@ -202,7 +225,7 @@ namespace GamMaSite.Services
 
         public async Task<bool> DeleteAdminPostingGroupAsync(string id, CancellationToken cancellationToken)
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand("DELETE FROM public.postering_group WHERE id = @id;", connection);
             AddText(command, "id", id);
@@ -363,7 +386,7 @@ namespace GamMaSite.Services
         public async Task<bool> UpdateAdminPostingAsync(string id, FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
         {
             ValidatePostingUpdate(update, requireId: false);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 UPDATE public.posteringer
@@ -383,7 +406,7 @@ namespace GamMaSite.Services
         public async Task<FinanceAdminPostingDetailDto> CreateAdminPostingAsync(FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
         {
             ValidatePostingUpdate(update, requireId: true);
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
@@ -405,7 +428,7 @@ namespace GamMaSite.Services
 
         public async Task<FinanceAdminPostingDetailDto> DuplicateAdminPostingAsync(string id, CancellationToken cancellationToken)
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             var newId = $"{id}-COPY";
             await using var command = new NpgsqlCommand(@"
@@ -429,7 +452,7 @@ namespace GamMaSite.Services
 
         public async Task<bool> DeleteAdminPostingAsync(string id, CancellationToken cancellationToken)
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand("DELETE FROM public.posteringer WHERE id = @id;", connection);
             AddText(command, "id", id);

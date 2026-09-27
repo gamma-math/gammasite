@@ -1,6 +1,6 @@
 -- =========================================================
 -- GAMMASITE FINANCE DATABASE
--- PostgreSQL / Supabase
+-- PostgreSQL finance database schema
 -- =========================================================
 
 
@@ -301,28 +301,3 @@ DROP TRIGGER IF EXISTS posteringer_set_updated_at ON public.posteringer;
 CREATE TRIGGER posteringer_set_updated_at BEFORE UPDATE ON public.posteringer FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS import_history_set_updated_at ON public.import_history;
 CREATE TRIGGER import_history_set_updated_at BEFORE UPDATE ON public.import_history FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
--- =========================================================
--- 10. ROW LEVEL SECURITY
--- =========================================================
-
-ALTER TABLE public.account ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.bank_account ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.forecast ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.mobilepay ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.postering_group ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.posteringer ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.import_history ENABLE ROW LEVEL SECURITY;
-
-
--- =========================================================
--- 11. BLOCK DIRECT API ACCESS
--- =========================================================
-
-REVOKE ALL ON TABLE public.account FROM anon, authenticated;
-REVOKE ALL ON TABLE public.bank_account FROM anon, authenticated;
-REVOKE ALL ON TABLE public.forecast FROM anon, authenticated;
-REVOKE ALL ON TABLE public.mobilepay FROM anon, authenticated;
-REVOKE ALL ON TABLE public.postering_group FROM anon, authenticated;
-REVOKE ALL ON TABLE public.posteringer FROM anon, authenticated;
-REVOKE ALL ON TABLE public.import_history FROM anon, authenticated;
