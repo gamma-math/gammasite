@@ -802,6 +802,7 @@ namespace GamMaSite.Services
                         TO_CHAR(b.date, 'YYYY-MM-DD'),
                         COALESCE(b.text, ''),
                         COALESCE(b.amount, 0),
+                        b.balance,
                         COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.bank_account_key = b.id), 0)
                     FROM public.bank_account b
                     WHERE b.date >= @start_date AND b.date <= @end_date
@@ -816,6 +817,7 @@ namespace GamMaSite.Services
                             ''
                         ),
                         COALESCE(m.amount, 0),
+                        NULL::numeric,
                         COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.mp_key = m.id), 0)
                     FROM public.mobilepay m
                     WHERE m.date >= @start_date AND m.date <= @end_date
@@ -833,7 +835,8 @@ namespace GamMaSite.Services
                     Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
                     Text = reader.GetString(2),
                     Amount = reader.GetFieldValue<decimal>(3),
-                    PostedAmount = reader.GetFieldValue<decimal>(4),
+                    Balance = reader.IsDBNull(4) ? null : reader.GetFieldValue<decimal>(4),
+                    PostedAmount = reader.GetFieldValue<decimal>(5),
                     SourceId = sourceId,
                     SourceType = sourceType
                 });
@@ -982,6 +985,7 @@ namespace GamMaSite.Services
         public string Date { get; set; } = "";
         public string Text { get; set; } = "";
         public decimal Amount { get; set; }
+        public decimal? Balance { get; set; }
         public decimal PostedAmount { get; set; }
         public long SourceId { get; set; }
         public string SourceType { get; set; } = "";

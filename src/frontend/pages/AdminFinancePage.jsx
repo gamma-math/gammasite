@@ -192,7 +192,19 @@ const xlsxFormula = (formula, value) => ({
 });
 
 const xlsxValue = (value) =>
-  value && typeof value === "object" && value.__xlsxFormula ? value.value : value;
+  value && typeof value === "object"
+    ? value.__xlsxFormula
+      ? value.value
+      : value.__xlsxHyperlink
+        ? value.text
+        : value
+    : value;
+
+const xlsxHyperlink = (url) => ({
+  __xlsxHyperlink: true,
+  text: url,
+  url,
+});
 
 function appendXlsxSheet(workbook, name, headers, rows, numericColumns = new Set()) {
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -202,6 +214,8 @@ function appendXlsxSheet(workbook, name, headers, rows, numericColumns = new Set
       const address = XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex });
       if (value && typeof value === "object" && value.__xlsxFormula) {
         sheet[address] = { t: "n", v: value.value, f: value.formula, z: "#,##0.00" };
+      } else if (value && typeof value === "object" && value.__xlsxHyperlink) {
+        sheet[address] = { t: "s", v: value.text, l: { Target: value.url } };
       } else if (numericColumns.has(columnIndex) && value !== "" && value !== null && value !== undefined) {
         sheet[address] = { t: "n", v: Number(value), z: "#,##0.00" };
       }
@@ -253,24 +267,37 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     ]);
   }
 
-  const sourceRows = (rows) => (rows || []).map((row, index) => [
-    row.id,
-    row.date,
-    row.text,
-    row.amount,
-    row.postedAmount,
-    xlsxFormula(`D${index + 2}-E${index + 2}`, Number(row.amount || 0) - Number(row.postedAmount || 0)),
-  ]);
-  const sourceWithTotal = (rows) => {
-    const values = sourceRows(rows);
+  const sourceRows = (rows, includeBalance = false) => (rows || []).map((row, index) => {
+    const rowNumber = index + 2;
+    const postedAmountColumn = includeBalance ? "F" : "E";
+    return [
+      row.id,
+      row.date,
+      row.text,
+      row.amount,
+      ...(includeBalance ? [row.balance] : []),
+      row.postedAmount,
+      xlsxFormula(`D${rowNumber}-${postedAmountColumn}${rowNumber}`, Number(row.amount || 0) - Number(row.postedAmount || 0)),
+    ];
+  });
+  const sourceWithTotal = (rows, includeBalance = false) => {
+    const values = sourceRows(rows, includeBalance);
     if (values.length) {
       const totalRow = values.length + 2;
-      values.push([
+      const postedAmountIndex = includeBalance ? 5 : 4;
+      const differenceIndex = includeBalance ? 6 : 5;
+      const postedAmountColumn = includeBalance ? "F" : "E";
+      const differenceColumn = includeBalance ? "G" : "F";
+      const total = [
         "", "", "TOTAL",
         xlsxFormula(`SUM(D2:D${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[3] || 0), 0)),
-        xlsxFormula(`SUM(E2:E${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[4] || 0), 0)),
-        xlsxFormula(`SUM(F2:F${totalRow - 1})`, values.reduce((sum, row) => sum + Number(xlsxValue(row[5]) || 0), 0)),
-      ]);
+      ];
+      if (includeBalance) total.push("");
+      total.push(
+        xlsxFormula(`SUM(${postedAmountColumn}2:${postedAmountColumn}${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[postedAmountIndex] || 0), 0)),
+        xlsxFormula(`SUM(${differenceColumn}2:${differenceColumn}${totalRow - 1})`, values.reduce((sum, row) => sum + Number(xlsxValue(row[differenceIndex]) || 0), 0)),
+      );
+      values.push(total);
     }
     return values;
   };
@@ -287,10 +314,12 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     row.postingGroupId,
     row.postingGroup,
     row.status,
+    row.document ? xlsxHyperlink(row.document) : "",
   ]);
 
   appendXlsxSheet(workbook, "Posteringer", [
     "ID", "Dato", "Posteringsdato", "Tekst", "Beløb", "Bruger", "Konto ID", "Konto", "Posteringsgruppe ID", "Posteringsgruppe", "Status",
+    "Bilag",
   ], postingRows, new Set([4]));
   appendXlsxSheet(workbook, "Resultatopgørelse", [
     "Konto ID", "Konto", "Underkonto", "Kontekst", "Realiseret", "Budget", "Sidste år",
@@ -299,8 +328,8 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     "Posteringsgruppe ID", "Posteringsgruppe", "Kontekst", "Realiseret", "Sidste år",
   ], groupRows, new Set([3, 4]));
   appendXlsxSheet(workbook, "Bankoverførsler", [
-    "ID", "Dato", "Tekst", "Beløb fra bank", "Bogført beløb", "Difference",
-  ], sourceWithTotal(overview?.bankTransfers), new Set([3, 4, 5]));
+    "ID", "Dato", "Tekst", "Beløb fra bank", "Saldo", "Bogført beløb", "Difference",
+  ], sourceWithTotal(overview?.bankTransfers, true), new Set([3, 4, 5, 6]));
   appendXlsxSheet(workbook, "MobilePay", [
     "ID", "Dato", "Tekst", "Beløb fra MobilePay", "Bogført beløb", "Difference",
   ], sourceWithTotal(overview?.mobilePayTransfers), new Set([3, 4, 5]));
@@ -308,6 +337,37 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     CalcPr: { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true },
   };
   return XLSX.write(workbook, { bookType: "xlsx", type: "array", compression: true });
+}
+
+function TableExpansionButton({ expanded, onToggle }) {
+  return (
+    <button
+      className={`finance-table-expand-button${expanded ? " is-close" : ""}`}
+      type="button"
+      onClick={onToggle}
+      title={expanded ? "Luk udvidet tabel" : "Udvid tabel"}
+      aria-label={expanded ? "Luk udvidet tabel" : "Udvid tabel"}
+    >
+      <span aria-hidden="true">{expanded ? "×" : "⛶"}</span>
+      {expanded && <span>Luk tabel</span>}
+    </button>
+  );
+}
+
+function useExpandedTable(expanded, onClose) {
+  useEffect(() => {
+    if (!expanded) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [expanded, onClose]);
 }
 
 function SearchableSelect({ label, options = [], value, onChange, placeholder, compact = false }) {
@@ -950,6 +1010,8 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     [members, setMembers] = useState([]),
     [saving, setSaving] = useState(""),
     [error, setError] = useState("");
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
+  useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
   const [columnWidths, setColumnWidths] = useState({
     id: 150,
     date: 150,
@@ -1243,7 +1305,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
         <div className="finance-live-loading">Henter posteringer...</div>
       )}
       {data && (
-        <div className="finance-live-panel finance-admin-postings-table finance-admin-cashier-table">
+        <div className={`finance-live-panel finance-admin-postings-table finance-admin-cashier-table${isTableExpanded ? " is-expanded" : ""}`}>
           <div className="finance-admin-table-controls">
             <label className="menu-table-page-size">
               <span>Vis</span>
@@ -1259,9 +1321,15 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
               </select>
               <span>pr. side</span>
             </label>
-            <button className="finance-admin-clear-filter" onClick={reset}>
-              Nulstil
-            </button>
+            <div className="finance-table-control-actions">
+              <button className="finance-admin-clear-filter" onClick={reset}>
+                Nulstil
+              </button>
+              <TableExpansionButton
+                expanded={isTableExpanded}
+                onToggle={() => setIsTableExpanded((current) => !current)}
+              />
+            </div>
           </div>
           <div className="finance-live-table-scroll">
             <table className="finance-live-table">
@@ -1496,6 +1564,8 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
+  useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1609,10 +1679,16 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
       {error && <p className="finance-live-error">{error}</p>}
       {!data && !error && <div className="finance-live-loading">Henter posteringer...</div>}
       {data && (
-        <div className="finance-live-panel finance-admin-postings-table">
+        <div className={`finance-live-panel finance-admin-postings-table${isTableExpanded ? " is-expanded" : ""}`}>
           <div className="finance-admin-table-controls">
             <label className="menu-table-page-size"><span>Vis</span><select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>{[10, 25, 50, 100].map((size) => <option value={size} key={size}>{size}</option>)}</select><span>pr. side</span></label>
-            <button className="finance-admin-clear-filter" type="button" onClick={reset}>Nulstil</button>
+            <div className="finance-table-control-actions">
+              <button className="finance-admin-clear-filter" type="button" onClick={reset}>Nulstil</button>
+              <TableExpansionButton
+                expanded={isTableExpanded}
+                onToggle={() => setIsTableExpanded((current) => !current)}
+              />
+            </div>
           </div>
           <div className="finance-live-table-scroll">
             <table className="finance-live-table">
@@ -2995,6 +3071,352 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
           </aside>
         </div>
       )}
+    </AdminLayout>
+  );
+}
+
+export function FinanceAdminImportPage({ isAdmin }) {
+  const bankInputRef = useRef(null);
+  const mobilePayInputRef = useRef(null);
+  const [bankFile, setBankFile] = useState(null);
+  const [mobilePayFile, setMobilePayFile] = useState(null);
+  const [syncPostings, setSyncPostings] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [historySort, setHistorySort] = useState({ key: "importedAt", direction: "desc" });
+  const [historyPageSize, setHistoryPageSize] = useState(10);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [result, setResult] = useState(null);
+  const [postingSyncResult, setPostingSyncResult] = useState(null);
+  const [error, setError] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [isGeneratingPostings, setIsGeneratingPostings] = useState(false);
+
+  const loadHistory = async () => {
+    try {
+      setHistory(await financeApi.adminImportHistory());
+    } catch (historyError) {
+      setError(historyError.message);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadHistory();
+  }, [isAdmin]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!bankFile && !mobilePayFile) {
+      setError("Vælg mindst én CSV-fil.");
+      return;
+    }
+    setIsImporting(true);
+    setError("");
+    setResult(null);
+    setPostingSyncResult(null);
+    try {
+      setResult(
+        await financeApi.importFinanceCsv({
+          bankFile,
+          mobilePayFile,
+          syncPostings,
+        }),
+      );
+      await loadHistory();
+    } catch (importError) {
+      setError(importError.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const generatePostings = async () => {
+    setIsGeneratingPostings(true);
+    setError("");
+    setPostingSyncResult(null);
+    try {
+      setPostingSyncResult(await financeApi.generateImportPostings());
+    } catch (postingError) {
+      setError(postingError.message);
+    } finally {
+      setIsGeneratingPostings(false);
+    }
+  };
+
+  const fileLabel = (file, emptyLabel) =>
+    file ? `${file.name} · ${(file.size / 1024).toFixed(1)} KB` : emptyLabel;
+  const formatImportedAt = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? value
+      : new Intl.DateTimeFormat("da-DK", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(date);
+  };
+  const sortedHistory = useSortedMembers(history, historySort);
+  const {
+    currentPage: currentHistoryPage,
+    pageCount: historyPageCount,
+    visibleItems: visibleHistory,
+  } = usePagedItems(sortedHistory, historyPage, historyPageSize);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [history, historyPageSize, historySort.key, historySort.direction]);
+
+  if (!isAdmin) {
+    return (
+      <AdminLayout active="" canWrite={false}>
+        <p className="status-message status-message-warning">
+          Kun ADMIN har adgang til import af finansdata.
+        </p>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout active="" canWrite={true} contentClassName="finance-admin-content">
+      <div className="menu-panel-header finance-live-hero finance-import-hero">
+        <div>
+          <p className="menu-section-title">Importér finansdata</p>
+          <p className="menu-panel-lead">
+            Upload et bankkontoudtog, MobilePay-transaktioner eller begge dele.
+          </p>
+        </div>
+      </div>
+
+      {/* Deprecated encoded copy retained temporarily so this source remains easy to review.
+      <section className="finance-import-introduction">
+        <p className="finance-live-kicker">SÃ¥dan dannes posteringer</p>
+        <h2>Kildedata fÃ¸rst â€” posteringer bagefter</h2>
+        <ol>
+          <li>CSV-rÃ¦kkerne valideres og upsertes i henholdsvis bank- og MobilePay-tabellen.</li>
+          <li>Matcher bankens <strong>Tekst</strong> prÃ¦cist en MobilePay <strong>Transfer Reference</strong>, dannes MobilePay-posteringer.</li>
+          <li>Matcher den ikke, dannes Ã©n bankpostering. MobilePay-rÃ¦kker uden et matchende bankkontoudtog danner ikke en postering.</li>
+        </ol>
+        <p>
+          Ved en ny import opdateres kun kildedata pÃ¥ eksisterende afledte posteringer.
+          Konto, posteringsgruppe, bruger og dokumentation bevares, sÃ¥ kategorisering ikke gÃ¥r tabt.
+        </p>
+      </section>
+      */}
+
+      <section className="finance-import-introduction">
+        <p className="finance-live-kicker">S&aring;dan dannes posteringer</p>
+        <h2>Tre trin</h2>
+        <ol>
+          <li>Upload CSV for bank.</li>
+          <li>Upload CSV for MobilePay.</li>
+          <li>V&aelig;lg, om posteringer skal dannes efter importen. Det kan ogs&aring; g&oslash;res senere.</li>
+        </ol>
+        <p>
+          Et MobilePay-match erstatter den tilsvarende bankpostering. Ved en ny k&oslash;rsel
+          bevares konto, posteringsgruppe, bruger og dokumentation.
+        </p>
+      </section>
+
+      <form className="finance-import-form" onSubmit={submit}>
+        <section className="finance-import-upload-grid">
+          <article className="finance-import-file-card">
+            <p className="finance-live-kicker">Bankkontoudtog</p>
+            <h2>Bank CSV</h2>
+            <p className="finance-import-fields-label">Påkrævede kolonner</p>
+            <ul className="finance-import-field-list">
+              <li>Dato</li>
+              <li>Tekst</li>
+              <li>Beløb</li>
+              <li>Saldo</li>
+            </ul>
+            <input
+              ref={bankInputRef}
+              className="finance-import-file-input"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setBankFile(event.target.files?.[0] ?? null)}
+            />
+            <div className="finance-import-card-actions">
+              <button
+                className="profile-button finance-import-file-button"
+                type="button"
+                onClick={() => bankInputRef.current?.click()}
+              >
+                Vælg bank CSV
+              </button>
+              <a className="finance-import-example-link" href="/api/finance/admin/import/templates/bank">
+                CSV-eksempel
+              </a>
+            </div>
+            <p className="finance-import-file-name">
+              {fileLabel(bankFile, "Ingen bankfil valgt")}
+            </p>
+          </article>
+
+          <article className="finance-import-file-card">
+            <p className="finance-live-kicker">MobilePay-transaktioner</p>
+            <h2>MobilePay CSV</h2>
+            <p className="finance-import-fields-label">Påkrævede kolonner</p>
+            <ul className="finance-import-field-list">
+              <li>Date</li>
+              <li>Timestamp</li>
+              <li>Amount</li>
+              <li>Message</li>
+              <li>Transaction Type</li>
+              <li>Transfer Reference</li>
+              <li>Transfer Date</li>
+              <li>Payment Transaction ID</li>
+              <li>User Name</li>
+            </ul>
+            <input
+              ref={mobilePayInputRef}
+              className="finance-import-file-input"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => setMobilePayFile(event.target.files?.[0] ?? null)}
+            />
+            <div className="finance-import-card-actions">
+              <button
+                className="profile-button finance-import-file-button"
+                type="button"
+                onClick={() => mobilePayInputRef.current?.click()}
+              >
+                Vælg MobilePay CSV
+              </button>
+              <a className="finance-import-example-link" href="/api/finance/admin/import/templates/mobilepay">
+                CSV-eksempel
+              </a>
+            </div>
+            <p className="finance-import-file-name">
+              {fileLabel(mobilePayFile, "Ingen MobilePay-fil valgt")}
+            </p>
+          </article>
+
+          <aside className="finance-import-submit-card">
+            <p className="finance-live-kicker">Trin 3</p>
+            <h2>Importér data</h2>
+            <label className="finance-import-sync-option">
+              <input
+                type="checkbox"
+                checked={syncPostings}
+                onChange={(event) => setSyncPostings(event.target.checked)}
+              />
+              <span>
+                <strong>Opdatér afledte posteringer</strong>
+                <small>Et MobilePay-match erstatter den tilsvarende bankpostering.</small>
+              </span>
+            </label>
+            <button className="profile-button" type="submit" disabled={isImporting}>
+              {isImporting ? "Importerer…" : "Importér data"}
+            </button>
+            <button
+              className="frontpage-button finance-import-generate-button"
+              type="button"
+              onClick={generatePostings}
+              disabled={isGeneratingPostings || isImporting}
+            >
+              {isGeneratingPostings ? "Opretter posteringer..." : "Opret posteringer fra eksisterende data"}
+            </button>
+            <p className="finance-import-existing-help">
+              Brug denne, hvis kildedata allerede er importeret.
+            </p>
+            <p className="finance-import-help">Maks. 10 MB pr. CSV-fil.</p>
+          </aside>
+        </section>
+      </form>
+
+      {error && <p className="status-message status-message-error">{error}</p>}
+      {postingSyncResult && (
+        <p className="status-message status-message-success">
+          {postingSyncResult.created} posteringer oprettet.
+        </p>
+      )}
+
+      {result && (
+        <section className="finance-import-result" aria-live="polite">
+          <p className="finance-live-kicker">Import gennemført</p>
+          <h2>Resultat</h2>
+          <div className="finance-import-result-grid">
+            <div>
+              <strong>Bankkontoudtog</strong>
+              <span>{result.bank.rowsProcessed} behandlet · {result.bank.rowsInserted} nye · {result.bank.rowsUpdated} opdaterede</span>
+            </div>
+            <div>
+              <strong>MobilePay-transaktioner</strong>
+              <span>{result.mobilePay.rowsProcessed} behandlet · {result.mobilePay.rowsInserted} nye · {result.mobilePay.rowsUpdated} opdaterede</span>
+            </div>
+            {syncPostings && (
+              <div>
+                <strong>Afledte posteringer</strong>
+                <span>{result.postings.created} posteringer oprettet.</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section id="importhistorik" className="finance-import-history">
+        <div className="finance-import-history-heading">
+          <div>
+            <p className="finance-live-kicker">Importhistorik</p>
+            <h2>Seneste importer</h2>
+          </div>
+          <button className="finance-admin-row-more" type="button" onClick={loadHistory}>
+            Opdatér
+          </button>
+        </div>
+        <div className="finance-admin-table-controls">
+          <label className="menu-table-page-size">
+            <span>Vis</span>
+            <select
+              value={historyPageSize}
+              onChange={(event) => setHistoryPageSize(Number(event.target.value))}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option value={size} key={size}>{size}</option>
+              ))}
+            </select>
+            <span>pr. side</span>
+          </label>
+        </div>
+        <div className="finance-live-table-scroll">
+          <table className="finance-live-table finance-admin-source-table">
+            <thead>
+              <tr>
+                <SortableHeader label="Kilde" sortKey="importType" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Fil" sortKey="fileName" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Importeret" sortKey="importedAt" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Behandlet" sortKey="rowsProcessed" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Nye" sortKey="rowsInserted" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Opdaterede" sortKey="rowsUpdated" sort={historySort} setSort={setHistorySort} />
+                <SortableHeader label="Status" sortKey="status" sort={historySort} setSort={setHistorySort} />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleHistory.map((item) => (
+                <tr key={item.id ?? `${item.importType}-${item.importedAt}-${item.fileName}`}>
+                  <td>{item.importType === "bank_csv" ? "Bank" : "MobilePay"}</td>
+                  <td>{item.fileName || "—"}</td>
+                  <td>{formatImportedAt(item.importedAt)}</td>
+                  <td>{item.rowsProcessed}</td>
+                  <td>{item.rowsInserted}</td>
+                  <td>{item.rowsUpdated}</td>
+                  <td><span className="finance-import-status">{item.status}</span></td>
+                </tr>
+              ))}
+              {visibleHistory.length === 0 && (
+                <tr><td colSpan="7" className="finance-admin-empty">Ingen importer endnu.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pagination
+          page={currentHistoryPage}
+          pageCount={historyPageCount}
+          total={history.length}
+          pageSize={historyPageSize}
+          setPage={setHistoryPage}
+        />
+      </section>
     </AdminLayout>
   );
 }

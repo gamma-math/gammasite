@@ -80,6 +80,7 @@ builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>(
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
 builder.Services.AddScoped<FinanceReportService>();
+builder.Services.AddScoped<FinanceImportService>();
 
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>

@@ -81,6 +81,43 @@ export const financeApi = {
     }
     return response.json();
   },
+  adminImportHistory: async () => {
+    const response = await fetch("/api/finance/admin/import/history", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Importhistorikken kunne ikke hentes.");
+    return response.json();
+  },
+  generateImportPostings: async () => {
+    const response = await fetch("/api/finance/admin/import/postings", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringerne kunne ikke dannes.");
+    return payload;
+  },
+  importFinanceCsv: async ({ bankFile, mobilePayFile, syncPostings }) => {
+    const formData = new FormData();
+    if (bankFile) formData.append("bankFile", bankFile);
+    if (mobilePayFile) formData.append("mobilePayFile", mobilePayFile);
+    formData.append("syncPostings", String(syncPostings));
+    const response = await fetch("/api/finance/admin/import", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData,
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Filerne kunne ikke importeres.");
+    return payload;
+  },
   adminBudget: async (id) => {
     const response = await fetch(
       `/api/finance/admin/budgets/${encodeURIComponent(id)}`,

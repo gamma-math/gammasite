@@ -1,9 +1,12 @@
 using System;
+using System.IO;
 using System.Security.Claims;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GamMaSite.Controllers
@@ -14,10 +17,12 @@ namespace GamMaSite.Controllers
     public sealed class ApiFinanceController : ControllerBase
     {
         private readonly FinanceReportService _financeReportService;
+        private readonly FinanceImportService _financeImportService;
 
-        public ApiFinanceController(FinanceReportService financeReportService)
+        public ApiFinanceController(FinanceReportService financeReportService, FinanceImportService financeImportService)
         {
             _financeReportService = financeReportService;
+            _financeImportService = financeImportService;
         }
 
         [HttpGet("overview")]
@@ -257,6 +262,89 @@ namespace GamMaSite.Controllers
             return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
                 ? NoContent()
                 : NotFound();
+        }
+
+        [HttpGet("admin/import/history")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetImportHistory(CancellationToken cancellationToken)
+        {
+            return Ok(await _financeImportService.GetHistoryAsync(cancellationToken));
+        }
+
+        [HttpPost("admin/import/postings")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GenerateImportPostings(CancellationToken cancellationToken)
+        {
+            return Ok(await _financeImportService.GenerateDerivedPostingsAsync(cancellationToken));
+        }
+
+        [HttpGet("admin/import/templates/{source}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult DownloadImportTemplate(string source)
+        {
+            string content;
+            string fileName;
+            if (string.Equals(source, "bank", StringComparison.OrdinalIgnoreCase))
+            {
+                fileName = "eksempel-bankkontoudtog.csv";
+                content = "Dato;Tekst;Beløb;Saldo\r\n03.09.2026;02000227660010309261;-244,00;12500,50\r\n";
+            }
+            else if (string.Equals(source, "mobilepay", StringComparison.OrdinalIgnoreCase))
+            {
+                fileName = "eksempel-mobilepay-transaktioner.csv";
+                content = "Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\r\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Eksempelbetaling;Payment;02000227660010309261;03-09-2026;36332578042;Eksempel Bruger\r\n";
+            }
+            else
+            {
+                return NotFound();
+            }
+
+            return File(Encoding.UTF8.GetBytes("\uFEFF" + content), "text/csv; charset=utf-8", fileName);
+        }
+
+        [HttpPost("admin/import")]
+        [Authorize(Roles = "Admin")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public async Task<IActionResult> ImportCsv(
+            [FromForm] IFormFile bankFile,
+            [FromForm] IFormFile mobilePayFile,
+            [FromForm] bool syncPostings = true,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                ValidateCsvFile(bankFile, "Bank CSV");
+                ValidateCsvFile(mobilePayFile, "MobilePay CSV");
+                if (bankFile == null && mobilePayFile == null)
+                {
+                    return BadRequest(new { error = "Vælg mindst én CSV-fil." });
+                }
+
+                await using var bankStream = bankFile?.OpenReadStream();
+                await using var mobilePayStream = mobilePayFile?.OpenReadStream();
+                return Ok(await _financeImportService.ImportAsync(
+                    bankStream,
+                    bankFile?.FileName,
+                    mobilePayStream,
+                    mobilePayFile?.FileName,
+                    syncPostings,
+                    cancellationToken));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new { error = exception.Message });
+            }
+        }
+
+        private static void ValidateCsvFile(IFormFile file, string label)
+        {
+            if (file == null) return;
+            if (file.Length == 0) throw new ArgumentException($"{label} er tom.");
+            if (file.Length > 10 * 1024 * 1024) throw new ArgumentException($"{label} må højst være 10 MB.");
+            if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"{label} skal være en CSV-fil.");
+            }
         }
     }
 }

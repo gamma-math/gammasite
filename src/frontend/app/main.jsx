@@ -17,6 +17,7 @@ import {
   FinanceAdminBudgetsPage,
   FinanceAdminAccountsPage,
   FinanceAdminCashierPostingsPage,
+  FinanceAdminImportPage,
   FinanceAdminOverviewPage,
   FinanceAdminPostingGroupDetailPage,
   FinanceAdminPostingGroupsPage,
@@ -351,6 +352,9 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
         search={route.search}
       />
     );
+  }
+  if (path === "/react/admin/finance/csv-import") {
+    return <FinanceAdminImportPage isAdmin={isAdmin} />;
   }
   if (path === "/react/admin/finance/budgets") {
     return <FinanceAdminBudgetsPage isAdmin={isAdmin} />;
