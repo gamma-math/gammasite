@@ -103,8 +103,8 @@ namespace GamMaSite.Services
             await connection.OpenAsync(cancellationToken);
             await EnsureBudgetReferencesAsync(connection, update, cancellationToken);
             await using var command = new NpgsqlCommand(@"
-                INSERT INTO public.forecast (id, account_id, postering_group_id, year_actual, forecast, forecast_type)
-                VALUES (@id, @account_id, @posting_group_id, @year_actual, @forecast, @forecast_type);", connection);
+                INSERT INTO public.forecast (id, account_id, postering_group_id, year_actual, forecast, forecast_type, created_at, updated_at)
+                VALUES (@id, @account_id, @posting_group_id, @year_actual, @forecast, @forecast_type, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
             AddText(command, "id", update.Id.Trim());
             AddText(command, "account_id", update.AccountId.Trim());
             AddNullableText(command, "posting_group_id", update.PostingGroupId);
@@ -128,7 +128,8 @@ namespace GamMaSite.Services
                     postering_group_id = @posting_group_id,
                     year_actual = @year_actual,
                     forecast = @forecast,
-                    forecast_type = @forecast_type
+                    forecast_type = @forecast_type,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = @original_id;", connection);
             AddText(command, "original_id", originalId);
             AddText(command, "new_id", update.Id.Trim());
@@ -174,7 +175,7 @@ namespace GamMaSite.Services
             ValidatePostingGroup(update);
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
-            await using var command = new NpgsqlCommand("INSERT INTO public.postering_group (id, posting_group, context) VALUES (@id, @posting_group, @context);", connection);
+            await using var command = new NpgsqlCommand("INSERT INTO public.postering_group (id, posting_group, context, created_at, updated_at) VALUES (@id, @posting_group, @context, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
             AddText(command, "id", update.Id.Trim());
             AddNullableText(command, "posting_group", update.PostingGroup);
             AddNullableText(command, "context", update.Context);
@@ -189,7 +190,7 @@ namespace GamMaSite.Services
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 UPDATE public.postering_group
-                SET id = @new_id, posting_group = @posting_group, context = @context
+                SET id = @new_id, posting_group = @posting_group, context = @context, updated_at = CURRENT_TIMESTAMP
                 WHERE id = @original_id;", connection);
             AddText(command, "original_id", originalId);
             AddText(command, "new_id", update.Id.Trim());
@@ -372,7 +373,8 @@ namespace GamMaSite.Services
                     text = @text,
                     amount = @amount,
                     posterings_date = @posterings_date,
-                    document = CASE WHEN mp_key IS NOT NULL THEN NULL ELSE @document END
+                    document = CASE WHEN mp_key IS NOT NULL THEN NULL ELSE @document END,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = @id;", connection);
             AddText(command, "id", id); AddNullableText(command, "account_id", update.AccountId); AddNullableText(command, "posting_group_id", update.PostingGroupId); AddNullableText(command, "user_id", update.UserId); AddNullableText(command, "text", update.Text); AddNumeric(command, "amount", update.Amount); AddNullableDate(command, "posterings_date", update.PostingDate); AddNullableText(command, "document", update.Document);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
@@ -385,9 +387,9 @@ namespace GamMaSite.Services
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, user_id, account_number, posting_group_id, document, posterings_date)
+                    (id, date, posting_date, text, amount, user_id, account_number, posting_group_id, document, posterings_date, created_at, updated_at)
                 VALUES
-                    (@id, @date, @date, @text, @amount, @user_id, @account_id, @posting_group_id, @document, @posterings_date);", connection);
+                    (@id, @date, @date, @text, @amount, @user_id, @account_id, @posting_group_id, @document, @posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
             AddText(command, "id", update.Id.Trim());
             AddNullableDate(command, "date", string.IsNullOrWhiteSpace(update.Date) ? update.PostingDate : update.Date);
             AddNullableText(command, "text", update.Text);
@@ -408,8 +410,8 @@ namespace GamMaSite.Services
             var newId = $"{id}-COPY";
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date)
-                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date, created_at, updated_at)
+                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM public.posteringer
                 WHERE id = @id;", connection);
             AddText(command, "id", id);

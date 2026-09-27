@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS public.account (
     sub_account_key bigint,
     context text,
     context_key bigint,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT account_pkey PRIMARY KEY (id)
 );
@@ -35,6 +37,8 @@ CREATE TABLE IF NOT EXISTS public.bank_account (
     -- false = importeret
     -- true = manuelt oprettet
     is_manual boolean NOT NULL DEFAULT false,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT bank_account_pkey PRIMARY KEY (id)
 );
@@ -70,6 +74,8 @@ CREATE TABLE IF NOT EXISTS public.mobilepay (
     -- false = importeret
     -- true = manuelt oprettet
     is_manual boolean NOT NULL DEFAULT false,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT mobilepay_pkey PRIMARY KEY (id)
 );
@@ -96,6 +102,8 @@ CREATE TABLE IF NOT EXISTS public.postering_group (
     id text NOT NULL,
     posting_group text,
     context text,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT postering_group_pkey PRIMARY KEY (id)
 );
@@ -112,6 +120,8 @@ CREATE TABLE IF NOT EXISTS public.forecast (
     year_actual integer,
     forecast numeric(14, 2),
     forecast_type text,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT forecast_pkey PRIMARY KEY (id),
 
@@ -147,6 +157,8 @@ CREATE TABLE IF NOT EXISTS public.posteringer (
     document text,
     belongs_to_last_year boolean,
     posterings_date date,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT posteringer_pkey PRIMARY KEY (id),
 
@@ -211,7 +223,80 @@ CREATE INDEX IF NOT EXISTS ix_posteringer_posting_date
 ON public.posteringer(posting_date);
 
 -- =========================================================
--- 8. ROW LEVEL SECURITY
+-- 8. IMPORT HISTORY / LATEST IMPORT STATUS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.import_history (
+    import_type text NOT NULL,
+    imported_at timestamp with time zone NOT NULL,
+    file_name text,
+    status text NOT NULL DEFAULT 'completed',
+    rows_processed integer NOT NULL DEFAULT 0,
+    rows_inserted integer NOT NULL DEFAULT 0,
+    rows_updated integer NOT NULL DEFAULT 0,
+    rows_requiring_review integer NOT NULL DEFAULT 0,
+    notes text,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT import_history_pkey PRIMARY KEY (import_type),
+    CONSTRAINT import_history_status_check
+        CHECK (status IN ('completed', 'partial', 'failed')),
+    CONSTRAINT import_history_counts_check
+        CHECK (
+            rows_processed >= 0
+            AND rows_inserted >= 0
+            AND rows_updated >= 0
+            AND rows_requiring_review >= 0
+        )
+);
+
+-- =========================================================
+-- 9. TIMESTAMPS / UPDATED-AT TRIGGERS
+-- =========================================================
+
+ALTER TABLE public.account ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.account ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.posteringer ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.posteringer ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.import_history ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.import_history ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS account_set_updated_at ON public.account;
+CREATE TRIGGER account_set_updated_at BEFORE UPDATE ON public.account FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS bank_account_set_updated_at ON public.bank_account;
+CREATE TRIGGER bank_account_set_updated_at BEFORE UPDATE ON public.bank_account FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS mobilepay_set_updated_at ON public.mobilepay;
+CREATE TRIGGER mobilepay_set_updated_at BEFORE UPDATE ON public.mobilepay FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS postering_group_set_updated_at ON public.postering_group;
+CREATE TRIGGER postering_group_set_updated_at BEFORE UPDATE ON public.postering_group FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS forecast_set_updated_at ON public.forecast;
+CREATE TRIGGER forecast_set_updated_at BEFORE UPDATE ON public.forecast FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS posteringer_set_updated_at ON public.posteringer;
+CREATE TRIGGER posteringer_set_updated_at BEFORE UPDATE ON public.posteringer FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS import_history_set_updated_at ON public.import_history;
+CREATE TRIGGER import_history_set_updated_at BEFORE UPDATE ON public.import_history FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- =========================================================
+-- 10. ROW LEVEL SECURITY
 -- =========================================================
 
 ALTER TABLE public.account ENABLE ROW LEVEL SECURITY;
@@ -220,10 +305,11 @@ ALTER TABLE public.forecast ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mobilepay ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postering_group ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posteringer ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.import_history ENABLE ROW LEVEL SECURITY;
 
 
 -- =========================================================
--- 9. BLOCK DIRECT API ACCESS
+-- 11. BLOCK DIRECT API ACCESS
 -- =========================================================
 
 REVOKE ALL ON TABLE public.account FROM anon, authenticated;
@@ -232,3 +318,4 @@ REVOKE ALL ON TABLE public.forecast FROM anon, authenticated;
 REVOKE ALL ON TABLE public.mobilepay FROM anon, authenticated;
 REVOKE ALL ON TABLE public.postering_group FROM anon, authenticated;
 REVOKE ALL ON TABLE public.posteringer FROM anon, authenticated;
+REVOKE ALL ON TABLE public.import_history FROM anon, authenticated;
