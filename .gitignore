@@ -58,6 +58,7 @@ multiproject.code-workspace
 *.log
 run-local.*
 legacy-cleanup-notes.txt
+*TEMP*
 
 # Frontend dependencies
 node_modules/

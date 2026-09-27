@@ -76,14 +76,23 @@ The Vite build writes production assets to `src/backend/GamMaSite/wwwroot/react-
 
 ### Build Backend
 
-```bash
+The normal build writes the backend to `src/backend/GamMaSite/bin/Debug/net10.0/`.
+Stop a running backend first, otherwise Windows may lock `GamMaSite.exe`:
+
+```powershell
+Get-Process -Name GamMaSite -ErrorAction SilentlyContinue |
+  Stop-Process -Force
+
 dotnet build src/backend/GamMaSite/GamMaSite.csproj
 ```
 
-If the local site is already running and locks the debug output, build to a temporary output folder instead:
+To verify the build while the local site is still running, use a separate temporary
+output folder. In PowerShell, use `$env:TEMP` (not `%TEMP%`):
 
-```bash
-dotnet build src/backend/GamMaSite/GamMaSite.csproj -o %TEMP%/GamMaSiteBuildVerify
+```powershell
+dotnet build src/backend/GamMaSite/GamMaSite.csproj `
+  --no-restore `
+  -o "$env:TEMP\GamMaSiteBuildVerify"
 ```
 
 ### Run Locally
