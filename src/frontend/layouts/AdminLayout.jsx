@@ -1,4 +1,4 @@
-import { adminItems, Link } from "../routes/navigation.jsx";
+import { adminSections, Link } from "../routes/navigation.jsx";
 
 const financeSections = [
   {
@@ -62,11 +62,12 @@ export function AdminLayout({
   );
   const sections = isFinanceAdmin
     ? financeSections
-    : [
-        {
-          items: adminItems.filter((item) => canWrite || item.readAdmin),
-        },
-      ];
+    : adminSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canWrite || item.readAdmin),
+        }))
+        .filter((section) => section.items.length > 0);
   const activePath = isFinanceAdmin
     ? financeActivePath(window.location.pathname)
     : active;

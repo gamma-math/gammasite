@@ -410,8 +410,8 @@ namespace GamMaSite.Services
             var newId = $"{id}-COPY";
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date, created_at, updated_at)
-                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, belongs_to_last_year, posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, posterings_date, created_at, updated_at)
+                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM public.posteringer
                 WHERE id = @id;", connection);
             AddText(command, "id", id);

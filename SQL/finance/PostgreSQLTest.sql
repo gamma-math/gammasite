@@ -155,7 +155,6 @@ CREATE TABLE IF NOT EXISTS public.posteringer (
     account_number text,
     posting_group_id text,
     document text,
-    belongs_to_last_year boolean,
     posterings_date date,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -267,6 +266,10 @@ ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS created_at timestamp with t
 ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.posteringer ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.posteringer ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.posteringer ADD COLUMN IF NOT EXISTS posting_date date;
+UPDATE public.posteringer
+SET posting_date = COALESCE(posting_date, posterings_date, date)
+WHERE posting_date IS NULL;
 ALTER TABLE public.import_history ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.import_history ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 

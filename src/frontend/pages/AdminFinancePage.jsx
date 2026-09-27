@@ -1109,9 +1109,8 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
   const duplicateRow = async (row) => {
     setError("");
     try {
-      const copy = await financeApi.duplicateAdminPosting(row.id);
+      await financeApi.duplicateAdminPosting(row.id);
       await load();
-      navigate(`/react/admin/finance/postings/${encodeURIComponent(copy.id)}`);
     } catch (requestError) {
       setError(requestError.message);
     }
