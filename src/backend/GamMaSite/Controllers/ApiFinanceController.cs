@@ -62,9 +62,9 @@ namespace GamMaSite.Controllers
         {
             var currentYear = DateTime.Today.Year;
             var selectedYear = year ?? currentYear;
-            if (selectedYear != currentYear && selectedYear != currentYear - 1)
+            if (selectedYear < 1900 || selectedYear > 9999)
             {
-                return BadRequest(new { error = "Der kan kun vÃ¦lges dette Ã¥r eller sidste Ã¥r." });
+                return BadRequest(new { error = "Det valgte Ã¥r er ugyldigt." });
             }
 
             return Ok(await _financeReportService.GetAdminOverviewAsync(selectedYear, cancellationToken));
@@ -185,16 +185,23 @@ namespace GamMaSite.Controllers
 
         [HttpGet("admin/postings")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
         {
             var currentYear = DateTime.Today.Year;
-            var selectedYear = year ?? currentYear;
-            if (selectedYear != currentYear && selectedYear != currentYear - 1)
+            int? selectedYear = allYears ? null : year ?? currentYear;
+            if (selectedYear.HasValue && (selectedYear.Value < 1900 || selectedYear.Value > 9999))
             {
-                return BadRequest(new { error = "Der kan kun vÃ¦lges dette Ã¥r eller sidste Ã¥r." });
+                return BadRequest(new { error = "Det valgte Ã¥r er ugyldigt." });
             }
 
             return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, cancellationToken));
+        }
+
+        [HttpGet("admin/postings/years")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminPostingYears(CancellationToken cancellationToken)
+        {
+            return Ok(await _financeReportService.GetAdminPostingYearsAsync(cancellationToken));
         }
 
         [HttpGet("admin/postings/options")]

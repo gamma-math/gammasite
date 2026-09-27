@@ -22,6 +22,7 @@ const manageItems = [
   { href: "/react/account/manage/email", label: "Email" },
   { href: "/react/account/manage/password", label: "Password" },
   { href: "/react/account/manage/two-factor", label: "To-faktor authentication" },
+  { href: "/react/account/manage/finance", label: "Mine transaktioner" },
   { href: "/react/account/manage/personal-data", label: "Privat data" },
   { href: "/react/account/manage/logout", label: "Log ud" }
 ];
@@ -210,10 +211,10 @@ export function AccountManagePage({ user, section = "profile" }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>{isFinanceSection ? "Mine posteringer" : "Administrér din bruger"}</h1>
+          <h1>{isFinanceSection ? "Mine transaktioner" : "Administrér din bruger"}</h1>
           <p className="menu-panel-lead menu-panel-lead-inline">
             {isFinanceSection
-              ? "Se dine egne finansposteringer i GamMa."
+              ? "Se dine egne transaktioner i GamMa."
               : "Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se."}
           </p>
         </div>
@@ -343,7 +344,7 @@ function FinancePostingsPanel({ setLastUpdated }) {
   }, [search, pageSize, sort.key, sort.direction]);
 
   if (isLoading) {
-    return <p className="muted">Henter dine posteringer...</p>;
+    return <p className="muted">Henter dine transaktioner...</p>;
   }
 
   if (error) {
@@ -361,8 +362,6 @@ function FinancePostingsPanel({ setLastUpdated }) {
               <SortableHeader label="Beløb" sortKey="amount" sort={sort} setSort={setSort} />
               <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
               <SortableHeader label="Kilde/type" sortKey="sourceType" sort={sort} setSort={setSort} />
-              <SortableHeader label="Konto" sortKey="account" sort={sort} setSort={setSort} />
-              <SortableHeader label="Postering group" sortKey="postingGroup" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>
@@ -372,13 +371,11 @@ function FinancePostingsPanel({ setLastUpdated }) {
                 <td className={posting.amount < 0 ? "account-finance-amount is-negative" : "account-finance-amount is-positive"}>{formatPostingAmount(posting.amount)}</td>
                 <td>{posting.text}</td>
                 <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
-                <td>{posting.account}</td>
-                <td>{posting.postingGroup}</td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
               <tr>
-                <td colSpan="6">{postings.length === 0 ? "Der er ingen posteringer knyttet til din bruger endnu." : "Ingen posteringer matcher søgningen."}</td>
+                <td colSpan="4">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
               </tr>
             )}
           </tbody>

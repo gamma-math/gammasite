@@ -27,8 +27,8 @@ export const financeApi = {
     if (!response.ok) {
       const message =
         response.status === 401
-          ? "Du skal være logget ind for at se dine posteringer."
-          : "Dine posteringer kunne ikke hentes.";
+          ? "Du skal være logget ind for at se dine transaktioner."
+          : "Dine transaktioner kunne ikke hentes.";
       throw new Error(message);
     }
 
@@ -254,7 +254,12 @@ export const financeApi = {
     bankKey = "",
     mobilePayKey = "",
   ) => {
-    const params = new URLSearchParams({ year: String(year) });
+    const params = new URLSearchParams();
+    if (year === null || year === undefined || year === "") {
+      params.set("allYears", "true");
+    } else {
+      params.set("year", String(year));
+    }
     if (accountId) params.set("accountId", accountId);
     if (bankKey) params.set("bankKey", bankKey);
     if (mobilePayKey) params.set("mobilePayKey", mobilePayKey);
@@ -274,6 +279,14 @@ export const financeApi = {
       );
     }
 
+    return response.json();
+  },
+  adminPostingYears: async () => {
+    const response = await fetch("/api/finance/admin/postings/years", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("PosteringsÃ¥rene kunne ikke hentes.");
     return response.json();
   },
   adminPosting: async (id) => {

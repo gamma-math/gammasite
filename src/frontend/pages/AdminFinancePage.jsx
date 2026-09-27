@@ -49,6 +49,17 @@ const filters = (s) => {
   };
 };
 
+function usePostingYears(isAdmin) {
+  const [years, setYears] = useState([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    financeApi.adminPostingYears().then(setYears).catch(() => setYears([]));
+  }, [isAdmin]);
+
+  return years;
+}
+
 const excelEscape = (value) =>
   String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1012,6 +1023,13 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     [error, setError] = useState("");
   const [isTableExpanded, setIsTableExpanded] = useState(false);
   useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
+  const postingYears = usePostingYears(isAdmin);
+  const selectableYears = postingYears.length ? postingYears : [now, now - 1];
+  useEffect(() => {
+    if (year !== null && postingYears.length && !postingYears.includes(year)) {
+      setYear(postingYears[0]);
+    }
+  }, [postingYears, year]);
   const [columnWidths, setColumnWidths] = useState({
     id: 150,
     date: 150,
@@ -1134,7 +1152,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     ],
   );
   const reset = () => {
-    setYear(now);
+    setYear(selectableYears.includes(now) ? now : selectableYears[0]);
     setQuery("");
     setStatus("");
     setAccount("");
@@ -1246,11 +1264,13 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
         <label>
           År
           <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            value={year ?? ""}
+            onChange={(e) => setYear(e.target.value === "" ? null : Number(e.target.value))}
           >
-            <option>{now}</option>
-            <option>{now - 1}</option>
+            <option value="">Alle år</option>
+            {selectableYears.map((availableYear) => (
+              <option key={availableYear} value={availableYear}>{availableYear}</option>
+            ))}
           </select>
         </label>
         <label>
@@ -1566,6 +1586,13 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const [exporting, setExporting] = useState(false);
   const [isTableExpanded, setIsTableExpanded] = useState(false);
   useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
+  const postingYears = usePostingYears(isAdmin);
+  const selectableYears = postingYears.length ? postingYears : [now, now - 1];
+  useEffect(() => {
+    if (year !== null && postingYears.length && !postingYears.includes(year)) {
+      setYear(postingYears[0]);
+    }
+  }, [postingYears, year]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1603,7 +1630,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
   useEffect(() => setPage(1), [query, status, account, group, user, year, pageSize, sort.key, sort.direction]);
   const reset = () => {
-    setYear(now);
+    setYear(selectableYears.includes(now) ? now : selectableYears[0]);
     setQuery("");
     setStatus("");
     setAccount("");
@@ -1616,6 +1643,11 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const exportRows = async () => {
     setExporting(true);
     setError("");
+    if (year === null) {
+      setError("Vælg et specifikt år før eksport.");
+      setExporting(false);
+      return;
+    }
     try {
       const overview = await financeApi.adminOverview(year);
       const workbook = buildFinanceWorkbookXlsx({
@@ -1669,7 +1701,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
         </div>
       </div>
       <div className="finance-admin-filters">
-        <label>År<select value={year} onChange={(event) => setYear(Number(event.target.value))}><option>{now}</option><option>{now - 1}</option></select></label>
+        <label>År<select value={year ?? ""} onChange={(event) => setYear(event.target.value === "" ? null : Number(event.target.value))}><option value="">Alle år</option>{selectableYears.map((availableYear) => <option key={availableYear} value={availableYear}>{availableYear}</option>)}</select></label>
         <label>Søg<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ID, tekst, konto..." /></label>
         <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Alle</option><option>Ukategoriseret</option><option>Mangler bilag</option><option>Bogført</option></select></label>
         <label>Konto<select value={account} onChange={(event) => setAccount(event.target.value)}><option value="">Alle konti</option>{values("account").map((value) => <option key={value}>{value}</option>)}</select></label>

@@ -146,7 +146,7 @@ function FinanceHeader({ currentYear, lastUpdated, setYear, year }) {
           className="finance-live-profile-link"
           href="/react/account/manage/finance"
         >
-          Mine posteringer
+          Mine transaktioner
         </a>
         <div className="finance-live-year-toggle" aria-label="Vælg år">
           <button

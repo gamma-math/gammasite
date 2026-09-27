@@ -263,10 +263,14 @@ namespace GamMaSite.Services
             };
         }
 
-        public async Task<FinanceAdminPostingsDto> GetAdminPostingsAsync(int year, string accountId, long? bankKey, long? mobilePayKey, CancellationToken cancellationToken)
+        public async Task<FinanceAdminPostingsDto> GetAdminPostingsAsync(int? year, string accountId, long? bankKey, long? mobilePayKey, CancellationToken cancellationToken)
         {
-            var start = new DateTime(year, 1, 1);
-            var end = year == DateTime.Today.Year ? DateTime.Today : new DateTime(year, 12, 31);
+            DateTime? start = year.HasValue ? new DateTime(year.Value, 1, 1) : null;
+            DateTime? end = !year.HasValue
+                ? null
+                : year.Value == DateTime.Today.Year
+                    ? DateTime.Today
+                    : new DateTime(year.Value, 12, 31);
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
@@ -300,15 +304,15 @@ namespace GamMaSite.Services
                 FROM public.posteringer p
                 LEFT JOIN public.account a ON a.id = p.account_number
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
-                WHERE COALESCE(p.posterings_date, p.date) >= @start_date
-                  AND COALESCE(p.posterings_date, p.date) <= @end_date
+                WHERE (@start_date IS NULL OR COALESCE(p.posterings_date, p.date) >= @start_date)
+                  AND (@end_date IS NULL OR COALESCE(p.posterings_date, p.date) <= @end_date)
                   AND (@account_id IS NULL OR p.account_number = @account_id)
                   AND (@bank_key IS NULL OR p.bank_account_key = @bank_key)
                   AND (@mobile_pay_key IS NULL OR p.mp_key = @mobile_pay_key)
                 ORDER BY COALESCE(p.posterings_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
-            AddDate(command, "start_date", start);
-            AddDate(command, "end_date", end);
+            AddNullableDate(command, "start_date", start);
+            AddNullableDate(command, "end_date", end);
             AddNullableText(command, "account_id", accountId);
             AddNullableLong(command, "bank_key", bankKey);
             AddNullableLong(command, "mobile_pay_key", mobilePayKey);
@@ -340,6 +344,25 @@ namespace GamMaSite.Services
                 LastUpdated = await ReadLastUpdatedAsync(connection, cancellationToken),
                 Postings = postings
             };
+        }
+
+        public async Task<IReadOnlyList<int>> GetAdminPostingYearsAsync(CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand(@"
+                SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(p.posterings_date, p.posting_date, p.date))::int
+                FROM public.posteringer p
+                WHERE COALESCE(p.posterings_date, p.posting_date, p.date) IS NOT NULL
+                ORDER BY 1 DESC;", connection);
+            var years = new List<int>();
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                years.Add(reader.GetInt32(0));
+            }
+
+            return years;
         }
 
         public async Task<FinanceAdminPostingDetailDto> GetAdminPostingDetailAsync(string id, CancellationToken cancellationToken)
@@ -903,6 +926,7 @@ namespace GamMaSite.Services
             var parameter = command.Parameters.Add(name, NpgsqlDbType.Date);
             parameter.Value = DateTime.TryParse(value, out var parsed) ? parsed.Date : DBNull.Value;
         }
+        private static void AddNullableDate(NpgsqlCommand command, string name, DateTime? value) => command.Parameters.Add(name, NpgsqlDbType.Date).Value = value?.Date ?? (object)DBNull.Value;
         private static void AddInteger(NpgsqlCommand command, string name, int value) => command.Parameters.Add(name, NpgsqlDbType.Integer).Value = value;
         private static void AddDate(NpgsqlCommand command, string name, DateTime value) => command.Parameters.Add(name, NpgsqlDbType.Date).Value = value.Date;
     }
