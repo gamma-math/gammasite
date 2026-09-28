@@ -179,7 +179,7 @@ function buildFinanceWorkbook({ year, postings, overview }) {
     row.postingDate,
     row.text,
     row.amount,
-    row.userId,
+    row.userName ?? "",
     row.account,
     row.postingGroup,
     row.status,
@@ -216,6 +216,15 @@ const xlsxHyperlink = (url) => ({
   text: url,
   url,
 });
+
+function buildUserNameMap(members = []) {
+  return new Map(
+    members.map((member) => [
+      member.id ?? member.Id,
+      member.name ?? member.Name ?? member.email ?? member.Email ?? "",
+    ]),
+  );
+}
 
 function appendXlsxSheet(workbook, name, headers, rows, numericColumns = new Set()) {
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -319,7 +328,7 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     row.postingDate,
     row.text,
     row.amount,
-    row.userId,
+    row.userName ?? "",
     row.accountId,
     row.account,
     row.postingGroupId,
@@ -1606,16 +1615,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   }, [isAdmin]);
 
   const postings = data?.postings || [];
-  const userNames = useMemo(
-    () =>
-      new Map(
-        members.map((member) => [
-          member.id ?? member.Id,
-          member.name ?? member.Name ?? member.email ?? member.Email ?? member.id ?? member.Id,
-        ]),
-      ),
-    [members],
-  );
+  const userNames = useMemo(() => buildUserNameMap(members), [members]);
   const userLabel = (userId) => userNames.get(userId) || userId;
   const values = (key) => [...new Set(postings.map((p) => p[key]).filter(Boolean))].sort();
   const shown = postings.filter(
@@ -1650,9 +1650,17 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
     }
     try {
       const overview = await financeApi.adminOverview(year);
+      const exportUserNames = members.length
+        ? userNames
+        : buildUserNameMap(await membersApi.listAdmin());
       const workbook = buildFinanceWorkbookXlsx({
         year,
-        postings: sorted,
+        postings: sorted.map((posting) => ({
+          ...posting,
+          userName: posting.userId
+            ? exportUserNames.get(posting.userId) || "Ukendt bruger"
+            : "",
+        })),
         overview,
       });
       const blob = new Blob([workbook], {
