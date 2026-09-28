@@ -1254,12 +1254,6 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
           </p>
         </div>
         <div className="finance-admin-header-actions">
-          <Link
-            className="finance-live-profile-link"
-            href="/react/admin/finance/postings"
-          >
-            Se posteringer
-          </Link>
           <button
             className="menu-create-button"
             type="button"
@@ -1700,12 +1694,6 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
           >
             {exporting ? "Eksporterer..." : "Eksporter"}
           </button>
-          <Link
-            className="finance-live-profile-link"
-            href="/react/admin/finance/postings/edit"
-          >
-            Redigér posteringer
-          </Link>
         </div>
       </div>
       <div className="finance-admin-filters">
