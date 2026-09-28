@@ -26,7 +26,7 @@ namespace GamMaSite.Services
                 throw new InvalidOperationException("Finance-databasekonfigurationen mangler. Kontrollér .env.local.");
             }
 
-            _connectionString = new NpgsqlConnectionStringBuilder
+            var readConnection = new NpgsqlConnectionStringBuilder
             {
                 Host = host,
                 Port = int.TryParse(portValue, out var port) ? port : 5432,
@@ -34,7 +34,9 @@ namespace GamMaSite.Services
                 Username = username,
                 Password = password,
                 ApplicationName = "GamMaSite Finance Read"
-            }.ConnectionString;
+            };
+            ConfigureTransportSecurity(readConnection, configuration, "FinanceRead");
+            _connectionString = readConnection.ConnectionString;
 
             var writeHost = configuration["FinanceWrite:Host"] ?? configuration["Finance:Host"];
             var writeDatabase = configuration["FinanceWrite:Database"] ?? configuration["Finance:Database"];
@@ -47,7 +49,7 @@ namespace GamMaSite.Services
                 throw new InvalidOperationException("Finance-skriveadgangen mangler. KontrollÃ©r .env.local.");
             }
 
-            _writeConnectionString = new NpgsqlConnectionStringBuilder
+            var writeConnection = new NpgsqlConnectionStringBuilder
             {
                 Host = writeHost,
                 Port = int.TryParse(writePortValue, out var writePort) ? writePort : 5432,
@@ -55,7 +57,18 @@ namespace GamMaSite.Services
                 Username = writeUsername,
                 Password = writePassword,
                 ApplicationName = "GamMaSite Finance Write"
-            }.ConnectionString;
+            };
+            ConfigureTransportSecurity(writeConnection, configuration, "FinanceWrite");
+            _writeConnectionString = writeConnection.ConnectionString;
+        }
+
+        private static void ConfigureTransportSecurity(NpgsqlConnectionStringBuilder connection, IConfiguration configuration, string section)
+        {
+            var sslMode = configuration[$"{section}:SslMode"] ?? configuration["Finance:SslMode"];
+            var channelBinding = configuration[$"{section}:ChannelBinding"] ?? configuration["Finance:ChannelBinding"];
+
+            if (!string.IsNullOrWhiteSpace(sslMode)) connection["SSL Mode"] = sslMode;
+            if (!string.IsNullOrWhiteSpace(channelBinding)) connection["Channel Binding"] = channelBinding;
         }
 
         public async Task<FinanceOverviewDto> GetOverviewAsync(string userId, int year, CancellationToken cancellationToken)

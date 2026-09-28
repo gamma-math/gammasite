@@ -33,7 +33,7 @@ namespace GamMaSite.Services
                 throw new InvalidOperationException("Finance-databasekonfigurationen mangler. Kontrollér .env.local.");
             }
 
-            _connectionString = new NpgsqlConnectionStringBuilder
+            var connection = new NpgsqlConnectionStringBuilder
             {
                 Host = host,
                 Port = int.TryParse(portValue, out var port) ? port : 5432,
@@ -41,7 +41,12 @@ namespace GamMaSite.Services
                 Username = username,
                 Password = password,
                 ApplicationName = "GamMaSite Finance Write"
-            }.ConnectionString;
+            };
+            var sslMode = configuration["FinanceWrite:SslMode"] ?? configuration["Finance:SslMode"];
+            var channelBinding = configuration["FinanceWrite:ChannelBinding"] ?? configuration["Finance:ChannelBinding"];
+            if (!string.IsNullOrWhiteSpace(sslMode)) connection["SSL Mode"] = sslMode;
+            if (!string.IsNullOrWhiteSpace(channelBinding)) connection["Channel Binding"] = channelBinding;
+            _connectionString = connection.ConnectionString;
         }
 
         public async Task<FinanceImportResultDto> ImportAsync(
