@@ -860,6 +860,10 @@ namespace GamMaSite.Services
                         b.id,
                         TO_CHAR(b.date, 'YYYY-MM-DD'),
                         COALESCE(b.text, ''),
+                        ''::text,
+                        NULL::text,
+                        ''::text,
+                        ''::text,
                         COALESCE(b.amount, 0),
                         b.balance,
                         COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.bank_account_key = b.id), 0)
@@ -875,6 +879,10 @@ namespace GamMaSite.Services
                             m.transaction_type,
                             ''
                         ),
+                        COALESCE(m.transfer_ref, ''),
+                        TO_CHAR(m.transfer_date, 'YYYY-MM-DD'),
+                        COALESCE(m.payment_tx_id, ''),
+                        COALESCE(m.payner_name, ''),
                         COALESCE(m.amount, 0),
                         NULL::numeric,
                         COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.mp_key = m.id), 0)
@@ -893,9 +901,13 @@ namespace GamMaSite.Services
                     Id = $"{(isBank ? "BA" : "MP")}-{sourceId}",
                     Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
                     Text = reader.GetString(2),
-                    Amount = reader.GetFieldValue<decimal>(3),
-                    Balance = reader.IsDBNull(4) ? null : reader.GetFieldValue<decimal>(4),
-                    PostedAmount = reader.GetFieldValue<decimal>(5),
+                    TransferRef = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    TransferDate = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                    PaymentTxId = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                    PaynerName = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    Amount = reader.GetFieldValue<decimal>(7),
+                    Balance = reader.IsDBNull(8) ? null : reader.GetFieldValue<decimal>(8),
+                    PostedAmount = reader.GetFieldValue<decimal>(9),
                     SourceId = sourceId,
                     SourceType = sourceType
                 });
@@ -1044,6 +1056,10 @@ namespace GamMaSite.Services
         public string Id { get; set; } = "";
         public string Date { get; set; } = "";
         public string Text { get; set; } = "";
+        public string TransferRef { get; set; } = "";
+        public string TransferDate { get; set; } = "";
+        public string PaymentTxId { get; set; } = "";
+        public string PaynerName { get; set; } = "";
         public decimal Amount { get; set; }
         public decimal? Balance { get; set; }
         public decimal PostedAmount { get; set; }

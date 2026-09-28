@@ -322,6 +322,35 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     return values;
   };
 
+  const mobilePayRows = (rows) => (rows || []).map((row, index) => {
+    const rowNumber = index + 2;
+    return [
+      row.id,
+      row.date,
+      row.text,
+      row.transferRef,
+      row.transferDate,
+      row.paymentTxId,
+      row.paynerName,
+      row.amount,
+      row.postedAmount,
+      xlsxFormula(`H${rowNumber}-I${rowNumber}`, Number(row.amount || 0) - Number(row.postedAmount || 0)),
+    ];
+  });
+  const mobilePayWithTotal = (rows) => {
+    const values = mobilePayRows(rows);
+    if (values.length) {
+      const totalRow = values.length + 2;
+      values.push([
+        "", "", "TOTAL", "", "", "", "",
+        xlsxFormula(`SUM(H2:H${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[7] || 0), 0)),
+        xlsxFormula(`SUM(I2:I${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[8] || 0), 0)),
+        xlsxFormula(`SUM(J2:J${totalRow - 1})`, values.reduce((sum, row) => sum + Number(xlsxValue(row[9]) || 0), 0)),
+      ]);
+    }
+    return values;
+  };
+
   const postingRows = (postings || []).map((row) => [
     row.id,
     row.date,
@@ -351,8 +380,8 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     "ID", "Dato", "Tekst", "Beløb fra bank", "Saldo", "Bogført beløb", "Difference",
   ], sourceWithTotal(overview?.bankTransfers, true), new Set([3, 4, 5, 6]));
   appendXlsxSheet(workbook, "MobilePay", [
-    "ID", "Dato", "Tekst", "Beløb fra MobilePay", "Bogført beløb", "Difference",
-  ], sourceWithTotal(overview?.mobilePayTransfers), new Set([3, 4, 5]));
+    "ID", "Dato", "Tekst", "transfer_ref", "transfer_date", "payment_tx_id", "payner_name", "Beløb fra MobilePay", "Bogført beløb", "Difference",
+  ], mobilePayWithTotal(overview?.mobilePayTransfers), new Set([7, 8, 9]));
   workbook.Workbook = {
     CalcPr: { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true },
   };
