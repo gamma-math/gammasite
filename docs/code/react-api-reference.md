@@ -100,6 +100,41 @@ This document describes the backend APIs currently used by the React pages. The 
 | GET | `/api/calendar` | Member calendar page | External iCal feed configured by `ICalService` | Loads upcoming calendar events and maps them to the React calendar model. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 | GET | `/api/library` | Member library page | Server file system through `IIndexService` | Lists protected documents and folders for the requested path. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 
+## Finance API
+
+All Finance endpoints use the PostgreSQL finance database. Endpoints under `admin` require the `Admin` role. The regular overview and postings endpoints require an authenticated user and use the current user's ID when selecting personal transactions.
+
+| Method | Endpoint | React pages | Data source | Purpose | Tests |
+|---|---|---|---|---|---|
+| GET | `/api/finance/overview?year={year}` | Account finance overview | Finance PostgreSQL tables (`posteringer`, `forecast`, `account`, `postering_group`) | Returns the selected year's income, expenses, monthly totals, budgets, previous-year values, and data-quality summary. The regular user endpoint accepts the current year and the previous year. | [ApiFinanceControllerTests.cs](../../src/test/GamMaSite.Tests/ApiFinanceControllerTests.cs) |
+| GET | `/api/finance/postings` | Account transactions page | `posteringer`, finance account and posting-group tables | Returns the signed-in user's transactions and the last finance update timestamp. | Not yet covered |
+| GET | `/api/finance/admin/overview?year={year}` | Admin Finance overview | Finance PostgreSQL tables | Returns the admin overview for any year from 1900 through 9999. | [ApiFinanceControllerTests.cs](../../src/test/GamMaSite.Tests/ApiFinanceControllerTests.cs) |
+| GET | `/api/finance/admin/budgets` | Admin budgets page | `forecast`, `account`, `postering_group` | Lists all budget rows with full account and posting-group identifiers. | Not yet covered |
+| GET | `/api/finance/admin/accounts` | Admin chart of accounts page | `account` | Lists the chart of accounts and its account/context keys. | Not yet covered |
+| POST | `/api/finance/admin/budgets` | Admin budgets page | `forecast` and reference tables | Creates a budget row. The body is `FinanceBudgetUpdateDto` (`id`, `accountId`, `postingGroupId`, `yearActual`, `forecast`, `forecastType`). | [FinanceReportServiceTests.cs](../../src/test/GamMaSite.Tests/FinanceReportServiceTests.cs) |
+| GET | `/api/finance/admin/budgets/{id}` | Admin budget editor | `forecast` | Loads one budget row by ID. | Not yet covered |
+| PUT | `/api/finance/admin/budgets/{id}` | Admin budget editor | `forecast` and reference tables | Updates a budget row and its `updated_at` timestamp. | Not yet covered |
+| DELETE | `/api/finance/admin/budgets/{id}` | Admin budgets page | `forecast` | Deletes a budget row. | Not yet covered |
+| GET | `/api/finance/admin/posteringsgrupper` | Admin posting groups page | `postering_group` | Lists posting groups and contexts. | Not yet covered |
+| GET | `/api/finance/admin/posteringsgrupper/{id}` | Admin posting-group editor | `postering_group` | Loads one posting group. | Not yet covered |
+| POST | `/api/finance/admin/posteringsgrupper` | Admin posting-group editor | `postering_group` | Creates a posting group. The body is `FinancePostingGroupUpdateDto` (`id`, `postingGroup`, `context`). | [FinanceReportServiceTests.cs](../../src/test/GamMaSite.Tests/FinanceReportServiceTests.cs) |
+| PUT | `/api/finance/admin/posteringsgrupper/{id}` | Admin posting-group editor | `postering_group` | Updates a posting group and its `updated_at` timestamp. | Not yet covered |
+| DELETE | `/api/finance/admin/posteringsgrupper/{id}` | Admin posting groups page | `postering_group` | Deletes a posting group. | Not yet covered |
+| GET | `/api/finance/admin/postings?year={year}&allYears={bool}&accountId={id}&bankKey={key}&mobilePayKey={key}` | Admin postings and posting editor | `posteringer`, `account`, `postering_group`, `AspNetUsers`, `bank_account`, `mobilepay` | Lists admin transactions. Use `allYears=true` to omit the year filter; otherwise `year` selects a valid year. Account and source keys are optional filters. | [ApiFinanceControllerTests.cs](../../src/test/GamMaSite.Tests/ApiFinanceControllerTests.cs) |
+| GET | `/api/finance/admin/postings/years` | Admin postings and posting editor | `posteringer` | Returns all years present in posting dates for the year selector. | Not yet covered |
+| GET | `/api/finance/admin/postings/options` | Admin posting editor | `account`, `postering_group` | Returns searchable account and posting-group options. | Not yet covered |
+| GET | `/api/finance/admin/postings/{id}` | Admin posting editor | `posteringer` and source tables | Loads one posting, including source references and document information. | Not yet covered |
+| POST | `/api/finance/admin/postings` | Admin posting editor | `posteringer` | Creates a manually maintained posting. The body is `FinanceAdminPostingUpdateDto` (`id`, `date`, `accountId`, `postingGroupId`, `userId`, `postingDate`, `text`, `amount`, `document`). | [FinanceReportServiceTests.cs](../../src/test/GamMaSite.Tests/FinanceReportServiceTests.cs) |
+| PUT | `/api/finance/admin/postings/{id}` | Admin posting editor | `posteringer` | Updates a posting and its `updated_at` timestamp. | Not yet covered |
+| POST | `/api/finance/admin/postings/{id}/duplicate` | Admin posting editor | `posteringer` | Creates a copy with the `-COPY` suffix. Existing IDs are rejected instead of overwritten. | Not yet covered |
+| DELETE | `/api/finance/admin/postings/{id}` | Admin posting editor | `posteringer` | Deletes a posting. | Not yet covered |
+| GET | `/api/finance/admin/import/history` | Admin CSV import page | `import_history` | Lists recent bank and MobilePay imports, including row counts, status, notes, and timestamps. | Not yet covered |
+| POST | `/api/finance/admin/import/postings` | Admin CSV import page | `bank_account`, `mobilepay`, `posteringer` | Rebuilds missing derived postings from the already imported source data without uploading another CSV. Existing postings are skipped. | Not yet covered |
+| GET | `/api/finance/admin/import/templates/{source}` | Admin CSV import page | No database; generated CSV | Downloads a UTF-8 example CSV for `bank` or `mobilepay`. Unknown sources return 404. | [ApiFinanceControllerTests.cs](../../src/test/GamMaSite.Tests/ApiFinanceControllerTests.cs) |
+| POST | `/api/finance/admin/import` | Admin CSV import page | `bank_account`, `mobilepay`, `import_history`, optionally `posteringer` | Imports one or both CSV files. The multipart fields are `bankFile`, `mobilePayFile`, and `syncPostings`; the service validates and parses rows, upserts source data, writes import history, and optionally creates derived postings. | [ApiFinanceControllerTests.cs](../../src/test/GamMaSite.Tests/ApiFinanceControllerTests.cs), [FinanceImportServiceTests.cs](../../src/test/GamMaSite.Tests/FinanceImportServiceTests.cs) |
+
+Finance CRUD, PostgreSQL conflict handling, import-history persistence, bank/MobilePay matching, derived-posting generation, and read/write role permissions still require integration tests against a disposable PostgreSQL database. The current unit tests intentionally stop before opening a real Finance connection when validating input.
+
 ## Payment API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
