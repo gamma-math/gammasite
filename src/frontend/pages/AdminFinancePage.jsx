@@ -1489,7 +1489,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
                         options={options?.accounts || []}
                         value={p.accountId || ""}
                         onChange={(value) => updateSelectAndSave(p, "accountId", value)}
-                        placeholder="VÃ¦lg konto..."
+                        placeholder="Vælg konto..."
                         compact
                       />
                       <select
@@ -1514,7 +1514,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
                         options={options?.postingGroups || []}
                         value={p.postingGroupId || ""}
                         onChange={(value) => updateSelectAndSave(p, "postingGroupId", value)}
-                        placeholder="VÃ¦lg gruppe..."
+                        placeholder="Vælg gruppe..."
                         compact
                       />
                       <select
@@ -2173,7 +2173,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
                             options={accountOptions}
                             value={row.accountId}
                             onChange={(value) => updateRow(row, "accountId", value)}
-                            placeholder="VÃ¦lg konto..."
+                            placeholder="Vælg konto..."
                             compact
                           />
                           <select
@@ -3256,16 +3256,16 @@ export function FinanceAdminImportPage({ isAdmin }) {
 
       {/* Deprecated encoded copy retained temporarily so this source remains easy to review.
       <section className="finance-import-introduction">
-        <p className="finance-live-kicker">SÃ¥dan dannes posteringer</p>
-        <h2>Kildedata fÃ¸rst â€” posteringer bagefter</h2>
+        <p className="finance-live-kicker">Sådan dannes posteringer</p>
+        <h2>Kildedata først — posteringer bagefter</h2>
         <ol>
-          <li>CSV-rÃ¦kkerne valideres og upsertes i henholdsvis bank- og MobilePay-tabellen.</li>
-          <li>Matcher bankens <strong>Tekst</strong> prÃ¦cist en MobilePay <strong>Transfer Reference</strong>, dannes MobilePay-posteringer.</li>
-          <li>Matcher den ikke, dannes Ã©n bankpostering. MobilePay-rÃ¦kker uden et matchende bankkontoudtog danner ikke en postering.</li>
+          <li>CSV-rækkerne valideres og upsertes i henholdsvis bank- og MobilePay-tabellen.</li>
+          <li>Matcher bankens <strong>Tekst</strong> præcist en MobilePay <strong>Transfer Reference</strong>, dannes MobilePay-posteringer.</li>
+          <li>Matcher den ikke, dannes én bankpostering. MobilePay-rækker uden et matchende bankkontoudtog danner ikke en postering.</li>
         </ol>
         <p>
-          Ved en ny import opdateres kun kildedata pÃ¥ eksisterende afledte posteringer.
-          Konto, posteringsgruppe, bruger og dokumentation bevares, sÃ¥ kategorisering ikke gÃ¥r tabt.
+          Ved en ny import opdateres kun kildedata på eksisterende afledte posteringer.
+          Konto, posteringsgruppe, bruger og dokumentation bevares, så kategorisering ikke går tabt.
         </p>
       </section>
       */}

@@ -73,7 +73,7 @@ namespace GamMaSite.Services
 
             if (string.IsNullOrWhiteSpace(writeHost) || string.IsNullOrWhiteSpace(writeDatabase) || string.IsNullOrWhiteSpace(writeUsername) || string.IsNullOrWhiteSpace(writePassword))
             {
-                throw new InvalidOperationException("Finance-skriveadgangen mangler. KontrollÃ©r .env.local.");
+                throw new InvalidOperationException("Finance-skriveadgangen mangler. Kontrollér .env.local.");
             }
 
             var writeConnection = new NpgsqlConnectionStringBuilder
@@ -319,7 +319,7 @@ namespace GamMaSite.Services
                 SELECT
                     p.id,
                     TO_CHAR(p.date, 'YYYY-MM-DD') AS transaction_date,
-                    TO_CHAR(COALESCE(p.posterings_date, p.date), 'YYYY-MM-DD') AS posting_date,
+                    TO_CHAR(COALESCE(p.posting_date, p.date), 'YYYY-MM-DD') AS posting_date,
                     COALESCE(p.text, '') AS text,
                     COALESCE(p.amount, 0) AS amount,
                     COALESCE(p.user_id, '') AS user_id,
@@ -344,12 +344,12 @@ namespace GamMaSite.Services
                 FROM public.posteringer p
                 LEFT JOIN public.account a ON a.id = p.account_number
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
-                WHERE (@start_date IS NULL OR COALESCE(p.posterings_date, p.date) >= @start_date)
-                  AND (@end_date IS NULL OR COALESCE(p.posterings_date, p.date) <= @end_date)
+                WHERE (@start_date IS NULL OR COALESCE(p.posting_date, p.date) >= @start_date)
+                  AND (@end_date IS NULL OR COALESCE(p.posting_date, p.date) <= @end_date)
                   AND (@account_id IS NULL OR p.account_number = @account_id)
                   AND (@bank_key IS NULL OR p.bank_account_key = @bank_key)
                   AND (@mobile_pay_key IS NULL OR p.mp_key = @mobile_pay_key)
-                ORDER BY COALESCE(p.posterings_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
+                ORDER BY COALESCE(p.posting_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
             AddNullableDate(command, "start_date", start);
             AddNullableDate(command, "end_date", end);
@@ -391,9 +391,9 @@ namespace GamMaSite.Services
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
-                SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(p.posterings_date, p.posting_date, p.date))::int
+                SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(p.posting_date, p.date))::int
                 FROM public.posteringer p
-                WHERE COALESCE(p.posterings_date, p.posting_date, p.date) IS NOT NULL
+                WHERE COALESCE(p.posting_date, p.date) IS NOT NULL
                 ORDER BY 1 DESC;", connection);
             var years = new List<int>();
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -410,7 +410,7 @@ namespace GamMaSite.Services
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
-                SELECT p.id, TO_CHAR(p.date, 'YYYY-MM-DD'), TO_CHAR(COALESCE(p.posterings_date, p.date), 'YYYY-MM-DD'),
+                SELECT p.id, TO_CHAR(p.date, 'YYYY-MM-DD'), TO_CHAR(COALESCE(p.posting_date, p.date), 'YYYY-MM-DD'),
                        COALESCE(p.text, ''), COALESCE(p.amount, 0), COALESCE(p.user_id, ''), COALESCE(p.account_number, ''),
                        COALESCE(p.posting_group_id, ''), COALESCE(p.document, ''),
                        CASE WHEN p.mp_key IS NOT NULL THEN 'MobilePay' WHEN p.bank_account_key IS NOT NULL THEN 'Bank' ELSE 'Manuel' END,
@@ -458,11 +458,11 @@ namespace GamMaSite.Services
                     user_id = @user_id,
                     text = @text,
                     amount = @amount,
-                    posterings_date = @posterings_date,
+                    posting_date = @posting_date,
                     document = CASE WHEN mp_key IS NOT NULL THEN NULL ELSE @document END,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = @id;", connection);
-            AddText(command, "id", id); AddNullableText(command, "account_id", update.AccountId); AddNullableText(command, "posting_group_id", update.PostingGroupId); AddNullableText(command, "user_id", update.UserId); AddNullableText(command, "text", update.Text); AddNumeric(command, "amount", update.Amount); AddNullableDate(command, "posterings_date", update.PostingDate); AddNullableText(command, "document", update.Document);
+            AddText(command, "id", id); AddNullableText(command, "account_id", update.AccountId); AddNullableText(command, "posting_group_id", update.PostingGroupId); AddNullableText(command, "user_id", update.UserId); AddNullableText(command, "text", update.Text); AddNumeric(command, "amount", update.Amount); AddNullableDate(command, "posting_date", update.PostingDate); AddNullableText(command, "document", update.Document);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
         }
 
@@ -473,9 +473,9 @@ namespace GamMaSite.Services
             await connection.OpenAsync(cancellationToken);
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, user_id, account_number, posting_group_id, document, posterings_date, created_at, updated_at)
+                    (id, date, posting_date, text, amount, user_id, account_number, posting_group_id, document, created_at, updated_at)
                 VALUES
-                    (@id, @date, @date, @text, @amount, @user_id, @account_id, @posting_group_id, @document, @posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
+                    (@id, @date, @posting_date, @text, @amount, @user_id, @account_id, @posting_group_id, @document, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);", connection);
             AddText(command, "id", update.Id.Trim());
             AddNullableDate(command, "date", string.IsNullOrWhiteSpace(update.Date) ? update.PostingDate : update.Date);
             AddNullableText(command, "text", update.Text);
@@ -484,7 +484,7 @@ namespace GamMaSite.Services
             AddNullableText(command, "account_id", update.AccountId);
             AddNullableText(command, "posting_group_id", update.PostingGroupId);
             AddNullableText(command, "document", update.Document);
-            AddNullableDate(command, "posterings_date", update.PostingDate);
+            AddNullableDate(command, "posting_date", update.PostingDate);
             await command.ExecuteNonQueryAsync(cancellationToken);
             return await GetAdminPostingDetailAsync(update.Id.Trim(), cancellationToken);
         }
@@ -496,8 +496,8 @@ namespace GamMaSite.Services
             var newId = $"{id}-COPY";
             await using var command = new NpgsqlCommand(@"
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, posterings_date, created_at, updated_at)
-                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, posterings_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, created_at, updated_at)
+                SELECT @new_id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, account_number, posting_group_id, document, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM public.posteringer
                 WHERE id = @id;", connection);
             AddText(command, "id", id);
@@ -517,6 +517,20 @@ namespace GamMaSite.Services
         {
             await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
+            await using (var guard = new NpgsqlCommand(@"
+                SELECT bank_account_key, mp_key
+                FROM public.posteringer
+                WHERE id = @id;", connection))
+            {
+                AddText(guard, "id", id);
+                await using var reader = await guard.ExecuteReaderAsync(cancellationToken);
+                if (!await reader.ReadAsync(cancellationToken)) return false;
+                if (!reader.IsDBNull(0) || !reader.IsDBNull(1))
+                {
+                    throw new InvalidOperationException("Afledte posteringer kan ikke slettes.");
+                }
+            }
+
             await using var command = new NpgsqlCommand("DELETE FROM public.posteringer WHERE id = @id;", connection);
             AddText(command, "id", id);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
@@ -617,7 +631,7 @@ namespace GamMaSite.Services
             await using var command = new NpgsqlCommand(@"
                 SELECT
                     p.id,
-                    TO_CHAR(COALESCE(p.posterings_date, p.date), 'YYYY-MM-DD') AS posting_date,
+                    TO_CHAR(COALESCE(p.posting_date, p.date), 'YYYY-MM-DD') AS posting_date,
                     COALESCE(p.amount, 0) AS amount,
                     COALESCE(p.text, '') AS text,
                     CASE
@@ -631,7 +645,7 @@ namespace GamMaSite.Services
                 LEFT JOIN public.account a ON a.id = p.account_number
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
                 WHERE p.user_id = @user_id
-                ORDER BY COALESCE(p.posterings_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
+                ORDER BY COALESCE(p.posting_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
             AddText(command, "user_id", userId);
 
@@ -669,8 +683,8 @@ namespace GamMaSite.Services
                     COALESCE(SUM(p.amount), 0)
                 FROM public.posteringer p
                 LEFT JOIN public.account a ON a.id = p.account_number
-                WHERE p.posterings_date >= @actual_start
-                  AND p.posterings_date <= @actual_end;", connection);
+                WHERE p.posting_date >= @actual_start
+                  AND p.posting_date <= @actual_end;", connection);
 
             AddDate(command, "actual_start", actualStart);
             AddDate(command, "actual_end", actualEnd);
@@ -689,11 +703,11 @@ namespace GamMaSite.Services
         {
             var values = new decimal[12];
             await using var command = new NpgsqlCommand(@"
-                SELECT EXTRACT(MONTH FROM p.posterings_date)::int AS month_number,
+                SELECT EXTRACT(MONTH FROM p.posting_date)::int AS month_number,
                        COALESCE(SUM(p.amount), 0) AS net
                 FROM public.posteringer p
-                WHERE p.posterings_date >= @actual_start
-                  AND p.posterings_date <= @actual_end
+                WHERE p.posting_date >= @actual_start
+                  AND p.posting_date <= @actual_end
                 GROUP BY month_number
                 ORDER BY month_number;", connection);
 
@@ -739,10 +753,10 @@ namespace GamMaSite.Services
                     a.context,
                     a.context_key,
                     COALESCE(SUM(CASE
-                        WHEN p.posterings_date >= @actual_start AND p.posterings_date <= @actual_end
+                        WHEN p.posting_date >= @actual_start AND p.posting_date <= @actual_end
                         THEN p.amount ELSE 0 END), 0) AS realized,
                     COALESCE(SUM(CASE
-                        WHEN p.posterings_date >= @previous_start AND p.posterings_date <= @previous_end
+                        WHEN p.posting_date >= @previous_start AND p.posting_date <= @previous_end
                         THEN p.amount ELSE 0 END), 0) AS previous_year,
                     COALESCE((
                         SELECT SUM(f.forecast)
@@ -757,7 +771,7 @@ namespace GamMaSite.Services
                 FROM public.account a
                 LEFT JOIN public.posteringer p
                     ON p.account_number = a.id
-                   AND p.posterings_date IS NOT NULL
+                   AND p.posting_date IS NOT NULL
                 WHERE a.context_key IN (1, 2)
                 GROUP BY a.main_account, a.account_key, a.sub_account, a.sub_account_key, a.context, a.context_key
                 ORDER BY a.account_key NULLS LAST, a.sub_account_key NULLS LAST, a.context_key NULLS LAST, MIN(a.id);", connection);
@@ -848,13 +862,13 @@ namespace GamMaSite.Services
                     COALESCE(pg.id, ''),
                     COALESCE(NULLIF(pg.posting_group, ''), 'Ukategoriseret'),
                     COALESCE(pg.context, ''),
-                    COUNT(*) FILTER (WHERE p.posterings_date >= @start_date AND p.posterings_date <= @end_date)::int,
-                    COALESCE(SUM(CASE WHEN p.posterings_date >= @start_date AND p.posterings_date <= @end_date THEN p.amount ELSE 0 END), 0),
-                    COALESCE(SUM(CASE WHEN p.posterings_date >= @previous_start AND p.posterings_date <= @previous_end THEN p.amount ELSE 0 END), 0)
+                    COUNT(*) FILTER (WHERE p.posting_date >= @start_date AND p.posting_date <= @end_date)::int,
+                    COALESCE(SUM(CASE WHEN p.posting_date >= @start_date AND p.posting_date <= @end_date THEN p.amount ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN p.posting_date >= @previous_start AND p.posting_date <= @previous_end THEN p.amount ELSE 0 END), 0)
                 FROM public.posteringer p
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
-                WHERE p.posterings_date >= @previous_start
-                  AND p.posterings_date <= @end_date
+                WHERE p.posting_date >= @previous_start
+                  AND p.posting_date <= @end_date
                 GROUP BY pg.id, pg.posting_group, pg.context
                 ORDER BY COALESCE(pg.context, ''), COALESCE(pg.posting_group, 'Ukategoriseret');", connection);
             AddDate(command, "start_date", start);
@@ -952,8 +966,8 @@ namespace GamMaSite.Services
                           AND NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NOT NULL
                     )::int
                 FROM public.posteringer p
-                WHERE COALESCE(p.posterings_date, p.date) >= @start_date
-                  AND COALESCE(p.posterings_date, p.date) <= @end_date;", connection);
+                WHERE COALESCE(p.posting_date, p.date) >= @start_date
+                  AND COALESCE(p.posting_date, p.date) <= @end_date;", connection);
 
             AddDate(command, "start_date", start);
             AddDate(command, "end_date", end);

@@ -42,6 +42,17 @@ public sealed class FinanceImportServiceTests
     }
 
     [Fact]
+    public async Task Import_RejectsMissingMobilePayMessageAndTransferDateBeforeOpeningDatabase()
+    {
+        using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;;Payment;REF-1;;TX-1;Example\n");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
+
+        Assert.Contains("Message", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Import_ParsesSemicolonAndDanishDecimalBeforeOpeningDatabase()
     {
         using var bank = Csv("Dato;Tekst;Beløb;Saldo\n03.09.2026;Test;-244,00;12.500,50\n");

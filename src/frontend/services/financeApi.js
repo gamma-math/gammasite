@@ -1,6 +1,24 @@
+import { getCsrfToken } from "./api";
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+
+async function financeFetch(path, options = {}) {
+  const method = (options.method ?? "GET").toUpperCase();
+  const headers = { ...(options.headers ?? {}) };
+  if (!SAFE_METHODS.has(method) && !headers["X-CSRF-TOKEN"]) {
+    headers["X-CSRF-TOKEN"] = await getCsrfToken();
+  }
+  return fetch(path, {
+    credentials: "same-origin",
+    ...options,
+    method,
+    headers,
+  });
+}
+
 export const financeApi = {
   overview: async (year) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/overview?year=${encodeURIComponent(year)}`,
       {
         credentials: "same-origin",
@@ -19,7 +37,7 @@ export const financeApi = {
     return response.json();
   },
   postings: async () => {
-    const response = await fetch("/api/finance/postings", {
+    const response = await financeFetch("/api/finance/postings", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -35,7 +53,7 @@ export const financeApi = {
     return response.json();
   },
   adminOverview: async (year) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/overview?year=${encodeURIComponent(year)}`,
       {
         credentials: "same-origin",
@@ -54,7 +72,7 @@ export const financeApi = {
     return response.json();
   },
   adminBudgets: async () => {
-    const response = await fetch("/api/finance/admin/budgets", {
+    const response = await financeFetch("/api/finance/admin/budgets", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -68,7 +86,7 @@ export const financeApi = {
     return response.json();
   },
   adminAccounts: async () => {
-    const response = await fetch("/api/finance/admin/accounts", {
+    const response = await financeFetch("/api/finance/admin/accounts", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -82,7 +100,7 @@ export const financeApi = {
     return response.json();
   },
   adminImportHistory: async () => {
-    const response = await fetch("/api/finance/admin/import/history", {
+    const response = await financeFetch("/api/finance/admin/import/history", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -90,7 +108,7 @@ export const financeApi = {
     return response.json();
   },
   generateImportPostings: async () => {
-    const response = await fetch("/api/finance/admin/import/postings", {
+    const response = await financeFetch("/api/finance/admin/import/postings", {
       method: "POST",
       credentials: "same-origin",
     });
@@ -106,7 +124,7 @@ export const financeApi = {
     if (bankFile) formData.append("bankFile", bankFile);
     if (mobilePayFile) formData.append("mobilePayFile", mobilePayFile);
     formData.append("syncPostings", String(syncPostings));
-    const response = await fetch("/api/finance/admin/import", {
+    const response = await financeFetch("/api/finance/admin/import", {
       method: "POST",
       credentials: "same-origin",
       body: formData,
@@ -119,7 +137,7 @@ export const financeApi = {
     return payload;
   },
   adminBudget: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
       {
         credentials: "same-origin",
@@ -135,7 +153,7 @@ export const financeApi = {
     return response.json();
   },
   createAdminBudget: async (values) => {
-    const response = await fetch("/api/finance/admin/budgets", {
+    const response = await financeFetch("/api/finance/admin/budgets", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
@@ -149,7 +167,7 @@ export const financeApi = {
     return payload;
   },
   updateAdminBudget: async (id, values) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
       {
         method: "PUT",
@@ -166,7 +184,7 @@ export const financeApi = {
     return payload;
   },
   deleteAdminBudget: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
       {
         method: "DELETE",
@@ -176,7 +194,7 @@ export const financeApi = {
     if (!response.ok) throw new Error("Budgetposten kunne ikke slettes.");
   },
   adminPostingGroups: async () => {
-    const response = await fetch("/api/finance/admin/posteringsgrupper", {
+    const response = await financeFetch("/api/finance/admin/posteringsgrupper", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -184,7 +202,7 @@ export const financeApi = {
     return response.json();
   },
   adminPostingGroup: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
       {
         credentials: "same-origin",
@@ -200,7 +218,7 @@ export const financeApi = {
     return response.json();
   },
   createAdminPostingGroup: async (values) => {
-    const response = await fetch("/api/finance/admin/posteringsgrupper", {
+    const response = await financeFetch("/api/finance/admin/posteringsgrupper", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
@@ -216,7 +234,7 @@ export const financeApi = {
     return payload;
   },
   updateAdminPostingGroup: async (id, values) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
       {
         method: "PUT",
@@ -233,7 +251,7 @@ export const financeApi = {
     return payload;
   },
   deleteAdminPostingGroup: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/posteringsgrupper/${encodeURIComponent(id)}`,
       {
         method: "DELETE",
@@ -263,7 +281,7 @@ export const financeApi = {
     if (accountId) params.set("accountId", accountId);
     if (bankKey) params.set("bankKey", bankKey);
     if (mobilePayKey) params.set("mobilePayKey", mobilePayKey);
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/postings?${params.toString()}`,
       {
         credentials: "same-origin",
@@ -282,15 +300,15 @@ export const financeApi = {
     return response.json();
   },
   adminPostingYears: async () => {
-    const response = await fetch("/api/finance/admin/postings/years", {
+    const response = await financeFetch("/api/finance/admin/postings/years", {
       credentials: "same-origin",
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("PosteringsÃ¥rene kunne ikke hentes.");
+    if (!response.ok) throw new Error("Posteringsårene kunne ikke hentes.");
     return response.json();
   },
   adminPosting: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/postings/${encodeURIComponent(id)}`,
       { credentials: "same-origin", cache: "no-store" },
     );
@@ -303,7 +321,7 @@ export const financeApi = {
     return response.json();
   },
   adminPostingOptions: async () => {
-    const response = await fetch("/api/finance/admin/postings/options", {
+    const response = await financeFetch("/api/finance/admin/postings/options", {
       credentials: "same-origin",
       cache: "no-store",
     });
@@ -311,7 +329,7 @@ export const financeApi = {
     return response.json();
   },
   createAdminPosting: async (values) => {
-    const response = await fetch("/api/finance/admin/postings", {
+    const response = await financeFetch("/api/finance/admin/postings", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
@@ -325,7 +343,7 @@ export const financeApi = {
     return payload;
   },
   updateAdminPosting: async (id, values) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/postings/${encodeURIComponent(id)}`,
       {
         method: "PUT",
@@ -341,7 +359,7 @@ export const financeApi = {
       throw new Error(payload?.error || "Posteringen kunne ikke gemmes.");
   },
   duplicateAdminPosting: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/postings/${encodeURIComponent(id)}/duplicate`,
       { method: "POST", credentials: "same-origin" },
     );
@@ -353,10 +371,14 @@ export const financeApi = {
     return payload;
   },
   deleteAdminPosting: async (id) => {
-    const response = await fetch(
+    const response = await financeFetch(
       `/api/finance/admin/postings/${encodeURIComponent(id)}`,
       { method: "DELETE", credentials: "same-origin" },
     );
-    if (!response.ok) throw new Error("Posteringen kunne ikke slettes.");
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Posteringen kunne ikke slettes.");
   },
 };

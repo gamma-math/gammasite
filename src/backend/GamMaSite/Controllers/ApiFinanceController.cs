@@ -13,6 +13,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Authorize]
+    [AutoValidateAntiforgeryToken]
     [Route("api/finance")]
     public sealed class ApiFinanceController : ControllerBase
     {
@@ -64,7 +65,7 @@ namespace GamMaSite.Controllers
             var selectedYear = year ?? currentYear;
             if (selectedYear < 1900 || selectedYear > 9999)
             {
-                return BadRequest(new { error = "Det valgte Ã¥r er ugyldigt." });
+                return BadRequest(new { error = "Det valgte år er ugyldigt." });
             }
 
             return Ok(await _financeReportService.GetAdminOverviewAsync(selectedYear, cancellationToken));
@@ -191,7 +192,7 @@ namespace GamMaSite.Controllers
             int? selectedYear = allYears ? null : year ?? currentYear;
             if (selectedYear.HasValue && (selectedYear.Value < 1900 || selectedYear.Value > 9999))
             {
-                return BadRequest(new { error = "Det valgte Ã¥r er ugyldigt." });
+                return BadRequest(new { error = "Det valgte år er ugyldigt." });
             }
 
             return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, cancellationToken));
@@ -266,9 +267,16 @@ namespace GamMaSite.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteAdminPosting(string id, CancellationToken cancellationToken)
         {
-            return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
-                ? NoContent()
-                : NotFound();
+            try
+            {
+                return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
+                    ? NoContent()
+                    : NotFound();
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new { error = exception.Message });
+            }
         }
 
         [HttpGet("admin/import/history")]

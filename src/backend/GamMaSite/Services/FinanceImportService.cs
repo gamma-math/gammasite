@@ -244,8 +244,8 @@ namespace GamMaSite.Services
                     WHERE b.is_manual = false
                 )
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, posterings_date, created_at, updated_at)
-                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, posting_date, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, created_at, updated_at)
+                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM derived
                 ON CONFLICT (id) DO NOTHING
                 RETURNING id;", connection, transaction))
@@ -267,6 +267,14 @@ namespace GamMaSite.Services
                 WHERE p.id = CONCAT('BA-', b.id::text)
                   AND p.bank_account_key = b.id
                   AND p.mp_key IS NULL
+                  AND p.date = b.date
+                  AND p.posting_date = b.date
+                  AND p.text = CONCAT('Bank: ', COALESCE(b.text, ''))
+                  AND p.amount = b.amount
+                  AND p.user_id IS NULL
+                  AND p.account_number IS NULL
+                  AND p.posting_group_id IS NULL
+                  AND p.document IS NULL
                   AND EXISTS (
                     SELECT 1 FROM public.mobilepay m
                     WHERE NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
@@ -280,6 +288,14 @@ namespace GamMaSite.Services
                 USING public.mobilepay m
                 WHERE p.id = CONCAT('MP-', m.id::text)
                   AND p.mp_key = m.id
+                  AND p.date = m.date
+                  AND p.posting_date = m.date
+                  AND p.amount = m.amount
+                  AND p.text = CONCAT_WS(' · ', CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')), NULLIF(m.message, ''), NULLIF(m.payner_name, ''))
+                  AND p.user_id IS NULL
+                  AND p.account_number IS NULL
+                  AND p.posting_group_id IS NULL
+                  AND p.document IS NULL
                   AND NOT EXISTS (
                     SELECT 1 FROM public.bank_account b
                     WHERE NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
@@ -338,19 +354,22 @@ namespace GamMaSite.Services
                 var date = ParseDate(Value(record, "date", "dato"), "Date", record.LineNumber);
                 var timestamp = ParseTimestamp(Value(record, "timestamp", "timestampiso"), "Timestamp", record.LineNumber);
                 var amount = ParseDecimal(Value(record, "amount", "belob", "belab"), "Amount", record.LineNumber);
+                var message = Required(Value(record, "message", "besked"), "Message", record.LineNumber);
                 var transactionType = Required(Value(record, "transactiontype", "transaktionstype"), "Transaction Type", record.LineNumber);
                 var transferReference = Required(Value(record, "transferreference", "overforselsreference"), "Transfer Reference", record.LineNumber);
+                var transferDate = ParseDate(Required(Value(record, "transferdate", "overforselsdato"), "Transfer Date", record.LineNumber), "Transfer Date", record.LineNumber);
                 var paymentTransactionId = Required(Value(record, "paymenttransactionid", "betalingstransaktionsid"), "Payment Transaction ID", record.LineNumber);
+                var payerName = Required(Value(record, "username", "payername", "betalersnavn"), "User Name", record.LineNumber);
                 result.Add(new MobilePayImportRow(
                     date,
                     timestamp,
                     amount,
-                    Value(record, "message", "besked"),
+                    message,
                     transactionType,
                     transferReference,
-                    ParseOptionalDate(Value(record, "transferdate", "overforselsdato"), "Transfer Date", record.LineNumber),
+                    transferDate,
                     paymentTransactionId,
-                    Value(record, "username", "payername", "betalersnavn")));
+                    payerName));
             }
             return result;
         }
