@@ -15,6 +15,33 @@ namespace GamMaSite.Services
 
         public FinanceReportService(IConfiguration configuration)
         {
+            var configuredReadConnection = configuration["FinanceRead:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceRead"];
+            var configuredWriteConnection = configuration["FinanceWrite:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceWrite"];
+            if (!string.IsNullOrWhiteSpace(configuredReadConnection) || !string.IsNullOrWhiteSpace(configuredWriteConnection))
+            {
+                if (string.IsNullOrWhiteSpace(configuredReadConnection) || string.IsNullOrWhiteSpace(configuredWriteConnection))
+                {
+                    throw new InvalidOperationException("Både FinanceRead- og FinanceWrite-forbindelsesstrengen skal være konfigureret.");
+                }
+
+                try
+                {
+                    _connectionString = new NpgsqlConnectionStringBuilder(configuredReadConnection)
+                    {
+                        ApplicationName = "GamMaSite Finance Read"
+                    }.ConnectionString;
+                    _writeConnectionString = new NpgsqlConnectionStringBuilder(configuredWriteConnection)
+                    {
+                        ApplicationName = "GamMaSite Finance Write"
+                    }.ConnectionString;
+                }
+                catch (ArgumentException exception)
+                {
+                    throw new InvalidOperationException("Finance-forbindelsesstrengen er ugyldig. Brug Npgsql-formatet Host=...;Database=...;Username=...;Password=...;.", exception);
+                }
+                return;
+            }
+
             var host = configuration["FinanceRead:Host"] ?? configuration["Finance:Host"];
             var database = configuration["FinanceRead:Database"] ?? configuration["Finance:Database"];
             var username = configuration["FinanceRead:Username"] ?? configuration["Finance:Username"];

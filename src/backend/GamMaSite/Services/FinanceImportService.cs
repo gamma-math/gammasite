@@ -22,6 +22,23 @@ namespace GamMaSite.Services
 
         public FinanceImportService(IConfiguration configuration)
         {
+            var configuredConnection = configuration["FinanceWrite:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceWrite"];
+            if (!string.IsNullOrWhiteSpace(configuredConnection))
+            {
+                try
+                {
+                    _connectionString = new NpgsqlConnectionStringBuilder(configuredConnection)
+                    {
+                        ApplicationName = "GamMaSite Finance Write"
+                    }.ConnectionString;
+                    return;
+                }
+                catch (ArgumentException exception)
+                {
+                    throw new InvalidOperationException("Finance-skriveforbindelsesstrengen er ugyldig. Brug Npgsql-formatet Host=...;Database=...;Username=...;Password=...;.", exception);
+                }
+            }
+
             var host = configuration["FinanceWrite:Host"] ?? configuration["Finance:Host"];
             var database = configuration["FinanceWrite:Database"] ?? configuration["Finance:Database"];
             var username = configuration["FinanceWrite:Username"] ?? configuration["Finance:Username"];

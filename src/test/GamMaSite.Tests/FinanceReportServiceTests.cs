@@ -1,13 +1,30 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Services;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace GamMaSite.Tests;
 
 public sealed class FinanceReportServiceTests
 {
+    [Fact]
+    public void FinanceServices_AcceptDotNetPostgreSqlConnectionStrings()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FinanceRead:CONNECTION_STRING"] = "Host=ep-example-pooler.eu-central-1.aws.neon.tech;Database=neondb;Username=read_user;Password=\"p@ss'word\";SSL Mode=VerifyFull;Channel Binding=Require",
+                ["FinanceWrite:CONNECTION_STRING"] = "Host=ep-example-pooler.eu-central-1.aws.neon.tech;Database=neondb;Username=write_user;Password=\"p@ss'word\";SSL Mode=VerifyFull;Channel Binding=Require"
+            })
+            .Build();
+
+        _ = new FinanceReportService(configuration);
+        _ = new FinanceImportService(configuration);
+    }
+
     [Fact]
     public async Task CreateBudget_RejectsMissingIdBeforeOpeningDatabase()
     {
