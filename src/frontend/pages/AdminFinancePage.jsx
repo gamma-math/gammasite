@@ -1953,6 +1953,8 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
   const [rowErrors, setRowErrors] = useState({});
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
+  useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -2109,7 +2111,16 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
             setPageSize={setPageSize}
             searchPlaceholder="Søg i budgetter"
           />
-          <div className="finance-live-panel finance-admin-budget-table finance-admin-budgets-table">
+          <div className={`finance-live-panel finance-admin-budget-table finance-admin-budgets-table${isTableExpanded ? " is-expanded" : ""}`}>
+            <div className="finance-admin-table-controls">
+              <span />
+              <div className="finance-table-control-actions">
+                <TableExpansionButton
+                  expanded={isTableExpanded}
+                  onToggle={() => setIsTableExpanded((current) => !current)}
+                />
+              </div>
+            </div>
             <div className="finance-live-table-scroll">
               <table className="finance-live-table">
                 <thead>

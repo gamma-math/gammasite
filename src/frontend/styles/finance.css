@@ -817,7 +817,33 @@
 }
 .finance-admin-budget-table {
   margin-top: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: hidden;
+}
+.finance-admin-budget-table.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 18px 24px 24px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+.finance-admin-budget-table.is-expanded .finance-live-table-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.finance-admin-budget-table.is-expanded .finance-live-table {
+  min-width: 1000px;
+  margin-bottom: 0;
 }
 .finance-admin-budget-table:has(.finance-admin-table-select details[open]) {
   overflow: visible;
