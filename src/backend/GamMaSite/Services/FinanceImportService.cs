@@ -20,6 +20,28 @@ namespace GamMaSite.Services
     {
         private readonly string _connectionString;
 
+        private static readonly IReadOnlyList<CsvColumnRule> BankCsvSchema = new[]
+        {
+            new CsvColumnRule("Dato", CsvValueType.Date, true, true, new[] { "dato", "date" }),
+            new CsvColumnRule("Tekst", CsvValueType.Text, true, true, new[] { "tekst", "text" }),
+            new CsvColumnRule("Beløb", CsvValueType.Decimal, true, true, new[] { "belob", "belab", "amount" }),
+            new CsvColumnRule("Saldo", CsvValueType.Decimal, true, true, new[] { "saldo", "balance" }),
+        };
+
+        private static readonly IReadOnlyList<CsvColumnRule> MobilePayCsvSchema = new[]
+        {
+            new CsvColumnRule("Date", CsvValueType.Date, true, true, new[] { "date", "dato" }),
+            new CsvColumnRule("Timestamp", CsvValueType.Timestamp, true, true, new[] { "timestamp", "timestampiso" }),
+            new CsvColumnRule("Amount", CsvValueType.Decimal, true, true, new[] { "amount", "belob", "belab" }),
+            // Message is required as a column, but its value may be empty.
+            new CsvColumnRule("Message", CsvValueType.Text, true, false, new[] { "message", "besked" }),
+            new CsvColumnRule("Transaction Type", CsvValueType.Text, true, true, new[] { "transactiontype", "transaktionstype" }),
+            new CsvColumnRule("Transfer Reference", CsvValueType.Text, true, true, new[] { "transferreference", "overforselsreference" }),
+            new CsvColumnRule("Transfer Date", CsvValueType.Date, true, true, new[] { "transferdate", "overforselsdato" }),
+            new CsvColumnRule("Payment Transaction ID", CsvValueType.Text, true, true, new[] { "paymenttransactionid", "betalingstransaktionsid" }),
+            new CsvColumnRule("User Name", CsvValueType.Text, true, true, new[] { "username", "payername", "betalersnavn" }),
+        };
+
         public FinanceImportService(IConfiguration configuration)
         {
             var configuredConnection = configuration["FinanceWrite:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceWrite"];
@@ -107,6 +129,21 @@ namespace GamMaSite.Services
             await transaction.CommitAsync(cancellationToken);
             result.ImportedAt = DateTimeOffset.UtcNow.ToString("O");
             return result;
+        }
+
+        /// <summary>
+        /// Validates the selected CSV files without opening the finance database
+        /// or changing any data. This is used by the upload form before import.
+        /// </summary>
+        public void ValidateCsv(Stream bankCsv, Stream mobilePayCsv)
+        {
+            var bankRows = bankCsv == null ? Array.Empty<BankImportRow>() : ReadBankRows(bankCsv);
+            var mobilePayRows = mobilePayCsv == null ? Array.Empty<MobilePayImportRow>() : ReadMobilePayRows(mobilePayCsv);
+
+            if (bankRows.Count == 0 && mobilePayRows.Count == 0)
+            {
+                throw new ArgumentException("Vælg mindst én CSV-fil med mindst én datarække.");
+            }
         }
 
         public async Task<IReadOnlyList<FinanceImportHistoryDto>> GetHistoryAsync(CancellationToken cancellationToken)
@@ -233,7 +270,17 @@ namespace GamMaSite.Services
                         CASE WHEN m.id IS NULL THEN b.date ELSE m.date END AS posting_date,
                         CASE
                             WHEN m.id IS NULL THEN CONCAT('Bank: ', COALESCE(b.text, ''))
-                            ELSE CONCAT_WS(' · ', CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')), NULLIF(m.message, ''), NULLIF(m.payner_name, ''))
+                            ELSE CONCAT_WS(
+                                ' · ',
+                                CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')),
+                                CASE
+                                    WHEN NULLIF(TRIM(m.message), '') IS NULL THEN NULLIF(TRIM(m.payner_name), '')
+                                    WHEN NULLIF(TRIM(m.payner_name), '') IS NULL THEN NULLIF(TRIM(m.message), '')
+                                    WHEN LEFT(TRIM(m.message), LENGTH(TRIM(m.payner_name)) + 3) = TRIM(m.payner_name) || ' · '
+                                        THEN TRIM(m.message)
+                                    ELSE CONCAT_WS(' · ', NULLIF(TRIM(m.payner_name), ''), NULLIF(TRIM(m.message), ''))
+                                END
+                            )
                         END AS text,
                         CASE WHEN m.id IS NULL THEN b.amount ELSE m.amount END AS amount,
                         b.id AS bank_account_key,
@@ -291,7 +338,20 @@ namespace GamMaSite.Services
                   AND p.date = m.date
                   AND p.posting_date = m.date
                   AND p.amount = m.amount
-                  AND p.text = CONCAT_WS(' · ', CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')), NULLIF(m.message, ''), NULLIF(m.payner_name, ''))
+                  AND (
+                      p.text = CONCAT_WS(
+                          ' · ',
+                          CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')),
+                          CASE
+                              WHEN NULLIF(TRIM(m.message), '') IS NULL THEN NULLIF(TRIM(m.payner_name), '')
+                              WHEN NULLIF(TRIM(m.payner_name), '') IS NULL THEN NULLIF(TRIM(m.message), '')
+                              WHEN LEFT(TRIM(m.message), LENGTH(TRIM(m.payner_name)) + 3) = TRIM(m.payner_name) || ' · '
+                                  THEN TRIM(m.message)
+                              ELSE CONCAT_WS(' · ', NULLIF(TRIM(m.payner_name), ''), NULLIF(TRIM(m.message), ''))
+                          END
+                      )
+                      OR p.text = CONCAT_WS(' · ', CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')), NULLIF(m.message, ''), NULLIF(m.payner_name, ''))
+                  )
                   AND p.user_id IS NULL
                   AND p.account_number IS NULL
                   AND p.posting_group_id IS NULL
@@ -332,7 +392,7 @@ namespace GamMaSite.Services
 
         private static IReadOnlyList<BankImportRow> ReadBankRows(Stream stream)
         {
-            var records = ReadCsv(stream, "bankkontoudtog");
+            var records = ReadCsv(stream, "bankkontoudtog", BankCsvSchema);
             var result = new List<BankImportRow>();
             foreach (var record in records)
             {
@@ -347,14 +407,16 @@ namespace GamMaSite.Services
 
         private static IReadOnlyList<MobilePayImportRow> ReadMobilePayRows(Stream stream)
         {
-            var records = ReadCsv(stream, "MobilePay-transaktioner");
+            var records = ReadCsv(stream, "MobilePay-transaktioner", MobilePayCsvSchema);
             var result = new List<MobilePayImportRow>();
             foreach (var record in records)
             {
                 var date = ParseDate(Value(record, "date", "dato"), "Date", record.LineNumber);
                 var timestamp = ParseTimestamp(Value(record, "timestamp", "timestampiso"), "Timestamp", record.LineNumber);
                 var amount = ParseDecimal(Value(record, "amount", "belob", "belab"), "Amount", record.LineNumber);
-                var message = Required(Value(record, "message", "besked"), "Message", record.LineNumber);
+                // MobilePay can export an empty message. The payer name is used
+                // as the visible fallback when source/posting text is composed.
+                var message = Value(record, "message", "besked").Trim();
                 var transactionType = Required(Value(record, "transactiontype", "transaktionstype"), "Transaction Type", record.LineNumber);
                 var transferReference = Required(Value(record, "transferreference", "overforselsreference"), "Transfer Reference", record.LineNumber);
                 var transferDate = ParseDate(Required(Value(record, "transferdate", "overforselsdato"), "Transfer Date", record.LineNumber), "Transfer Date", record.LineNumber);
@@ -374,10 +436,9 @@ namespace GamMaSite.Services
             return result;
         }
 
-        private static IReadOnlyList<CsvRecord> ReadCsv(Stream stream, string sourceName)
+        private static IReadOnlyList<CsvRecord> ReadCsv(Stream stream, string sourceName, IReadOnlyList<CsvColumnRule> schema)
         {
-            using var reader = new StreamReader(stream, Encoding.UTF8, true, 1024, leaveOpen: true);
-            var content = reader.ReadToEnd();
+            var content = ReadCsvText(stream);
             var separator = DetectSeparator(content);
             var values = ParseCsv(content, separator);
             if (values.Count < 2) throw new ArgumentException($"{sourceName} mangler datarækker.");
@@ -401,7 +462,81 @@ namespace GamMaSite.Services
                 for (var column = 0; column < headers.Length; column++) map[headers[column]] = row[column]?.Trim() ?? "";
                 records.Add(new CsvRecord(index + 1, map));
             }
+            ValidateCsvSchema(sourceName, headers, records, schema);
             return records;
+        }
+
+        private static string ReadCsvText(Stream stream)
+        {
+            using var buffer = new MemoryStream();
+            stream.CopyTo(buffer);
+            var bytes = buffer.ToArray();
+
+            try
+            {
+                // Use strict UTF-8 first so legacy ANSI/Windows-1252 files can
+                // be detected instead of silently becoming replacement chars.
+                return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                    .GetString(bytes);
+            }
+            catch (DecoderFallbackException)
+            {
+                // Danish bank exports are commonly ISO-8859-1/Windows-1252.
+                // The relevant Danish letters have the same byte values in
+                // both encodings, so Latin-1 is a dependency-free fallback.
+                return Encoding.Latin1.GetString(bytes);
+            }
+        }
+
+        private static void ValidateCsvSchema(
+            string sourceName,
+            IReadOnlyList<string> headers,
+            IReadOnlyList<CsvRecord> records,
+            IReadOnlyList<CsvColumnRule> schema)
+        {
+            foreach (var column in schema)
+            {
+                var header = column.Names.FirstOrDefault(name => headers.Contains(name, StringComparer.Ordinal));
+                if (header == null)
+                {
+                    if (column.RequiredColumn)
+                    {
+                        throw new ArgumentException($"{sourceName} mangler kolonnen {column.Label}.");
+                    }
+
+                    continue;
+                }
+
+                foreach (var record in records)
+                {
+                    var value = record.Values[header];
+                    if (column.RequiredValue && string.IsNullOrWhiteSpace(value))
+                    {
+                        throw new ArgumentException($"CSV-række {record.LineNumber}: {column.Label} må ikke være tom.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(value)) continue;
+                    ValidateCsvValue(value, column, record.LineNumber);
+                }
+            }
+        }
+
+        private static void ValidateCsvValue(string value, CsvColumnRule column, int lineNumber)
+        {
+            switch (column.Type)
+            {
+                case CsvValueType.Date:
+                    ParseDate(value, column.Label, lineNumber);
+                    break;
+                case CsvValueType.Timestamp:
+                    ParseTimestamp(value, column.Label, lineNumber);
+                    break;
+                case CsvValueType.Decimal:
+                    ParseDecimal(value, column.Label, lineNumber);
+                    break;
+                case CsvValueType.Text:
+                    break;
+            }
         }
 
         private static char DetectSeparator(string content)
@@ -503,6 +638,21 @@ namespace GamMaSite.Services
         }
 
         private static object DbText(string value) => string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+
+        private enum CsvValueType
+        {
+            Text,
+            Date,
+            Timestamp,
+            Decimal,
+        }
+
+        private sealed record CsvColumnRule(
+            string Label,
+            CsvValueType Type,
+            bool RequiredColumn,
+            bool RequiredValue,
+            string[] Names);
 
         private sealed record CsvRecord(int LineNumber, Dictionary<string, string> Values);
         private sealed record BankImportRow(DateTime Date, string Text, decimal Amount, decimal Balance);

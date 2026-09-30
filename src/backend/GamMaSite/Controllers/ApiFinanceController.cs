@@ -339,11 +339,38 @@ namespace GamMaSite.Controllers
                 await using var mobilePayStream = mobilePayFile?.OpenReadStream();
                 return Ok(await _financeImportService.ImportAsync(
                     bankStream,
-                    bankFile?.FileName,
+                    SafeFileName(bankFile),
                     mobilePayStream,
-                    mobilePayFile?.FileName,
+                    SafeFileName(mobilePayFile),
                     syncPostings,
                     cancellationToken));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new { error = exception.Message });
+            }
+        }
+
+        [HttpPost("admin/import/validate")]
+        [Authorize(Roles = "Admin")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public IActionResult ValidateImportCsv(
+            [FromForm] IFormFile bankFile,
+            [FromForm] IFormFile mobilePayFile)
+        {
+            try
+            {
+                ValidateCsvFile(bankFile, "Bank CSV");
+                ValidateCsvFile(mobilePayFile, "MobilePay CSV");
+                if (bankFile == null && mobilePayFile == null)
+                {
+                    return BadRequest(new { error = "Vælg mindst én CSV-fil." });
+                }
+
+                using var bankStream = bankFile?.OpenReadStream();
+                using var mobilePayStream = mobilePayFile?.OpenReadStream();
+                _financeImportService.ValidateCsv(bankStream, mobilePayStream);
+                return Ok(new { valid = true });
             }
             catch (ArgumentException exception)
             {
@@ -356,10 +383,16 @@ namespace GamMaSite.Controllers
             if (file == null) return;
             if (file.Length == 0) throw new ArgumentException($"{label} er tom.");
             if (file.Length > 10 * 1024 * 1024) throw new ArgumentException($"{label} må højst være 10 MB.");
-            if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(Path.GetExtension(SafeFileName(file)), ".csv", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"{label} skal være en CSV-fil.");
             }
+        }
+
+        private static string SafeFileName(IFormFile file)
+        {
+            var fileName = file?.FileName ?? string.Empty;
+            return Path.GetFileName(fileName.Replace('\\', '/'));
         }
     }
 }

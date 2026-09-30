@@ -3237,6 +3237,11 @@ export function FinanceAdminImportPage({ isAdmin }) {
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [isGeneratingPostings, setIsGeneratingPostings] = useState(false);
+  const [fileValidation, setFileValidation] = useState({
+    bank: { status: "idle", error: "" },
+    mobilePay: { status: "idle", error: "" },
+  });
+  const validationRequestRef = useRef({ bank: 0, mobilePay: 0 });
 
   const loadHistory = async () => {
     try {
@@ -3250,10 +3255,49 @@ export function FinanceAdminImportPage({ isAdmin }) {
     if (isAdmin) loadHistory();
   }, [isAdmin]);
 
+  const validateSelectedFile = async (kind, file) => {
+    const requestId = validationRequestRef.current[kind] + 1;
+    validationRequestRef.current[kind] = requestId;
+    setFileValidation((current) => ({
+      ...current,
+      [kind]: { status: file ? "pending" : "idle", error: "" },
+    }));
+    setError("");
+    if (!file) return;
+
+    try {
+      await financeApi.validateFinanceCsv({
+        bankFile: kind === "bank" ? file : null,
+        mobilePayFile: kind === "mobilePay" ? file : null,
+      });
+      if (validationRequestRef.current[kind] !== requestId) return;
+      setFileValidation((current) => ({
+        ...current,
+        [kind]: { status: "valid", error: "" },
+      }));
+    } catch (validationError) {
+      if (validationRequestRef.current[kind] !== requestId) return;
+      setFileValidation((current) => ({
+        ...current,
+        [kind]: { status: "invalid", error: validationError.message },
+      }));
+      setError(validationError.message);
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     if (!bankFile && !mobilePayFile) {
       setError("Vælg mindst én CSV-fil.");
+      return;
+    }
+    if (Object.values(fileValidation).some((item) => item.status === "pending")) {
+      setError("Vent, mens CSV-filen valideres.");
+      return;
+    }
+    const invalidValidation = Object.values(fileValidation).find((item) => item.status === "invalid");
+    if (invalidValidation) {
+      setError(invalidValidation.error);
       return;
     }
     setIsImporting(true);
@@ -3289,8 +3333,11 @@ export function FinanceAdminImportPage({ isAdmin }) {
     }
   };
 
-  const fileLabel = (file, emptyLabel) =>
-    file ? `${file.name} · ${(file.size / 1024).toFixed(1)} KB` : emptyLabel;
+  const displayFileLabel = (file, emptyLabel) => {
+    if (!file) return emptyLabel;
+    const fileName = String(file.name || "").split(/[\\/]/).pop();
+    return `${fileName} · ${(file.size / 1024).toFixed(1)} KB`;
+  };
   const formatImportedAt = (value) => {
     if (!value) return "";
     const date = new Date(value);
@@ -3380,7 +3427,11 @@ export function FinanceAdminImportPage({ isAdmin }) {
               className="finance-import-file-input"
               type="file"
               accept=".csv,text/csv"
-              onChange={(event) => setBankFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setBankFile(file);
+                validateSelectedFile("bank", file);
+              }}
             />
             <div className="finance-import-card-actions">
               <button
@@ -3395,8 +3446,16 @@ export function FinanceAdminImportPage({ isAdmin }) {
               </a>
             </div>
             <p className="finance-import-file-name">
-              {fileLabel(bankFile, "Ingen bankfil valgt")}
+              {displayFileLabel(bankFile, "Ingen bankfil valgt")}
             </p>
+            {fileValidation.bank.status === "pending" && (
+              <p className="finance-import-file-validation" aria-live="polite">Validerer CSV-filen...</p>
+            )}
+            {fileValidation.bank.status === "invalid" && (
+              <p className="finance-import-file-validation finance-import-file-validation-error" role="alert">
+                {fileValidation.bank.error}
+              </p>
+            )}
           </article>
 
           <article className="finance-import-file-card">
@@ -3407,7 +3466,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
               <li>Date</li>
               <li>Timestamp</li>
               <li>Amount</li>
-              <li>Message</li>
+              <li>Message (m&aring; gerne v&aelig;re tom)</li>
               <li>Transaction Type</li>
               <li>Transfer Reference</li>
               <li>Transfer Date</li>
@@ -3419,7 +3478,11 @@ export function FinanceAdminImportPage({ isAdmin }) {
               className="finance-import-file-input"
               type="file"
               accept=".csv,text/csv"
-              onChange={(event) => setMobilePayFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setMobilePayFile(file);
+                validateSelectedFile("mobilePay", file);
+              }}
             />
             <div className="finance-import-card-actions">
               <button
@@ -3434,8 +3497,16 @@ export function FinanceAdminImportPage({ isAdmin }) {
               </a>
             </div>
             <p className="finance-import-file-name">
-              {fileLabel(mobilePayFile, "Ingen MobilePay-fil valgt")}
+              {displayFileLabel(mobilePayFile, "Ingen MobilePay-fil valgt")}
             </p>
+            {fileValidation.mobilePay.status === "pending" && (
+              <p className="finance-import-file-validation" aria-live="polite">Validerer CSV-filen...</p>
+            )}
+            {fileValidation.mobilePay.status === "invalid" && (
+              <p className="finance-import-file-validation finance-import-file-validation-error" role="alert">
+                {fileValidation.mobilePay.error}
+              </p>
+            )}
           </article>
 
           <aside className="finance-import-submit-card">

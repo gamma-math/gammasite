@@ -93,6 +93,42 @@ public sealed class ApiFinanceControllerTests
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
+    [Fact]
+    public void ValidateImportCsv_RejectsInvalidAmountBeforeImport()
+    {
+        var file = FormFile("bank.csv", "Dato;Tekst;Belob;Saldo\n03.09.2026;Test;not-money;2\n");
+
+        var result = Controller(new DefaultHttpContext()).ValidateImportCsv(file, null);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public void ValidateImportCsv_AcceptsLegacyDanishBankEncoding()
+    {
+        var file = FormFile(
+            "bank.csv",
+            "\"Dato\";\"Tekst\";\"Beløb\";\"Saldo\"\r\n\"03.09.2026\";\"Test\";\"100,00\";\"2.000,00\"\r\n",
+            Encoding.Latin1);
+
+        var result = Controller(new DefaultHttpContext()).ValidateImportCsv(file, null);
+
+        Assert.IsType<OkObjectResult>(result);
+    }
+
+    [Fact]
+    public void ValidateImportCsv_AllowsEmptyMobilePayMessage()
+    {
+        var file = FormFile(
+            "mobilepay.csv",
+            "Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\n" +
+            "02-09-2026;2026-09-02T18:28:10+02:00;50,00;;Payment;REF-1;03-09-2026;TX-1;Example\n");
+
+        var result = Controller(new DefaultHttpContext()).ValidateImportCsv(null, file);
+
+        Assert.IsType<OkObjectResult>(result);
+    }
+
     private static ApiFinanceController Controller(HttpContext context)
     {
         return new ApiFinanceController(FinanceTestHelpers.ReportService(), FinanceTestHelpers.ImportService())
@@ -101,9 +137,11 @@ public sealed class ApiFinanceControllerTests
         };
     }
 
-    private static IFormFile FormFile(string name, string content)
+    private static IFormFile FormFile(string name, string content) => FormFile(name, content, Encoding.UTF8);
+
+    private static IFormFile FormFile(string name, string content, Encoding encoding)
     {
-        var bytes = Encoding.UTF8.GetBytes(content);
+        var bytes = encoding.GetBytes(content);
         var stream = new MemoryStream(bytes);
         return new FormFile(stream, 0, stream.Length, "file", name);
     }

@@ -136,6 +136,22 @@ export const financeApi = {
       throw new Error(payload?.error || "Filerne kunne ikke importeres.");
     return payload;
   },
+  validateFinanceCsv: async ({ bankFile, mobilePayFile }) => {
+    const formData = new FormData();
+    if (bankFile) formData.append("bankFile", bankFile);
+    if (mobilePayFile) formData.append("mobilePayFile", mobilePayFile);
+    const response = await financeFetch("/api/finance/admin/import/validate", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData,
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "CSV-filen kunne ikke valideres.");
+    return payload;
+  },
   adminBudget: async (id) => {
     const response = await financeFetch(
       `/api/finance/admin/budgets/${encodeURIComponent(id)}`,
