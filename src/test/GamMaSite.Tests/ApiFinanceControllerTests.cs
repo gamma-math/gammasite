@@ -100,16 +100,17 @@ public sealed class ApiFinanceControllerTests
 
         var result = Controller(new DefaultHttpContext()).ValidateImportCsv(file, null);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("Beløb", badRequest.Value?.ToString());
     }
 
     [Fact]
-    public void ValidateImportCsv_AcceptsLegacyDanishBankEncoding()
+    public void ValidateImportCsv_AcceptsWindows1252BankEncoding()
     {
         var file = FormFile(
             "bank.csv",
-            "\"Dato\";\"Tekst\";\"Beløb\";\"Saldo\"\r\n\"03.09.2026\";\"Test\";\"100,00\";\"2.000,00\"\r\n",
-            Encoding.Latin1);
+            "\"Dato\";\"Tekst\";\"Beløb\";\"Saldo\"\r\n\"03.09.2026\";\"Smart “quote” €\";\"100,00\";\"2.000,00\"\r\n",
+            Windows1252());
 
         var result = Controller(new DefaultHttpContext()).ValidateImportCsv(file, null);
 
@@ -144,5 +145,11 @@ public sealed class ApiFinanceControllerTests
         var bytes = encoding.GetBytes(content);
         var stream = new MemoryStream(bytes);
         return new FormFile(stream, 0, stream.Length, "file", name);
+    }
+
+    private static Encoding Windows1252()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(1252);
     }
 }

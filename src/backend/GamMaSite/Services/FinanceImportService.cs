@@ -19,6 +19,13 @@ namespace GamMaSite.Services
     public sealed class FinanceImportService
     {
         private readonly string _connectionString;
+        private static readonly Encoding Windows1252 = CreateWindows1252Encoding();
+
+        private static Encoding CreateWindows1252Encoding()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+        }
 
         private static readonly IReadOnlyList<CsvColumnRule> BankCsvSchema = new[]
         {
@@ -481,10 +488,10 @@ namespace GamMaSite.Services
             }
             catch (DecoderFallbackException)
             {
-                // Danish bank exports are commonly ISO-8859-1/Windows-1252.
-                // The relevant Danish letters have the same byte values in
-                // both encodings, so Latin-1 is a dependency-free fallback.
-                return Encoding.Latin1.GetString(bytes);
+                // Danish bank exports are commonly Windows-1252. Decode with
+                // the actual code page so punctuation such as smart quotes
+                // and the euro sign is preserved as well as Danish letters.
+                return Windows1252.GetString(bytes);
             }
         }
 
