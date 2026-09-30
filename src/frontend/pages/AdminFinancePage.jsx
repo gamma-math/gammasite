@@ -688,7 +688,11 @@ function MonthlyChart({ monthly, current, year }) {
         }}
       >
         {values.map((value, index) => (
-          <div className="finance-live-chart-column" key={visible[index]}>
+          <div
+            className="finance-live-chart-column"
+            key={visible[index]}
+            data-tooltip={`${visible[index]}: ${money(value)}`}
+          >
             <div className="finance-live-chart-value">{money(value)}</div>
             <div className="finance-live-chart-track">
               <span
@@ -916,6 +920,12 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
 
 export function FinanceAdminOverviewPage({ isAdmin, search }) {
   const now = new Date().getFullYear();
+  const tabOptions = [
+    ["result", "Resultatopgørelse"],
+    ["groups", "Posteringsgrupper"],
+    ["bank", "Bankoverførelse"],
+    ["mobile", "MobilePay"],
+  ];
   const [year, setYear] = useState(filters(search).year),
     [data, setData] = useState(null),
     [tab, setTab] = useState("result"),
@@ -941,7 +951,7 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
     <AdminLayout active="" canWrite={true}>
       <div className="menu-panel-header finance-live-hero">
         <div>
-          <p className="menu-section-title">Finans overview</p>
+          <p className="menu-section-title">Finans overblik</p>
           <p className="menu-panel-lead menu-panel-lead-inline">
             Foreningens økonomi og datakvalitet
           </p>
@@ -993,13 +1003,8 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
             current={data.isCurrentYear}
             year={year}
           />
-          <div className="finance-admin-tabs">
-            {[
-              ["result", "Resultatopgørelse"],
-              ["groups", "Posteringsgrupper"],
-              ["bank", "Bankoverførelse"],
-              ["mobile", "MobilePay"],
-            ].map(([id, label]) => (
+          <div className="finance-admin-tabs finance-admin-tabs-desktop">
+            {tabOptions.map(([id, label]) => (
               <button
                 key={id}
                 className={tab === id ? "is-active" : ""}
@@ -1009,6 +1014,27 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
               </button>
             ))}
           </div>
+          <label className="finance-admin-tabs-select">
+            <span>Visning</span>
+            <details className="finance-admin-tabs-dropdown">
+              <summary>{tabOptions.find(([id]) => id === tab)?.[1]}</summary>
+              <div className="finance-admin-tabs-dropdown-menu">
+                {tabOptions.map(([id, label]) => (
+                  <button
+                    type="button"
+                    className={tab === id ? "is-active" : ""}
+                    key={id}
+                    onClick={(event) => {
+                      setTab(id);
+                      event.currentTarget.closest("details").open = false;
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </label>
           {tab === "result" && <AccountTable overview={data} year={year} />}
           {tab === "groups" && (
             <GroupTable
@@ -1775,6 +1801,9 @@ export function FinanceAdminAccountsPage({ isAdmin }) {
   const [sort, setSort] = useState({ key: "accountKey", direction: "asc" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
+
+  useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1842,11 +1871,22 @@ export function FinanceAdminAccountsPage({ isAdmin }) {
           <SearchToolbar
             search={search}
             setSearch={setSearch}
-            pageSize={pageSize}
-            setPageSize={setPageSize}
             searchPlaceholder="Søg i kontoplan"
           />
-          <div className="finance-live-panel finance-admin-account-plan-table">
+          <div className={`finance-live-panel finance-admin-account-plan-table${isTableExpanded ? " is-expanded" : ""}`}>
+            <div className="finance-admin-table-controls">
+              <label className="menu-table-page-size finance-admin-expanded-page-size">
+                <span>Vis</span>
+                <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                  {[10, 25, 50, 100].map((size) => <option value={size} key={size}>{size}</option>)}
+                </select>
+                <span>pr. side</span>
+              </label>
+              <TableExpansionButton
+                expanded={isTableExpanded}
+                onToggle={() => setIsTableExpanded((current) => !current)}
+              />
+            </div>
             <div className="finance-live-table-scroll">
               <table className="finance-live-table">
                 <thead>
@@ -1916,6 +1956,15 @@ export function FinanceAdminAccountsPage({ isAdmin }) {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="finance-admin-expanded-pagination">
+              <Pagination
+                page={currentPage}
+                pageCount={pageCount}
+                total={sorted.length}
+                pageSize={pageSize}
+                setPage={setPage}
+              />
             </div>
           </div>
           <Pagination
@@ -2107,13 +2156,17 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
           <SearchToolbar
             search={search}
             setSearch={setSearch}
-            pageSize={pageSize}
-            setPageSize={setPageSize}
             searchPlaceholder="Søg i budgetter"
           />
           <div className={`finance-live-panel finance-admin-budget-table finance-admin-budgets-table${isTableExpanded ? " is-expanded" : ""}`}>
             <div className="finance-admin-table-controls">
-              <span />
+              <label className="menu-table-page-size finance-admin-expanded-page-size">
+                <span>Vis</span>
+                <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                  {[10, 25, 50, 100].map((size) => <option value={size} key={size}>{size}</option>)}
+                </select>
+                <span>pr. side</span>
+              </label>
               <div className="finance-table-control-actions">
                 <TableExpansionButton
                   expanded={isTableExpanded}
@@ -2299,6 +2352,15 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="finance-admin-expanded-pagination">
+              <Pagination
+                page={currentPage}
+                pageCount={pageCount}
+                total={sorted.length}
+                pageSize={pageSize}
+                setPage={setPage}
+              />
             </div>
           </div>
           <Pagination

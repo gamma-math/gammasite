@@ -192,7 +192,11 @@ function MonthlyChart({ monthly, isCurrentYear }) {
         aria-label="Månedligt nettoresultat"
       >
         {values.map((value, index) => (
-          <div className="finance-live-chart-column" key={visibleMonths[index]}>
+          <div
+            className="finance-live-chart-column"
+            key={visibleMonths[index]}
+            data-tooltip={`${visibleMonths[index]}: ${formatAmount(value)}`}
+          >
             <div className="finance-live-chart-value">
               {formatAmount(value)}
             </div>
