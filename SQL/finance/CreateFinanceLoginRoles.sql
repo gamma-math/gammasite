@@ -5,7 +5,8 @@
 --     -f SQL/finance/CreateFinanceLoginRoles.sql <neon connection options>
 --
 -- Do not commit production passwords. The roles themselves and their table
--- privileges are defined in PostgreSQLTest.sql.
+-- privileges are defined in this script; PostgreSQLTest.sql defines the
+-- finance tables that are granted below.
 
 \if :{?finance_read_password}
 \else
@@ -32,15 +33,10 @@ $$;
 ALTER ROLE gamma_finance_read LOGIN PASSWORD :'finance_read_password';
 ALTER ROLE gamma_finance_write LOGIN PASSWORD :'finance_write_password';
 
--- These are Supabase compatibility roles from the former setup. They are not
--- GamMaSite users and are not required by Neon or the backend.
-DROP ROLE IF EXISTS anon;
-DROP ROLE IF EXISTS authenticated;
-
 -- This application has no direct browser-to-database access. It therefore uses
 -- ordinary PostgreSQL privileges instead of Supabase roles or RLS policies.
--- DISABLE is harmless for a new schema and migrates existing local databases
--- that previously enabled RLS without policies.
+-- The database is dedicated to finance, but grants are deliberately limited
+-- to the tables used by the finance services.
 ALTER TABLE public.account DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_account DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.forecast DISABLE ROW LEVEL SECURITY;
@@ -49,9 +45,21 @@ ALTER TABLE public.postering_group DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posteringer DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.import_history DISABLE ROW LEVEL SECURITY;
 
-REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL ON TABLE
+    public.account,
+    public.bank_account,
+    public.mobilepay,
+    public.postering_group,
+    public.forecast,
+    public.posteringer,
+    public.import_history
+FROM PUBLIC;
+
+REVOKE ALL ON SEQUENCE
+    public.bank_account_id_seq,
+    public.mobilepay_id_seq,
+    public.import_history_id_seq
+FROM PUBLIC;
 
 DO $$
 BEGIN
@@ -63,18 +71,36 @@ END
 $$;
 
 GRANT USAGE ON SCHEMA public TO gamma_finance_read, gamma_finance_write;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO gamma_finance_read;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gamma_finance_read;
+GRANT SELECT ON TABLE
+    public.account,
+    public.bank_account,
+    public.mobilepay,
+    public.postering_group,
+    public.forecast,
+    public.posteringer,
+    public.import_history
+TO gamma_finance_read;
+GRANT USAGE, SELECT ON SEQUENCE
+    public.bank_account_id_seq,
+    public.mobilepay_id_seq,
+    public.import_history_id_seq
+TO gamma_finance_read;
 
 GRANT gamma_finance_read TO gamma_finance_write;
-GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gamma_finance_write;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gamma_finance_write;
+GRANT INSERT, UPDATE, DELETE ON TABLE
+    public.account,
+    public.bank_account,
+    public.mobilepay,
+    public.postering_group,
+    public.forecast,
+    public.posteringer,
+    public.import_history
+TO gamma_finance_write;
+GRANT USAGE, SELECT ON SEQUENCE
+    public.bank_account_id_seq,
+    public.mobilepay_id_seq,
+    public.import_history_id_seq
+TO gamma_finance_write;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT ON TABLES TO gamma_finance_read;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO gamma_finance_read;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT INSERT, UPDATE, DELETE ON TABLES TO gamma_finance_write;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO gamma_finance_write;
+-- If a new finance table or identity sequence is added, extend this explicit
+-- grant list as part of the same schema change.

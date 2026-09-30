@@ -10,6 +10,7 @@ import {
 import { Link, navigate } from "../routes/navigation.jsx";
 import { membersApi } from "../services/api.js";
 import { financeApi } from "../services/financeApi.js";
+import { effectivePostingDate } from "../utils/financePostingDates.js";
 import * as XLSX from "xlsx";
 import "../styles/finance.css";
 
@@ -1234,11 +1235,15 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     setSaving(row.id);
     setError("");
     try {
+      const postingDate = effectivePostingDate(row.postingDate, row.date);
+      if (!postingDate) {
+        throw new Error("Posteringsdato skal udfyldes.");
+      }
       await financeApi.updateAdminPosting(row.id, {
         accountId: row.accountId || "",
         postingGroupId: row.postingGroupId || "",
         userId: row.userId || "",
-        postingDate: row.postingDate || "",
+        postingDate,
         text: row.text || "",
         amount: Number(row.amount || 0),
         document: row.document || "",
@@ -1456,7 +1461,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
                       <input
                         className="finance-admin-inline-input"
                         type="date"
-                        value={p.postingDate || ""}
+                        value={effectivePostingDate(p.postingDate, p.date)}
                         onChange={(event) =>
                           updateRow(p, "postingDate", event.target.value)
                         }
@@ -2931,6 +2936,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
 
 export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
   const isNew = id === "new";
+  const today = new Date().toISOString().slice(0, 10);
   const [posting, setPosting] = useState(null);
   const [options, setOptions] = useState(null);
   const [form, setForm] = useState(null);
@@ -2943,8 +2949,8 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
       isNew
         ? Promise.resolve({
             id: "",
-            date: "",
-            postingDate: "",
+            date: today,
+            postingDate: today,
             text: "",
             amount: 0,
             userId: "",
@@ -2989,7 +2995,11 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
           accountId: detail.accountId || "",
           postingGroupId: detail.postingGroupId || "",
           userId: detail.userId || "",
-          postingDate: detail.postingDate || "",
+          // Aggregates use the posting date. Imported/legacy rows can have
+          // no explicit value, so keep those editable rows visible by using
+          // their transaction date as the frontend fallback.
+          postingDate:
+            effectivePostingDate(detail.postingDate, detail.date) || today,
           document: detail.document || "",
         });
       })
@@ -3001,13 +3011,19 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
   async function save(event) {
     event.preventDefault();
     setMessage("");
+    setError("");
+    const postingDate = effectivePostingDate(form.postingDate, form.date);
+    if (!postingDate) {
+      setError("Posteringsdato skal udfyldes.");
+      return;
+    }
     try {
       if (isNew) {
-        await financeApi.createAdminPosting(form);
+        await financeApi.createAdminPosting({ ...form, postingDate });
         navigate("/react/admin/finance/postings");
         return;
       }
-      await financeApi.updateAdminPosting(id, form);
+      await financeApi.updateAdminPosting(id, { ...form, postingDate });
       setMessage("Ændringerne er gemt.");
       const refreshed = await financeApi.adminPosting(id);
       setPosting(refreshed);
@@ -3127,6 +3143,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
                 <input
                   type="date"
                   value={form.postingDate}
+                  required
                   onChange={(event) =>
                     update("postingDate", event.target.value)
                   }
