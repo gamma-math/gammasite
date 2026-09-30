@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminFinancePages = new Set([
     "finans-admin.html",
     "finans-posteringer.html",
+    "finans-rediger-posteringer.html",
     "finans-postering-detalje.html",
     "finans-import.html",
     "finans-kontoplan.html",
@@ -21,13 +22,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentFinancePage = window.location.pathname.split("/").pop();
   const adminFinanceNav = document.querySelector(".finance-nav");
   if (adminFinanceNav && adminFinancePages.has(currentFinancePage)) {
-    const activePage = currentFinancePage === "finans-postering-detalje.html" ? "finans-posteringer.html" : currentFinancePage;
+    const activePage = currentFinancePage === "finans-postering-detalje.html" ? "finans-rediger-posteringer.html" : currentFinancePage;
     adminFinanceNav.innerHTML = `
       <a class="${activePage === "finans-admin.html" ? "is-active" : ""}" href="finans-admin.html">Overblik</a>
       <a class="${activePage === "finans-posteringer.html" ? "is-active" : ""}" href="finans-posteringer.html">Posteringer</a>
-      <a class="${activePage === "finans-import.html" ? "is-active" : ""}" href="finans-import.html">CSV-import</a>
       <span class="nav-divider"></span>
-      <span class="nav-label">Stamdata</span>
+      <span class="nav-label">Rediger finanser</span>
+      <a class="${activePage === "finans-import.html" ? "is-active" : ""}" href="finans-import.html">CSV-import</a>
+      <a class="${activePage === "finans-rediger-posteringer.html" ? "is-active" : ""}" href="finans-rediger-posteringer.html">Posteringer</a>
       <a class="${activePage === "finans-kontoplan.html" ? "is-active" : ""}" href="finans-kontoplan.html">Kontoplan</a>
       <a class="${activePage === "finans-posteringsgrupper.html" ? "is-active" : ""}" href="finans-posteringsgrupper.html">Posteringsgrupper</a>
       <a class="${activePage === "finans-budgetter.html" ? "is-active" : ""}" href="finans-budgetter.html">Budgetter</a>`;
@@ -35,8 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const adminHeroDescriptions = {
     "finans-admin.html": "Samlet økonomisk overblik",
-    "finans-posteringer.html": "Se og redigér finansposteringer",
-    "finans-postering-detalje.html": "Se detaljer om en finanspostering",
+    "finans-posteringer.html": "Gennemse finansposteringer",
+    "finans-rediger-posteringer.html": "Redigér finansposteringer",
+    "finans-postering-detalje.html": "Redigér en finanspostering",
     "finans-import.html": "Upload finansdata",
     "finans-kontoplan.html": "Se kontoplan",
     "finans-posteringsgrupper.html": "Administrér posteringsgrupper",
@@ -164,6 +167,62 @@ document.addEventListener("DOMContentLoaded", () => {
     field.addEventListener("change", () => filterPostings());
   });
   postingRows().forEach(updatePostingStatus);
+
+  const readonlyPostingRows = () => document.querySelectorAll("#postering-table tbody tr[data-readonly-posting-row]");
+  const filterReadonlyPostings = () => {
+    const query = document.querySelector("#postering-search")?.value.trim().toLowerCase() || "";
+    const status = document.querySelector("#postering-status")?.value || "Alle";
+    const source = document.querySelector("#postering-source")?.value || "Alle kilder";
+    readonlyPostingRows().forEach((row) => {
+      const matches = (!query || row.textContent.toLowerCase().includes(query)) &&
+        (status === "Alle" || row.dataset.status === status) &&
+        (source === "Alle kilder" || row.dataset.source === source);
+      row.hidden = !matches;
+    });
+  };
+  document.querySelectorAll("#postering-search, #postering-status, #postering-source").forEach((control) => {
+    control.addEventListener("input", filterReadonlyPostings);
+    control.addEventListener("change", filterReadonlyPostings);
+  });
+
+  if (readonlyPostingRows().length) {
+    const params = new URLSearchParams(window.location.search);
+    const requestedSource = params.get("source");
+    const requestedStatus = params.get("status");
+    const requestedId = params.get("id");
+    const sourceSelect = document.querySelector("#postering-source");
+    const statusSelect = document.querySelector("#postering-status");
+    const searchInput = document.querySelector("#postering-search");
+    if (requestedSource && sourceSelect) {
+      const sourceOption = [...sourceSelect.options].find((option) => option.value.toLowerCase() === requestedSource.toLowerCase());
+      if (sourceOption) sourceSelect.value = sourceOption.value;
+    }
+    if (requestedStatus && statusSelect) {
+      const statusOption = [...statusSelect.options].find((option) => option.value.toLowerCase() === requestedStatus.toLowerCase());
+      if (statusOption) statusSelect.value = statusOption.value;
+    }
+    if (requestedId && searchInput) searchInput.value = requestedId;
+    filterReadonlyPostings();
+  }
+
+  document.querySelectorAll("[data-export-excel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const sourceTable = document.querySelector(button.dataset.exportExcel);
+      if (!sourceTable) return;
+      const exportTable = sourceTable.cloneNode(true);
+      exportTable.querySelectorAll("tbody tr[hidden]").forEach((row) => row.remove());
+      const workbook = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${exportTable.outerHTML}</body></html>`;
+      const blob = new Blob(["\ufeff", workbook], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `gamma-posteringer-${new Date().toISOString().slice(0, 10)}.xls`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+      showToast("Posteringerne er eksporteret til Excel");
+    });
+  });
 
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-posting-action]");

@@ -1,0 +1,40 @@
+-- Full seed data for public.postering_group.
+BEGIN;
+
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BANK-GEBYR', 'Bank', 'Bank - Gebyr') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BESTMIDDAG-2023', 'Bestyrelsesmiddag', 'Bestyrelsesmiddag 2023') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BESTMIDDAG-2024', 'Bestyrelsesmiddag', 'Bestyrelsesmiddag 2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BESTMIDDAG-2025', 'Bestyrelsesmiddag', 'Bestyrelsesmiddag 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BINGO2025', 'Bingo', 'BINGO') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('BINGO2026', 'Bingo', 'BINGO2026') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('FA1', 'Fyraftenscafe', 'Nytårscafe 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('FAGLIGAFTEN2023', 'Karriereaften', 'Fagligaften 10/12-2023') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('FYRAFTENSCAFE2', 'Fyraftenscafe', 'Fyraftenscafe 25/9') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('FYRAFTENSCAFE-BASTARRD-2026', 'Fyraftenscafe', 'Fyraftenscafe Bastard 2026') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('FYRAFTENSCAFE-PICANDPAW-2024', 'Fyraftenscafe', 'Pic and Paw') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('GF2024', 'Generalforsamling', 'Generalforsamling 2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('GF2025', 'Generalforsamling', 'Generalforsamling 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('HYTTETUR2024', 'Hyttetur', 'Hyttetur 2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('HYTTETUR2025', 'Hyttetur', 'Hyttetur 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('IT', 'IT', 'IT') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('JULEFROKOST2023', 'Julefrokost', 'Julefrokost 2023') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('JULEFROKOST2024', 'Julefrokost', 'Julefrokost 2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('JULEFROKOST2025', 'Julefrokost', 'Julefrokost 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('KARRIEREAFTEN2024', 'Karriereaften', 'Karriereaften 22/10-2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES (' KARRIEREAFTEN2025-1', 'Karriereaften', 'Karriereaften 25/2') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('KBHMUR2026', 'Københavnermuren', 'Københavnermuren 2026') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('MERCHANDISE', 'Merchandise', 'Merchandise') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('MP1', 'Mobile Pay', 'Fee - MP - Medlemsbetaling') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('MP2', 'Mobile Pay', 'Medlemsbetaling - MP') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('OSLO2024', 'Oslomuren', 'Oslomuren 2024') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('OSLO2025', 'Oslomuren', 'Oslomuren 2025') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('OSLO2026F', 'Oslomuren', 'Oslomuren 2026 Forår') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('OVRIGE', 'Øvrige', 'Øvrige') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('SIMPLY', 'Simply', 'Simply - Udgift') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('ST1', 'Stripe', 'Medlemsbetaling - Stripe') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('ST2', 'Stripe', 'Fee - Stripe') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('STRIPE', 'Stripe', 'Strip') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('VIRKSOMHEDSKONTIGENT', 'Virksomhedskontigent', 'Virksomhedskontigent') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.postering_group (id, posting_group, context) VALUES ('ZFC-SPONSOR', 'Rekruttering', 'ZFC-sponsorert') ON CONFLICT (id) DO NOTHING;
+
+COMMIT;

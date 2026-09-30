@@ -352,13 +352,33 @@ img {
 
 .menu-side-nav {
   display: grid;
-  gap: 10px;
+  gap: 18px;
   margin-top: 18px;
+}
+
+.menu-nav-section {
+  display: grid;
+  gap: 10px;
+}
+
+.menu-nav-section + .menu-nav-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.menu-nav-section-title {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .menu-side-link {
   display: flex;
   align-items: center;
+  gap: 9px;
   min-height: 48px;
   padding: 0 18px;
   border: 1px solid transparent;
@@ -2499,6 +2519,67 @@ img {
 
 .account-action-row form {
   margin: 0;
+}
+
+.account-finance-last-updated {
+  margin: 0;
+  color: #7a889b;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.account-finance-last-updated strong {
+  color: var(--ink-strong);
+  font-size: 0.82rem;
+}
+
+.account-finance-table-wrap {
+  width: 100%;
+}
+
+.account-finance-table {
+  min-width: 900px;
+}
+
+.account-finance-table th:nth-child(2),
+.account-finance-table td:nth-child(2) {
+  text-align: right;
+}
+
+.account-finance-amount {
+  font-weight: 750;
+}
+
+.account-finance-amount.is-positive {
+  color: var(--success);
+}
+
+.account-finance-amount.is-negative {
+  color: var(--danger);
+}
+
+.account-finance-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #53627a;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.account-finance-source.is-mobilepay {
+  background: rgba(31, 157, 104, 0.12);
+  color: #08775a;
+}
+
+@media (max-width: 620px) {
+  .account-finance-last-updated {
+    text-align: left;
+  }
 }
 
 @media (max-width: 1100px) {

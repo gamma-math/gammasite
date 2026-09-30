@@ -4,7 +4,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 /**
  * Reads the antiforgery token emitted by the ASP.NET host page.
  */
-async function getCsrfToken() {
+export async function getCsrfToken() {
   const response = await fetch("/api/account/csrf-token", {
     credentials: "same-origin",
     cache: "no-store"
