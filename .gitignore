@@ -15,6 +15,9 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+.tmp-build-check/
+.tmp-publish-check/
+.tmp-seed-template/
 x64/
 x86/
 build/
@@ -54,3 +57,7 @@ multiproject.code-workspace
 .env.*
 *.log
 run-local.*
+legacy-cleanup-notes.txt
+
+# Frontend dependencies
+node_modules/

@@ -179,7 +179,7 @@ Expected: `Build succeeded` with 0 errors.
 
 ### Run (development)
 ```bash
-dotnet run --project GamMaSite.csproj
+dotnet run --project src/backend/GamMaSite/GamMaSite.csproj
 ```
 Or use VS Code **Run > Start Debugging** (F5) — the `launch.json` is pre-configured for `.NET 10`.
 
@@ -221,7 +221,7 @@ Output lands in `bin/Release/net10.0/publish/`. Update the IIS publish profile (
 ## Follow-up Tasks
 
 ### 1. Remove `Microsoft.AspNetCore.SpaProxy` (likely unused)
-`Microsoft.AspNetCore.SpaProxy` is referenced in `GamMaSite.csproj` but there is no SPA frontend in the workspace (no `ClientApp/`, no `package.json`). It appears to be a scaffolding leftover. Confirm and remove:
+`Microsoft.AspNetCore.SpaProxy` is referenced in `src/backend/GamMaSite/GamMaSite.csproj`. Confirm whether the React frontend in `src/frontend` still needs it before removing:
 ```xml
 <!-- Remove this line from GamMaSite.csproj if no SPA is used -->
 <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="10.0.6" />

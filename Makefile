@@ -16,12 +16,12 @@ restore:
 ## Run the application (default: Development)
 run: export ASPNETCORE_ENVIRONMENT = $(ENV)
 run:
-	dotnet run --project GamMaSite.csproj
+	dotnet run --project src/backend/GamMaSite/GamMaSite.csproj
 
 ## Run with hot reload (watches for file changes, default: Development)
 watch: export ASPNETCORE_ENVIRONMENT = $(ENV)
 watch:
-	dotnet watch run --project GamMaSite.csproj
+	dotnet watch --project src/backend/GamMaSite/GamMaSite.csproj run
 
 ## Publish a Release build
 publish:
@@ -30,4 +30,4 @@ publish:
 ## Remove build and publish output
 clean:
 	dotnet clean GamMaSite.sln
-	rm -rf bin/ obj/
+	rm -rf src/backend/GamMaSite/bin/ src/backend/GamMaSite/obj/

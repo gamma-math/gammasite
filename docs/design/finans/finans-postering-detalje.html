@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GamMa Finans – Posteringsdetalje</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="finans.css">
+</head>
+<body class="menu-page-body finance-page">
+  <header class="site-header frontpage-header">
+    <div class="page-shell">
+      <div class="frontpage-topbar">
+        <a class="brand" href="../index.html"><img src="../../../src/backend/GamMaSite/wwwroot/lib/logo_blue.png" alt="GamMa logo"></a>
+        <div class="frontpage-topbar-actions">
+          <div class="frontpage-left-actions">
+            <a class="frontpage-button frontpage-button-secondary" href="../admin/begivenheder.html">Menu</a>
+            <a class="frontpage-button frontpage-button-secondary" href="finans-admin.html">Admin</a>
+          </div>
+          <div class="frontpage-right-actions">
+            <a class="frontpage-profile-link frontpage-profile-link-default" href="../admin/profil.html" aria-label="Profil">
+              <svg class="frontpage-avatar-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 20c1.9-3.7 5-5.5 7.5-5.5S17.6 16.3 19.5 20"></path></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="finance-main">
+    <div class="finance-workspace finance-layout">
+      <aside class="finance-sidebar">
+        <h2>Finans admin</h2>
+        <nav class="finance-nav" aria-label="Finans admin sektioner">
+          <a href="finans-admin.html">Overblik</a>
+          <a class="is-active" href="finans-posteringer.html">Posteringer</a>
+          <a href="finans-import.html">CSV-import</a>
+          <span class="nav-divider"></span>
+          <span class="nav-label">Stamdata</span>
+          <a href="finans-kontoplan.html">Kontoplan</a>
+          <a href="finans-posteringsgrupper.html">Posteringsgrupper</a>
+          <a href="finans-budgetter.html">Budgetter</a>
+        </nav>
+      </aside>
+
+      <section class="finance-content">
+        <div class="finance-hero">
+          <div>
+            <p class="finance-eyebrow">Postering · 02. september 2026</p>
+            <h1>Posteringsdetalje</h1>
+            <p>Redigér kategorisering og manuelle oplysninger for den valgte transaktion.</p>
+          </div>
+        </div>
+
+        <div class="finance-detail-grid">
+          <section class="finance-panel">
+            <div class="finance-panel-head">
+              <div><p class="finance-kicker">Redigering</p><h2>MP TRANS: Payment/Københavnermuren</h2></div>
+              <span class="finance-badge warning">Review</span>
+            </div>
+            <form class="finance-detail-form" data-demo-form>
+              <label class="finance-field is-readonly"><span>Postering ID</span><input value="MP-2026-09-02-00481" readonly></label>
+              <label class="finance-field is-readonly"><span>Kilde</span><input value="MobilePay · import 03.09.2026" readonly></label>
+              <label class="finance-field is-readonly"><span>Dato</span><input value="02. september 2026" readonly></label>
+              <label class="finance-field is-readonly"><span>Beløb</span><input value="50,00 kr." readonly></label>
+              <label class="finance-field"><span>Konto</span><select><option>Arrangement</option><option>Drift</option><option>Kontingent</option></select></label>
+              <label class="finance-field"><span>Postering group</span><select><option>Vælg postering group…</option><option>Deltagerbetaling</option><option>Medlemskontingent</option><option>Øvrige</option></select></label>
+              <label class="finance-field"><span>Bruger</span><select><option>Flemming von Essen</option><option>Abrahim Ben Chadli Borgi</option><option>Ingen bruger</option></select></label>
+              <label class="finance-field"><span>Dokumentations-URL</span><input type="url" placeholder="https://"></label>
+
+              <label class="finance-field finance-field-full"><span>Manuel note</span><textarea>Match fundet via tekst og beløb. Bekræft kategorisering før bogføring.</textarea></label>
+            </form>
+          </section>
+
+          <aside class="finance-detail-side">
+            <section class="finance-panel">
+              <div class="finance-panel-head"><div><p class="finance-kicker">Originaldata</p><h2>Importdetaljer</h2></div></div>
+              <div class="finance-detail-summary">
+                <div class="finance-summary-row"><span>Kildetype</span><strong>MobilePay</strong></div>
+                <div class="finance-summary-row"><span>MobilePay reference</span><strong>MP-8593421</strong></div>
+                <div class="finance-summary-row"><span>Modpart</span><strong>Flemming von Essen</strong></div>
+                <p class="finance-note">Original importdata er skrivebeskyttet. Kun felter til kategorisering og manuel note kan ændres.</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="finance-toast" data-finance-toast role="status"></div>
+  <script src="finans.js"></script>
+</body>
+</html>
