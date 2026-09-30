@@ -916,7 +916,13 @@ namespace GamMaSite.Services
                         m.id,
                         TO_CHAR(m.date, 'YYYY-MM-DD'),
                         COALESCE(
-                            NULLIF(CONCAT_WS(' · ', NULLIF(m.payner_name, ''), NULLIF(m.message, '')), ''),
+                            CASE
+                                WHEN NULLIF(TRIM(m.message), '') IS NULL THEN NULLIF(TRIM(m.payner_name), '')
+                                WHEN NULLIF(TRIM(m.payner_name), '') IS NULL THEN NULLIF(TRIM(m.message), '')
+                                WHEN LEFT(TRIM(m.message), LENGTH(TRIM(m.payner_name)) + 3) = TRIM(m.payner_name) || ' · '
+                                    THEN TRIM(m.message)
+                                ELSE CONCAT_WS(' · ', NULLIF(TRIM(m.payner_name), ''), NULLIF(TRIM(m.message), ''))
+                            END,
                             m.transaction_type,
                             ''
                         ),

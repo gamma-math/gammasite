@@ -31,6 +31,17 @@ public sealed class FinanceImportServiceTests
     }
 
     [Fact]
+    public async Task Import_RejectsMissingRequiredBankColumnBeforeOpeningDatabase()
+    {
+        using var bank = Csv("Dato;Tekst;Belob\n03.09.2026;Test;100\n");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            FinanceTestHelpers.ImportService().ImportAsync(bank, "bank.csv", null, null, true, CancellationToken.None));
+
+        Assert.Contains("Saldo", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Import_RejectsMissingMobilePayRequiredColumnValueBeforeOpeningDatabase()
     {
         using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Payment;Payment;REF-1;03-09-2026;;Example\n");
@@ -42,14 +53,27 @@ public sealed class FinanceImportServiceTests
     }
 
     [Fact]
-    public async Task Import_RejectsMissingMobilePayMessageAndTransferDateBeforeOpeningDatabase()
+    public async Task Import_RejectsMissingMobilePayTransferDateBeforeOpeningDatabase()
     {
         using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;;Payment;REF-1;;TX-1;Example\n");
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
             FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
 
-        Assert.Contains("Message", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Transfer Date", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Import_AllowsEmptyMobilePayMessageWhenPayerNameIsPresent()
+    {
+        using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;;Payment;REF-1;03-09-2026;TX-1;Example\n");
+
+        // Parsing succeeds; the test then reaches the database boundary. A
+        // connection failure proves the empty Message value was accepted.
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+            FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
+
+        Assert.DoesNotContain("Message", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

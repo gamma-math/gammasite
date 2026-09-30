@@ -1250,6 +1250,17 @@
   font-size: 0.84rem;
 }
 
+.finance-import-file-validation {
+  width: 100%;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.finance-import-file-validation-error {
+  color: #b42318;
+}
+
 .finance-import-sync-option {
   display: flex;
   align-items: flex-start;
