@@ -227,6 +227,32 @@ function buildUserNameMap(members = []) {
   );
 }
 
+const NO_USER_FILTER = "__no_user__";
+
+function buildPostingUserOptions(postings, userNames) {
+  const userIds = [...new Set(postings.map((posting) => posting.userId).filter(Boolean))];
+  userIds.sort((left, right) =>
+    String(userNames.get(left) || left).localeCompare(
+      String(userNames.get(right) || right),
+      "da-DK",
+      { sensitivity: "base" },
+    ),
+  );
+  return [
+    { id: "", label: "Alle brugere" },
+    { id: NO_USER_FILTER, label: "Ingen bruger" },
+    ...userIds.map((id) => ({ id, label: userNames.get(id) || id })),
+  ];
+}
+
+function buildPostingValueOptions(postings, key, allLabel) {
+  const values = [...new Set(postings.map((posting) => posting[key]).filter(Boolean))];
+  values.sort((left, right) =>
+    String(left).localeCompare(String(right), "da-DK", { sensitivity: "base" }),
+  );
+  return [{ id: "", label: allLabel }, ...values.map((value) => ({ id: value, label: value }))];
+}
+
 function appendXlsxSheet(workbook, name, headers, rows, numericColumns = new Set()) {
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
@@ -420,6 +446,66 @@ function useExpandedTable(expanded, onClose) {
   }, [expanded, onClose]);
 }
 
+function FilterSearchableSelect({ label, value, onChange, options, placeholder }) {
+  const [query, setQuery] = useState("");
+  const selected = options.find((option) => option.id === value);
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(query.toLowerCase()),
+  );
+  const closeOtherFilterSelects = (event) => {
+    if (!event.currentTarget.open) {
+      return;
+    }
+    const filters = event.currentTarget.closest(".finance-admin-filters");
+    filters?.querySelectorAll("details.finance-admin-filter-select[open]").forEach((details) => {
+      if (details !== event.currentTarget) {
+        details.removeAttribute("open");
+      }
+    });
+  };
+
+  return (
+    <label>
+      {label}
+      <div className="finance-admin-table-select">
+        <details
+          className="admin-multi-select finance-admin-filter-select"
+          onToggle={closeOtherFilterSelects}
+        >
+          <summary>
+            <strong>{selected?.label || placeholder}</strong>
+          </summary>
+          <div className="admin-multi-select-menu">
+            <div className="admin-multi-select-search">
+              <span>Søg</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`Søg i ${label.toLowerCase()}`}
+              />
+            </div>
+            {filteredOptions.map((option) => (
+              <button
+                type="button"
+                className="finance-admin-select-option"
+                key={option.id || `all-${label}`}
+                onClick={(event) => {
+                  onChange(option.id);
+                  setQuery("");
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </details>
+      </div>
+    </label>
+  );
+}
+
 function SearchableSelect({ label, options = [], value, onChange, placeholder, compact = false }) {
   const [query, setQuery] = useState("");
   const selected = options.find((option) => option.id === value);
@@ -574,10 +660,10 @@ function AccountTable({ overview, year }) {
       return next;
     });
   const realizedLabel = overview.isCurrentYear
-    ? "Realiseret YTD"
+    ? "Realiseret (år til dato)"
     : `Realiseret (${overview.year})`;
   const previousLabel = overview.isCurrentYear
-    ? "Sidste år YTD"
+    ? "Sidste år (år til dato)"
     : `Sidste år (${overview.previousYear})`;
   return (
     <section className="finance-live-panel finance-live-pnl-panel">
@@ -842,7 +928,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
       return next;
     });
   const previousLabel = isCurrentYear
-    ? "Sidste år YTD"
+    ? "Sidste år (år til dato)"
     : `Sidste år (${previousYear})`;
   return (
     <section className="finance-live-panel finance-live-pnl-panel">
@@ -856,7 +942,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
           <thead>
             <tr>
               <th>Gruppe / kontekst</th>
-              <th>{isCurrentYear ? "Beløb YTD" : `Beløb (${year})`}</th>
+              <th>{isCurrentYear ? "Beløb (år til dato)" : `Beløb (${year})`}</th>
               <th>{previousLabel}</th>
               <th />
             </tr>
@@ -1182,6 +1268,14 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     [members],
   );
   const userLabel = (userId) => userNames.get(userId) || userId;
+  const userFilterOptions = useMemo(
+    () => buildPostingUserOptions(postings, userNames),
+    [postings, userNames],
+  );
+  const groupFilterOptions = useMemo(
+    () => buildPostingValueOptions(postings, "postingGroup", "Alle grupper"),
+    [postings],
+  );
   const values = (key) =>
     [...new Set(postings.map((p) => p[key]).filter(Boolean))].sort();
   const shown = postings.filter(
@@ -1194,7 +1288,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
       (!status || p.status === status) &&
       (!account || p.account === account) &&
       (!group || p.postingGroup === group) &&
-      (!user || p.userId === user),
+      (!user || (user === NO_USER_FILTER ? !p.userId : p.userId === user)),
   );
   const sortedPostings = useSortedMembers(shown, sort);
   const { currentPage, pageCount, visibleItems } = usePagedItems(
@@ -1362,26 +1456,20 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
             ))}
           </select>
         </label>
-        <label>
-          Posteringsgruppe
-          <select value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="">Alle grupper</option>
-            {values("postingGroup").map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Bruger
-          <select value={user} onChange={(e) => setUser(e.target.value)}>
-            <option value="">Alle brugere</option>
-            {values("userId").map((x) => (
-              <option key={x} value={x}>
-                {userLabel(x)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FilterSearchableSelect
+          label="Posteringsgruppe"
+          value={group}
+          onChange={setGroup}
+          options={groupFilterOptions}
+          placeholder="Alle grupper"
+        />
+        <FilterSearchableSelect
+          label="Bruger"
+          value={user}
+          onChange={setUser}
+          options={userFilterOptions}
+          placeholder="Alle brugere"
+        />
       </div>
       {error && <p className="finance-live-error">{error}</p>}
       {!data && !error && (
@@ -1671,6 +1759,14 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const postings = data?.postings || [];
   const userNames = useMemo(() => buildUserNameMap(members), [members]);
   const userLabel = (userId) => userNames.get(userId) || userId;
+  const userFilterOptions = useMemo(
+    () => buildPostingUserOptions(postings, userNames),
+    [postings, userNames],
+  );
+  const groupFilterOptions = useMemo(
+    () => buildPostingValueOptions(postings, "postingGroup", "Alle grupper"),
+    [postings],
+  );
   const values = (key) => [...new Set(postings.map((p) => p[key]).filter(Boolean))].sort();
   const shown = postings.filter(
     (p) =>
@@ -1678,7 +1774,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
       (!status || p.status === status) &&
       (!account || p.account === account) &&
       (!group || p.postingGroup === group) &&
-      (!user || p.userId === user),
+      (!user || (user === NO_USER_FILTER ? !p.userId : p.userId === user)),
   );
   const sorted = useSortedMembers(shown, sort);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
@@ -1761,8 +1857,8 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
         <label>Søg<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ID, tekst, konto..." /></label>
         <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Alle</option><option>Ukategoriseret</option><option>Mangler bilag</option><option>Bogført</option></select></label>
         <label>Konto<select value={account} onChange={(event) => setAccount(event.target.value)}><option value="">Alle konti</option>{values("account").map((value) => <option key={value}>{value}</option>)}</select></label>
-        <label>Posteringsgruppe<select value={group} onChange={(event) => setGroup(event.target.value)}><option value="">Alle grupper</option>{values("postingGroup").map((value) => <option key={value}>{value}</option>)}</select></label>
-        <label>Bruger<select value={user} onChange={(event) => setUser(event.target.value)}><option value="">Alle brugere</option>{values("userId").map((value) => <option key={value} value={value}>{userLabel(value)}</option>)}</select></label>
+        <FilterSearchableSelect label="Posteringsgruppe" value={group} onChange={setGroup} options={groupFilterOptions} placeholder="Alle grupper" />
+        <FilterSearchableSelect label="Bruger" value={user} onChange={setUser} options={userFilterOptions} placeholder="Alle brugere" />
       </div>
       {error && <p className="finance-live-error">{error}</p>}
       {!data && !error && <div className="finance-live-loading">Henter posteringer...</div>}
@@ -1903,37 +1999,37 @@ export function FinanceAdminAccountsPage({ isAdmin }) {
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Main account"
+                      label="Hovedkonto"
                       sortKey="mainAccount"
                       sort={sort}
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Account key"
+                      label="Kontonøgle"
                       sortKey="accountKey"
                       sort={sort}
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Sub account"
+                      label="Underkonto"
                       sortKey="subAccount"
                       sort={sort}
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Sub account key"
+                      label="Underkontonøgle"
                       sortKey="subAccountKey"
                       sort={sort}
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Context"
+                      label="Kontekst"
                       sortKey="context"
                       sort={sort}
                       setSort={setSort}
                     />
                     <SortableHeader
-                      label="Context key"
+                      label="Kontekstnøgle"
                       sortKey="contextKey"
                       sort={sort}
                       setSort={setSort}
@@ -2718,13 +2814,13 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
                   setSort={setSort}
                 />
                 <SortableHeader
-                  label="Posting group"
+                  label="Posteringsgruppe"
                   sortKey="postingGroup"
                   sort={sort}
                   setSort={setSort}
                 />
                 <SortableHeader
-                  label="Context"
+                  label="Kontekst"
                   sortKey="context"
                   sort={sort}
                   setSort={setSort}
@@ -2752,7 +2848,7 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
                         onChange={(event) =>
                           updateRow(row, "postingGroup", event.target.value)
                         }
-                        aria-label="Posting group"
+                        aria-label="Posteringsgruppe"
                       />
                     </td>
                     <td>
@@ -2761,7 +2857,7 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
                         onChange={(event) =>
                           updateRow(row, "context", event.target.value)
                         }
-                        aria-label="Context"
+                        aria-label="Kontekst"
                       />
                     </td>
                     <td className="finance-admin-budget-actions">
@@ -2900,14 +2996,14 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
               />
             </label>
             <label>
-              Posting group
+              Posteringsgruppe
               <input
                 value={form.postingGroup}
                 onChange={(event) => update("postingGroup", event.target.value)}
               />
             </label>
             <label className="finance-admin-detail-field-full">
-              Context
+              Kontekst
               <input
                 value={form.context}
                 onChange={(event) => update("context", event.target.value)}

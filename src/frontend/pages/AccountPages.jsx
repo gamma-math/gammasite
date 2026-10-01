@@ -308,9 +308,24 @@ function FinancePostingsPanel({ setLastUpdated }) {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
   const filtered = useFilteredPostings(postings, search);
   const sorted = useMemo(() => sortPostings(filtered, sort), [filtered, sort]);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  useEffect(() => {
+    if (!isTableExpanded) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setIsTableExpanded(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isTableExpanded]);
 
   useEffect(() => {
     let active = true;
@@ -353,15 +368,30 @@ function FinancePostingsPanel({ setLastUpdated }) {
 
   return (
     <>
-      <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} searchPlaceholder="Tekst" />
+      <div className={`account-finance-table-container${isTableExpanded ? " is-expanded" : ""}`}>
+        <div className="account-finance-table-toolbar">
+          <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} searchPlaceholder="Tekst" />
+          <button
+            className={`finance-table-expand-button${isTableExpanded ? " is-close" : ""}`}
+            type="button"
+            onClick={() => setIsTableExpanded((current) => !current)}
+            title={isTableExpanded ? "Luk udvidet tabel" : "Udvid tabel"}
+            aria-label={isTableExpanded ? "Luk udvidet tabel" : "Udvid tabel"}
+          >
+            <span aria-hidden="true">{isTableExpanded ? "\u00d7" : "\u26f6"}</span>
+            {isTableExpanded && <span>Luk tabel</span>}
+          </button>
+        </div>
       <div className="menu-table-wrap account-finance-table-wrap">
         <table className="menu-member-table account-finance-table">
           <thead>
             <tr>
               <SortableHeader label="Dato" sortKey="date" sort={sort} setSort={setSort} />
               <SortableHeader label="Beløb" sortKey="amount" sort={sort} setSort={setSort} />
+              <SortableHeader label="Type" sortKey="type" sort={sort} setSort={setSort} />
               <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
-              <SortableHeader label="Kilde/type" sortKey="sourceType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kilde" sortKey="sourceType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kategori" sortKey="postingGroup" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>
@@ -369,19 +399,22 @@ function FinancePostingsPanel({ setLastUpdated }) {
               <tr key={posting.id}>
                 <td>{formatPostingDate(posting.date)}</td>
                 <td className={posting.amount < 0 ? "account-finance-amount is-negative" : "account-finance-amount is-positive"}>{formatPostingAmount(posting.amount)}</td>
+                <td>{postingType(posting.amount)}</td>
                 <td>{posting.text}</td>
                 <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
+                <td>{posting.postingGroup || "—"}</td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
               <tr>
-                <td colSpan="4">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
+                <td colSpan="6">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
+        <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
+      </div>
     </>
   );
 }
@@ -581,6 +614,11 @@ function formatPostingAmount(value) {
   return amount < 0 ? `(${formatted} kr.)` : `+${formatted} kr.`;
 }
 
+function postingType(value) {
+  const amount = Number(value ?? 0);
+  return amount < 0 ? "Betaling" : amount > 0 ? "Refusion" : "—";
+}
+
 function useFilteredPostings(postings, search) {
   return useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -591,6 +629,7 @@ function useFilteredPostings(postings, search) {
     return postings.filter((posting) => [
       formatPostingDate(posting.date),
       formatPostingAmount(posting.amount),
+      postingType(posting.amount),
       posting.text,
       posting.sourceType,
       posting.account,
@@ -613,6 +652,10 @@ function comparePostingValues(left, right, key) {
 
   if (key === "date") {
     return new Date(left || 0).getTime() - new Date(right || 0).getTime();
+  }
+
+  if (key === "type") {
+    return postingType(left).localeCompare(postingType(right), "da-DK", { sensitivity: "base" });
   }
 
   return String(left ?? "").localeCompare(String(right ?? ""), "da-DK", { sensitivity: "base" });

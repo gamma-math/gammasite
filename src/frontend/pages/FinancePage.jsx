@@ -232,11 +232,11 @@ function Resultatopgørelse({ overview }) {
       return next;
     });
   const realizedLabel = overview.isCurrentYear
-    ? "Realiseret YTD"
+    ? "Realiseret (år til dato)"
     : `Realiseret (${overview.year})`;
   const budgetLabel = `Budget (${overview.year})`;
   const previousLabel = overview.isCurrentYear
-    ? "Sidste år YTD"
+    ? "Sidste år (år til dato)"
     : `Sidste år (${overview.previousYear})`;
 
   return (
