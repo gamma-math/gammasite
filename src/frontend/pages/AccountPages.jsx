@@ -360,8 +360,10 @@ function FinancePostingsPanel({ setLastUpdated }) {
             <tr>
               <SortableHeader label="Dato" sortKey="date" sort={sort} setSort={setSort} />
               <SortableHeader label="Beløb" sortKey="amount" sort={sort} setSort={setSort} />
+              <SortableHeader label="Type" sortKey="type" sort={sort} setSort={setSort} />
               <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
-              <SortableHeader label="Kilde/type" sortKey="sourceType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kilde" sortKey="sourceType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kategori" sortKey="postingGroup" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>
@@ -369,13 +371,15 @@ function FinancePostingsPanel({ setLastUpdated }) {
               <tr key={posting.id}>
                 <td>{formatPostingDate(posting.date)}</td>
                 <td className={posting.amount < 0 ? "account-finance-amount is-negative" : "account-finance-amount is-positive"}>{formatPostingAmount(posting.amount)}</td>
+                <td>{postingType(posting.amount)}</td>
                 <td>{posting.text}</td>
                 <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
+                <td>{posting.postingGroup || "—"}</td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
               <tr>
-                <td colSpan="4">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
+                <td colSpan="6">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
               </tr>
             )}
           </tbody>
@@ -581,6 +585,11 @@ function formatPostingAmount(value) {
   return amount < 0 ? `(${formatted} kr.)` : `+${formatted} kr.`;
 }
 
+function postingType(value) {
+  const amount = Number(value ?? 0);
+  return amount < 0 ? "Betaling" : amount > 0 ? "Refusion" : "—";
+}
+
 function useFilteredPostings(postings, search) {
   return useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -591,6 +600,7 @@ function useFilteredPostings(postings, search) {
     return postings.filter((posting) => [
       formatPostingDate(posting.date),
       formatPostingAmount(posting.amount),
+      postingType(posting.amount),
       posting.text,
       posting.sourceType,
       posting.account,
@@ -613,6 +623,10 @@ function comparePostingValues(left, right, key) {
 
   if (key === "date") {
     return new Date(left || 0).getTime() - new Date(right || 0).getTime();
+  }
+
+  if (key === "type") {
+    return postingType(left).localeCompare(postingType(right), "da-DK", { sensitivity: "base" });
   }
 
   return String(left ?? "").localeCompare(String(right ?? ""), "da-DK", { sensitivity: "base" });

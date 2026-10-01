@@ -736,6 +736,11 @@
   justify-content: space-between;
   gap: 16px;
 }
+.finance-admin-detail-form-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .finance-admin-detail-form-heading .finance-admin-status {
   flex: 0 0 auto;
 }
@@ -1494,12 +1499,26 @@
   .finance-admin-filters select {
     width: 100%;
   }
+  .finance-admin-filters {
+    grid-template-columns: 1fr;
+  }
+  .finance-admin-filters > * {
+    grid-column: auto !important;
+    order: initial !important;
+  }
   .finance-admin-clear-filter {
     width: 100%;
   }
   .finance-admin-detail-grid,
   .finance-admin-detail-fields {
     grid-template-columns: 1fr;
+  }
+  .finance-admin-detail-form-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .finance-admin-detail-form-heading h2 {
+    width: 100%;
   }
   .finance-import-upload-grid,
   .finance-import-result-grid {

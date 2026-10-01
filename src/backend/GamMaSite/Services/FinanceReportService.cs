@@ -632,7 +632,7 @@ namespace GamMaSite.Services
                 SELECT
                     p.id,
                     TO_CHAR(COALESCE(p.posting_date, p.date), 'YYYY-MM-DD') AS posting_date,
-                    COALESCE(p.amount, 0) AS amount,
+                    -COALESCE(p.amount, 0) AS amount,
                     COALESCE(p.text, '') AS text,
                     CASE
                         WHEN p.mp_key IS NOT NULL THEN 'MobilePay'
@@ -645,6 +645,14 @@ namespace GamMaSite.Services
                 LEFT JOIN public.account a ON a.id = p.account_number
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
                 WHERE p.user_id = @user_id
+                  AND LOWER(TRIM(COALESCE(a.main_account, ''))) <> 'drift'
+                  AND NULLIF(TRIM(COALESCE(p.account_number, '')), '') IS NOT NULL
+                  AND NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NOT NULL
+                  AND NOT (
+                      p.bank_account_key IS NOT NULL
+                      AND p.mp_key IS NULL
+                      AND NULLIF(TRIM(COALESCE(p.document, '')), '') IS NULL
+                  )
                 ORDER BY COALESCE(p.posting_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
             AddText(command, "user_id", userId);
