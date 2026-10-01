@@ -308,9 +308,24 @@ function FinancePostingsPanel({ setLastUpdated }) {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
   const filtered = useFilteredPostings(postings, search);
   const sorted = useMemo(() => sortPostings(filtered, sort), [filtered, sort]);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  useEffect(() => {
+    if (!isTableExpanded) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setIsTableExpanded(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isTableExpanded]);
 
   useEffect(() => {
     let active = true;
@@ -353,7 +368,20 @@ function FinancePostingsPanel({ setLastUpdated }) {
 
   return (
     <>
-      <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} searchPlaceholder="Tekst" />
+      <div className={`account-finance-table-container${isTableExpanded ? " is-expanded" : ""}`}>
+        <div className="account-finance-table-toolbar">
+          <SearchToolbar search={search} setSearch={setSearch} pageSize={pageSize} setPageSize={setPageSize} searchPlaceholder="Tekst" />
+          <button
+            className={`finance-table-expand-button${isTableExpanded ? " is-close" : ""}`}
+            type="button"
+            onClick={() => setIsTableExpanded((current) => !current)}
+            title={isTableExpanded ? "Luk udvidet tabel" : "Udvid tabel"}
+            aria-label={isTableExpanded ? "Luk udvidet tabel" : "Udvid tabel"}
+          >
+            <span aria-hidden="true">{isTableExpanded ? "\u00d7" : "\u26f6"}</span>
+            {isTableExpanded && <span>Luk tabel</span>}
+          </button>
+        </div>
       <div className="menu-table-wrap account-finance-table-wrap">
         <table className="menu-member-table account-finance-table">
           <thead>
@@ -385,7 +413,8 @@ function FinancePostingsPanel({ setLastUpdated }) {
           </tbody>
         </table>
       </div>
-      <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
+        <Pagination page={currentPage} pageCount={pageCount} total={sorted.length} pageSize={pageSize} setPage={setPage} />
+      </div>
     </>
   );
 }
