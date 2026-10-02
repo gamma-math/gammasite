@@ -3030,7 +3030,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
   );
 }
 
-export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
+export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id }) {
   const isNew = id === "new";
   const today = new Date().toISOString().slice(0, 10);
   const [posting, setPosting] = useState(null);
@@ -3100,7 +3100,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
         });
       })
       .catch((requestError) => setError(requestError.message));
-  }, [id, isAdmin]);
+  }, [id, isAdmin, canWrite]);
 
   const update = (field, value) =>
     setForm((current) => ({ ...current, [field]: value }));
@@ -3139,7 +3139,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
   return (
     <AdminLayout
       active=""
-      canWrite={true}
+      canWrite={canWrite}
       contentClassName="finance-admin-detail-content"
     >
       <div className="menu-panel-header finance-admin-detail-header">
@@ -3163,6 +3163,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
       {posting && form && options && (
         <div className="finance-admin-detail-grid">
           <form className="finance-admin-detail-form" onSubmit={save}>
+            <fieldset disabled={!canWrite}>
             <div className="finance-admin-detail-form-heading">
             <h2>{isNew ? "Ny manuel postering" : posting.text || posting.id}</h2>
               <span
@@ -3280,15 +3281,14 @@ export function FinanceAdminPostingDetailPage({ isAdmin, id }) {
               )}
             </div>
             <div className="finance-admin-detail-actions">
-              <button className="profile-button" type="submit">
-                Gem ændringer
-              </button>
+              {canWrite && <button className="profile-button" type="submit">Gem ændringer</button>}
               {message && (
                 <p className="status-message status-message-success">
                   {message}
                 </p>
               )}
             </div>
+            </fieldset>
           </form>
           <aside className="finance-admin-original-data">
             <p className="finance-live-kicker">Originaldata</p>

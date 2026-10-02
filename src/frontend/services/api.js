@@ -128,6 +128,8 @@ export const contentApi = {
   },
   listAdmin: (type) => request(`/api/content/admin${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   getBySlug: (slug) => request(`/api/content/slug/${encodeURIComponent(slug)}`),
+  getById: (id) => request(`/api/content/${id}`),
+  access: (id) => request(`/api/content/${id}/access`),
   create: (payload) => request("/api/content", { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) => request(`/api/content/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   delete: (id) => request(`/api/content/${id}`, { method: "DELETE" })
@@ -162,6 +164,7 @@ export const emailTemplatesApi = {
 export const membersApi = {
   list: () => request("/api/members"),
   listAdmin: () => request("/api/members/admin"),
+  listForEvent: (contentId) => request(`/api/members/event/${contentId}`),
   updateStatus: (id, status) => request(`/api/members/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
   massUpdateStatus: (payload) => request("/api/members/admin/mass-status", { method: "POST", body: JSON.stringify(payload) })
 };

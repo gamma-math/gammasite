@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,13 +31,13 @@ namespace GamMaSite.Controllers
             return View(_userManager.Users);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public IActionResult Expanded()
         {
             return View(_userManager.Users);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> Update(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -46,7 +47,7 @@ namespace GamMaSite.Controllers
                 return RedirectToAction(nameof(Index));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         [HttpPost]
         public async Task<IActionResult> Update(string id, UserStatus status)
         {
@@ -74,13 +75,13 @@ namespace GamMaSite.Controllers
             return View(user);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public IActionResult UpdateMass()
         {
             return View(_userManager.Users);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdateMassEditAsync(DateTime from, DateTime to, UserStatus status)
         {
             var users = _userManager.Users.Where(it => it.KontingentDato >= from && it.KontingentDato <= to).ToList();

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -19,12 +20,13 @@ namespace GamMaSite.Controllers
      */
     public class ApiMembersController : ControllerBase
     {
-        private const string AdminRoles = "Admin,ADMIN";
         private readonly UserManager<SiteUser> _userManager;
+        private readonly IAccessControlService _accessControl;
 
-        public ApiMembersController(UserManager<SiteUser> userManager)
+        public ApiMembersController(UserManager<SiteUser> userManager, IAccessControlService accessControl)
         {
             _userManager = userManager;
+            _accessControl = accessControl;
         }
 
         [HttpGet]
@@ -40,7 +42,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Roles = AdminRoles)]
+        [Authorize(Policy = PermissionPolicies.MemberData)]
         public async Task<IActionResult> GetAdminMembers()
         {
             var members = await _userManager.Users
@@ -51,8 +53,24 @@ namespace GamMaSite.Controllers
             return Ok(members.Select(user => ToMemberDto(user, true)));
         }
 
+        [HttpGet("event/{contentItemId:int}")]
+        public async Task<IActionResult> GetEventMembers(int contentItemId)
+        {
+            if (!await _accessControl.CanEditRegistrationsAsync(User, contentItemId))
+            {
+                return Forbid();
+            }
+
+            var members = await _userManager.Users
+                .AsNoTracking()
+                .OrderBy(user => user.Navn)
+                .ToListAsync();
+
+            return Ok(members.Select(user => ToMemberDto(user, true)));
+        }
+
         [HttpPut("{id}/status")]
-        [Authorize(Roles = AdminRoles)]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdateStatus(string id, UpdateMemberStatusRequest request)
         {
             if (!Enum.TryParse<UserStatus>(request?.Status, true, out var status))
@@ -77,7 +95,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/mass-status")]
-        [Authorize(Roles = AdminRoles)]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdateMassStatus(MassUpdateMemberStatusRequest request)
         {
             if (!Enum.TryParse<UserStatus>(request?.Status, true, out var status))

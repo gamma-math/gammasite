@@ -1,5 +1,6 @@
 import { adminSections, Link } from "../routes/navigation.jsx";
 import { CircleArrowLeft } from "lucide-react";
+import { hasPermission, useAccessUser } from "../utils/access.js";
 
 const financeSections = [
   {
@@ -9,24 +10,26 @@ const financeSections = [
         label: "Tilbage til Admin",
         icon: CircleArrowLeft,
       },
-      { href: "/react/admin/finance", label: "Overblik" },
-      { href: "/react/admin/finance/postings", label: "Posteringer" },
+      { href: "/react/admin/finance", label: "Overblik", permission: "finance.view.all" },
+      { href: "/react/admin/finance/postings", label: "Posteringer", permission: "finance.view.all" },
     ],
   },
   {
     label: "Rediger finanser",
     items: [
-      { href: "/react/admin/finance/csv-import", label: "CSV-import" },
+      { href: "/react/admin/finance/csv-import", label: "CSV-import", permission: "finance.edit.all" },
       {
         href: "/react/admin/finance/postings/edit",
         label: "Posteringer",
+        permission: "finance.edit.all",
       },
-      { href: "/react/admin/finance/chart-of-accounts", label: "Kontoplan" },
+      { href: "/react/admin/finance/chart-of-accounts", label: "Kontoplan", permission: "finance.edit.all" },
       {
         href: "/react/admin/finance/posting-groups",
         label: "Posteringsgrupper",
+        permission: "finance.edit.all",
       },
-      { href: "/react/admin/finance/budgets", label: "Budgetter" },
+      { href: "/react/admin/finance/budgets", label: "Budgetter", permission: "finance.edit.all" },
     ],
   },
 ];
@@ -63,15 +66,21 @@ export function AdminLayout({
   children,
   contentClassName = "",
 }) {
+  const accessUser = useAccessUser();
   const isFinanceAdmin = window.location.pathname.startsWith(
     "/react/admin/finance",
   );
   const sections = isFinanceAdmin
     ? financeSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !item.permission || hasPermission(accessUser, item.permission)),
+        }))
+        .filter((section) => section.items.length > 0)
     : adminSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) => canWrite || item.readAdmin),
+          items: section.items.filter((item) => !item.permission || hasPermission(accessUser, item.permission)),
         }))
         .filter((section) => section.items.length > 0);
   const activePath = isFinanceAdmin

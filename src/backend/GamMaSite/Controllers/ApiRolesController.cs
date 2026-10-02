@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using GamMaSite.Data;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -15,7 +16,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/roles")]
-    [Authorize(Roles = "Admin,ADMIN")]
+    [Authorize(Policy = PermissionPolicies.RolesEdit)]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for role listing, editing, and membership assignment.

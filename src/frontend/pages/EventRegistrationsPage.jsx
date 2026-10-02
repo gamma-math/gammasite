@@ -5,6 +5,7 @@ import { Link } from "../routes/navigation.jsx";
 import { contentApi, membersApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
+import { hasAnyPermission, permissions } from "../utils/access.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
@@ -23,9 +24,11 @@ export function EventRegistrationsPage({ slug, user }) {
   const [memberSearch, setMemberSearch] = useState("");
   const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: true });
   const [expandedRegistrationIds, setExpandedRegistrationIds] = useState(new Set());
+  const [eventAccess, setEventAccess] = useState(null);
   const [error, setError] = useState("");
-  const roles = new Set(user.roles ?? []);
-  const isAdmin = roles.has("Admin") || roles.has("ADMIN");
+  const canViewRegistrations = user.isAuthenticated;
+  const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
+  const canEditRegistrations = permissionCanEditRegistrations || Boolean(eventAccess?.canEditRegistrations);
 
   useEffect(() => {
     let active = true;
@@ -36,11 +39,16 @@ export function EventRegistrationsPage({ slug, user }) {
         }
 
         setItem(content);
-        if (user.isAuthenticated) {
+        const access = user.isAuthenticated ? await contentApi.access(content.id).catch(() => null) : null;
+        if (!active) {
+          return;
+        }
+        setEventAccess(access);
+        if (user.isAuthenticated && canViewRegistrations) {
           setRegistrations(await registrationsApi.list(content.id));
         }
-        if (isAdmin) {
-          setMembers(await membersApi.listAdmin());
+        if (permissionCanEditRegistrations || access?.canEditRegistrations) {
+          setMembers(await membersApi.listForEvent(content.id));
         }
       })
       .catch((err) => {
@@ -52,7 +60,7 @@ export function EventRegistrationsPage({ slug, user }) {
     return () => {
       active = false;
     };
-  }, [slug, user.isAuthenticated, isAdmin]);
+  }, [slug, user.isAuthenticated, canViewRegistrations, permissionCanEditRegistrations]);
 
   async function updateRegistration(registration, changes) {
     const payload = {
@@ -114,6 +122,10 @@ export function EventRegistrationsPage({ slug, user }) {
     );
   }
 
+  if (!canViewRegistrations) {
+    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke adgang til tilmeldte.</p></MenuLayout>;
+  }
+
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -135,7 +147,7 @@ export function EventRegistrationsPage({ slug, user }) {
         </Link>
       </div>
 
-      {isAdmin && (
+      {canEditRegistrations && (
         <form className="menu-registration-add" onSubmit={addRegistration}>
           <label className="admin-field menu-member-combobox">
             <span>Tilføj deltager</span>
@@ -195,7 +207,7 @@ export function EventRegistrationsPage({ slug, user }) {
                   <tr>
                     <td>
                       <div className="menu-registration-person">
-                        {isAdmin && (
+                        {canEditRegistrations && (
                           <button
                             className="menu-registration-mobile-toggle"
                             type="button"
@@ -211,21 +223,21 @@ export function EventRegistrationsPage({ slug, user }) {
                       </div>
                     </td>
                     <td className="menu-registration-desktop-cell">
-                      {isAdmin ? (
+                      {canEditRegistrations ? (
                         <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                       ) : (
                         <span className="menu-role-badge menu-role-badge-attendee">{registrationLabel(registration.registrationType)}</span>
                       )}
                     </td>
                     <td className="menu-registration-desktop-cell">
-                      {isAdmin ? (
+                      {canEditRegistrations ? (
                         <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
                       ) : (
                         <span>{registration.registered ? "Ja" : "Nej"}</span>
                       )}
                     </td>
                   </tr>
-                  {isAdmin && isExpanded && (
+                  {canEditRegistrations && isExpanded && (
                     <tr className="menu-registration-mobile-detail-row">
                       <td colSpan="3">
                         <div className="menu-registration-mobile-details">

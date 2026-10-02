@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Data;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,7 @@ public class ApiMembersControllerTests
         var manager = TestDoubles.UserManager();
         manager.SetupGet(value => value.Users).Returns(db.Users);
 
-        var result = await new ApiMembersController(manager.Object).GetMembers();
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).GetMembers();
         var members = Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<MemberDto>>(Assert.IsType<OkObjectResult>(result).Value);
 
         Assert.Equal(new[] { "private", "visible" }, members.Select(member => member.Name));
@@ -52,7 +53,7 @@ public class ApiMembersControllerTests
         manager.Setup(value => value.FindByIdAsync(user.Id)).ReturnsAsync(user);
         manager.Setup(value => value.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
 
-        var result = await new ApiMembersController(manager.Object).UpdateStatus(user.Id,
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).UpdateStatus(user.Id,
             new UpdateMemberStatusRequest { Status = UserStatus.BETALT.ToString() });
 
         Assert.IsType<OkObjectResult>(result);
@@ -66,7 +67,7 @@ public class ApiMembersControllerTests
     {
         var manager = TestDoubles.UserManager();
 
-        var result = await new ApiMembersController(manager.Object).UpdateStatus("member",
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).UpdateStatus("member",
             new UpdateMemberStatusRequest { Status = "INVALID" });
 
         Assert.IsType<BadRequestObjectResult>(result);
@@ -79,7 +80,7 @@ public class ApiMembersControllerTests
         var manager = TestDoubles.UserManager();
         manager.Setup(value => value.FindByIdAsync("missing")).ReturnsAsync((SiteUser?)null);
 
-        var result = await new ApiMembersController(manager.Object).UpdateStatus("missing",
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).UpdateStatus("missing",
             new UpdateMemberStatusRequest { Status = UserStatus.BETALT.ToString() });
 
         Assert.IsType<NotFoundResult>(result);
@@ -99,7 +100,7 @@ public class ApiMembersControllerTests
         manager.SetupGet(value => value.Users).Returns(db.Users);
         manager.Setup(value => value.UpdateAsync(It.IsAny<SiteUser>())).ReturnsAsync(IdentityResult.Success);
 
-        var result = await new ApiMembersController(manager.Object).UpdateMassStatus(new MassUpdateMemberStatusRequest
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).UpdateMassStatus(new MassUpdateMemberStatusRequest
         {
             From = new DateTime(2025, 1, 1), To = new DateTime(2025, 2, 1), Status = UserStatus.BETALT.ToString()
         });

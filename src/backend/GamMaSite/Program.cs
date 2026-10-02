@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +82,24 @@ builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
 builder.Services.AddScoped<FinanceReportService>();
 builder.Services.AddScoped<FinanceImportService>();
+builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PermissionPolicies.ContentEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrRegistrations, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrEmailTemplates, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.EmailTemplatesEdit)));
+    options.AddPolicy(PermissionPolicies.EmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrEmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.MemberData, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit, PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit, PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.RegistrationsEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RegistrationsEdit)));
+    options.AddPolicy(PermissionPolicies.EmailTemplatesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit)));
+    options.AddPolicy(PermissionPolicies.MessagesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.RolesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit)));
+    options.AddPolicy(PermissionPolicies.FinanceViewAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.FinanceEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceEditAll)));
+});
 
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>

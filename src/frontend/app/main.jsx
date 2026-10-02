@@ -50,6 +50,7 @@ import {
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { meApi } from "../services/api.js";
+import { AccessContext, canAccessAdmin, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
 
 /**
@@ -116,16 +117,26 @@ function useCurrentUser() {
 function App() {
   const route = useRoute();
   const user = useCurrentUser();
-  const roles = new Set(user.roles ?? []);
-  const isAdmin = roles.has("Admin") || roles.has("ADMIN");
-  const isReadAdmin = isAdmin || roles.has("READ_ADMIN");
+  const isAdmin = canAccessAdmin(user);
+  const isReadAdmin = isAdmin;
+  const access = {
+    contentEdit: hasPermission(user, permissions.contentEdit),
+    registrationsEdit: hasPermission(user, permissions.registrationsEdit),
+    emailTemplatesEdit: hasPermission(user, permissions.emailTemplatesEdit),
+    messagesEdit: hasPermission(user, permissions.messagesEdit),
+    rolesEdit: hasPermission(user, permissions.rolesEdit),
+    financeView: hasAnyPermission(user, [permissions.financeViewAll, permissions.financeEditAll]),
+    financeEdit: hasPermission(user, permissions.financeEditAll)
+  };
 
   return (
-    <div className="app-shell">
-      <Header user={user} isReadAdmin={isReadAdmin} />
-      <main>{renderRoute(route, user, isAdmin, isReadAdmin)}</main>
-      <Footer />
-    </div>
+    <AccessContext.Provider value={user}>
+      <div className="app-shell">
+        <Header user={user} isReadAdmin={isReadAdmin} />
+        <main>{renderRoute(route, user, isAdmin, access)}</main>
+        <Footer />
+      </div>
+    </AccessContext.Provider>
   );
 }
 
@@ -200,7 +211,7 @@ function Header({ user, isReadAdmin }) {
 /**
  * Maps legacy and React URLs to their active React page components.
  */
-function renderRoute(route, user, isAdmin, isReadAdmin) {
+function renderRoute(route, user, isAdmin, access) {
   const path = route.path;
 
   if (path === "/" || path === "/Home" || path === "/Home/Index") {
@@ -337,33 +348,33 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
     );
   }
   if (path === "/react/admin/news") {
-    return <AdminContentPage type="NEWS" isAdmin={isAdmin} />;
+    return <AdminContentPage type="NEWS" isAdmin={access.contentEdit} />;
   }
   if (path === "/react/admin/finance") {
-    return <FinanceAdminOverviewPage isAdmin={isAdmin} search={route.search} />;
+    return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;
   }
   if (path === "/react/admin/finance/postings") {
-    return <FinanceAdminPostingsPage isAdmin={isAdmin} search={route.search} />;
+    return <FinanceAdminPostingsPage isAdmin={access.financeView} canWrite={access.financeEdit} search={route.search} />;
   }
   if (path === "/react/admin/finance/postings/edit") {
     return (
       <FinanceAdminCashierPostingsPage
-        isAdmin={isAdmin}
+        isAdmin={access.financeEdit}
         search={route.search}
       />
     );
   }
   if (path === "/react/admin/finance/csv-import") {
-    return <FinanceAdminImportPage isAdmin={isAdmin} />;
+    return <FinanceAdminImportPage isAdmin={access.financeEdit} />;
   }
   if (path === "/react/admin/finance/budgets") {
-    return <FinanceAdminBudgetsPage isAdmin={isAdmin} />;
+    return <FinanceAdminBudgetsPage isAdmin={access.financeEdit} />;
   }
   if (path === "/react/admin/finance/chart-of-accounts") {
-    return <FinanceAdminAccountsPage isAdmin={isAdmin} />;
+    return <FinanceAdminAccountsPage isAdmin={access.financeEdit} />;
   }
   if (path === "/react/admin/finance/posting-groups") {
-    return <FinanceAdminPostingGroupsPage isAdmin={isAdmin} />;
+    return <FinanceAdminPostingGroupsPage isAdmin={access.financeEdit} />;
   }
   const adminFinancePostingGroupMatch = path.match(
     /^\/react\/admin\/finance\/posting-groups\/([^/]+)$/,
@@ -371,7 +382,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (adminFinancePostingGroupMatch) {
     return (
       <FinanceAdminPostingGroupDetailPage
-        isAdmin={isAdmin}
+        isAdmin={access.financeEdit}
         id={decodeURIComponent(adminFinancePostingGroupMatch[1])}
       />
     );
@@ -382,7 +393,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (adminFinanceBudgetMatch) {
     return (
       <FinanceAdminBudgetDetailPage
-        isAdmin={isAdmin}
+        isAdmin={access.financeEdit}
         id={decodeURIComponent(adminFinanceBudgetMatch[1])}
       />
     );
@@ -393,7 +404,8 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (adminFinancePostingMatch) {
     return (
       <FinanceAdminPostingDetailPage
-        isAdmin={isAdmin}
+        isAdmin={access.financeView}
+        canWrite={access.financeEdit}
         id={decodeURIComponent(adminFinancePostingMatch[1])}
       />
     );
@@ -407,11 +419,11 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
         ? null
         : Number(adminNewsEditorMatch[1].split("/")[0]);
     return (
-      <AdminContentEditorPage type="NEWS" isAdmin={isAdmin} itemId={itemId} />
+      <AdminContentEditorPage type="NEWS" isAdmin={access.contentEdit} itemId={itemId} />
     );
   }
   if (path === "/react/admin/templates") {
-    return <AdminTemplatesPage isAdmin={isAdmin} />;
+    return <AdminTemplatesPage isAdmin={access.emailTemplatesEdit} />;
   }
   const adminTemplateEditorMatch = path.match(
     /^\/react\/admin\/templates\/(new|\d+\/edit)$/,
@@ -422,7 +434,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
         ? null
         : Number(adminTemplateEditorMatch[1].split("/")[0]);
     return (
-      <AdminTemplateEditorPage isAdmin={isAdmin} templateId={templateId} />
+      <AdminTemplateEditorPage isAdmin={access.emailTemplatesEdit} templateId={templateId} />
     );
   }
   if (
@@ -430,13 +442,13 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
     path === "/Users/Expanded" ||
     path === "/Users/UpdateMass"
   ) {
-    return <AdminMembersPage isAdmin={isAdmin} />;
+    return <AdminMembersPage isAdmin={access.rolesEdit} />;
   }
   if (path === "/react/admin/messages" || path === "/Messages") {
-    return <AdminMessagesPage isAdmin={isAdmin} />;
+    return <AdminMessagesPage isAdmin={access.messagesEdit} />;
   }
   if (path === "/react/admin/roles/new" || path === "/Role/Create") {
-    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={null} />;
+    return <AdminRolesEditorPage isAdmin={access.rolesEdit} roleId={null} />;
   }
   const adminRoleEditorMatch = path.match(
     /^\/react\/admin\/roles\/([^/]+)\/edit$/,
@@ -444,7 +456,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (adminRoleEditorMatch) {
     return (
       <AdminRolesEditorPage
-        isAdmin={isAdmin}
+        isAdmin={access.rolesEdit}
         roleId={decodeURIComponent(adminRoleEditorMatch[1])}
       />
     );
@@ -453,16 +465,16 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (oldRoleUpdateMatch && oldRoleUpdateMatch[1]) {
     return (
       <AdminRolesEditorPage
-        isAdmin={isAdmin}
+        isAdmin={access.rolesEdit}
         roleId={decodeURIComponent(oldRoleUpdateMatch[1])}
       />
     );
   }
   if (path === "/react/admin/roles" || path === "/Role") {
-    return <AdminRolesPage isAdmin={isAdmin} />;
+    return <AdminRolesPage isAdmin={access.rolesEdit} />;
   }
   if (path === "/react/admin/events") {
-    return <AdminContentPage type="EVENT" isAdmin={isAdmin} />;
+    return <AdminContentPage type="EVENT" isAdmin={access.contentEdit} />;
   }
   const adminEventEditorMatch = path.match(
     /^\/react\/admin\/events\/(new|\d+\/edit)$/,
@@ -473,7 +485,7 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
         ? null
         : Number(adminEventEditorMatch[1].split("/")[0]);
     return (
-      <AdminContentEditorPage type="EVENT" isAdmin={isAdmin} itemId={itemId} />
+      <AdminContentEditorPage type="EVENT" isAdmin={access.contentEdit} itemId={itemId} />
     );
   }
   return <FrontPage />;

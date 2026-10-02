@@ -10,7 +10,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/email-templates")]
-    [Authorize(Roles = "Admin,ADMIN")]
+    [Authorize]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for managing reusable email templates.
@@ -25,6 +25,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesOrMessages)]
         public async Task<IActionResult> GetAll([FromQuery] string templateType, [FromQuery] bool? isActive)
         {
             var templates = await _emailTemplateService.GetAllAsync(templateType, isActive);
@@ -32,6 +33,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesOrMessages)]
         public async Task<IActionResult> GetById(int id)
         {
             var template = await _emailTemplateService.GetByIdAsync(id);
@@ -39,6 +41,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesEdit)]
         public async Task<IActionResult> Create(SaveEmailTemplateRequest request)
         {
             try
@@ -53,6 +56,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesEdit)]
         public async Task<IActionResult> Update(int id, SaveEmailTemplateRequest request)
         {
             try
@@ -67,6 +71,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesEdit)]
         public async Task<IActionResult> Delete(int id)
         {
             var deleted = await _emailTemplateService.DeleteAsync(id);
@@ -74,6 +79,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("{id:int}/preview")]
+        [Authorize(Policy = PermissionPolicies.EmailTemplatesOrMessages)]
         public async Task<IActionResult> Preview(int id, PreviewEmailTemplateRequest request)
         {
             var preview = await _emailTemplateService.PreviewAsync(id, request);

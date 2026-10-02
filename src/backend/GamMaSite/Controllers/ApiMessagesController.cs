@@ -18,7 +18,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/messages")]
-    [Authorize(Roles = "Admin,ADMIN")]
+    [Authorize(Policy = PermissionPolicies.MessagesEdit)]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for recipient previews, message rendering, and email sending.

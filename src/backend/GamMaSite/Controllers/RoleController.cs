@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ using Microsoft.AspNetCore.Mvc;
  */
 namespace GamMaSite.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PermissionPolicies.RolesEdit)]
     public class RoleController : Controller
     {
         private readonly RoleManager<IdentityRole> _roleManager;
