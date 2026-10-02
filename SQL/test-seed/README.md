@@ -22,6 +22,7 @@ Foelgende scripts indsaetter testdata:
 6. `14_ContentLinks.sql`
 7. `15_EventRegistrations.sql`
 8. `16_EmailTemplates.sql`
+9. `18_AccessControlPermissions.sql` (permissions, role-permissions og role claims)
 
 Foelgende scripts rydder kun tabellerne og efterlader dem tomme:
 
@@ -57,6 +58,7 @@ Hvis du vil koere scripts enkeltvist, brug denne rekkefolge:
 14. `14_ContentLinks.sql`
 15. `15_EventRegistrations.sql`
 16. `16_EmailTemplates.sql`
+17. `18_AccessControlPermissions.sql`
 
 Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sql`.
 
@@ -70,6 +72,9 @@ Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sq
 6. `ContentLinks`
 7. `EventRegistrations`
 8. `EmailTemplates`
+9. `Permissions`
+10. `RolePermissions`
+11. `AspNetRoleClaims`
 
 De nye content-tabeller kan ogsaa seedes separat med `13_ContentItems.sql` til `16_EmailTemplates.sql`, saa de kan koeres ovenpaa en eksisterende lokal Identity-database uden at overskrive brugere og roller.
 

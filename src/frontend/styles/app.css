@@ -1968,6 +1968,7 @@ img {
 
 .role-membership-form {
   padding: 18px;
+  gap: 22px;
 }
 
 .admin-role-editor,
@@ -1979,6 +1980,137 @@ img {
   padding: 14px;
   border: 1px solid #d7dfe9;
   border-radius: 16px;
+}
+
+.role-members-section,
+.role-permissions-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.role-section-heading,
+.role-selected-members-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.role-section-heading h2 {
+  margin: 2px 0 0;
+  color: var(--ink-strong);
+  font-size: 1.15rem;
+}
+
+.admin-section-kicker {
+  margin: 0;
+  color: var(--accent-deep);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.role-count {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #c7dcfb;
+  border-radius: 999px;
+  background: #f3f8ff;
+  color: var(--accent-deep);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.role-member-picker .profile-checkbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 9px;
+  row-gap: 2px;
+}
+
+.role-member-picker .profile-checkbox small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.role-selected-members {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.role-selected-members-header {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.role-selected-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid #d7e2ef;
+  background: #f8fbff;
+}
+
+.role-selected-member > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.role-selected-member strong {
+  color: var(--ink-strong);
+}
+
+.role-selected-member span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-remove-member {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #e3b7bd;
+  background: #fff7f7;
+  color: #9d3038;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.role-permission-code {
+  display: grid;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.role-permissions-section input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--action-blue);
+}
+
+.role-permissions-section input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .choice-grid {

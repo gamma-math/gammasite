@@ -19,6 +19,27 @@ CREATE TABLE IF NOT EXISTS `AspNetRoles` (
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `Permissions` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `Code` varchar(128) NOT NULL,
+  `Description` varchar(512) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_Permissions_Code` (`Code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `RolePermissions` (
+  `RoleId` varchar(128) NOT NULL,
+  `PermissionId` int NOT NULL,
+  PRIMARY KEY (`RoleId`, `PermissionId`),
+  KEY `IX_RolePermissions_PermissionId` (`PermissionId`),
+  CONSTRAINT `FK_RolePermissions_AspNetRoles_RoleId`
+    FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_RolePermissions_Permissions_PermissionId`
+    FOREIGN KEY (`PermissionId`) REFERENCES `Permissions` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `AspNetRoleClaims` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ClaimType` longtext,

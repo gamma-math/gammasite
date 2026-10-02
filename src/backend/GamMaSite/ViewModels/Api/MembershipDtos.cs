@@ -75,4 +75,27 @@ namespace GamMaSite.ViewModels.Api
 
         public string[] DeleteIds { get; set; }
     }
+
+    public class PermissionDto
+    {
+        public int Id { get; set; }
+
+        public string Code { get; set; }
+
+        public string Description { get; set; }
+
+        public bool Enabled { get; set; }
+    }
+
+    public class RolePermissionsDto
+    {
+        public RoleDto Role { get; set; }
+
+        public IReadOnlyList<PermissionDto> Permissions { get; set; }
+    }
+
+    public class UpdateRolePermissionsRequest
+    {
+        public string[] PermissionCodes { get; set; }
+    }
 }

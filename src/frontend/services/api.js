@@ -174,7 +174,9 @@ export const rolesApi = {
   create: (name) => request("/api/roles", { method: "POST", body: JSON.stringify({ name }) }),
   delete: (id) => request(`/api/roles/${id}`, { method: "DELETE" }),
   members: (id) => request(`/api/roles/${id}/members`),
-  updateMembers: (id, payload) => request(`/api/roles/${id}/members`, { method: "PUT", body: JSON.stringify(payload) })
+  updateMembers: (id, payload) => request(`/api/roles/${id}/members`, { method: "PUT", body: JSON.stringify(payload) }),
+  permissions: (id) => request(`/api/roles/${id}/permissions`),
+  updatePermissions: (id, permissionCodes) => request(`/api/roles/${id}/permissions`, { method: "PUT", body: JSON.stringify({ permissionCodes }) })
 };
 
 /**
