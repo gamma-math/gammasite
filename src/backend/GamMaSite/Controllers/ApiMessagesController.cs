@@ -240,8 +240,12 @@ namespace GamMaSite.Controllers
                 }
             }
 
-            var eventIds = (recipientEventIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().ToArray();
-            if (eventIds.Length > 0)
+            // Keep this as a List rather than an array. With EF Core 9 on .NET 10,
+            // an int[] .Contains expression can be funcletized via ReadOnlySpan<int>,
+            // which EF cannot compile and causes recipient resolution to fail before
+            // the SQL query is sent to MySQL.
+            var eventIds = (recipientEventIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().ToList();
+            if (eventIds.Count > 0)
             {
                 var eventUserIds = await _db.EventRegistrations
                     .AsNoTracking()
