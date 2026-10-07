@@ -23,9 +23,10 @@ public class ApiContentControllerTests
     {
         var content = new Mock<IContentService>();
         var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
         var item = new ContentItem { Id = 7, Title = "Public event", Type = ContentTypes.Event, Status = ContentStatuses.Published };
         content.Setup(service => service.GetPublishedAsync("EVENT", true)).ReturnsAsync(new List<ContentItem> { item });
-        var controller = new ApiContentController(content.Object, registrations.Object);
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object);
 
         var result = await controller.GetPublished("EVENT", true);
 
@@ -39,8 +40,11 @@ public class ApiContentControllerTests
     {
         var content = new Mock<IContentService>();
         var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        accessControl.Setup(service => service.HasPermissionAsync(It.IsAny<ClaimsPrincipal>(), PermissionCodes.ContentEdit))
+            .ReturnsAsync(false);
         content.Setup(service => service.GetByIdAsync(7, false)).ReturnsAsync((ContentItem?)null);
-        var controller = new ApiContentController(content.Object, registrations.Object)
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -82,10 +86,32 @@ public class ApiContentControllerTests
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
+    [Fact]
+    public async Task DeleteRegistration_ForbidsUsersWithoutRegistrationEditAccess()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        accessControl.Setup(service => service.CanEditRegistrationsAsync(It.IsAny<ClaimsPrincipal>(), 7))
+            .ReturnsAsync(false);
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = TestDoubles.User("user-1") }
+            }
+        };
+
+        var result = await controller.DeleteRegistration(7, 3);
+
+        Assert.IsType<ForbidResult>(result);
+        registrations.Verify(service => service.DeleteAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+    }
+
     private static ApiContentController Controller(Mock<IContentService> content,
         Mock<IEventRegistrationService> registrations, ClaimsPrincipal user)
     {
-        return new ApiContentController(content.Object, registrations.Object)
+        return new ApiContentController(content.Object, registrations.Object, new Mock<IAccessControlService>().Object)
         {
             ControllerContext = new ControllerContext
             {

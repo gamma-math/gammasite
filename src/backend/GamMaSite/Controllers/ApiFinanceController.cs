@@ -58,7 +58,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/overview")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
         public async Task<IActionResult> GetAdminOverview([FromQuery] int? year, CancellationToken cancellationToken)
         {
             var currentYear = DateTime.Today.Year;
@@ -72,21 +72,21 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/budgets")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetAdminBudgets(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetAdminBudgetsAsync(cancellationToken));
         }
 
         [HttpGet("admin/accounts")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetAdminAccounts(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetAdminAccountsAsync(cancellationToken));
         }
 
         [HttpPost("admin/budgets")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> CreateAdminBudget([FromBody] FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -100,7 +100,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/budgets/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetAdminBudget(string id, CancellationToken cancellationToken)
         {
             var budget = await _financeReportService.GetAdminBudgetAsync(id, cancellationToken);
@@ -108,7 +108,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("admin/budgets/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> UpdateAdminBudget(string id, [FromBody] FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -123,7 +123,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("admin/budgets/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> DeleteAdminBudget(string id, CancellationToken cancellationToken)
         {
             return await _financeReportService.DeleteAdminBudgetAsync(id, cancellationToken)
@@ -132,14 +132,14 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/posteringsgrupper")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetAdminPostingGroups(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetAdminPostingGroupsAsync(cancellationToken));
         }
 
         [HttpGet("admin/posteringsgrupper/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetAdminPostingGroup(string id, CancellationToken cancellationToken)
         {
             var result = await _financeReportService.GetAdminPostingGroupAsync(id, cancellationToken);
@@ -147,7 +147,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/posteringsgrupper")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> CreateAdminPostingGroup([FromBody] FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -161,7 +161,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("admin/posteringsgrupper/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> UpdateAdminPostingGroup(string id, [FromBody] FinancePostingGroupUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -176,7 +176,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("admin/posteringsgrupper/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> DeleteAdminPostingGroup(string id, CancellationToken cancellationToken)
         {
             return await _financeReportService.DeleteAdminPostingGroupAsync(id, cancellationToken)
@@ -185,7 +185,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/postings")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
         public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
         {
             var currentYear = DateTime.Today.Year;
@@ -199,21 +199,21 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/postings/years")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
         public async Task<IActionResult> GetAdminPostingYears(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetAdminPostingYearsAsync(cancellationToken));
         }
 
         [HttpGet("admin/postings/options")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
         public async Task<IActionResult> GetPostingEditorOptions(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetPostingEditorOptionsAsync(cancellationToken));
         }
 
         [HttpGet("admin/postings/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
         public async Task<IActionResult> GetAdminPosting(string id, CancellationToken cancellationToken)
         {
             var posting = await _financeReportService.GetAdminPostingDetailAsync(id, cancellationToken);
@@ -221,7 +221,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("admin/postings/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> UpdateAdminPosting(string id, [FromBody] FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -235,7 +235,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/postings")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> CreateAdminPosting([FromBody] FinanceAdminPostingUpdateDto update, CancellationToken cancellationToken)
         {
             try
@@ -249,7 +249,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/postings/{id}/duplicate")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> DuplicateAdminPosting(string id, CancellationToken cancellationToken)
         {
             try
@@ -264,37 +264,30 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("admin/postings/{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> DeleteAdminPosting(string id, CancellationToken cancellationToken)
         {
-            try
-            {
-                return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
-                    ? NoContent()
-                    : NotFound();
-            }
-            catch (InvalidOperationException exception)
-            {
-                return Conflict(new { error = exception.Message });
-            }
+            return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
+                ? NoContent()
+                : NotFound();
         }
 
         [HttpGet("admin/import/history")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GetImportHistory(CancellationToken cancellationToken)
         {
             return Ok(await _financeImportService.GetHistoryAsync(cancellationToken));
         }
 
         [HttpPost("admin/import/postings")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> GenerateImportPostings(CancellationToken cancellationToken)
         {
             return Ok(await _financeImportService.GenerateDerivedPostingsAsync(cancellationToken));
         }
 
         [HttpGet("admin/import/templates/{source}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public IActionResult DownloadImportTemplate(string source)
         {
             string content;
@@ -318,7 +311,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/import")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> ImportCsv(
             [FromForm] IFormFile bankFile,
@@ -352,7 +345,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost("admin/import/validate")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         [RequestSizeLimit(20 * 1024 * 1024)]
         public IActionResult ValidateImportCsv(
             [FromForm] IFormFile bankFile,

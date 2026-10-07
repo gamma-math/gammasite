@@ -305,6 +305,8 @@ namespace GamMaSite.Services
 
         public async Task<FinanceAdminPostingsDto> GetAdminPostingsAsync(int? year, string accountId, long? bankKey, long? mobilePayKey, CancellationToken cancellationToken)
         {
+            var accountIds = (accountId ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             DateTime? start = year.HasValue ? new DateTime(year.Value, 1, 1) : null;
             DateTime? end = !year.HasValue
                 ? null
@@ -346,14 +348,14 @@ namespace GamMaSite.Services
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
                 WHERE (@start_date IS NULL OR COALESCE(p.posting_date, p.date) >= @start_date)
                   AND (@end_date IS NULL OR COALESCE(p.posting_date, p.date) <= @end_date)
-                  AND (@account_id IS NULL OR p.account_number = @account_id)
+                  AND (@account_ids IS NULL OR p.account_number = ANY(string_to_array(@account_ids, ',')))
                   AND (@bank_key IS NULL OR p.bank_account_key = @bank_key)
                   AND (@mobile_pay_key IS NULL OR p.mp_key = @mobile_pay_key)
                 ORDER BY COALESCE(p.posting_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
             AddNullableDate(command, "start_date", start);
             AddNullableDate(command, "end_date", end);
-            AddNullableText(command, "account_id", accountId);
+            AddNullableText(command, "account_ids", accountIds.Length == 0 ? null : string.Join(',', accountIds));
             AddNullableLong(command, "bank_key", bankKey);
             AddNullableLong(command, "mobile_pay_key", mobilePayKey);
 
@@ -517,20 +519,6 @@ namespace GamMaSite.Services
         {
             await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
-            await using (var guard = new NpgsqlCommand(@"
-                SELECT bank_account_key, mp_key
-                FROM public.posteringer
-                WHERE id = @id;", connection))
-            {
-                AddText(guard, "id", id);
-                await using var reader = await guard.ExecuteReaderAsync(cancellationToken);
-                if (!await reader.ReadAsync(cancellationToken)) return false;
-                if (!reader.IsDBNull(0) || !reader.IsDBNull(1))
-                {
-                    throw new InvalidOperationException("Afledte posteringer kan ikke slettes.");
-                }
-            }
-
             await using var command = new NpgsqlCommand("DELETE FROM public.posteringer WHERE id = @id;", connection);
             AddText(command, "id", id);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;

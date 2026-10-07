@@ -39,9 +39,9 @@ This document describes the backend APIs currently used by the React pages. The 
 | GET | `/api/content` | Front page, events page, news page | `ContentItems`, `ContentLinks` | Lists published events or news. Supports `type` and `frontPage=true`. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentServiceTests.cs](../../src/test/GamMaSite.Tests/ContentServiceTests.cs) |
 | GET | `/api/content/slug/{slug}` | Event and news detail pages, registrations page | `ContentItems`, `ContentLinks` | Loads one published content item by slug. | Not yet covered |
 | GET | `/api/content/admin` | Admin events and news pages, message composer | `ContentItems`, `ContentLinks` | Lists content for administration or message selection. Supports type and status filters. | Not yet covered |
-| POST | `/api/content` | Admin event/news create page | `ContentItems`, `ContentLinks` | Creates an event or news item. **Admin only.** | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentServiceTests.cs](../../src/test/GamMaSite.Tests/ContentServiceTests.cs) |
-| PUT | `/api/content/{id}` | Admin event/news edit page | `ContentItems`, `ContentLinks` | Updates an event or news item. **Admin only.** | Not yet covered |
-| DELETE | `/api/content/{id}` | Admin event/news page | `ContentItems`, `ContentLinks` | Deletes content and its links. **Admin only.** | Not yet covered |
+| POST | `/api/content` | Admin event/news create page | `ContentItems`, `ContentLinks` | Creates an event or news item. Requires `content.edit`. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentServiceTests.cs](../../src/test/GamMaSite.Tests/ContentServiceTests.cs) |
+| PUT | `/api/content/{id}` | Admin event/news edit page | `ContentItems`, `ContentLinks` | Updates an event or news item. Requires `content.edit` or organizer access for that event. | Not yet covered |
+| DELETE | `/api/content/{id}` | Admin event/news page | `ContentItems`, `ContentLinks` | Deletes content and its links. Requires `content.edit`. | Not yet covered |
 
 ## Event registration API
 
@@ -51,47 +51,48 @@ This document describes the backend APIs currently used by the React pages. The 
 | POST | `/api/content/{id}/registrations` | Event detail page | `EventRegistrations`, `ContentItems`, `AspNetUsers` | Registers the current user for an open event. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
 | DELETE | `/api/content/{id}/registrations/me` | Event detail page | `EventRegistrations`, `ContentItems`, `AspNetUsers` | Removes the current user's registration from an open event. | [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
 | GET | `/api/content/{id}/registrations` | Event detail and registrations pages | `EventRegistrations`, `AspNetUsers` | Lists attendees and registration states. | Not yet covered |
-| POST | `/api/content/{id}/registrations/admin` | Event registrations page | `EventRegistrations`, `AspNetUsers`, `ContentItems` | Adds a member to an event manually. **Admin only.** | [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
-| PUT | `/api/content/{id}/registrations/{registrationId}` | Event registrations page | `EventRegistrations`, `AspNetUsers` | Updates an attendee's registration type or response. **Admin only.** | [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
+| POST | `/api/content/{id}/registrations/admin` | Event registrations page | `EventRegistrations`, `AspNetUsers`, `ContentItems` | Adds a member to an event manually. Requires `content.edit`, `registrations.edit`, or organizer access for that event. | [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
+| PUT | `/api/content/{id}/registrations/{registrationId}` | Event registrations page | `EventRegistrations`, `AspNetUsers` | Updates an attendee's registration type or response. Requires `content.edit`, `registrations.edit`, or organizer access for that event. | [EventRegistrationServiceTests.cs](../../src/test/GamMaSite.Tests/EventRegistrationServiceTests.cs) |
 
 ## Member API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
 | GET | `/api/members` | Member directory | `AspNetUsers` | Lists confirmed members whose status is neither `INAKTIV` nor `OPRETTET`. Visibility controls whether private profile fields are included. | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
-| GET | `/api/members/admin` | Admin members, event registrations, message composer | `AspNetUsers` | Lists all users for administration and recipient selection. **Admin only.** | Not yet covered |
-| PUT | `/api/members/{id}/status` | Admin members page | `AspNetUsers` | Changes one user's membership status. **Admin only.** | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
-| POST | `/api/members/admin/mass-status` | Admin members page | `AspNetUsers` | Changes status for users in a selected date range. **Admin only.** | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
+| GET | `/api/members/admin` | Admin members, event registrations, message composer | `AspNetUsers` | Lists all users for administration and recipient selection. Requires the relevant member-data permission. | Not yet covered |
+| GET | `/api/members/finance` | Admin finance pages | `AspNetUsers` | Lists only member IDs and names for finance user labels and filters. Requires `finance.view.all` or `finance.edit.all`. | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
+| PUT | `/api/members/{id}/status` | Admin members page | `AspNetUsers` | Changes one user's membership status. Requires `roles.edit`. | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
+| POST | `/api/members/admin/mass-status` | Admin members page | `AspNetUsers` | Changes status for users in a selected date range. Requires `roles.edit`. | [ApiMembersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMembersControllerTests.cs) |
 
 ## Role API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| GET | `/api/roles` | Admin roles page, message composer | `AspNetRoles` | Lists application roles. **Admin only.** | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
-| POST | `/api/roles` | Admin role create page | `AspNetRoles` | Creates a role. **Admin only.** | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
-| DELETE | `/api/roles/{id}` | Admin roles page | `AspNetRoles`, `AspNetUserRoles` | Deletes a role unless it is protected. **Admin only.** | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
-| GET | `/api/roles/{id}/members` | Admin role edit page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles` | Returns members and non-members for one role. **Admin only.** | Not yet covered |
-| PUT | `/api/roles/{id}/members` | Admin role edit page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles` | Adds and removes users from a role. **Admin only.** | Not yet covered |
+| GET | `/api/roles` | Admin roles page, message composer | `AspNetRoles` | Lists application roles. Requires `roles.edit` or `messages.edit`. | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
+| POST | `/api/roles` | Admin role create page | `AspNetRoles` | Creates a role. Requires `roles.edit`. | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
+| DELETE | `/api/roles/{id}` | Admin roles page | `AspNetRoles`, `AspNetUserRoles` | Deletes a role unless it is protected. Requires `roles.edit`. | [ApiRolesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiRolesControllerTests.cs) |
+| GET | `/api/roles/{id}/members` | Admin role edit page, message composer | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles` | Returns members and non-members for one role. Requires `roles.edit` or `messages.edit`. | Not yet covered |
+| PUT | `/api/roles/{id}/members` | Admin role edit page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles` | Adds and removes users from a role. Requires `roles.edit`. | Not yet covered |
 
 ## Email template API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| GET | `/api/email-templates` | Admin templates page, message composer | `EmailTemplates` | Lists reusable templates, optionally filtered by type and active state. **Admin only.** | [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
-| GET | `/api/email-templates/{id}` | Admin template editor | `EmailTemplates` | Loads one template. **Admin only.** | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
-| POST | `/api/email-templates` | Admin template create page | `EmailTemplates` | Creates a template. **Admin only.** | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs), [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
-| PUT | `/api/email-templates/{id}` | Admin template edit page | `EmailTemplates` | Updates a template. **Admin only.** | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
-| DELETE | `/api/email-templates/{id}` | Admin templates page | `EmailTemplates` | Deletes a template. **Admin only.** | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
-| POST | `/api/email-templates/{id}/preview` | Admin template editor | `EmailTemplates` | Renders a template preview using supplied values. **Admin only.** | [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
+| GET | `/api/email-templates` | Admin templates page, message composer | `EmailTemplates` | Lists reusable templates, optionally filtered by type and active state. Requires `email_templates.edit` or `messages.edit`. | [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
+| GET | `/api/email-templates/{id}` | Admin template editor | `EmailTemplates` | Loads one template. Requires `email_templates.edit` or `messages.edit`. | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
+| POST | `/api/email-templates` | Admin template create page | `EmailTemplates` | Creates a template. Requires `email_templates.edit`. | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs), [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
+| PUT | `/api/email-templates/{id}` | Admin template edit page | `EmailTemplates` | Updates a template. Requires `email_templates.edit`. | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
+| DELETE | `/api/email-templates/{id}` | Admin templates page | `EmailTemplates` | Deletes a template. Requires `email_templates.edit`. | [ApiEmailTemplatesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEmailTemplatesControllerTests.cs) |
+| POST | `/api/email-templates/{id}/preview` | Admin template editor | `EmailTemplates` | Renders a template preview using supplied values. Requires `email_templates.edit` or `messages.edit`. | [EmailTemplateServiceTests.cs](../../src/test/GamMaSite.Tests/EmailTemplateServiceTests.cs) |
 
 ## Message API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| GET | `/api/messages/categories` | Admin messages page | `AspNetUsers`, `AspNetRoles` | Returns available member statuses and roles for recipient filters. **Admin only.** | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
-| POST | `/api/messages/recipient-preview` | Admin messages page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `EventRegistrations` | Resolves selected groups, roles, event attendees, and specific members into recipient counts and previews. **Admin only.** | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
-| POST | `/api/messages/render` | Admin messages page | `EmailTemplates`, `ContentItems`, `ContentLinks` | Renders the selected template and content blocks before sending. **Admin only.** | Not yet covered |
-| POST | `/api/messages/send` | Admin messages page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `EventRegistrations`, `EmailTemplates` | Resolves recipients and sends email and/or SMS through the configured services. **Admin only.** | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
+| GET | `/api/messages/categories` | Admin messages page | `AspNetUsers`, `AspNetRoles` | Returns available member statuses and roles for recipient filters. Requires `messages.edit`. | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
+| POST | `/api/messages/recipient-preview` | Admin messages page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `EventRegistrations` | Resolves selected groups, roles, event attendees, and specific members into recipient counts and previews. Requires `messages.edit`. | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
+| POST | `/api/messages/render` | Admin messages page | `EmailTemplates`, `ContentItems`, `ContentLinks` | Renders the selected template and content blocks before sending. Requires `messages.edit`. | Not yet covered |
+| POST | `/api/messages/send` | Admin messages page | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `EventRegistrations`, `EmailTemplates` | Resolves recipients and sends email and/or SMS through the configured services. Requires `messages.edit`. | [ApiMessagesControllerTests.cs](../../src/test/GamMaSite.Tests/ApiMessagesControllerTests.cs) |
 
 ## Calendar and library API
 
@@ -102,7 +103,7 @@ This document describes the backend APIs currently used by the React pages. The 
 
 ## Finance API
 
-All Finance endpoints use the PostgreSQL finance database. Endpoints under `admin` require the `Admin` role. The regular overview and postings endpoints require an authenticated user and use the current user's ID when selecting personal transactions.
+All Finance endpoints use the PostgreSQL finance database. Admin read endpoints require `finance.view.all` or `finance.edit.all`; admin write endpoints require `finance.edit.all`. The regular overview and postings endpoints require an authenticated user and use the current user's ID when selecting personal transactions.
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
@@ -150,7 +151,7 @@ Finance CRUD, PostgreSQL conflict handling, import-history persistence, bank/Mob
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| POST | `/api/editor/images` | Admin event/news editor, admin message editor, admin template editor | `wwwroot/uploads/editor` file system | Validates and stores an uploaded editor image and returns its public URL. **Admin only.** | [ApiEditorControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEditorControllerTests.cs) |
+| POST | `/api/editor/images` | Admin event/news editor, admin message editor, admin template editor | `wwwroot/uploads/editor` file system | Validates and stores an uploaded editor image and returns its public URL. Requires `content.edit`, `email_templates.edit`, or `messages.edit`. | [ApiEditorControllerTests.cs](../../src/test/GamMaSite.Tests/ApiEditorControllerTests.cs) |
 
 ## Shared request behavior
 

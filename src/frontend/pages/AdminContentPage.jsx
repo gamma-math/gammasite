@@ -16,8 +16,10 @@ export function AdminContentPage({ type, isAdmin }) {
   const [sort, setSort] = useState({ key: "date", direction: "desc" });
 
   useEffect(() => {
-    load();
-  }, [type]);
+    if (isAdmin) {
+      load();
+    }
+  }, [type, isAdmin]);
 
   async function load() {
     const result = await contentApi.listAdmin(type);
@@ -46,7 +48,7 @@ export function AdminContentPage({ type, isAdmin }) {
       </div>
 
       <div className="menu-table-wrap admin-content-list">
-          {!isAdmin && <p className="status-message status-message-warning">Du har kun læseadgang til admin-overblikket.</p>}
+          {!isAdmin && <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere events og nyheder.</p>}
           <table className="menu-member-table">
             <thead>
               <tr>
@@ -83,6 +85,8 @@ export function AdminContentPage({ type, isAdmin }) {
  */
 export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [selected, setSelected] = useState(emptyContent(type));
+  const [eventAccess, setEventAccess] = useState(null);
+  const [isLoading, setIsLoading] = useState(Boolean(itemId));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const basePath = `/react/admin/${type === "EVENT" ? "events" : "news"}`;
@@ -91,12 +95,18 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   useEffect(() => {
     if (!itemId) {
       setSelected(emptyContent(type));
+      setEventAccess(null);
+      setIsLoading(false);
       return;
     }
-    contentApi.listAdmin(type).then((items) => {
-      const match = items.find((item) => item.id === itemId);
-      if (match) setSelected(normalizeContentItem(match, type));
-    }).catch((reason) => setError(reason.message));
+    setIsLoading(true);
+    Promise.all([
+      contentApi.getById(itemId),
+      type === "EVENT" ? contentApi.access(itemId).catch(() => null) : Promise.resolve(null)
+    ]).then(([item, access]) => {
+      if (item) setSelected(normalizeContentItem(item, type));
+      setEventAccess(access);
+    }).catch((reason) => setError(reason.message)).finally(() => setIsLoading(false));
   }, [type, itemId]);
 
   async function save(event) {
@@ -125,15 +135,21 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     }
   }
 
-  if (!isAdmin) {
-    return <AdminLayout active={basePath} canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan redigere indhold.</p></AdminLayout>;
+  const canEdit = isAdmin || Boolean(eventAccess?.canEditEvent);
+
+  if (isLoading) {
+    return <AdminLayout active={basePath} canWrite={false}><p className="muted">Henter begivenhed...</p></AdminLayout>;
+  }
+
+  if (!canEdit) {
+    return <AdminLayout active={basePath} canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at redigere events og nyheder.</p></AdminLayout>;
   }
 
   return (
-    <AdminLayout active={basePath} canWrite={isAdmin}>
+    <AdminLayout active={basePath} canWrite={canEdit}>
       <div className="menu-panel-header">
         <div><p className="menu-section-title">{label}</p><h1>{selected.id ? "Rediger" : "Opret ny"} {type === "EVENT" ? "begivenhed" : "nyhed"}</h1></div>
-        <Link className="frontpage-button frontpage-button-secondary" href={basePath}>Tilbage til oversigt</Link>
+        {isAdmin && <Link className="frontpage-button frontpage-button-secondary" href={basePath}>Tilbage til oversigt</Link>}
       </div>
       <form className="menu-editor-form admin-content-editor" onSubmit={save}>
         <label className="admin-field"><span>Titel</span><input value={selected.title ?? ""} onChange={(event) => update("title", event.target.value)} required /></label>
@@ -165,7 +181,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         </div>
         {type === "EVENT" && <div className="menu-editor-grid"><label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label><label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label><label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label></div>}
         <LinkEditor links={selected.links ?? []} onChange={(links) => update("links", links)} />
-        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button></div>
+        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
         {message && <p className="status-message status-message-success">{message}</p>}
         {error && <p className="status-message status-message-error">{error}</p>}
       </form>

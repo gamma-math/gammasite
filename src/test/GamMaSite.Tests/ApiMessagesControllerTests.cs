@@ -109,6 +109,32 @@ public class ApiMessagesControllerTests
         Assert.Contains("Board", categories.Roles);
     }
 
+    [Fact]
+    public async Task PreviewRecipients_ResolvesMembersByRole()
+    {
+        await using var db = CreateDb();
+        var member = User("board-member");
+        db.Users.Add(member);
+        var role = new IdentityRole("Board") { NormalizedName = "BOARD" };
+        db.Roles.Add(role);
+        db.UserRoles.Add(new IdentityUserRole<string> { UserId = member.Id, RoleId = role.Id });
+        await db.SaveChangesAsync();
+
+        var userManager = TestDoubles.UserManager();
+        userManager.SetupGet(value => value.Users).Returns(db.Users);
+        var roleManager = TestDoubles.RoleManager();
+        var controller = CreateController(db, roleManager, userManager);
+
+        var result = await controller.PreviewRecipients(new MessageRecipientPreviewRequest
+        {
+            Roles = new[] { "Board" }
+        });
+
+        var preview = Assert.IsType<MessageRecipientPreviewDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(1, preview.RecipientCount);
+        Assert.Equal("board-member", Assert.Single(preview.Recipients).Name);
+    }
+
     private static ApiMessagesController CreateController(ApplicationDbContext db,
         Mock<RoleManager<IdentityRole>> roleManager, Mock<UserManager<SiteUser>> userManager)
     {

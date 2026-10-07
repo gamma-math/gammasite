@@ -1,27 +1,27 @@
 export const adminSections = [
   {
     items: [
-      { href: "/react/admin/events", label: "Events", readAdmin: true },
-      { href: "/react/admin/news", label: "Nyheder" },
+      { href: "/react/admin/events", label: "Events", permission: "content.edit" },
+      { href: "/react/admin/news", label: "Nyheder", permission: "content.edit" },
     ],
   },
   {
     label: "Beskeder",
     items: [
-      { href: "/react/admin/messages", label: "Beskeder" },
-      { href: "/react/admin/templates", label: "Besked Skabeloner" },
+      { href: "/react/admin/messages", label: "Beskeder", permission: "messages.edit" },
+      { href: "/react/admin/templates", label: "Besked Skabeloner", permission: "email_templates.edit" },
     ],
   },
   {
     label: "Medlemmer",
     items: [
-      { href: "/react/admin/users", label: "Medlemmer" },
-      { href: "/react/admin/roles", label: "Roller" },
+      { href: "/react/admin/users", label: "Medlemmer", permission: "roles.edit" },
+      { href: "/react/admin/roles", label: "Roller", permission: "roles.edit" },
     ],
   },
   {
     label: "Finans",
-    items: [{ href: "/react/admin/finance", label: "Finans" }],
+    items: [{ href: "/react/admin/finance", label: "Finans", permission: "finance.view.all" }],
   },
 ];
 

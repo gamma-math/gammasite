@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ using Microsoft.AspNetCore.Mvc;
  */
 namespace GamMaSite.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PermissionPolicies.RolesEdit)]
     public class RoleController : Controller
     {
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -52,6 +53,11 @@ namespace GamMaSite.Controllers
             var role = await _roleManager.FindByIdAsync(id);
             if (role != null)
             {
+                if (string.Equals(role.Name, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Forbid();
+                }
+
                 var result = await _roleManager.DeleteAsync(role);
                 if (result.Succeeded)
                     return RedirectToAction("Index");

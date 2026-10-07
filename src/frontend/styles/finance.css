@@ -108,10 +108,9 @@
 .finance-live-dot.is-negative {
   background: var(--danger);
 }
-.finance-live-metric {
-  display: block;
-  margin-top: 16px;
-  font-size: 1.55rem;
+.finance-live-data-quality {
+  font-size: inherit;
+  white-space: nowrap;
 }
 .finance-live-amount.is-positive {
   color: var(--success);
@@ -724,6 +723,12 @@
   border-radius: 18px;
   background: #fff;
 }
+.finance-admin-detail-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .finance-admin-detail-form h2,
 .finance-admin-original-data h2 {
   margin: 0 0 20px;
@@ -779,14 +784,31 @@
   background: #f4f7fb;
   opacity: 1;
 }
+.finance-admin-detail-form fieldset:disabled .finance-admin-detail-fields input,
+.finance-admin-detail-form fieldset:disabled .finance-admin-detail-fields select {
+  color: #73829a;
+  background: #f4f7fb;
+  opacity: 1;
+}
 .finance-admin-single-select {
   width: 100%;
+}
+.finance-admin-detail-form fieldset:disabled .finance-admin-single-select {
+  pointer-events: none;
 }
 .finance-admin-single-select summary {
   min-height: 44px;
   padding: 8px 40px 8px 12px;
   border-color: #cbd8ed;
   border-radius: 10px;
+}
+.finance-admin-detail-form fieldset:disabled .finance-admin-single-select summary {
+  color: #73829a;
+  background: #f4f7fb;
+  cursor: default;
+}
+.finance-admin-detail-form fieldset:disabled .finance-admin-single-select summary::after {
+  opacity: 0;
 }
 .finance-admin-single-select summary::after {
   top: 18px;
@@ -1514,11 +1536,16 @@
     grid-template-columns: 1fr;
   }
   .finance-admin-detail-form-heading {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 10px;
   }
   .finance-admin-detail-form-heading h2 {
-    width: 100%;
+    width: auto;
+  }
+  .finance-admin-detail-form-heading > div {
+    min-width: 0;
   }
   .finance-import-upload-grid,
   .finance-import-result-grid {

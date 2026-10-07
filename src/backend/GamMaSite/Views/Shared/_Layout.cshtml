@@ -1,6 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Identity
+@using GamMaSite.Services
 @inject SignInManager<SiteUser> SignInManager
 @inject UserManager<SiteUser> UserManager
+@inject IAccessControlService AccessControlService
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,7 +45,14 @@
                     <span aria-hidden="true">☰</span>
                     Menu
                 </a>
-                @if (SignInManager.IsSignedIn(User) && (User.IsInRole("Admin") || User.IsInRole("ADMIN") || User.IsInRole("READ_ADMIN")))
+                @if (SignInManager.IsSignedIn(User) && await AccessControlService.HasAnyPermissionAsync(User,
+                    PermissionCodes.ContentEdit,
+                    PermissionCodes.RegistrationsEdit,
+                    PermissionCodes.EmailTemplatesEdit,
+                    PermissionCodes.MessagesEdit,
+                    PermissionCodes.RolesEdit,
+                    PermissionCodes.FinanceViewAll,
+                    PermissionCodes.FinanceEditAll))
                 {
                     <a class="legacy-header-button" href="/react/admin/events">Admin</a>
                 }
