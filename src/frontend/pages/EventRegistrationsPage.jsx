@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { CircleMinus, CirclePlus, LogIn, Plus } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, membersApi, registrationsApi } from "../services/api.js";
@@ -25,6 +26,8 @@ export function EventRegistrationsPage({ slug, user }) {
   const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: true });
   const [expandedRegistrationIds, setExpandedRegistrationIds] = useState(new Set());
   const [eventAccess, setEventAccess] = useState(null);
+  const [registrationToRemove, setRegistrationToRemove] = useState(null);
+  const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [error, setError] = useState("");
   const canViewRegistrations = user.isAuthenticated;
   const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
@@ -74,8 +77,20 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   async function unregisterRegistration(registration) {
-    await registrationsApi.remove(item.id, registration.id);
-    setRegistrations((current) => current.filter((entry) => entry.id !== registration.id));
+    if (!registrationToRemove || isRemovingRegistration) {
+      return;
+    }
+
+    setIsRemovingRegistration(true);
+    try {
+      await registrationsApi.remove(item.id, registrationToRemove.id);
+      setRegistrations((current) => current.filter((entry) => entry.id !== registrationToRemove.id));
+      setRegistrationToRemove(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsRemovingRegistration(false);
+    }
   }
 
   async function addRegistration(event) {
@@ -239,11 +254,9 @@ export function EventRegistrationsPage({ slug, user }) {
                       {canEditRegistrations ? (
                         <div className="menu-registration-action-group">
                           <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
-                          {registration.registered && (
-                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => unregisterRegistration(registration)}>
-                              Afmeld
-                            </button>
-                          )}
+                          <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                            Afmeld
+                          </button>
                         </div>
                       ) : (
                         <span>{registration.registered ? "Ja" : "Nej"}</span>
@@ -258,13 +271,11 @@ export function EventRegistrationsPage({ slug, user }) {
                             <span>Rolle</span>
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                           </label>
-                          <div className="menu-registration-action-group">
+                          <div className="menu-registration-action-group menu-registration-unregister-action">
                             <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
-                            {registration.registered && (
-                              <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => unregisterRegistration(registration)}>
-                                Afmeld
-                              </button>
-                            )}
+                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                              Afmeld
+                            </button>
                           </div>
                         </div>
                       </td>
@@ -281,6 +292,17 @@ export function EventRegistrationsPage({ slug, user }) {
           </tbody>
         </table>
       </div>
+
+      {registrationToRemove && (
+        <ConfirmationDialog
+          title="Afmeld tilmelding"
+          message={`Er du sikker på, at ${attendeeName(registrationToRemove)} skal afmeldes?`}
+          confirmLabel="Ja, afmeld"
+          onConfirm={unregisterRegistration}
+          onCancel={() => !isRemovingRegistration && setRegistrationToRemove(null)}
+          isBusy={isRemovingRegistration}
+        />
+      )}
     </MenuLayout>
   );
 }

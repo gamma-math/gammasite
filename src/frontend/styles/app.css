@@ -3128,6 +3128,15 @@ img {
     justify-content: flex-start;
   }
 
+  .menu-registration-mobile-details .menu-registration-unregister-action {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .menu-registration-mobile-details .menu-registration-unregister-action .menu-registration-check {
+    width: auto;
+  }
+
   .menu-table-pagination {
     justify-content: center;
     margin-top: 14px;
