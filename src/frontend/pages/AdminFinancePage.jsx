@@ -1030,7 +1030,7 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at se finansadministrationen.
         </p>
       </AdminLayout>
     );
@@ -1394,7 +1394,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -1834,7 +1834,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   if (!isAdmin)
     return (
       <AdminLayout active="" canWrite={false}>
-        <p className="status-message status-message-warning">Kun ADMIN har adgang til Finans admin.</p>
+        <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere finanser.</p>
       </AdminLayout>
     );
   return (
@@ -1948,7 +1948,7 @@ export function FinanceAdminAccountsPage({ isAdmin }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -2226,7 +2226,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -2554,7 +2554,7 @@ export function FinanceAdminBudgetDetailPage({ isAdmin, id }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -2773,7 +2773,7 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -2951,7 +2951,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -3132,7 +3132,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til Finans admin.
+          Du har ikke rettigheder til at redigere finanser.
         </p>
       </AdminLayout>
     );
@@ -3459,7 +3459,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
     return (
       <AdminLayout active="" canWrite={false}>
         <p className="status-message status-message-warning">
-          Kun ADMIN har adgang til import af finansdata.
+          Du har ikke rettigheder til at importere finansdata.
         </p>
       </AdminLayout>
     );

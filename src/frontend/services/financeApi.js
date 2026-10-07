@@ -64,7 +64,7 @@ export const financeApi = {
     if (!response.ok) {
       throw new Error(
         response.status === 403
-          ? "Du har ikke adgang til Finans admin."
+          ? "Du har ikke rettigheder til at se finansadministrationen."
           : "Finansoversigten kunne ikke hentes.",
       );
     }
@@ -79,7 +79,7 @@ export const financeApi = {
     if (!response.ok) {
       throw new Error(
         response.status === 403
-          ? "Du har ikke adgang til budgetter."
+          ? "Du har ikke rettigheder til at redigere budgetter."
           : "Budgetterne kunne ikke hentes.",
       );
     }
@@ -93,7 +93,7 @@ export const financeApi = {
     if (!response.ok) {
       throw new Error(
         response.status === 403
-          ? "Du har ikke adgang til kontoplanen."
+          ? "Du har ikke rettigheder til at redigere kontoplanen."
           : "Kontoplanen kunne ikke hentes.",
       );
     }
@@ -308,7 +308,7 @@ export const financeApi = {
     if (!response.ok) {
       throw new Error(
         response.status === 403
-          ? "Du har ikke adgang til Finans admin."
+          ? "Du har ikke rettigheder til at se finansposteringer."
           : "Posteringerne kunne ikke hentes.",
       );
     }

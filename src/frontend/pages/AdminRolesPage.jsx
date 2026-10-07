@@ -37,7 +37,7 @@ export function AdminRolesPage({ isAdmin }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
   }
 
   return (
@@ -180,7 +180,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
   }
 
   const selectedRole = roles.find((role) => role.id === roleId);

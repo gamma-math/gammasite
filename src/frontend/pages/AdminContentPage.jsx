@@ -48,7 +48,7 @@ export function AdminContentPage({ type, isAdmin }) {
       </div>
 
       <div className="menu-table-wrap admin-content-list">
-          {!isAdmin && <p className="status-message status-message-warning">Du har kun læseadgang til admin-overblikket.</p>}
+          {!isAdmin && <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere events og nyheder.</p>}
           <table className="menu-member-table">
             <thead>
               <tr>
@@ -142,7 +142,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   }
 
   if (!canEdit) {
-    return <AdminLayout active={basePath} canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan redigere indhold.</p></AdminLayout>;
+    return <AdminLayout active={basePath} canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at redigere events og nyheder.</p></AdminLayout>;
   }
 
   return (

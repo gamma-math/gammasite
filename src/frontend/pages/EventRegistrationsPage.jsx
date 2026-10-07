@@ -123,7 +123,7 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   if (!canViewRegistrations) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke adgang til tilmeldte.</p></MenuLayout>;
+    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
   }
 
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));

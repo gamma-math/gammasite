@@ -54,7 +54,7 @@ export function AdminTemplatesPage({ isAdmin }) {
   if (!isAdmin) {
     return (
       <AdminLayout active="/react/admin/templates" canWrite={false}>
-        <p className="status-message status-message-warning">Kun ADMIN kan redigere email templates.</p>
+        <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere beskedskabeloner.</p>
       </AdminLayout>
     );
   }
@@ -200,7 +200,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
   if (!isAdmin) {
     return (
       <AdminLayout active="/react/admin/templates" canWrite={false}>
-        <p className="status-message status-message-warning">Kun ADMIN kan redigere email templates.</p>
+        <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere beskedskabeloner.</p>
       </AdminLayout>
     );
   }
