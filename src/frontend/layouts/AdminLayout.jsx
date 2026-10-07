@@ -9,6 +9,7 @@ const financeSections = [
         href: "/react/admin/events",
         label: "Tilbage til Admin",
         icon: CircleArrowLeft,
+        permissions: ["content.edit", "roles.edit", "email_templates.edit", "messages.edit"],
       },
       { href: "/react/admin/finance", label: "Overblik", permission: "finance.view.all" },
       { href: "/react/admin/finance/postings", label: "Posteringer", permission: "finance.view.all" },
@@ -74,7 +75,13 @@ export function AdminLayout({
     ? financeSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) => !item.permission || hasPermission(accessUser, item.permission)),
+          items: section.items.filter((item) =>
+            !item.permission && !item.permissions
+              ? true
+              : item.permission
+                ? hasPermission(accessUser, item.permission)
+                : item.permissions.some((permission) => hasPermission(accessUser, permission)),
+          ),
         }))
         .filter((section) => section.items.length > 0)
     : adminSections

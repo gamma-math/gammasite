@@ -506,7 +506,7 @@ function FilterSearchableSelect({ label, value, onChange, options, placeholder }
   );
 }
 
-function SearchableSelect({ label, options = [], value, onChange, placeholder, compact = false }) {
+function SearchableSelect({ label, options = [], value, onChange, placeholder, compact = false, disabled = false }) {
   const [query, setQuery] = useState("");
   const selected = options.find((option) => option.id === value);
   const filteredOptions = options.filter((option) =>
@@ -520,8 +520,22 @@ function SearchableSelect({ label, options = [], value, onChange, placeholder, c
   return (
     <div className={compact ? "finance-admin-table-select" : "finance-admin-detail-field finance-admin-detail-field-full"}>
       {!compact && <span>{label}</span>}
-      <details className={`admin-multi-select finance-admin-single-select${compact ? " finance-admin-table-select-details" : ""}`}>
-        <summary>
+      <details
+        className={`admin-multi-select finance-admin-single-select${compact ? " finance-admin-table-select-details" : ""}${disabled ? " is-disabled" : ""}`}
+        aria-disabled={disabled}
+        onClick={(event) => {
+          if (disabled) event.preventDefault();
+        }}
+        onKeyDown={(event) => {
+          if (disabled && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+          }
+        }}
+        onToggle={(event) => {
+          if (disabled) event.currentTarget.open = false;
+        }}
+      >
+        <summary tabIndex={disabled ? -1 : undefined}>
           <strong>{selected?.label || displayPlaceholder}</strong>
         </summary>
         <div className="admin-multi-select-menu">
@@ -714,7 +728,7 @@ function AccountTable({ overview, year }) {
                       <td>
                         <Link
                           className="finance-admin-table-link"
-                          href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(sub.rows[0].accountId)}`}
+                          href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(sub.rows.map((row) => row.accountId).filter(Boolean).join(","))}`}
                         >
                           Se posteringer
                         </Link>
@@ -1079,9 +1093,9 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
             </article>
             <article className="finance-live-card">
               <h2>Datakvalitet</h2>
-              <strong>
+              <strong className="finance-live-data-quality">
                 {data.dataQuality.categorizedPostings} /{" "}
-                {data.dataQuality.totalPostings}
+                {data.dataQuality.totalPostings} posteringer med kategori
               </strong>
             </article>
           </div>
@@ -3251,6 +3265,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
                 options={options.accounts}
                 value={form.accountId}
                 onChange={(value) => update("accountId", value)}
+                disabled={!canWrite}
                 placeholder="Vælg konto…"
               />
               <SearchableSelect
@@ -3258,6 +3273,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
                 options={options.postingGroups}
                 value={form.postingGroupId}
                 onChange={(value) => update("postingGroupId", value)}
+                disabled={!canWrite}
                 placeholder="Vælg posteringsgruppe…"
               />
               <SearchableSelect
@@ -3265,6 +3281,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
                 options={options.users}
                 value={form.userId}
                 onChange={(value) => update("userId", value)}
+                disabled={!canWrite}
                 placeholder="Vælg bruger…"
               />
               {posting.sourceType !== "MobilePay" && (
