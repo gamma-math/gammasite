@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `AspNetRoles` (
   `NormalizedName` varchar(256) NOT NULL,
   `ConcurrencyStamp` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `Permissions` (
   `Id` int NOT NULL AUTO_INCREMENT,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `Permissions` (
   `Description` varchar(512) DEFAULT NULL,
   PRIMARY KEY (`Id`),
   UNIQUE KEY `UX_Permissions_Code` (`Code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `RolePermissions` (
   `RoleId` varchar(128) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `RolePermissions` (
   CONSTRAINT `FK_RolePermissions_Permissions_PermissionId`
     FOREIGN KEY (`PermissionId`) REFERENCES `Permissions` (`Id`)
     ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `AspNetRoleClaims` (
   `Id` int NOT NULL AUTO_INCREMENT,

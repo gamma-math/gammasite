@@ -6,6 +6,7 @@ using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -135,10 +136,52 @@ public class ApiMessagesControllerTests
         Assert.Equal("board-member", Assert.Single(preview.Recipients).Name);
     }
 
-    private static ApiMessagesController CreateController(ApplicationDbContext db,
-        Mock<RoleManager<IdentityRole>> roleManager, Mock<UserManager<SiteUser>> userManager)
+    [Fact]
+    public async Task Render_PreservesEventWallClockTime()
     {
+        await using var db = CreateDb();
+        db.ContentItems.Add(new ContentItem
+        {
+            Id = 7,
+            Title = "ProfessorAften",
+            Slug = "professoraften",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            StartDate = new DateTime(2026, 12, 2, 18, 30, 0),
+            EndDate = new DateTime(2026, 12, 2, 20, 30, 0),
+            Body = "Indhold"
+        });
+        await db.SaveChangesAsync();
+
         var templates = new Mock<IEmailTemplateService>();
+        templates.Setup(value => value.GetByIdAsync(1)).ReturnsAsync(new EmailTemplate
+        {
+            Id = 1,
+            Subject = "Opdatering",
+            HtmlBody = "{{EventBlocks}}"
+        });
+        var controller = CreateController(db, TestDoubles.RoleManager(), TestDoubles.UserManager(), templates);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var result = await controller.Render(new RenderEmailMessageRequest
+        {
+            TemplateId = 1,
+            SelectedEventIds = new[] { 7 }
+        });
+
+        var rendered = Assert.IsType<RenderEmailMessageDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Contains("2. december 2026 kl. 18.30", rendered.Html);
+        Assert.Contains("2. december 2026 kl. 20.30", rendered.Html);
+    }
+
+    private static ApiMessagesController CreateController(ApplicationDbContext db,
+        Mock<RoleManager<IdentityRole>> roleManager, Mock<UserManager<SiteUser>> userManager,
+        Mock<IEmailTemplateService> templates = null!)
+    {
+        templates ??= new Mock<IEmailTemplateService>();
         var email = new Mock<IEmailService>();
         var sms = new Mock<ISmsSender>();
         return new ApiMessagesController(db, roleManager.Object, userManager.Object, templates.Object,

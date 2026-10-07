@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Globalization;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
@@ -468,7 +469,11 @@ namespace GamMaSite.Controllers
 
         private static string FormatDate(DateTime? value)
         {
-            return value.HasValue ? value.Value.ToLocalTime().ToString("d. MMMM yyyy 'kl.' HH.mm") : string.Empty;
+            // Content event dates are stored as local wall-clock times. Do not
+            // convert them through the server timezone when rendering emails.
+            return value.HasValue
+                ? value.Value.ToString("d. MMMM yyyy 'kl.' HH.mm", CultureInfo.GetCultureInfo("da-DK"))
+                : string.Empty;
         }
 
         private static string Html(string value)
