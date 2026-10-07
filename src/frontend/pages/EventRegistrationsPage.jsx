@@ -8,6 +8,7 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
 import { hasAnyPermission, permissions } from "../utils/access.js";
 import { sortRegistrations } from "../utils/registrationSort.js";
+import { isRegistrationOpen } from "../utils/registrationOpen.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
@@ -147,6 +148,7 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   const sortedRegistrations = sortRegistrations(registrations);
+  const registrationOpen = isRegistrationOpen(item);
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -254,9 +256,11 @@ export function EventRegistrationsPage({ slug, user }) {
                       {canEditRegistrations ? (
                         <div className="menu-registration-action-group">
                           <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
-                          <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
-                            Afmeld
-                          </button>
+                          {registrationOpen && (
+                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                              Afmeld
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span>{registration.registered ? "Ja" : "Nej"}</span>
@@ -273,9 +277,11 @@ export function EventRegistrationsPage({ slug, user }) {
                           </label>
                           <div className="menu-registration-action-group menu-registration-unregister-action">
                             <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
-                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
-                              Afmeld
-                            </button>
+                            {registrationOpen && (
+                              <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                                Afmeld
+                              </button>
+                            )}
                           </div>
                         </div>
                       </td>

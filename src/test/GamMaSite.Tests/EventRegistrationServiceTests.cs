@@ -126,6 +126,28 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_AllowsExistingRegistrationAfterEventHasClosed()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddMinutes(-1)));
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = 1,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = true
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new EventRegistrationService(db).UpdateAsync(1, 1,
+            new UpdateEventRegistrationRequest { RegistrationType = RegistrationTypes.Organizer, Registered = false });
+
+        Assert.Equal(RegistrationTypes.Organizer, result.RegistrationType);
+        Assert.False(result.Registered);
+    }
+
+    [Fact]
     public async Task RegisterAsync_RejectsUnknownRegistrationType()
     {
         await using var db = CreateDb();

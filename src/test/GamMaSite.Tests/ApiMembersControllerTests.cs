@@ -43,6 +43,25 @@ public class ApiMembersControllerTests
     }
 
     [Fact]
+    public async Task GetFinanceMembers_ReturnsOnlyIdsAndNames()
+    {
+        await using var db = CreateDb();
+        var user = User("finance-user", UserStatus.BETALT, true, VisibilityStatus.VISIBLE);
+        user.PhoneNumber = "+4512345678";
+        user.Beskaeftigelse = "Revisor";
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        var manager = TestDoubles.UserManager();
+        manager.SetupGet(value => value.Users).Returns(db.Users);
+
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object).GetFinanceMembers();
+        var member = Assert.Single(Assert.IsAssignableFrom<System.Collections.Generic.IEnumerable<FinanceMemberDto>>(Assert.IsType<OkObjectResult>(result).Value));
+
+        Assert.Equal(user.Id, member.Id);
+        Assert.Equal(user.Navn, member.Name);
+    }
+
+    [Fact]
     public async Task UpdateStatus_UpdatesUserAndSetsPaymentDate()
     {
         await using var db = CreateDb();

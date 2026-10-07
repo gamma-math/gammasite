@@ -29,6 +29,13 @@ namespace GamMaSite.ViewModels.Api
         public DateTime CreatedAt { get; set; }
     }
 
+    public class FinanceMemberDto
+    {
+        public string Id { get; set; }
+
+        public string Name { get; set; }
+    }
+
     public class UpdateMemberStatusRequest
     {
         public string Status { get; set; }

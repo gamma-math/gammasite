@@ -53,6 +53,23 @@ namespace GamMaSite.Controllers
             return Ok(members.Select(user => ToMemberDto(user, true)));
         }
 
+        [HttpGet("finance")]
+        [Authorize(Policy = PermissionPolicies.FinanceMemberData)]
+        public async Task<IActionResult> GetFinanceMembers()
+        {
+            var members = await _userManager.Users
+                .AsNoTracking()
+                .OrderBy(user => user.Navn)
+                .Select(user => new FinanceMemberDto
+                {
+                    Id = user.Id,
+                    Name = user.Navn
+                })
+                .ToListAsync();
+
+            return Ok(members);
+        }
+
         [HttpGet("event/{contentItemId:int}")]
         public async Task<IActionResult> GetEventMembers(int contentItemId)
         {

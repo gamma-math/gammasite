@@ -165,6 +165,7 @@ export const emailTemplatesApi = {
 export const membersApi = {
   list: () => request("/api/members"),
   listAdmin: () => request("/api/members/admin"),
+  listFinance: () => request("/api/members/finance"),
   listForEvent: (contentId) => request(`/api/members/event/${contentId}`),
   updateStatus: (id, status) => request(`/api/members/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
   massUpdateStatus: (payload) => request("/api/members/admin/mass-status", { method: "POST", body: JSON.stringify(payload) })

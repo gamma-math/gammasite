@@ -267,16 +267,9 @@ namespace GamMaSite.Controllers
         [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
         public async Task<IActionResult> DeleteAdminPosting(string id, CancellationToken cancellationToken)
         {
-            try
-            {
-                return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
-                    ? NoContent()
-                    : NotFound();
-            }
-            catch (InvalidOperationException exception)
-            {
-                return Conflict(new { error = exception.Message });
-            }
+            return await _financeReportService.DeleteAdminPostingAsync(id, cancellationToken)
+                ? NoContent()
+                : NotFound();
         }
 
         [HttpGet("admin/import/history")]

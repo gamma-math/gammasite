@@ -30,10 +30,12 @@ namespace GamMaSite.Services
         public const string EmailTemplatesOrMessages = "permission.email-templates-or-messages";
         public const string ContentOrEmailTemplatesOrMessages = "permission.content-or-email-templates-or-messages";
         public const string MemberData = "permission.member-data";
+        public const string FinanceMemberData = "permission.finance-member-data";
         public const string RegistrationsEdit = "permission.registrations.edit";
         public const string EmailTemplatesEdit = "permission.email-templates.edit";
         public const string MessagesEdit = "permission.messages.edit";
         public const string RolesEdit = "permission.roles.edit";
+        public const string RolesOrMessages = "permission.roles-or-messages";
         public const string FinanceViewAll = "permission.finance.view.all";
         public const string FinanceEditAll = "permission.finance.edit.all";
     }

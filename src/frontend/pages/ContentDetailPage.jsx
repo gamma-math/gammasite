@@ -7,6 +7,7 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
+import { isRegistrationOpen } from "../utils/registrationOpen.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -171,12 +172,6 @@ export function ContentDetailPage({ slug, type, user }) {
       </article>
     </MenuLayout>
   );
-}
-
-function isRegistrationOpen(item) {
-  if (item.status !== "PUBLISHED") return false;
-  const deadline = item.endDate || item.startDate;
-  return Boolean(deadline && new Date(deadline).getTime() > Date.now());
 }
 
 function shortLinkLabel(label) {

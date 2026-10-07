@@ -1261,7 +1261,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
   useEffect(() => {
     if (!isAdmin) return;
     membersApi
-      .listAdmin()
+      .listFinance()
       .then(setMembers)
       .catch(() => setMembers([]));
   }, [isAdmin]);
@@ -1767,7 +1767,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
       .catch((requestError) => setError(requestError.message));
   }, [isAdmin, year, accountId, bankKey, mobilePayKey]);
   useEffect(() => {
-    if (isAdmin) membersApi.listAdmin().then(setMembers).catch(() => setMembers([]));
+    if (isAdmin) membersApi.listFinance().then(setMembers).catch(() => setMembers([]));
   }, [isAdmin]);
 
   const postings = data?.postings || [];
@@ -1816,7 +1816,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
       const overview = await financeApi.adminOverview(year);
       const exportUserNames = members.length
         ? userNames
-        : buildUserNameMap(await membersApi.listAdmin());
+        : buildUserNameMap(await membersApi.listFinance());
       const workbook = buildFinanceWorkbookXlsx({
         year,
         postings: sorted.map((posting) => ({
@@ -3076,7 +3076,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
           })
         : financeApi.adminPosting(id),
       financeApi.adminPostingOptions(),
-      membersApi.listAdmin(),
+      membersApi.listFinance(),
     ])
       .then(([detail, editorOptions, members]) => {
         const users = members.map((member) => ({

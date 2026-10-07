@@ -519,20 +519,6 @@ namespace GamMaSite.Services
         {
             await using var connection = new NpgsqlConnection(_writeConnectionString);
             await connection.OpenAsync(cancellationToken);
-            await using (var guard = new NpgsqlCommand(@"
-                SELECT bank_account_key, mp_key
-                FROM public.posteringer
-                WHERE id = @id;", connection))
-            {
-                AddText(guard, "id", id);
-                await using var reader = await guard.ExecuteReaderAsync(cancellationToken);
-                if (!await reader.ReadAsync(cancellationToken)) return false;
-                if (!reader.IsDBNull(0) || !reader.IsDBNull(1))
-                {
-                    throw new InvalidOperationException("Afledte posteringer kan ikke slettes.");
-                }
-            }
-
             await using var command = new NpgsqlCommand("DELETE FROM public.posteringer WHERE id = @id;", connection);
             AddText(command, "id", id);
             return await command.ExecuteNonQueryAsync(cancellationToken) == 1;

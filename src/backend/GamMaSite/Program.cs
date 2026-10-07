@@ -93,10 +93,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(PermissionPolicies.EmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.ContentOrEmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.MemberData, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit, PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit, PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.FinanceMemberData, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
     options.AddPolicy(PermissionPolicies.RegistrationsEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RegistrationsEdit)));
     options.AddPolicy(PermissionPolicies.EmailTemplatesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit)));
     options.AddPolicy(PermissionPolicies.MessagesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.RolesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit)));
+    options.AddPolicy(PermissionPolicies.RolesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.FinanceViewAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
     options.AddPolicy(PermissionPolicies.FinanceEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceEditAll)));
 });

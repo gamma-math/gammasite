@@ -16,7 +16,6 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/roles")]
-    [Authorize(Policy = PermissionPolicies.RolesEdit)]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for role listing, editing, and membership assignment.
@@ -38,6 +37,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = PermissionPolicies.RolesOrMessages)]
         public async Task<IActionResult> GetRoles()
         {
             var roles = await _roleManager.Roles.OrderBy(role => role.Name).ToListAsync();
@@ -45,6 +45,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> Create(SaveRoleRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.Name))
@@ -58,6 +59,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> Delete(string id)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -76,6 +78,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("{id}/members")]
+        [Authorize(Policy = PermissionPolicies.RolesOrMessages)]
         public async Task<IActionResult> GetMembers(string id)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -98,6 +101,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("{id}/members")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdateMembers(string id, UpdateRoleMembersRequest request)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -128,6 +132,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("{id}/permissions")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> GetPermissions(string id)
         {
             if (_db == null)
@@ -166,6 +171,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("{id}/permissions")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdatePermissions(string id, UpdateRolePermissionsRequest request)
         {
             if (_db == null)
@@ -182,6 +188,16 @@ namespace GamMaSite.Controllers
             var requestedCodes = new HashSet<string>(
                 request?.PermissionCodes ?? Array.Empty<string>(),
                 StringComparer.OrdinalIgnoreCase);
+            if (string.Equals(role.Name, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                requestedCodes.UnionWith(new[]
+                {
+                    PermissionCodes.ContentEdit,
+                    PermissionCodes.RegistrationsEdit,
+                    PermissionCodes.MessagesEdit,
+                    PermissionCodes.RolesEdit
+                });
+            }
             var permissions = await _db.Permissions.ToListAsync();
             var selected = permissions
                 .Where(permission => requestedCodes.Contains(permission.Code))

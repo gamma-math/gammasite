@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Plus, Save, Trash2, X } from "lucide-react";
 import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
+import { SortableHeader, useSortedMembers } from "./MembersPage.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { emailTemplatesApi } from "../services/api.js";
 import { formatDate } from "../utils/format.js";
@@ -26,7 +27,17 @@ const emptyTemplate = {
  */
 export function AdminTemplatesPage({ isAdmin }) {
   const [templates, setTemplates] = useState([]);
+  const [sort, setSort] = useState({ key: "updated", direction: "desc" });
   const [error, setError] = useState("");
+
+  const sortableTemplates = useMemo(
+    () => templates.map((template) => ({
+      ...template,
+      status: template.isActive ? "Aktiv" : "Inaktiv"
+    })),
+    [templates]
+  );
+  const sortedTemplates = useSortedMembers(sortableTemplates, sort);
 
   useEffect(() => {
     if (isAdmin) {
@@ -76,15 +87,15 @@ export function AdminTemplatesPage({ isAdmin }) {
         <table className="menu-member-table admin-template-table">
           <thead>
             <tr>
-              <th>Navn</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Opdateret</th>
+              <SortableHeader label="Navn" sortKey="name" sort={sort} setSort={setSort} />
+              <SortableHeader label="Type" sortKey="templateType" sort={sort} setSort={setSort} />
+              <SortableHeader label="Status" sortKey="status" sort={sort} setSort={setSort} />
+              <SortableHeader label="Opdateret" sortKey="updated" sort={sort} setSort={setSort} />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {templates.map((template) => (
+            {sortedTemplates.map((template) => (
               <tr key={template.id}>
                 <td>{template.name}</td>
                 <td>{template.templateType}</td>
