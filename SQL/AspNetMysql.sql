@@ -13,7 +13,28 @@ CREATE TABLE IF NOT EXISTS AspNetRoles (
   `NormalizedName` varchar(256) NOT NULL,
   `ConcurrencyStamp` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `Permissions` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `Code` varchar(128) NOT NULL,
+  `Description` varchar(512) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_Permissions_Code` (`Code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `RolePermissions` (
+  `RoleId` varchar(128) NOT NULL,
+  `PermissionId` int NOT NULL,
+  PRIMARY KEY (`RoleId`, `PermissionId`),
+  KEY `IX_RolePermissions_PermissionId` (`PermissionId`),
+  CONSTRAINT `FK_RolePermissions_AspNetRoles_RoleId`
+    FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_RolePermissions_Permissions_PermissionId`
+    FOREIGN KEY (`PermissionId`) REFERENCES `Permissions` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DROP TABLE IF EXISTS `AspNetRoleClaims`;
 CREATE TABLE `AspNetRoleClaims` (
