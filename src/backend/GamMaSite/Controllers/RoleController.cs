@@ -53,6 +53,11 @@ namespace GamMaSite.Controllers
             var role = await _roleManager.FindByIdAsync(id);
             if (role != null)
             {
+                if (string.Equals(role.Name, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Forbid();
+                }
+
                 var result = await _roleManager.DeleteAsync(role);
                 if (result.Succeeded)
                     return RedirectToAction("Index");
