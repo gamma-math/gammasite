@@ -47,6 +47,32 @@ public class ApiMessagesControllerTests
     }
 
     [Fact]
+    public async Task PreviewRecipients_ResolvesRegisteredAttendeesForSelectedEvents()
+    {
+        await using var db = CreateDb();
+        var attendee = User("attendee");
+        var declined = User("declined");
+        db.Users.AddRange(attendee, declined);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 7, UserId = attendee.Id, Registered = true, RegistrationType = RegistrationTypes.Attendee },
+            new EventRegistration { ContentItemId = 7, UserId = declined.Id, Registered = false, RegistrationType = RegistrationTypes.Declined });
+        await db.SaveChangesAsync();
+
+        var userManager = TestDoubles.UserManager();
+        userManager.SetupGet(value => value.Users).Returns(db.Users);
+        var controller = CreateController(db, TestDoubles.RoleManager(), userManager);
+
+        var result = await controller.PreviewRecipients(new MessageRecipientPreviewRequest
+        {
+            RecipientEventIds = new[] { 7 }
+        });
+
+        var preview = Assert.IsType<MessageRecipientPreviewDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(1, preview.RecipientCount);
+        Assert.Equal("attendee", Assert.Single(preview.Recipients).Name);
+    }
+
+    [Fact]
     public async Task Send_ReturnsBadRequestWhenNoRecipientsMatch()
     {
         await using var db = CreateDb();
