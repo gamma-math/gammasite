@@ -876,6 +876,13 @@ img {
   padding: 0 12px;
 }
 
+.menu-registration-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .menu-registration-mobile-toggle,
 .menu-registration-mobile-detail-row {
   display: none;

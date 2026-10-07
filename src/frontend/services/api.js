@@ -143,6 +143,7 @@ export const registrationsApi = {
   register: (contentId, payload) => request(`/api/content/${contentId}/registrations`, { method: "POST", body: JSON.stringify(payload) }),
   add: (contentId, payload) => request(`/api/content/${contentId}/registrations/admin`, { method: "POST", body: JSON.stringify(payload) }),
   unregister: (contentId) => request(`/api/content/${contentId}/registrations/me`, { method: "DELETE" }),
+  remove: (contentId, registrationId) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "DELETE" }),
   list: (contentId) => request(`/api/content/${contentId}/registrations`),
   update: (contentId, registrationId, payload) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "PUT", body: JSON.stringify(payload) })
 };

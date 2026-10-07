@@ -176,6 +176,26 @@ namespace GamMaSite.Controllers
             }
         }
 
+        [HttpDelete("{id:int}/registrations/{registrationId:int}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteRegistration(int id, int registrationId)
+        {
+            if (!await _accessControl.CanEditRegistrationsAsync(User, id))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var deleted = await _registrationService.DeleteAsync(id, registrationId);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         [HttpGet("{id:int}/registrations/me")]
         [Authorize]
         public async Task<IActionResult> GetMyRegistration(int id)

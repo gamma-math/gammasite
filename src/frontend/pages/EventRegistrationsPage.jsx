@@ -6,12 +6,12 @@ import { contentApi, membersApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
 import { hasAnyPermission, permissions } from "../utils/access.js";
+import { sortRegistrations } from "../utils/registrationSort.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
   { value: "ORGANIZER", label: "Arrangør" },
-  { value: "INTERESTED", label: "Interesseret" },
-  { value: "DECLINED", label: "Afmeldt" }
+  { value: "INTERESTED", label: "Interesseret" }
 ];
 
 /**
@@ -73,6 +73,11 @@ export function EventRegistrationsPage({ slug, user }) {
     setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
   }
 
+  async function unregisterRegistration(registration) {
+    await registrationsApi.remove(item.id, registration.id);
+    setRegistrations((current) => current.filter((entry) => entry.id !== registration.id));
+  }
+
   async function addRegistration(event) {
     event.preventDefault();
     const added = await registrationsApi.add(item.id, addForm);
@@ -126,6 +131,7 @@ export function EventRegistrationsPage({ slug, user }) {
     return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
   }
 
+  const sortedRegistrations = sortRegistrations(registrations);
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -200,7 +206,7 @@ export function EventRegistrationsPage({ slug, user }) {
             </tr>
           </thead>
           <tbody>
-            {registrations.map((registration) => {
+            {sortedRegistrations.map((registration) => {
               const isExpanded = expandedRegistrationIds.has(registration.id);
               return (
                 <Fragment key={registration.id}>
@@ -231,7 +237,14 @@ export function EventRegistrationsPage({ slug, user }) {
                     </td>
                     <td className="menu-registration-desktop-cell">
                       {canEditRegistrations ? (
-                        <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                        <div className="menu-registration-action-group">
+                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          {registration.registered && (
+                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => unregisterRegistration(registration)}>
+                              Afmeld
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span>{registration.registered ? "Ja" : "Nej"}</span>
                       )}
@@ -245,7 +258,14 @@ export function EventRegistrationsPage({ slug, user }) {
                             <span>Rolle</span>
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                           </label>
-                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          <div className="menu-registration-action-group">
+                            <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                            {registration.registered && (
+                              <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => unregisterRegistration(registration)}>
+                                Afmeld
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -253,7 +273,7 @@ export function EventRegistrationsPage({ slug, user }) {
                 </Fragment>
               );
             })}
-            {registrations.length === 0 && (
+            {sortedRegistrations.length === 0 && (
               <tr>
                 <td colSpan="3">Der er ingen tilmeldte endnu.</td>
               </tr>

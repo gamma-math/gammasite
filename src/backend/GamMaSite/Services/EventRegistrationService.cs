@@ -138,6 +138,29 @@ namespace GamMaSite.Services
             return true;
         }
 
+        public async Task<bool> DeleteAsync(int contentItemId, int registrationId)
+        {
+            var content = await _db.ContentItems.FindAsync(contentItemId);
+            if (content == null || content.Type != ContentTypes.Event)
+            {
+                return false;
+            }
+
+            EnsureRegistrationOpen(content);
+
+            var registration = await _db.EventRegistrations
+                .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.Id == registrationId);
+
+            if (registration == null)
+            {
+                return false;
+            }
+
+            _db.EventRegistrations.Remove(registration);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
         private static void EnsureRegistrationOpen(ContentItem content)
         {
             if (!string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase))
