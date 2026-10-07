@@ -288,7 +288,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {permissionState.permissions.map((permission) => {
+                        {[...permissionState.permissions].sort(sortPermissions).map((permission) => {
                           const isLockedForAdmin = isAdminRequiredPermission(roleId, selectedRole, permission.code);
                           return (
                             <tr key={permission.code}>
@@ -358,6 +358,23 @@ function permissionLabel(code) {
     "email_templates.edit": "Beskedskabeloner",
     "roles.edit": "Roller og permissions"
   }[code] ?? code;
+}
+
+const PERMISSION_ORDER = [
+  "content.edit",
+  "registrations.edit",
+  "messages.edit",
+  "email_templates.edit",
+  "roles.edit",
+  "finance.edit.all",
+  "finance.view.all"
+];
+
+function sortPermissions(left, right) {
+  const leftIndex = PERMISSION_ORDER.indexOf(left.code);
+  const rightIndex = PERMISSION_ORDER.indexOf(right.code);
+  return (leftIndex === -1 ? PERMISSION_ORDER.length : leftIndex)
+    - (rightIndex === -1 ? PERMISSION_ORDER.length : rightIndex);
 }
 
 const ADMIN_REQUIRED_PERMISSION_CODES = new Set([

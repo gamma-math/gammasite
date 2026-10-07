@@ -50,7 +50,7 @@ import {
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { meApi } from "../services/api.js";
-import { AccessContext, canAccessAdmin, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
+import { AccessContext, adminPermissionForPath, canAccessAdmin, firstAdminPath, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
 
 /**
@@ -119,6 +119,7 @@ function App() {
   const user = useCurrentUser();
   const isAdmin = canAccessAdmin(user);
   const isReadAdmin = isAdmin;
+  const adminPath = firstAdminPath(user);
   const access = {
     contentEdit: hasPermission(user, permissions.contentEdit),
     registrationsEdit: hasPermission(user, permissions.registrationsEdit),
@@ -132,7 +133,7 @@ function App() {
   return (
     <AccessContext.Provider value={user}>
       <div className="app-shell">
-        <Header user={user} isReadAdmin={isReadAdmin} />
+        <Header user={user} isReadAdmin={isReadAdmin} adminPath={adminPath} />
         <main>{renderRoute(route, user, isAdmin, access)}</main>
         <Footer />
       </div>
@@ -143,7 +144,7 @@ function App() {
 /**
  * Shared site header used across public, account, and admin React pages.
  */
-function Header({ user, isReadAdmin }) {
+function Header({ user, isReadAdmin, adminPath }) {
   return (
     <header className="site-header frontpage-header">
       <div className="page-shell">
@@ -164,7 +165,7 @@ function Header({ user, isReadAdmin }) {
               {isReadAdmin && (
                 <Link
                   className="frontpage-button frontpage-button-secondary"
-                  href="/react/admin/events"
+                  href={adminPath}
                 >
                   Admin
                 </Link>
@@ -213,6 +214,15 @@ function Header({ user, isReadAdmin }) {
  */
 function renderRoute(route, user, isAdmin, access) {
   const path = route.path;
+
+  if (path === "/react/admin" || path === "/react/admin/") {
+    return <AdminRedirectPage path={firstAdminPath(user)} />;
+  }
+
+  const requiredAdminPermission = adminPermissionForPath(path);
+  if (requiredAdminPermission && !hasPermission(user, requiredAdminPermission)) {
+    return <AdminRedirectPage path={firstAdminPath(user)} />;
+  }
 
   if (path === "/" || path === "/Home" || path === "/Home/Index") {
     return <FrontPage user={user} />;
@@ -489,6 +499,17 @@ function renderRoute(route, user, isAdmin, access) {
     );
   }
   return <FrontPage />;
+}
+
+function AdminRedirectPage({ path }) {
+  useEffect(() => {
+    if (path) {
+      window.history.replaceState({}, "", path);
+      window.dispatchEvent(new Event("gammasite:navigate"));
+    }
+  }, [path]);
+
+  return <p className="muted">Henter Admin...</p>;
 }
 
 /**
