@@ -77,10 +77,6 @@ h3 { margin:0 0 5px; font-size:1rem; }
 .steps li::before { position:absolute; top:0; left:0; width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:var(--action-blue); color:#fff; content:counter(step); counter-increment:step; font-size:.82rem; font-weight:700; }
 .steps li:not(:last-child)::after { position:absolute; top:35px; bottom:0; left:14px; width:1px; background:#c9d8e7; content:""; }
 .steps li:last-child { padding-bottom:0; }
-.guide-images { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; max-width:960px; margin:28px 0 0; }
-.guide-shot { margin:0; padding:10px; border:1px solid var(--line); border-radius:10px; background:#f8fafc; }
-.guide-shot img { display:block; width:100%; max-height:520px; object-fit:contain; border-radius:6px; background:#fff; }
-.guide-shot figcaption { margin:8px 2px 0; color:var(--muted); font-size:.82rem; }
 .callout { max-width:830px; margin:20px 0 0; padding:12px 14px; border-left:3px solid var(--accent); background:#eff9fd; font-size:.93rem; }
 .callout--warning { border-left-color:#d48918; background:#fff8e8; }
 .callout--danger { border-left-color:#a53b3b; background:#fff3f3; }
@@ -92,4 +88,4 @@ pre { overflow:auto; padding:13px; border-radius:8px; background:#182535; color:
 pre code { padding:0; background:none; color:inherit; }
 .footer { width:min(1240px,calc(100% - 40px)); margin:0 auto 28px; color:var(--muted); font-size:.82rem; }
 
-@media(max-width:860px) { .site-header__inner,.docs-layout,.footer { width:min(100% - 24px,1240px); } .docs-layout,.docs-layout--sidebar-collapsed { grid-template-columns:1fr; margin-top:18px; gap:12px; } .sidebar { position:static; padding:10px; border:1px solid var(--line); border-radius:10px; background:#fff; } .sidebar-toggle { display:none; } .sidebar nav { display:grid !important; } .sidebar-group summary { padding-left:8px; } .file-table { min-width:570px; } .content { padding:21px 17px; } .guide-images { grid-template-columns:1fr; } }
+@media(max-width:860px) { .site-header__inner,.docs-layout,.footer { width:min(100% - 24px,1240px); } .docs-layout,.docs-layout--sidebar-collapsed { grid-template-columns:1fr; margin-top:18px; gap:12px; } .sidebar { position:static; padding:10px; border:1px solid var(--line); border-radius:10px; background:#fff; } .sidebar-toggle { display:none; } .sidebar nav { display:grid !important; } .sidebar-group summary { padding-left:8px; } .file-table { min-width:570px; } .content { padding:21px 17px; } }

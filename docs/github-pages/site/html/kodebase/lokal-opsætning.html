@@ -2,6 +2,6 @@
 cd gammasite</code></pre></li><li>Installer frontendpakkerne, og byg React-klienten.<pre><code>cd src/frontend
 npm ci
 npm run build</code></pre></li><li>Gå tilbage til repositoryroden, og gendan .NET-pakkerne.<pre><code>cd ../..
-dotnet restore GamMaSite.sln</code></pre></li><li>Start backend og frontend med <code>make run</code>. Du kan også bruge <code>dotnet run --project src/backend/GamMaSite/GamMaSite.csproj</code>.</li><li>Kør backend- og frontendtestene.<pre><code>dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj
+dotnet restore GamMaSite.sln</code></pre></li><li>Start backenden med <code>make run</code>. Du kan også bruge <code>dotnet run --project src/backend/GamMaSite/GamMaSite.csproj</code>.</li><li>Kør backend- og frontendtestene.<pre><code>dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj
 cd src/frontend
 npm test</code></pre></li></ol><div class="callout callout--warning"><p>Lokale konfigurationsfiler og hemmeligheder må ikke committes.</p></div></main></div><footer class="footer">GamMaSite dokumentation</footer><script src="../../js/app.js"></script></body></html>
