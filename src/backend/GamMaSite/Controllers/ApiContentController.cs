@@ -7,6 +7,7 @@ using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace GamMaSite.Controllers
 {
@@ -21,12 +22,18 @@ namespace GamMaSite.Controllers
         private readonly IContentService _contentService;
         private readonly IEventRegistrationService _registrationService;
         private readonly IAccessControlService _accessControl;
+        private readonly IContentMediaService _contentMedia;
 
-        public ApiContentController(IContentService contentService, IEventRegistrationService registrationService, IAccessControlService accessControl)
+        public ApiContentController(
+            IContentService contentService,
+            IEventRegistrationService registrationService,
+            IAccessControlService accessControl,
+            IContentMediaService contentMedia = null)
         {
             _contentService = contentService;
             _registrationService = registrationService;
             _accessControl = accessControl;
+            _contentMedia = contentMedia;
         }
 
         [HttpGet]
@@ -122,8 +129,81 @@ namespace GamMaSite.Controllers
         [Authorize(Policy = PermissionPolicies.ContentEdit)]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _contentService.DeleteAsync(id);
-            return deleted ? NoContent() : NotFound();
+            try
+            {
+                var deleted = await _contentService.DeleteAsync(id);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (ContentMediaStorageException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("{id:int}/image")]
+        [Authorize]
+        [RequestSizeLimit(ContentMediaService.MaxImageSize + 128 * 1024)]
+        public async Task<IActionResult> UploadImage(int id, IFormFile file)
+        {
+            var item = await _contentService.GetByIdAsync(id, true);
+            if (item == null)
+            {
+                return NotFound();
+            }
+
+            if (!await CanEditContentMediaAsync(item))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                if (_contentMedia == null)
+                {
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Billedelagring er ikke konfigureret." });
+                }
+
+                return Ok(await _contentMedia.UploadAsync(id, file));
+            }
+            catch (ContentMediaValidationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (ContentMediaStorageException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id:int}/image")]
+        [Authorize]
+        public async Task<IActionResult> DeleteImage(int id)
+        {
+            var item = await _contentService.GetByIdAsync(id, true);
+            if (item == null)
+            {
+                return NotFound();
+            }
+
+            if (!await CanEditContentMediaAsync(item))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                if (_contentMedia == null)
+                {
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Billedelagring er ikke konfigureret." });
+                }
+
+                var result = await _contentMedia.DeleteAsync(id);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (ContentMediaStorageException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+            }
         }
 
         [HttpPost("{id:int}/registrations")]
@@ -236,6 +316,13 @@ namespace GamMaSite.Controllers
         private Task<bool> UserCanReadUnpublished()
         {
             return _accessControl.HasPermissionAsync(User, PermissionCodes.ContentEdit);
+        }
+
+        private Task<bool> CanEditContentMediaAsync(ContentItem item)
+        {
+            return string.Equals(item.Type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)
+                ? _accessControl.CanEditEventAsync(User, item.Id)
+                : _accessControl.HasPermissionAsync(User, PermissionCodes.ContentEdit);
         }
     }
 }

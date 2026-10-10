@@ -28,10 +28,12 @@ namespace GamMaSite.Services
         };
 
         private readonly ApplicationDbContext _db;
+        private readonly IContentMediaService _contentMedia;
 
-        public ContentService(ApplicationDbContext db)
+        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null)
         {
             _db = db;
+            _contentMedia = contentMedia;
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
@@ -151,6 +153,7 @@ namespace GamMaSite.Services
             item.Slug = Required(request.Slug, nameof(request.Slug));
             item.Summary = request.Summary;
             item.Body = request.Body;
+            var oldPictureUrl = item.PictureUrl;
             item.PictureUrl = request.PictureUrl;
             item.Tags = request.Tags;
             item.Type = NormalizeType(request.Type);
@@ -167,6 +170,11 @@ namespace GamMaSite.Services
 
             await _db.SaveChangesAsync();
 
+            if (_contentMedia != null && !string.Equals(oldPictureUrl, item.PictureUrl, StringComparison.Ordinal))
+            {
+                await _contentMedia.DeleteLocalFileIfUnreferencedAsync(oldPictureUrl);
+            }
+
             return await GetByIdAsync(item.Id, true);
         }
 
@@ -178,8 +186,15 @@ namespace GamMaSite.Services
                 return false;
             }
 
+            var pictureUrl = item.PictureUrl;
             _db.ContentItems.Remove(item);
             await _db.SaveChangesAsync();
+
+            if (_contentMedia != null)
+            {
+                await _contentMedia.DeleteLocalFileIfUnreferencedAsync(pictureUrl);
+            }
+
             return true;
         }
 

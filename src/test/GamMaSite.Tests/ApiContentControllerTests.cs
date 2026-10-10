@@ -108,6 +108,60 @@ public class ApiContentControllerTests
         registrations.Verify(service => service.DeleteAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
+    [Fact]
+    public async Task UploadImage_AllowsEventOrganizer()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        var media = new Mock<IContentMediaService>();
+        content.Setup(service => service.GetByIdAsync(7, true)).ReturnsAsync(new ContentItem { Id = 7, Type = ContentTypes.Event });
+        accessControl.Setup(service => service.CanEditEventAsync(It.IsAny<ClaimsPrincipal>(), 7)).ReturnsAsync(true);
+        media.Setup(service => service.UploadAsync(7, It.IsAny<Microsoft.AspNetCore.Http.IFormFile>()))
+            .ReturnsAsync(new ContentMediaUploadResult { Url = "/media/content/events/event.png" });
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object, media.Object);
+
+        var result = await controller.UploadImage(7, null);
+
+        Assert.IsType<OkObjectResult>(result);
+        media.Verify(service => service.UploadAsync(7, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteImage_ForbidsEventUserWithoutOrganizerOrContentPermission()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        var media = new Mock<IContentMediaService>();
+        content.Setup(service => service.GetByIdAsync(7, true)).ReturnsAsync(new ContentItem { Id = 7, Type = ContentTypes.Event });
+        accessControl.Setup(service => service.CanEditEventAsync(It.IsAny<ClaimsPrincipal>(), 7)).ReturnsAsync(false);
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object, media.Object);
+
+        var result = await controller.DeleteImage(7);
+
+        Assert.IsType<ForbidResult>(result);
+        media.Verify(service => service.DeleteAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadImage_UsesExistingContentPermissionForNews()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        var media = new Mock<IContentMediaService>();
+        content.Setup(service => service.GetByIdAsync(8, true)).ReturnsAsync(new ContentItem { Id = 8, Type = ContentTypes.News });
+        accessControl.Setup(service => service.HasPermissionAsync(It.IsAny<ClaimsPrincipal>(), PermissionCodes.ContentEdit)).ReturnsAsync(true);
+        media.Setup(service => service.UploadAsync(8, It.IsAny<Microsoft.AspNetCore.Http.IFormFile>()))
+            .ReturnsAsync(new ContentMediaUploadResult { Url = "/media/content/news/news.png" });
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object, media.Object);
+
+        var result = await controller.UploadImage(8, null);
+
+        Assert.IsType<OkObjectResult>(result);
+    }
+
     private static ApiContentController Controller(Mock<IContentService> content,
         Mock<IEventRegistrationService> registrations, ClaimsPrincipal user)
     {

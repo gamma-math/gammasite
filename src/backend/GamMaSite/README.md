@@ -40,6 +40,9 @@ GamMaSite/
 * Persist content, links, registrations, templates, and user data through EF Core/MySQL.
 * Send email/SMS messages and render system/admin templates.
 * Create Stripe checkout sessions and handle payment-related redirects.
+* Store event/news images in the configured persistent content-media folder.
+
+Content media must be configured outside the deployment directory. See [`docs/content-media.md`](../../../docs/content-media.md) for the Simply TEST/PROD folder layout, permissions, and backup requirements.
 
 ## Legacy Policy
 
