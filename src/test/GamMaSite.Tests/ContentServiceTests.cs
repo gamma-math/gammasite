@@ -87,6 +87,40 @@ public class ContentServiceTests
         media.Verify(service => service.DeleteLocalFileIfUnreferencedAsync(oldPictureUrl), Times.Exactly(2));
     }
 
+    [Fact]
+    public async Task UpdateAsync_RestoresSlugAndImageUrlWhenImageRenameFails()
+    {
+        await using var db = CreateDb();
+        var item = Item("old-slug", DateTime.UtcNow);
+        const string oldPictureUrl = "/media/content/events/old-slug.jpg";
+        const string newPictureUrl = "/media/content/events/new-slug.jpg";
+        item.PictureUrl = oldPictureUrl;
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        var media = new Mock<IContentMediaService>();
+        var rename = new ContentMediaSlugRename { PreviousUrl = oldPictureUrl, NewUrl = newPictureUrl };
+        media.Setup(service => service.PrepareSlugRenameAsync(item, "old-slug", "new-slug"))
+            .ReturnsAsync(rename);
+        media.Setup(service => service.MoveLocalFileAsync(rename))
+            .ThrowsAsync(new ContentMediaStorageException("File is locked"));
+
+        await Assert.ThrowsAsync<ContentMediaStorageException>(() => new ContentService(db, media.Object).UpdateAsync(item.Id, new SaveContentItemRequest
+        {
+            Title = item.Title,
+            Slug = "new-slug",
+            Type = item.Type,
+            Status = item.Status,
+            PictureUrl = oldPictureUrl,
+            StartDate = item.StartDate
+        }));
+
+        var saved = await db.ContentItems.FindAsync(item.Id);
+        Assert.NotNull(saved);
+        Assert.Equal("old-slug", saved.Slug);
+        Assert.Equal(oldPictureUrl, saved.PictureUrl);
+    }
+
     private static ContentItem Item(string slug, DateTime start) => new()
     {
         Title = slug, Slug = slug, Type = ContentTypes.Event, Status = ContentStatuses.Published,

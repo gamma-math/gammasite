@@ -193,6 +193,7 @@ namespace GamMaSite.Services
                 }
                 catch (ContentMediaStorageException)
                 {
+                    item.Slug = previousSlug;
                     item.PictureUrl = oldPictureUrl;
                     item.Updated = DateTime.UtcNow;
                     try
