@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
 {
@@ -20,16 +21,18 @@ namespace GamMaSite.Services
 
         private readonly ApplicationDbContext _db;
         private readonly string _mediaRoot;
+        private readonly ILogger<ContentMediaService> _logger;
 
-        public ContentMediaService(ApplicationDbContext db, IConfiguration configuration, IWebHostEnvironment environment)
-            : this(db, ResolveRootPath(configuration, environment.ContentRootPath))
+        public ContentMediaService(ApplicationDbContext db, IConfiguration configuration, IWebHostEnvironment environment, ILogger<ContentMediaService> logger)
+            : this(db, ResolveRootPath(configuration, environment.ContentRootPath), logger)
         {
         }
 
-        public ContentMediaService(ApplicationDbContext db, string mediaRoot)
+        public ContentMediaService(ApplicationDbContext db, string mediaRoot, ILogger<ContentMediaService> logger = null)
         {
             _db = db;
             _mediaRoot = Path.GetFullPath(mediaRoot ?? string.Empty);
+            _logger = logger;
         }
 
         public static string ResolveRootPath(IConfiguration configuration, string contentRootPath)
@@ -90,8 +93,8 @@ namespace GamMaSite.Services
             var normalizedExtension = format == ImageFormat.Png ? ".png" : ".jpg";
             var fileName = $"{safeSlug}{normalizedExtension}";
             var path = EnsureUnderRoot(Path.Combine(directory, fileName));
+            var temporaryPath = EnsureUnderRoot(Path.Combine(directory, $".{fileName}.{Guid.NewGuid():N}.tmp"));
             var publicUrl = $"{PublicPath}/{relativeDirectory.Replace(Path.DirectorySeparatorChar, '/')}/{fileName}";
-            var fileExisted = File.Exists(path);
 
             var usedByOtherContent = await _db.ContentItems
                 .AsNoTracking()
@@ -103,17 +106,19 @@ namespace GamMaSite.Services
 
             try
             {
-                await using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                await using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
                     await stream.WriteAsync(bytes, 0, bytes.Length);
                 }
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
+                TryDelete(temporaryPath);
                 throw new ContentMediaStorageException("Billedet kunne ikke gemmes i mediemappen.", ex);
             }
 
             var oldPictureUrl = item.PictureUrl;
+            var oldUpdated = item.Updated;
             item.PictureUrl = publicUrl;
             item.Updated = DateTime.UtcNow;
 
@@ -123,16 +128,24 @@ namespace GamMaSite.Services
             }
             catch
             {
-                if (!fileExisted)
-                {
-                    TryDelete(path);
-                }
+                TryDelete(temporaryPath);
                 throw;
+            }
+
+            try
+            {
+                File.Move(temporaryPath, path, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                TryDelete(temporaryPath);
+                await RestorePictureUrlAfterFailedPublishAsync(item, oldPictureUrl, oldUpdated, ex);
+                throw new ContentMediaStorageException("Billedet blev gemt midlertidigt, men kunne ikke offentliggøres i mediemappen.", ex);
             }
 
             if (!string.Equals(oldPictureUrl, publicUrl, StringComparison.Ordinal))
             {
-                await DeleteLocalFileIfUnreferencedAsync(oldPictureUrl);
+                await DeleteLocalFileBestEffortAsync(oldPictureUrl);
             }
 
             return new ContentMediaUploadResult { Url = publicUrl };
@@ -154,7 +167,7 @@ namespace GamMaSite.Services
             var isLocal = TryGetLocalPath(oldPictureUrl, out _);
             if (isLocal)
             {
-                await DeleteLocalFileIfUnreferencedAsync(oldPictureUrl);
+                await DeleteLocalFileBestEffortAsync(oldPictureUrl);
             }
 
             return new ContentMediaDeleteResult { Url = oldPictureUrl, WasLocalFile = isLocal };
@@ -202,6 +215,48 @@ namespace GamMaSite.Services
             }
 
             return bytes;
+        }
+
+        private async Task RestorePictureUrlAfterFailedPublishAsync(ContentItem item, string oldPictureUrl, DateTime oldUpdated, Exception publishException)
+        {
+            item.PictureUrl = oldPictureUrl;
+            item.Updated = oldUpdated;
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception rollbackException)
+            {
+                _logger?.LogError(rollbackException,
+                    "Could not restore content item {ContentItemId} after publishing its image failed.", item.Id);
+            }
+
+            _logger?.LogError(publishException,
+                "Could not publish uploaded image for content item {ContentItemId}; restoration of the content record was attempted.", item.Id);
+        }
+
+        private async Task DeleteLocalFileBestEffortAsync(string pictureUrl)
+        {
+            const int attempts = 2;
+            for (var attempt = 1; attempt <= attempts; attempt++)
+            {
+                try
+                {
+                    await DeleteLocalFileIfUnreferencedAsync(pictureUrl);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex,
+                        "Could not clean up unreferenced content image {PictureUrl} (attempt {Attempt}/{Attempts}).",
+                        pictureUrl, attempt, attempts);
+
+                    if (attempt < attempts)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100));
+                    }
+                }
+            }
         }
 
         private string EnsureWritableDirectory(string directory)

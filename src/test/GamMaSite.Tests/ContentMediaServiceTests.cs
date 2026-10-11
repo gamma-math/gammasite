@@ -7,6 +7,7 @@ using GamMaSite.Models;
 using GamMaSite.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -54,6 +55,43 @@ public class ContentMediaServiceTests
 
             await Assert.ThrowsAsync<ContentMediaValidationException>(() => service.UploadAsync(13, File(new byte[(int)ContentMediaService.MaxImageSize + 1], "large.jpg", "image/jpeg")));
             await Assert.ThrowsAsync<ContentMediaValidationException>(() => service.UploadAsync(13, File(new byte[] { 1, 2, 3, 4 }, "fake.jpg", "image/jpeg")));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task UploadAsync_DoesNotReplaceExistingImageWhenDatabaseSaveFails()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var interceptor = new FailNextSaveChangesInterceptor();
+            await using var db = CreateDb(interceptor);
+            var oldBytes = new byte[] { 9, 8, 7 };
+            var localUrl = "/media/content/events/sommer-event.png";
+            var localPath = Path.Combine(root, "content", "events", "sommer-event.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+            await System.IO.File.WriteAllBytesAsync(localPath, oldBytes);
+            db.ContentItems.Add(new ContentItem
+            {
+                Id = 19,
+                Title = "Event",
+                Slug = "sommer-event",
+                Type = ContentTypes.Event,
+                Status = ContentStatuses.Draft,
+                PictureUrl = localUrl
+            });
+            await db.SaveChangesAsync();
+            interceptor.FailNextSave = true;
+            var service = new ContentMediaService(db, root);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.UploadAsync(19, File(PngBytes(), "replacement.png", "image/png")));
+
+            Assert.Equal(oldBytes, await System.IO.File.ReadAllBytesAsync(localPath));
+            Assert.Empty(Directory.GetFiles(root, "*.tmp", SearchOption.AllDirectories));
         }
         finally
         {
@@ -179,6 +217,34 @@ public class ContentMediaServiceTests
         return path;
     }
 
-    private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
-        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    private static ApplicationDbContext CreateDb(params IInterceptor[] interceptors)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString());
+        if (interceptors?.Length > 0)
+        {
+            options.AddInterceptors(interceptors);
+        }
+
+        return new ApplicationDbContext(options.Options);
+    }
+
+    private sealed class FailNextSaveChangesInterceptor : SaveChangesInterceptor
+    {
+        public bool FailNextSave { get; set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (FailNextSave)
+            {
+                FailNextSave = false;
+                throw new InvalidOperationException("Simulated database failure");
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
 }

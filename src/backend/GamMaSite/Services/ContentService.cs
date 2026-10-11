@@ -6,6 +6,7 @@ using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
 {
@@ -29,11 +30,13 @@ namespace GamMaSite.Services
 
         private readonly ApplicationDbContext _db;
         private readonly IContentMediaService _contentMedia;
+        private readonly ILogger<ContentService> _logger;
 
-        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null)
+        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null, ILogger<ContentService> logger = null)
         {
             _db = db;
             _contentMedia = contentMedia;
+            _logger = logger;
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
@@ -172,7 +175,7 @@ namespace GamMaSite.Services
 
             if (_contentMedia != null && !string.Equals(oldPictureUrl, item.PictureUrl, StringComparison.Ordinal))
             {
-                await _contentMedia.DeleteLocalFileIfUnreferencedAsync(oldPictureUrl);
+                await DeleteLocalFileBestEffortAsync(oldPictureUrl);
             }
 
             return await GetByIdAsync(item.Id, true);
@@ -192,10 +195,34 @@ namespace GamMaSite.Services
 
             if (_contentMedia != null)
             {
-                await _contentMedia.DeleteLocalFileIfUnreferencedAsync(pictureUrl);
+                await DeleteLocalFileBestEffortAsync(pictureUrl);
             }
 
             return true;
+        }
+
+        private async Task DeleteLocalFileBestEffortAsync(string pictureUrl)
+        {
+            const int attempts = 2;
+            for (var attempt = 1; attempt <= attempts; attempt++)
+            {
+                try
+                {
+                    await _contentMedia.DeleteLocalFileIfUnreferencedAsync(pictureUrl);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex,
+                        "Could not clean up unreferenced content image {PictureUrl} (attempt {Attempt}/{Attempts}).",
+                        pictureUrl, attempt, attempts);
+
+                    if (attempt < attempts)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100));
+                    }
+                }
+            }
         }
 
         private static IQueryable<ContentItem> IncludeLinks(IQueryable<ContentItem> query)

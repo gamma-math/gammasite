@@ -40,6 +40,6 @@ En Simply-miljøvariabel `GAMMASITE_MEDIA_ROOT` kan bruges til at overstyre den 
 
 GitHub Actions deployer via MSDeploy og laver en MSDeploy-applikationsbackup, men en søstermappe uden for `APP_PATH` er ikke dækket af denne backup. Derfor skal `gammasite-media` inkluderes eksplicit i Simplys filbackup eller den eksisterende Cloudflare/backup-rutine. En gendannelse skal lægge mappen tilbage samme sted med samme IIS-rettigheder, før applikationen startes.
 
-Deployment må ikke slette eller erstatte `gammasite-media`. Uploadede filer bruger sikre, unikke navne baseret på slug og GUID. Sletning kontrollerer, at URL'en er en lokal `/media/...`-URL, og at filen ikke bruges af andet indhold; eksterne URL'er røres aldrig.
+Deployment må ikke slette eller erstatte `gammasite-media`. Uploadede filer bruger sikre, slug-baserede navne: `<slug>.png` eller `<slug>.jpg`. Upload gemmes først som en midlertidig fil og publiceres først efter en succesfuld databaseopdatering. Sletning kontrollerer, at URL'en er en lokal `/media/...`-URL, og at filen ikke bruges af andet indhold; eksterne URL'er røres aldrig. Oprydning af gamle filer køres med retry og logges, men gør ikke en allerede gemt indholdsændring til en fejl.
 
 Lokalt kan samme mappe oprettes relativt til backendens content root, eller `GAMMASITE_MEDIA_ROOT` kan sættes til en midlertidig testmappe.
