@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using GamMaSite.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace GamMaSite.Services
@@ -10,6 +11,10 @@ namespace GamMaSite.Services
         Task<ContentMediaDeleteResult> DeleteAsync(int contentItemId);
 
         Task DeleteLocalFileIfUnreferencedAsync(string pictureUrl);
+
+        Task<ContentMediaSlugRename> PrepareSlugRenameAsync(ContentItem item, string previousSlug, string newSlug);
+
+        Task MoveLocalFileAsync(ContentMediaSlugRename rename);
     }
 
     public sealed class ContentMediaUploadResult
@@ -22,6 +27,13 @@ namespace GamMaSite.Services
         public string Url { get; set; }
 
         public bool WasLocalFile { get; set; }
+    }
+
+    public sealed class ContentMediaSlugRename
+    {
+        public string PreviousUrl { get; init; }
+
+        public string NewUrl { get; init; }
     }
 
     public class ContentMediaValidationException : System.Exception

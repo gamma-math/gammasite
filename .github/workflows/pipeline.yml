@@ -47,16 +47,17 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: 'src/frontend/package-lock.json'
-      - name: Validate Finance deployment settings
+      - name: Validate deployment settings
         shell: pwsh
         env:
           FINANCEREAD_CONNECTION_STRING: ${{ secrets.FINANCEREAD__CONNECTION_STRING }}
           FINANCEWRITE_CONNECTION_STRING: ${{ secrets.FINANCEWRITE__CONNECTION_STRING }}
+          CONTENT_MEDIA_ROOT_PATH: ${{ vars.CONTENT_MEDIA_ROOT_PATH }}
         run: |
-          $required = @('FINANCEREAD_CONNECTION_STRING', 'FINANCEWRITE_CONNECTION_STRING')
+          $required = @('FINANCEREAD_CONNECTION_STRING', 'FINANCEWRITE_CONNECTION_STRING', 'CONTENT_MEDIA_ROOT_PATH')
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              throw "Missing required Finance deployment secret: $name"
+              throw "Missing required deployment setting: $name"
             }
           }
       - name: Variable substitutions
@@ -76,6 +77,7 @@ jobs:
           ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}
           FinanceRead.CONNECTION_STRING: ${{ secrets.FINANCEREAD__CONNECTION_STRING }}
           FinanceWrite.CONNECTION_STRING: ${{ secrets.FINANCEWRITE__CONNECTION_STRING }}
+          ContentMediaRootPath: ${{ vars.CONTENT_MEDIA_ROOT_PATH }}
       - name: Restore frontend packages
         working-directory: src/frontend
         run: npm ci

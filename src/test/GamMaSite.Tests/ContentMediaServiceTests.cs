@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
+using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -177,6 +178,50 @@ public class ContentMediaServiceTests
 
             Assert.True(await new ContentService(db, media).DeleteAsync(18));
             Assert.False(System.IO.File.Exists(localPath));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatingSlug_RenamesMatchingLocalImage()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            await using var db = CreateDb();
+            const string oldUrl = "/media/content/events/old-slug.jpg";
+            var oldPath = Path.Combine(root, "content", "events", "old-slug.jpg");
+            Directory.CreateDirectory(Path.GetDirectoryName(oldPath)!);
+            await System.IO.File.WriteAllBytesAsync(oldPath, new byte[] { 1, 2, 3 });
+            var item = new ContentItem
+            {
+                Id = 20,
+                Title = "Event",
+                Slug = "old-slug",
+                Type = ContentTypes.Event,
+                Status = ContentStatuses.Draft,
+                PictureUrl = oldUrl
+            };
+            db.ContentItems.Add(item);
+            await db.SaveChangesAsync();
+            var media = new ContentMediaService(db, root);
+
+            var updated = await new ContentService(db, media).UpdateAsync(item.Id, new SaveContentItemRequest
+            {
+                Title = item.Title,
+                Slug = "new-slug",
+                Type = item.Type,
+                Status = item.Status,
+                PictureUrl = oldUrl
+            });
+
+            const string newUrl = "/media/content/events/new-slug.jpg";
+            Assert.Equal(newUrl, updated.PictureUrl);
+            Assert.False(System.IO.File.Exists(oldPath));
+            Assert.True(System.IO.File.Exists(Path.Combine(root, "content", "events", "new-slug.jpg")));
         }
         finally
         {

@@ -123,6 +123,10 @@ namespace GamMaSite.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
+            catch (ContentMediaStorageException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+            }
         }
 
         [HttpDelete("{id:int}")]

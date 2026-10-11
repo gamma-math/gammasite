@@ -151,13 +151,25 @@ namespace GamMaSite.Services
 
             var now = DateTime.UtcNow;
             var status = NormalizeStatus(request.Status);
+            var previousSlug = item.Slug;
+            var nextSlug = Required(request.Slug, nameof(request.Slug));
+            var oldPictureUrl = item.PictureUrl;
+            ContentMediaSlugRename slugRename = null;
+
+            if (_contentMedia != null &&
+                !string.Equals(previousSlug, nextSlug, StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(oldPictureUrl) &&
+                string.Equals(request.PictureUrl, oldPictureUrl, StringComparison.Ordinal) &&
+                string.Equals(request.Type, item.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                slugRename = await _contentMedia.PrepareSlugRenameAsync(item, previousSlug, nextSlug);
+            }
 
             item.Title = Required(request.Title, nameof(request.Title));
-            item.Slug = Required(request.Slug, nameof(request.Slug));
+            item.Slug = nextSlug;
             item.Summary = request.Summary;
             item.Body = request.Body;
-            var oldPictureUrl = item.PictureUrl;
-            item.PictureUrl = request.PictureUrl;
+            item.PictureUrl = slugRename?.NewUrl ?? request.PictureUrl;
             item.Tags = request.Tags;
             item.Type = NormalizeType(request.Type);
             item.Status = status;
@@ -173,7 +185,30 @@ namespace GamMaSite.Services
 
             await _db.SaveChangesAsync();
 
-            if (_contentMedia != null && !string.Equals(oldPictureUrl, item.PictureUrl, StringComparison.Ordinal))
+            if (slugRename != null)
+            {
+                try
+                {
+                    await _contentMedia.MoveLocalFileAsync(slugRename);
+                }
+                catch (ContentMediaStorageException)
+                {
+                    item.PictureUrl = oldPictureUrl;
+                    item.Updated = DateTime.UtcNow;
+                    try
+                    {
+                        await _db.SaveChangesAsync();
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        _logger?.LogError(rollbackException,
+                            "Could not restore picture URL for content item {ContentItemId} after its image rename failed.", item.Id);
+                    }
+
+                    throw;
+                }
+            }
+            else if (_contentMedia != null && !string.Equals(oldPictureUrl, item.PictureUrl, StringComparison.Ordinal))
             {
                 await DeleteLocalFileBestEffortAsync(oldPictureUrl);
             }

@@ -37,14 +37,11 @@ namespace GamMaSite.Services
 
         public static string ResolveRootPath(IConfiguration configuration, string contentRootPath)
         {
-            var environmentPath = Environment.GetEnvironmentVariable("GAMMASITE_MEDIA_ROOT");
-            var configuredPath = string.IsNullOrWhiteSpace(environmentPath)
-                ? configuration["ContentMedia:RootPath"]
-                : environmentPath;
+            var configuredPath = configuration["ContentMediaRootPath"];
 
             if (string.IsNullOrWhiteSpace(configuredPath))
             {
-                throw new ContentMediaStorageException("Indholdets medieplacering er ikke konfigureret.");
+                throw new ContentMediaStorageException("Miljøvariablen ContentMediaRootPath er ikke konfigureret.");
             }
 
             return Path.GetFullPath(Path.IsPathRooted(configuredPath)
@@ -198,6 +195,89 @@ namespace GamMaSite.Services
             }
         }
 
+        public async Task<ContentMediaSlugRename> PrepareSlugRenameAsync(ContentItem item, string previousSlug, string newSlug)
+        {
+            if (item == null || string.Equals(previousSlug, newSlug, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(item.PictureUrl))
+            {
+                return null;
+            }
+
+            var contentFolder = GetContentFolder(item.Type);
+            if (contentFolder == null || !TryGetLocalPath(item.PictureUrl, out var sourcePath))
+            {
+                return null;
+            }
+
+            var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+            if (extension != ".png" && extension != ".jpg")
+            {
+                return null;
+            }
+
+            var relativeDirectory = Path.Combine("content", contentFolder);
+            var expectedSourceUrl = BuildPublicUrl(relativeDirectory, $"{SafeFilePart(previousSlug)}{extension}");
+            if (!string.Equals(item.PictureUrl, expectedSourceUrl, StringComparison.OrdinalIgnoreCase) || !File.Exists(sourcePath))
+            {
+                return null;
+            }
+
+            var newUrl = BuildPublicUrl(relativeDirectory, $"{SafeFilePart(newSlug)}{extension}");
+            var destinationPath = EnsureUnderRoot(Path.Combine(_mediaRoot, relativeDirectory, Path.GetFileName(newUrl)));
+            if (File.Exists(destinationPath))
+            {
+                throw new ContentMediaStorageException("Der findes allerede en billedfil med den nye slug.");
+            }
+
+            var referencedByOtherContent = await _db.ContentItems
+                .AsNoTracking()
+                .AnyAsync(content => content.Id != item.Id && content.PictureUrl == newUrl);
+            if (referencedByOtherContent)
+            {
+                throw new ContentMediaStorageException("Den nye slug er allerede knyttet til et andet indholdsbillede.");
+            }
+
+            return new ContentMediaSlugRename
+            {
+                PreviousUrl = item.PictureUrl,
+                NewUrl = newUrl
+            };
+        }
+
+        public Task MoveLocalFileAsync(ContentMediaSlugRename rename)
+        {
+            if (rename == null ||
+                !TryGetLocalPath(rename.PreviousUrl, out var sourcePath) ||
+                !TryGetLocalPath(rename.NewUrl, out var destinationPath))
+            {
+                return Task.CompletedTask;
+            }
+
+            try
+            {
+                if (!File.Exists(sourcePath))
+                {
+                    throw new ContentMediaStorageException("Det eksisterende billede kunne ikke findes i mediemappen.");
+                }
+
+                if (File.Exists(destinationPath))
+                {
+                    throw new ContentMediaStorageException("Der findes allerede en billedfil med den nye slug.");
+                }
+
+                File.Move(sourcePath, destinationPath);
+                return Task.CompletedTask;
+            }
+            catch (ContentMediaStorageException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw new ContentMediaStorageException("Billedfilen kunne ikke omdøbes til den nye slug.", ex);
+            }
+        }
+
         private async Task<byte[]> ReadUploadAsync(IFormFile file)
         {
             await using var input = file.OpenReadStream();
@@ -329,6 +409,16 @@ namespace GamMaSite.Services
                 return false;
             }
         }
+
+        private static string GetContentFolder(string contentType)
+        {
+            if (string.Equals(contentType, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)) return "events";
+            if (string.Equals(contentType, ContentTypes.News, StringComparison.OrdinalIgnoreCase)) return "news";
+            return null;
+        }
+
+        private static string BuildPublicUrl(string relativeDirectory, string fileName) =>
+            $"{PublicPath}/{relativeDirectory.Replace(Path.DirectorySeparatorChar, '/')}/{fileName}";
 
         private static string SafeFilePart(string value)
         {
