@@ -42,6 +42,8 @@ This document describes the backend APIs currently used by the React pages. The 
 | POST | `/api/content` | Admin event/news create page | `ContentItems`, `ContentLinks` | Creates an event or news item. Requires `content.edit`. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentServiceTests.cs](../../src/test/GamMaSite.Tests/ContentServiceTests.cs) |
 | PUT | `/api/content/{id}` | Admin event/news edit page | `ContentItems`, `ContentLinks` | Updates an event or news item. Requires `content.edit` or organizer access for that event. | Not yet covered |
 | DELETE | `/api/content/{id}` | Admin event/news page | `ContentItems`, `ContentLinks` | Deletes content and its links. Requires `content.edit`. | Not yet covered |
+| POST | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Validates and stores one PNG/JPEG of at most 2 MiB and updates `PictureUrl`. Requires `content.edit` or organizer access for an event. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
+| DELETE | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Removes the image reference and deletes an unreferenced local upload. External URLs are only detached. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
 
 ## Event registration API
 

@@ -132,7 +132,9 @@ export const contentApi = {
   access: (id) => request(`/api/content/${id}/access`),
   create: (payload) => request("/api/content", { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) => request(`/api/content/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  delete: (id) => request(`/api/content/${id}`, { method: "DELETE" })
+  delete: (id) => request(`/api/content/${id}`, { method: "DELETE" }),
+  uploadImage: (id, file) => uploadRequest(`/api/content/${id}/image`, file),
+  deleteImage: (id) => request(`/api/content/${id}/image`, { method: "DELETE" })
 };
 
 /**

@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.IO;
 using System.Net;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.FileProviders;
 using Stripe;
 using GamMaSite.Configuration;
 using GamMaSite.Data;
@@ -77,6 +79,7 @@ StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
+builder.Services.AddScoped<IContentMediaService, ContentMediaService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
@@ -202,6 +205,15 @@ if (!env.IsDevelopment())
 app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+var contentMediaRoot = ContentMediaService.ResolveRootPath(app.Configuration, env.ContentRootPath);
+if (Directory.Exists(contentMediaRoot))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(contentMediaRoot),
+        RequestPath = ContentMediaService.PublicPath
+    });
+}
 app.MapStaticAssets();
 
 app.UseRouting();

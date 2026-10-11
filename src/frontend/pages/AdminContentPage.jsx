@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, Plus, Save, Trash2 } from "lucide-react";
+import { Eye, ImagePlus, Plus, Save, Trash2, X } from "lucide-react";
 import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { contentApi } from "../services/api.js";
-import { detailPath, emptyContent, formatDate } from "../utils/format.js";
+import { contentMetaLabel, detailPath, emptyContent, formatDate } from "../utils/format.js";
+import { isLocalContentImage, isSupportedContentImage } from "../utils/contentMedia.js";
 import { sanitizeHtml } from "../utils/richText.js";
 import { SortableHeader } from "./MembersPage.jsx";
 
@@ -89,6 +90,8 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [isLoading, setIsLoading] = useState(Boolean(itemId));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const basePath = `/react/admin/${type === "EVENT" ? "events" : "news"}`;
   const label = type === "EVENT" ? "Begivenheder" : "Nyheder";
 
@@ -135,6 +138,40 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     }
   }
 
+  async function uploadImage(file) {
+    if (!selected.id) return;
+    setError("");
+    setMessage("");
+    if (!isSupportedContentImage(file)) {
+      setError("Vælg en PNG- eller JPEG-fil på højst 2 MiB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await contentApi.uploadImage(selected.id, file);
+      update("pictureUrl", result.url);
+      setMessage("Billedet er uploadet.");
+    } catch (reason) {
+      setError(reason.message);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function deleteImage() {
+    if (!selected.id || !selected.pictureUrl) return;
+    setError("");
+    setMessage("");
+    try {
+      await contentApi.deleteImage(selected.id);
+      update("pictureUrl", "");
+      setMessage("Billedet er slettet.");
+    } catch (reason) {
+      setError(reason.message);
+    }
+  }
+
   const canEdit = isAdmin || Boolean(eventAccess?.canEditEvent);
 
   if (isLoading) {
@@ -175,20 +212,103 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         {type === "NEWS" && <label className="admin-field"><span>Dato</span><input type="datetime-local" value={toLocalInput(selected.publishedAt)} onChange={(event) => update("publishedAt", event.target.value)} /></label>}
         <label className="admin-field"><span>Summary</span><input value={selected.summary ?? ""} onChange={(event) => update("summary", event.target.value)} /></label>
         <SharedRichTextEditor label="Tekst" value={selected.body ?? ""} onChange={(value) => update("body", value)} />
+        <ContentImageField
+          value={selected.pictureUrl}
+          itemId={selected.id}
+          isUploading={isUploading}
+          onChange={(value) => update("pictureUrl", value)}
+          onUpload={uploadImage}
+          onDelete={deleteImage}
+        />
         <div className="menu-editor-grid">
-          <label className="admin-field"><span>Billede URL</span><input value={selected.pictureUrl ?? ""} onChange={(event) => update("pictureUrl", event.target.value)} /></label>
           <label className="admin-field"><span>Tags</span><input value={selected.tags ?? ""} onChange={(event) => update("tags", event.target.value)} placeholder="event,karriere" /></label>
+          {type === "EVENT" && <label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label>}
+          {type === "EVENT" && <label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label>}
+          {type === "EVENT" && <label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label>}
         </div>
-        {type === "EVENT" && <div className="menu-editor-grid"><label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label><label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label><label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label></div>}
         <LinkEditor links={selected.links ?? []} onChange={(links) => update("links", links)} />
-        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
+        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-secondary" type="button" onClick={() => setShowPreview(true)}><Eye size={16} /> Preview</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
         {message && <p className="status-message status-message-success">{message}</p>}
         {error && <p className="status-message status-message-error">{error}</p>}
       </form>
+      {showPreview && <ContentPreview item={selected} type={type} onClose={() => setShowPreview(false)} />}
     </AdminLayout>
   );
 
   function update(field, value) { setSelected((current) => ({ ...current, [field]: value })); }
+}
+
+function ContentImageField({ value, itemId, isUploading, onChange, onUpload, onDelete }) {
+  const inputRef = useRef(null);
+  const hasLocalImage = isLocalContentImage(value);
+
+  return (
+    <div className="admin-field admin-content-image-field">
+      <span className="admin-field-heading">
+        Billede URL
+        <span className="admin-info-tooltip" tabIndex="0" aria-label="Information om billedformat">
+          ?
+          <span className="admin-info-tooltip-text" role="tooltip">
+            PNG eller JPEG, højst 2 MiB.
+          </span>
+        </span>
+      </span>
+      <div className="admin-content-image-input-row">
+        <input value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder="https://... eller /media/..." />
+        <div className="admin-content-image-actions">
+          <input
+            ref={inputRef}
+            className="admin-file-input"
+            type="file"
+            accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+            onChange={(event) => {
+              onUpload(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+            disabled={!itemId || isUploading}
+          />
+          <button className="admin-action-button" type="button" onClick={() => inputRef.current?.click()} disabled={!itemId || isUploading}>
+            <ImagePlus size={16} /> {isUploading ? "Uploader..." : "Upload billede"}
+          </button>
+          {hasLocalImage && <button className="admin-action-button admin-action-button-danger" type="button" onClick={onDelete} disabled={isUploading}><X size={16} /> Slet upload</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContentPreview({ item, type, onClose }) {
+  const isEvent = type === "EVENT";
+  const hasImage = Boolean(item.pictureUrl);
+
+  return (
+    <div className="admin-preview-modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="admin-preview-modal admin-content-preview-modal" role="dialog" aria-modal="true" aria-label="Indholds-preview" onClick={(event) => event.stopPropagation()}>
+        <div className="admin-preview-modal-header">
+          <div><p className="menu-section-title">Preview</p><h2>{item.title || (isEvent ? "Begivenhed" : "Nyhed")}</h2></div>
+          <button className="admin-preview-close" type="button" aria-label="Luk preview" onClick={onClose}><X size={20} /></button>
+        </div>
+        <div className="admin-rendered-preview admin-content-preview-body">
+          <article className="menu-detail-card">
+            <img className={`menu-detail-image ${hasImage ? "" : "content-logo-fallback"}`.trim()} src={hasImage ? item.pictureUrl : "/lib/logo_blue.png"} alt="" />
+            <div className="menu-detail-body">
+              <div className="menu-detail-copy">
+                <small>{contentMetaLabel({ ...item, type })}</small>
+                <h1>{item.title}</h1>
+                <p>{item.summary}</p>
+                <div className="menu-detail-rich-body" dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body ?? "") }} />
+                <div className="menu-detail-meta">
+                  <span className="tag tag-kind">{isEvent ? "Arrangement" : "Nyhed"}</span>
+                  {(item.tags ?? "").split(",").filter(Boolean).map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}
+                </div>
+                {isEvent && <div className="event-detail-schedule">{item.location && <div><strong>Sted:</strong> {item.location}</div>}{item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}{item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}</div>}
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 /**
