@@ -63,7 +63,7 @@ export function AdminMembersPage({ isAdmin }) {
   }, [search, pageSize, sort.key, sort.direction]);
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/users" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan administrere medlemmer.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/users" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere medlemmer.</p></AdminLayout>;
   }
 
   return (

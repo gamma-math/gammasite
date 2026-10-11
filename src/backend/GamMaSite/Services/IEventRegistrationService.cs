@@ -20,6 +20,8 @@ namespace GamMaSite.Services
 
         Task<bool> UnregisterAsync(int contentItemId, string userId);
 
+        Task<bool> DeleteAsync(int contentItemId, int registrationId);
+
         Task<IReadOnlyList<EventRegistration>> GetRegistrationsAsync(int contentItemId);
     }
 }

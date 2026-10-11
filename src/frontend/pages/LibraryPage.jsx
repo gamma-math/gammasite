@@ -5,7 +5,7 @@ import { libraryApi } from "../services/api.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
 /**
- * Member-only library browser for documents exposed through the library API.
+ * Member-only library browser backed by the existing document API.
  */
 export function LibraryPage({ user }) {
   const params = new URLSearchParams(window.location.search);
@@ -23,11 +23,11 @@ export function LibraryPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/library" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/react/bibliotek" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Bibliotek</p>
-          <h1>{listing?.root ?? "/"}</h1>
+          <p className="menu-panel-lead menu-panel-lead-inline">Foreningens dokumenter og arkiv</p>
         </div>
         {user.roles?.some((role) => role === "Admin" || role === "ADMIN") && <a className="menu-create-button" href="https://github.com/gamma-math/gammastatic">Redigér filer</a>}
       </div>
@@ -40,14 +40,14 @@ export function LibraryPage({ user }) {
                 <td>
                   {item.type === "file" || item.type === "blob"
                     ? <a href={`/library?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</a>
-                    : <Link href={`/react/library?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</Link>}
+                    : <Link href={`/react/bibliotek?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</Link>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {listing?.hasParent && <Link className="frontpage-button frontpage-button-secondary page-top-gap" href={`/react/library?path=${encodeURIComponent(listing.parent)}`}>Tilbage</Link>}
+      {listing?.hasParent && <Link className="frontpage-button frontpage-button-secondary page-top-gap" href={`/react/bibliotek?path=${encodeURIComponent(listing.parent)}`}>Tilbage</Link>}
     </MenuLayout>
   );
 }

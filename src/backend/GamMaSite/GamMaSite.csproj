@@ -29,6 +29,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" />
+    <PackageReference Include="Npgsql" Version="9.0.4" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageReference Include="Stripe.net" Version="51.0.0" />
   </ItemGroup>

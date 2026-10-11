@@ -1,32 +1,73 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Instagram, Menu, UserCircle } from "lucide-react";
-import { AccountManagePage, ForgotPasswordPage, LoginPage, RegisterPage, ResendEmailConfirmationPage } from "../pages/AccountPages.jsx";
-import { AdminContentEditorPage, AdminContentPage } from "../pages/AdminContentPage.jsx";
+import {
+  AccountManagePage,
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  ResendEmailConfirmationPage,
+} from "../pages/AccountPages.jsx";
+import {
+  AdminContentEditorPage,
+  AdminContentPage,
+} from "../pages/AdminContentPage.jsx";
+import {
+  FinanceAdminBudgetDetailPage,
+  FinanceAdminBudgetsPage,
+  FinanceAdminAccountsPage,
+  FinanceAdminCashierPostingsPage,
+  FinanceAdminImportPage,
+  FinanceAdminOverviewPage,
+  FinanceAdminPostingGroupDetailPage,
+  FinanceAdminPostingGroupsPage,
+  FinanceAdminPostingDetailPage,
+  FinanceAdminPostingsPage,
+} from "../pages/AdminFinancePage.jsx";
 import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
-import { AdminRolesEditorPage, AdminRolesPage } from "../pages/AdminRolesPage.jsx";
-import { AdminTemplateEditorPage, AdminTemplatesPage } from "../pages/AdminTemplatesPage.jsx";
+import {
+  AdminRolesEditorPage,
+  AdminRolesPage,
+} from "../pages/AdminRolesPage.jsx";
+import {
+  AdminTemplateEditorPage,
+  AdminTemplatesPage,
+} from "../pages/AdminTemplatesPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
+import { FinancePage } from "../pages/FinancePage.jsx";
 import { FrontPage } from "../pages/FrontPage.jsx";
 import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
-import { GenericPaymentPage, PaymentPage, PaymentStatusPage, ProductPaymentPage } from "../pages/PaymentPage.jsx";
+import {
+  GenericPaymentPage,
+  PaymentPage,
+  PaymentStatusPage,
+  ProductPaymentPage,
+} from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { meApi } from "../services/api.js";
+import { AccessContext, adminPermissionForPath, canAccessAdmin, firstAdminPath, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
 
 /**
  * Tracks the current browser path for the lightweight client-side router.
  */
 function useRoute() {
-  const [route, setRoute] = useState({ path: window.location.pathname, search: window.location.search });
+  const [route, setRoute] = useState({
+    path: window.location.pathname,
+    search: window.location.search,
+  });
 
   useEffect(() => {
-    const update = () => setRoute({ path: window.location.pathname, search: window.location.search });
+    const update = () =>
+      setRoute({
+        path: window.location.pathname,
+        search: window.location.search,
+      });
     window.addEventListener("popstate", update);
     window.addEventListener("gammasite:navigate", update);
     return () => {
@@ -42,19 +83,26 @@ function useRoute() {
  * Loads the signed-in user once so navigation and page access can react to roles.
  */
 function useCurrentUser() {
-  const [user, setUser] = useState({ isLoading: true, isAuthenticated: false, roles: [] });
+  const [user, setUser] = useState({
+    isLoading: true,
+    isAuthenticated: false,
+    roles: [],
+  });
 
   useEffect(() => {
     let active = true;
-    meApi.get().then((result) => {
-      if (active) {
-        setUser({ ...result, isLoading: false });
-      }
-    }).catch(() => {
-      if (active) {
-        setUser({ isLoading: false, isAuthenticated: false, roles: [] });
-      }
-    });
+    meApi
+      .get()
+      .then((result) => {
+        if (active) {
+          setUser({ ...result, isLoading: false });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUser({ isLoading: false, isAuthenticated: false, roles: [] });
+        }
+      });
     return () => {
       active = false;
     };
@@ -69,23 +117,34 @@ function useCurrentUser() {
 function App() {
   const route = useRoute();
   const user = useCurrentUser();
-  const roles = new Set(user.roles ?? []);
-  const isAdmin = roles.has("Admin") || roles.has("ADMIN");
-  const isReadAdmin = isAdmin || roles.has("READ_ADMIN");
+  const isAdmin = canAccessAdmin(user);
+  const isReadAdmin = isAdmin;
+  const adminPath = firstAdminPath(user);
+  const access = {
+    contentEdit: hasPermission(user, permissions.contentEdit),
+    registrationsEdit: hasPermission(user, permissions.registrationsEdit),
+    emailTemplatesEdit: hasPermission(user, permissions.emailTemplatesEdit),
+    messagesEdit: hasPermission(user, permissions.messagesEdit),
+    rolesEdit: hasPermission(user, permissions.rolesEdit),
+    financeView: hasAnyPermission(user, [permissions.financeViewAll, permissions.financeEditAll]),
+    financeEdit: hasPermission(user, permissions.financeEditAll)
+  };
 
   return (
-    <div className="app-shell">
-      <Header user={user} isReadAdmin={isReadAdmin} />
-      <main>{renderRoute(route, user, isAdmin, isReadAdmin)}</main>
-      <Footer />
-    </div>
+    <AccessContext.Provider value={user}>
+      <div className="app-shell">
+        <Header user={user} isReadAdmin={isReadAdmin} adminPath={adminPath} />
+        <main>{renderRoute(route, user, isAdmin, access)}</main>
+        <Footer />
+      </div>
+    </AccessContext.Provider>
   );
 }
 
 /**
  * Shared site header used across public, account, and admin React pages.
  */
-function Header({ user, isReadAdmin }) {
+function Header({ user, isReadAdmin, adminPath }) {
   return (
     <header className="site-header frontpage-header">
       <div className="page-shell">
@@ -96,27 +155,50 @@ function Header({ user, isReadAdmin }) {
 
           <nav className="frontpage-topbar-actions" aria-label="Navigation">
             <div className="frontpage-left-actions">
-              <Link className="frontpage-button frontpage-button-secondary" href="/react/events">
+              <Link
+                className="frontpage-button frontpage-button-secondary"
+                href="/react/events"
+              >
                 <Menu size={16} />
                 Menu
               </Link>
               {isReadAdmin && (
-                <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/events">
+                <Link
+                  className="frontpage-button frontpage-button-secondary"
+                  href={adminPath}
+                >
                   Admin
                 </Link>
               )}
             </div>
             <div className="frontpage-right-actions">
               {user.isLoading ? (
-                <span className="frontpage-auth-placeholder" aria-label="Henter brugerstatus" />
+                <span
+                  className="frontpage-auth-placeholder"
+                  aria-label="Henter brugerstatus"
+                />
               ) : user.isAuthenticated ? (
-                <Link className="frontpage-profile-link frontpage-profile-link-default" href="/react/account/manage" aria-label="Profil">
+                <Link
+                  className="frontpage-profile-link frontpage-profile-link-default"
+                  href="/react/account/manage"
+                  aria-label="Profil"
+                >
                   <UserCircle size={23} />
                 </Link>
               ) : (
                 <>
-                  <Link className="frontpage-button frontpage-button-secondary" href="/react/account/login">Login</Link>
-                  <Link className="frontpage-button frontpage-button-primary" href="/react/account/register">Bliv medlem</Link>
+                  <Link
+                    className="frontpage-button frontpage-button-secondary"
+                    href="/react/account/login"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    className="frontpage-button frontpage-button-primary"
+                    href="/react/account/register"
+                  >
+                    Bliv medlem
+                  </Link>
                 </>
               )}
             </div>
@@ -130,13 +212,26 @@ function Header({ user, isReadAdmin }) {
 /**
  * Maps legacy and React URLs to their active React page components.
  */
-function renderRoute(route, user, isAdmin, isReadAdmin) {
+function renderRoute(route, user, isAdmin, access) {
   const path = route.path;
+
+  if (path === "/react/admin" || path === "/react/admin/") {
+    return <AdminRedirectPage path={firstAdminPath(user)} />;
+  }
+
+  const requiredAdminPermission = adminPermissionForPath(path);
+  if (requiredAdminPermission && !hasPermission(user, requiredAdminPermission)) {
+    return <AdminRedirectPage path={firstAdminPath(user)} />;
+  }
 
   if (path === "/" || path === "/Home" || path === "/Home/Index") {
     return <FrontPage user={user} />;
   }
-  if (path === "/react/events" || path === "/react/arrangementer" || path === "/Home/Arrangementer") {
+  if (
+    path === "/react/events" ||
+    path === "/react/arrangementer" ||
+    path === "/Home/Arrangementer"
+  ) {
     return <FrontPage mode="EVENT" title="Begivenheder" user={user} />;
   }
   if (path === "/react/news") {
@@ -148,11 +243,19 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/calendar" || path === "/Calendar") {
     return <CalendarPage user={user} />;
   }
-  if (path === "/react/library" || path === "/Library") {
+  if (
+    path === "/react/bibliotek" ||
+    path === "/react/referater" ||
+    path === "/react/library" ||
+    path === "/Library"
+  ) {
     return <LibraryPage user={user} search={route.search} />;
   }
   if (path === "/react/pay" || path === "/Pay" || path === "/Pay/Index") {
     return <PaymentPage user={user} />;
+  }
+  if (path === "/react/finance") {
+    return <FinancePage user={user} />;
   }
   if (path === "/react/pay/generic" || path === "/Pay/Generisk") {
     return <GenericPaymentPage user={user} />;
@@ -168,11 +271,21 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   }
   const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
   if (oldProductMatch && oldProductMatch[1]) {
-    return <ProductPaymentPage productId={decodeURIComponent(oldProductMatch[1])} user={user} />;
+    return (
+      <ProductPaymentPage
+        productId={decodeURIComponent(oldProductMatch[1])}
+        user={user}
+      />
+    );
   }
   const productMatch = path.match(/^\/react\/pay\/products\/([^/]+)$/);
   if (productMatch) {
-    return <ProductPaymentPage productId={decodeURIComponent(productMatch[1])} user={user} />;
+    return (
+      <ProductPaymentPage
+        productId={decodeURIComponent(productMatch[1])}
+        user={user}
+      />
+    );
   }
   if (path === "/react/om") {
     return <StaticPage page="about" />;
@@ -207,6 +320,9 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/account/manage/two-factor") {
     return <AccountManagePage user={user} section="two-factor" />;
   }
+  if (path === "/react/account/manage/finance") {
+    return <AccountManagePage user={user} section="finance" />;
+  }
   if (path === "/react/account/manage/personal-data") {
     return <AccountManagePage user={user} section="personal-data" />;
   }
@@ -216,61 +332,184 @@ function renderRoute(route, user, isAdmin, isReadAdmin) {
   if (path === "/react/account/manage/logout") {
     return <AccountManagePage user={user} section="logout" />;
   }
-  const eventRegistrationsMatch = path.match(/^\/react\/events\/([^/]+)\/registrations$/);
+  const eventRegistrationsMatch = path.match(
+    /^\/react\/events\/([^/]+)\/registrations$/,
+  );
   if (eventRegistrationsMatch) {
-    return <EventRegistrationsPage slug={decodeURIComponent(eventRegistrationsMatch[1])} user={user} />;
+    return (
+      <EventRegistrationsPage
+        slug={decodeURIComponent(eventRegistrationsMatch[1])}
+        user={user}
+      />
+    );
   }
   if (path.startsWith("/react/events/")) {
-    return <ContentDetailPage type="EVENT" slug={path.split("/").pop()} user={user} />;
+    return (
+      <ContentDetailPage
+        type="EVENT"
+        slug={path.split("/").pop()}
+        user={user}
+      />
+    );
   }
   if (path.startsWith("/react/news/")) {
-    return <ContentDetailPage type="NEWS" slug={path.split("/").pop()} user={user} />;
+    return (
+      <ContentDetailPage type="NEWS" slug={path.split("/").pop()} user={user} />
+    );
   }
   if (path === "/react/admin/news") {
-    return <AdminContentPage type="NEWS" isAdmin={isAdmin} />;
+    return <AdminContentPage type="NEWS" isAdmin={access.contentEdit} />;
   }
-  const adminNewsEditorMatch = path.match(/^\/react\/admin\/news\/(new|\d+\/edit)$/);
+  if (path === "/react/admin/finance") {
+    return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;
+  }
+  if (path === "/react/admin/finance/postings") {
+    return <FinanceAdminPostingsPage isAdmin={access.financeView} canWrite={access.financeEdit} search={route.search} />;
+  }
+  if (path === "/react/admin/finance/postings/edit") {
+    return (
+      <FinanceAdminCashierPostingsPage
+        isAdmin={access.financeEdit}
+        search={route.search}
+      />
+    );
+  }
+  if (path === "/react/admin/finance/csv-import") {
+    return <FinanceAdminImportPage isAdmin={access.financeEdit} />;
+  }
+  if (path === "/react/admin/finance/budgets") {
+    return <FinanceAdminBudgetsPage isAdmin={access.financeEdit} />;
+  }
+  if (path === "/react/admin/finance/chart-of-accounts") {
+    return <FinanceAdminAccountsPage isAdmin={access.financeEdit} />;
+  }
+  if (path === "/react/admin/finance/posting-groups") {
+    return <FinanceAdminPostingGroupsPage isAdmin={access.financeEdit} />;
+  }
+  const adminFinancePostingGroupMatch = path.match(
+    /^\/react\/admin\/finance\/posting-groups\/([^/]+)$/,
+  );
+  if (adminFinancePostingGroupMatch) {
+    return (
+      <FinanceAdminPostingGroupDetailPage
+        isAdmin={access.financeEdit}
+        id={decodeURIComponent(adminFinancePostingGroupMatch[1])}
+      />
+    );
+  }
+  const adminFinanceBudgetMatch = path.match(
+    /^\/react\/admin\/finance\/budgets\/([^/]+)$/,
+  );
+  if (adminFinanceBudgetMatch) {
+    return (
+      <FinanceAdminBudgetDetailPage
+        isAdmin={access.financeEdit}
+        id={decodeURIComponent(adminFinanceBudgetMatch[1])}
+      />
+    );
+  }
+  const adminFinancePostingMatch = path.match(
+    /^\/react\/admin\/finance\/postings\/([^/]+)$/,
+  );
+  if (adminFinancePostingMatch) {
+    return (
+      <FinanceAdminPostingDetailPage
+        isAdmin={access.financeView}
+        canWrite={access.financeEdit}
+        id={decodeURIComponent(adminFinancePostingMatch[1])}
+      />
+    );
+  }
+  const adminNewsEditorMatch = path.match(
+    /^\/react\/admin\/news\/(new|\d+\/edit)$/,
+  );
   if (adminNewsEditorMatch) {
-    const itemId = adminNewsEditorMatch[1] === "new" ? null : Number(adminNewsEditorMatch[1].split("/")[0]);
-    return <AdminContentEditorPage type="NEWS" isAdmin={isAdmin} itemId={itemId} />;
+    const itemId =
+      adminNewsEditorMatch[1] === "new"
+        ? null
+        : Number(adminNewsEditorMatch[1].split("/")[0]);
+    return (
+      <AdminContentEditorPage type="NEWS" isAdmin={access.contentEdit} itemId={itemId} />
+    );
   }
   if (path === "/react/admin/templates") {
-    return <AdminTemplatesPage isAdmin={isAdmin} />;
+    return <AdminTemplatesPage isAdmin={access.emailTemplatesEdit} />;
   }
-  const adminTemplateEditorMatch = path.match(/^\/react\/admin\/templates\/(new|\d+\/edit)$/);
+  const adminTemplateEditorMatch = path.match(
+    /^\/react\/admin\/templates\/(new|\d+\/edit)$/,
+  );
   if (adminTemplateEditorMatch) {
-    const templateId = adminTemplateEditorMatch[1] === "new" ? null : Number(adminTemplateEditorMatch[1].split("/")[0]);
-    return <AdminTemplateEditorPage isAdmin={isAdmin} templateId={templateId} />;
+    const templateId =
+      adminTemplateEditorMatch[1] === "new"
+        ? null
+        : Number(adminTemplateEditorMatch[1].split("/")[0]);
+    return (
+      <AdminTemplateEditorPage isAdmin={access.emailTemplatesEdit} templateId={templateId} />
+    );
   }
-  if (path === "/react/admin/users" || path === "/Users/Expanded" || path === "/Users/UpdateMass") {
-    return <AdminMembersPage isAdmin={isAdmin} />;
+  if (
+    path === "/react/admin/users" ||
+    path === "/Users/Expanded" ||
+    path === "/Users/UpdateMass"
+  ) {
+    return <AdminMembersPage isAdmin={access.rolesEdit} />;
   }
   if (path === "/react/admin/messages" || path === "/Messages") {
-    return <AdminMessagesPage isAdmin={isAdmin} />;
+    return <AdminMessagesPage isAdmin={access.messagesEdit} />;
   }
   if (path === "/react/admin/roles/new" || path === "/Role/Create") {
-    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={null} />;
+    return <AdminRolesEditorPage isAdmin={access.rolesEdit} roleId={null} />;
   }
-  const adminRoleEditorMatch = path.match(/^\/react\/admin\/roles\/([^/]+)\/edit$/);
+  const adminRoleEditorMatch = path.match(
+    /^\/react\/admin\/roles\/([^/]+)\/edit$/,
+  );
   if (adminRoleEditorMatch) {
-    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={decodeURIComponent(adminRoleEditorMatch[1])} />;
+    return (
+      <AdminRolesEditorPage
+        isAdmin={access.rolesEdit}
+        roleId={decodeURIComponent(adminRoleEditorMatch[1])}
+      />
+    );
   }
   const oldRoleUpdateMatch = path.match(/^\/Role\/Update\/?([^/]*)$/);
   if (oldRoleUpdateMatch && oldRoleUpdateMatch[1]) {
-    return <AdminRolesEditorPage isAdmin={isAdmin} roleId={decodeURIComponent(oldRoleUpdateMatch[1])} />;
+    return (
+      <AdminRolesEditorPage
+        isAdmin={access.rolesEdit}
+        roleId={decodeURIComponent(oldRoleUpdateMatch[1])}
+      />
+    );
   }
   if (path === "/react/admin/roles" || path === "/Role") {
-    return <AdminRolesPage isAdmin={isAdmin} />;
+    return <AdminRolesPage isAdmin={access.rolesEdit} />;
   }
   if (path === "/react/admin/events") {
-    return <AdminContentPage type="EVENT" isAdmin={isAdmin} />;
+    return <AdminContentPage type="EVENT" isAdmin={access.contentEdit} />;
   }
-  const adminEventEditorMatch = path.match(/^\/react\/admin\/events\/(new|\d+\/edit)$/);
+  const adminEventEditorMatch = path.match(
+    /^\/react\/admin\/events\/(new|\d+\/edit)$/,
+  );
   if (adminEventEditorMatch) {
-    const itemId = adminEventEditorMatch[1] === "new" ? null : Number(adminEventEditorMatch[1].split("/")[0]);
-    return <AdminContentEditorPage type="EVENT" isAdmin={isAdmin} itemId={itemId} />;
+    const itemId =
+      adminEventEditorMatch[1] === "new"
+        ? null
+        : Number(adminEventEditorMatch[1].split("/")[0]);
+    return (
+      <AdminContentEditorPage type="EVENT" isAdmin={access.contentEdit} itemId={itemId} />
+    );
   }
   return <FrontPage />;
+}
+
+function AdminRedirectPage({ path }) {
+  useEffect(() => {
+    if (path) {
+      window.history.replaceState({}, "", path);
+      window.dispatchEvent(new Event("gammasite:navigate"));
+    }
+  }, [path]);
+
+  return <p className="muted">Henter Admin...</p>;
 }
 
 /**
@@ -283,16 +522,37 @@ function Footer() {
         <div className="frontpage-footer-col frontpage-footer-col-wide">
           <h2>Alumneforeningen GamMa</h2>
           <ul className="frontpage-contact-list">
-            <li>Vedtægter: <Link href="/react/betingelser">Link til dem</Link></li>
+            <li>
+              Vedtægter: <Link href="/react/betingelser">Link til dem</Link>
+            </li>
             <li>CVR: 34637768</li>
-            <li>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></li>
+            <li>
+              Kontakt:{" "}
+              <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>
+            </li>
           </ul>
         </div>
         <div className="frontpage-footer-icons">
           <span className="frontpage-social-list">
-            <a className="frontpage-social-link" href="https://www.linkedin.com/company/gamma-math-ucph/" aria-label="LinkedIn">in</a>
-            <a className="frontpage-social-link" href="https://www.facebook.com/share/g/1Exv7epudc/" aria-label="Facebook">f</a>
-            <a className="frontpage-social-link" href="https://www.instagram.com/gamma_ku_2100" aria-label="Instagram">
+            <a
+              className="frontpage-social-link"
+              href="https://www.linkedin.com/company/gamma-math-ucph/"
+              aria-label="LinkedIn"
+            >
+              in
+            </a>
+            <a
+              className="frontpage-social-link"
+              href="https://www.facebook.com/share/g/1Exv7epudc/"
+              aria-label="Facebook"
+            >
+              f
+            </a>
+            <a
+              className="frontpage-social-link"
+              href="https://www.instagram.com/gamma_ku_2100"
+              aria-label="Instagram"
+            >
               <Instagram size={18} />
             </a>
           </span>

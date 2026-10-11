@@ -6,6 +6,8 @@ import { contentApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
+import { hasPermission, permissions } from "../utils/access.js";
+import { isRegistrationOpen } from "../utils/registrationOpen.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -14,6 +16,7 @@ export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
   const [registration, setRegistration] = useState(null);
   const [registrations, setRegistrations] = useState([]);
+  const [eventAccess, setEventAccess] = useState(null);
   const [calendarHref, setCalendarHref] = useState("");
   const [error, setError] = useState("");
 
@@ -27,15 +30,19 @@ export function ContentDetailPage({ slug, type, user }) {
     if (item?.type === "EVENT" && user.isAuthenticated) {
       Promise.all([
         registrationsApi.mine(item.id).catch(() => null),
-        registrationsApi.list(item.id).catch(() => [])
+        registrationsApi.list(item.id).catch(() => []),
+        contentApi.access(item.id).catch(() => null)
       ])
-        .then(([mine, eventRegistrations]) => {
+        .then(([mine, eventRegistrations, access]) => {
           setRegistration(mine);
           setRegistrations(eventRegistrations);
+          setEventAccess(access);
         })
         .catch(() => setRegistration(null));
+    } else {
+      setEventAccess(null);
     }
-  }, [item?.id, item?.type, user.isAuthenticated]);
+  }, [item?.id, item?.type, user.isAuthenticated, user.permissions]);
 
   useEffect(() => {
     if (item?.type !== "EVENT") {
@@ -60,8 +67,8 @@ export function ContentDetailPage({ slug, type, user }) {
     return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
   }
 
-  const roles = new Set(user.roles ?? []);
-  const isAdmin = roles.has("Admin") || roles.has("ADMIN");
+  const canEditContent = hasPermission(user, permissions.contentEdit) || Boolean(eventAccess?.canEditEvent);
+  const canViewRegistrations = user.isAuthenticated;
   const isEvent = item.type === "EVENT";
   const hasImage = Boolean(item.pictureUrl);
   const registrationsPath = `/react/events/${item.slug}/registrations`;
@@ -132,13 +139,13 @@ export function ContentDetailPage({ slug, type, user }) {
                       Tilmeld
                     </a>
                   ) : null}
-                  {user.isAuthenticated && (
+                  {canViewRegistrations && (
                     <Link className="menu-attend-button" href={registrationsPath}>
                       <Users size={16} />
                       Tilmeldte
                     </Link>
                   )}
-                  {isAdmin && (
+                  {canEditContent && (
                     <Link className="menu-attend-button" href={editPath}>
                       <Edit3 size={16} />
                       Rediger
@@ -165,12 +172,6 @@ export function ContentDetailPage({ slug, type, user }) {
       </article>
     </MenuLayout>
   );
-}
-
-function isRegistrationOpen(item) {
-  if (item.status !== "PUBLISHED") return false;
-  const deadline = item.endDate || item.startDate;
-  return Boolean(deadline && new Date(deadline).getTime() > Date.now());
 }
 
 function shortLinkLabel(label) {

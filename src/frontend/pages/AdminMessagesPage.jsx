@@ -232,7 +232,7 @@ export function AdminMessagesPage({ isAdmin }) {
     : recipientPreview?.recipients ?? recipientPreview?.Recipients ?? [];
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/messages" canWrite={false}><p className="status-message status-message-warning">Kun ADMIN kan sende beskeder.</p></AdminLayout>;
+    return <AdminLayout active="/react/admin/messages" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at sende beskeder.</p></AdminLayout>;
   }
 
   return (

@@ -4,7 +4,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 /**
  * Reads the antiforgery token emitted by the ASP.NET host page.
  */
-async function getCsrfToken() {
+export async function getCsrfToken() {
   const response = await fetch("/api/account/csrf-token", {
     credentials: "same-origin",
     cache: "no-store"
@@ -128,9 +128,13 @@ export const contentApi = {
   },
   listAdmin: (type) => request(`/api/content/admin${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   getBySlug: (slug) => request(`/api/content/slug/${encodeURIComponent(slug)}`),
+  getById: (id) => request(`/api/content/${id}`),
+  access: (id) => request(`/api/content/${id}/access`),
   create: (payload) => request("/api/content", { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) => request(`/api/content/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  delete: (id) => request(`/api/content/${id}`, { method: "DELETE" })
+  delete: (id) => request(`/api/content/${id}`, { method: "DELETE" }),
+  uploadImage: (id, file) => uploadRequest(`/api/content/${id}/image`, file),
+  deleteImage: (id) => request(`/api/content/${id}/image`, { method: "DELETE" })
 };
 
 /**
@@ -141,6 +145,7 @@ export const registrationsApi = {
   register: (contentId, payload) => request(`/api/content/${contentId}/registrations`, { method: "POST", body: JSON.stringify(payload) }),
   add: (contentId, payload) => request(`/api/content/${contentId}/registrations/admin`, { method: "POST", body: JSON.stringify(payload) }),
   unregister: (contentId) => request(`/api/content/${contentId}/registrations/me`, { method: "DELETE" }),
+  remove: (contentId, registrationId) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "DELETE" }),
   list: (contentId) => request(`/api/content/${contentId}/registrations`),
   update: (contentId, registrationId, payload) => request(`/api/content/${contentId}/registrations/${registrationId}`, { method: "PUT", body: JSON.stringify(payload) })
 };
@@ -162,6 +167,8 @@ export const emailTemplatesApi = {
 export const membersApi = {
   list: () => request("/api/members"),
   listAdmin: () => request("/api/members/admin"),
+  listFinance: () => request("/api/members/finance"),
+  listForEvent: (contentId) => request(`/api/members/event/${contentId}`),
   updateStatus: (id, status) => request(`/api/members/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
   massUpdateStatus: (payload) => request("/api/members/admin/mass-status", { method: "POST", body: JSON.stringify(payload) })
 };
@@ -174,7 +181,9 @@ export const rolesApi = {
   create: (name) => request("/api/roles", { method: "POST", body: JSON.stringify({ name }) }),
   delete: (id) => request(`/api/roles/${id}`, { method: "DELETE" }),
   members: (id) => request(`/api/roles/${id}/members`),
-  updateMembers: (id, payload) => request(`/api/roles/${id}/members`, { method: "PUT", body: JSON.stringify(payload) })
+  updateMembers: (id, payload) => request(`/api/roles/${id}/members`, { method: "PUT", body: JSON.stringify(payload) }),
+  permissions: (id) => request(`/api/roles/${id}/permissions`),
+  updatePermissions: (id, permissionCodes) => request(`/api/roles/${id}/permissions`, { method: "PUT", body: JSON.stringify({ permissionCodes }) })
 };
 
 /**

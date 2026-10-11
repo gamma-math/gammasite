@@ -1,16 +1,19 @@
 import { Fragment, useEffect, useState } from "react";
 import { CircleMinus, CirclePlus, LogIn, Plus } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, membersApi, registrationsApi } from "../services/api.js";
 import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
+import { hasAnyPermission, permissions } from "../utils/access.js";
+import { sortRegistrations } from "../utils/registrationSort.js";
+import { isRegistrationOpen } from "../utils/registrationOpen.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
   { value: "ORGANIZER", label: "Arrangør" },
-  { value: "INTERESTED", label: "Interesseret" },
-  { value: "DECLINED", label: "Afmeldt" }
+  { value: "INTERESTED", label: "Interesseret" }
 ];
 
 /**
@@ -23,9 +26,13 @@ export function EventRegistrationsPage({ slug, user }) {
   const [memberSearch, setMemberSearch] = useState("");
   const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: true });
   const [expandedRegistrationIds, setExpandedRegistrationIds] = useState(new Set());
+  const [eventAccess, setEventAccess] = useState(null);
+  const [registrationToRemove, setRegistrationToRemove] = useState(null);
+  const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [error, setError] = useState("");
-  const roles = new Set(user.roles ?? []);
-  const isAdmin = roles.has("Admin") || roles.has("ADMIN");
+  const canViewRegistrations = user.isAuthenticated;
+  const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
+  const canEditRegistrations = permissionCanEditRegistrations || Boolean(eventAccess?.canEditRegistrations);
 
   useEffect(() => {
     let active = true;
@@ -36,11 +43,16 @@ export function EventRegistrationsPage({ slug, user }) {
         }
 
         setItem(content);
-        if (user.isAuthenticated) {
+        const access = user.isAuthenticated ? await contentApi.access(content.id).catch(() => null) : null;
+        if (!active) {
+          return;
+        }
+        setEventAccess(access);
+        if (user.isAuthenticated && canViewRegistrations) {
           setRegistrations(await registrationsApi.list(content.id));
         }
-        if (isAdmin) {
-          setMembers(await membersApi.listAdmin());
+        if (permissionCanEditRegistrations || access?.canEditRegistrations) {
+          setMembers(await membersApi.listForEvent(content.id));
         }
       })
       .catch((err) => {
@@ -52,7 +64,7 @@ export function EventRegistrationsPage({ slug, user }) {
     return () => {
       active = false;
     };
-  }, [slug, user.isAuthenticated, isAdmin]);
+  }, [slug, user.isAuthenticated, canViewRegistrations, permissionCanEditRegistrations]);
 
   async function updateRegistration(registration, changes) {
     const payload = {
@@ -63,6 +75,23 @@ export function EventRegistrationsPage({ slug, user }) {
     };
     const updated = await registrationsApi.update(item.id, registration.id, payload);
     setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+  }
+
+  async function unregisterRegistration(registration) {
+    if (!registrationToRemove || isRemovingRegistration) {
+      return;
+    }
+
+    setIsRemovingRegistration(true);
+    try {
+      await registrationsApi.remove(item.id, registrationToRemove.id);
+      setRegistrations((current) => current.filter((entry) => entry.id !== registrationToRemove.id));
+      setRegistrationToRemove(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsRemovingRegistration(false);
+    }
   }
 
   async function addRegistration(event) {
@@ -114,6 +143,12 @@ export function EventRegistrationsPage({ slug, user }) {
     );
   }
 
+  if (!canViewRegistrations) {
+    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
+  }
+
+  const sortedRegistrations = sortRegistrations(registrations);
+  const registrationOpen = isRegistrationOpen(item);
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -135,7 +170,7 @@ export function EventRegistrationsPage({ slug, user }) {
         </Link>
       </div>
 
-      {isAdmin && (
+      {canEditRegistrations && (
         <form className="menu-registration-add" onSubmit={addRegistration}>
           <label className="admin-field menu-member-combobox">
             <span>Tilføj deltager</span>
@@ -188,14 +223,14 @@ export function EventRegistrationsPage({ slug, user }) {
             </tr>
           </thead>
           <tbody>
-            {registrations.map((registration) => {
+            {sortedRegistrations.map((registration) => {
               const isExpanded = expandedRegistrationIds.has(registration.id);
               return (
                 <Fragment key={registration.id}>
                   <tr>
                     <td>
                       <div className="menu-registration-person">
-                        {isAdmin && (
+                        {canEditRegistrations && (
                           <button
                             className="menu-registration-mobile-toggle"
                             type="button"
@@ -211,21 +246,28 @@ export function EventRegistrationsPage({ slug, user }) {
                       </div>
                     </td>
                     <td className="menu-registration-desktop-cell">
-                      {isAdmin ? (
+                      {canEditRegistrations ? (
                         <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                       ) : (
                         <span className="menu-role-badge menu-role-badge-attendee">{registrationLabel(registration.registrationType)}</span>
                       )}
                     </td>
                     <td className="menu-registration-desktop-cell">
-                      {isAdmin ? (
-                        <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                      {canEditRegistrations ? (
+                        <div className="menu-registration-action-group">
+                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          {registrationOpen && (
+                            <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                              Afmeld
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span>{registration.registered ? "Ja" : "Nej"}</span>
                       )}
                     </td>
                   </tr>
-                  {isAdmin && isExpanded && (
+                  {canEditRegistrations && isExpanded && (
                     <tr className="menu-registration-mobile-detail-row">
                       <td colSpan="3">
                         <div className="menu-registration-mobile-details">
@@ -233,7 +275,14 @@ export function EventRegistrationsPage({ slug, user }) {
                             <span>Rolle</span>
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                           </label>
-                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          <div className="menu-registration-action-group menu-registration-unregister-action">
+                            <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                            {registrationOpen && (
+                              <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
+                                Afmeld
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -241,7 +290,7 @@ export function EventRegistrationsPage({ slug, user }) {
                 </Fragment>
               );
             })}
-            {registrations.length === 0 && (
+            {sortedRegistrations.length === 0 && (
               <tr>
                 <td colSpan="3">Der er ingen tilmeldte endnu.</td>
               </tr>
@@ -249,6 +298,17 @@ export function EventRegistrationsPage({ slug, user }) {
           </tbody>
         </table>
       </div>
+
+      {registrationToRemove && (
+        <ConfirmationDialog
+          title="Afmeld tilmelding"
+          message={`Er du sikker på, at ${attendeeName(registrationToRemove)} skal afmeldes?`}
+          confirmLabel="Ja, afmeld"
+          onConfirm={unregisterRegistration}
+          onCancel={() => !isRemovingRegistration && setRegistrationToRemove(null)}
+          isBusy={isRemovingRegistration}
+        />
+      )}
     </MenuLayout>
   );
 }

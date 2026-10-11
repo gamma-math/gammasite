@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Globalization;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
@@ -18,7 +19,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/messages")]
-    [Authorize(Roles = "Admin,ADMIN")]
+    [Authorize(Policy = PermissionPolicies.MessagesEdit)]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for recipient previews, message rendering, and email sending.
@@ -236,12 +237,34 @@ namespace GamMaSite.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(role))
                 {
-                    AddRecipients(recipients, await _userManager.GetUsersInRoleAsync(role));
+                    var normalizedRole = role.Trim().ToUpperInvariant();
+                    var roleUserIds = await _db.UserRoles
+                        .Join(_db.Roles,
+                            userRole => userRole.RoleId,
+                            identityRole => identityRole.Id,
+                            (userRole, identityRole) => new { userRole.UserId, identityRole.NormalizedName })
+                        .Where(item => item.NormalizedName == normalizedRole)
+                        .Select(item => item.UserId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    if (roleUserIds.Count > 0)
+                    {
+                        var roleRecipients = await _userManager.Users
+                            .AsNoTracking()
+                            .Where(user => roleUserIds.Contains(user.Id))
+                            .ToListAsync();
+                        AddRecipients(recipients, roleRecipients);
+                    }
                 }
             }
 
-            var eventIds = (recipientEventIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().ToArray();
-            if (eventIds.Length > 0)
+            // Keep this as a List rather than an array. With EF Core 9 on .NET 10,
+            // an int[] .Contains expression can be funcletized via ReadOnlySpan<int>,
+            // which EF cannot compile and causes recipient resolution to fail before
+            // the SQL query is sent to MySQL.
+            var eventIds = (recipientEventIds ?? Array.Empty<int>()).Where(id => id > 0).Distinct().ToList();
+            if (eventIds.Count > 0)
             {
                 var eventUserIds = await _db.EventRegistrations
                     .AsNoTracking()
@@ -446,7 +469,11 @@ namespace GamMaSite.Controllers
 
         private static string FormatDate(DateTime? value)
         {
-            return value.HasValue ? value.Value.ToLocalTime().ToString("d. MMMM yyyy 'kl.' HH.mm") : string.Empty;
+            // Content event dates are stored as local wall-clock times. Do not
+            // convert them through the server timezone when rendering emails.
+            return value.HasValue
+                ? value.Value.ToString("d. MMMM yyyy 'kl.' HH.mm", CultureInfo.GetCultureInfo("da-DK"))
+                : string.Empty;
         }
 
         private static string Html(string value)

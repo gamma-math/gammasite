@@ -29,6 +29,13 @@ namespace GamMaSite.ViewModels.Api
         public DateTime CreatedAt { get; set; }
     }
 
+    public class FinanceMemberDto
+    {
+        public string Id { get; set; }
+
+        public string Name { get; set; }
+    }
+
     public class UpdateMemberStatusRequest
     {
         public string Status { get; set; }
@@ -74,5 +81,28 @@ namespace GamMaSite.ViewModels.Api
         public string[] AddIds { get; set; }
 
         public string[] DeleteIds { get; set; }
+    }
+
+    public class PermissionDto
+    {
+        public int Id { get; set; }
+
+        public string Code { get; set; }
+
+        public string Description { get; set; }
+
+        public bool Enabled { get; set; }
+    }
+
+    public class RolePermissionsDto
+    {
+        public RoleDto Role { get; set; }
+
+        public IReadOnlyList<PermissionDto> Permissions { get; set; }
+    }
+
+    public class UpdateRolePermissionsRequest
+    {
+        public string[] PermissionCodes { get; set; }
     }
 }

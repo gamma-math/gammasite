@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -11,7 +12,7 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/editor")]
-    [Authorize(Roles = "Admin,ADMIN")]
+    [Authorize(Policy = PermissionPolicies.ContentOrEmailTemplatesOrMessages)]
     [AutoValidateAntiforgeryToken]
     /* Stores images uploaded from the React rich text editors. */
     public class ApiEditorController : ControllerBase

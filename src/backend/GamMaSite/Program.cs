@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.IO;
 using System.Net;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
@@ -9,15 +10,20 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.FileProviders;
 using Stripe;
+using GamMaSite.Configuration;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
 
+
+LocalEnvironment.Load();
 
 /* Create WebApplicationBuilder */
 var builder = WebApplication.CreateBuilder(args);
@@ -73,9 +79,32 @@ StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
+builder.Services.AddScoped<IContentMediaService, ContentMediaService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
+builder.Services.AddScoped<FinanceReportService>();
+builder.Services.AddScoped<FinanceImportService>();
+builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PermissionPolicies.ContentEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrRegistrations, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrEmailTemplates, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.EmailTemplatesEdit)));
+    options.AddPolicy(PermissionPolicies.EmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.ContentOrEmailTemplatesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.EmailTemplatesEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.MemberData, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit, PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit, PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.FinanceMemberData, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.RegistrationsEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RegistrationsEdit)));
+    options.AddPolicy(PermissionPolicies.EmailTemplatesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.EmailTemplatesEdit)));
+    options.AddPolicy(PermissionPolicies.MessagesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.RolesEdit, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit)));
+    options.AddPolicy(PermissionPolicies.RolesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit)));
+    options.AddPolicy(PermissionPolicies.FinanceViewAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.FinanceEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceEditAll)));
+});
 
 // Add Github
 builder.Services.AddScoped<IIndexService, GithubService>(i =>
@@ -176,6 +205,15 @@ if (!env.IsDevelopment())
 app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+var contentMediaRoot = ContentMediaService.ResolveRootPath(app.Configuration, env.ContentRootPath);
+if (Directory.Exists(contentMediaRoot))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(contentMediaRoot),
+        RequestPath = ContentMediaService.PublicPath
+    });
+}
 app.MapStaticAssets();
 
 app.UseRouting();
@@ -187,6 +225,7 @@ app.UseAuthorization();
 // Controller routes and Razor pages
 app.MapControllers();
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
+app.MapFallbackToController("/react/{*path:nonfile}", "Index", "React");
 app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/react/account/login{context.Request.QueryString}"));
 app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/react/account/register{context.Request.QueryString}"));
 app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/react/account/forgot-password"));

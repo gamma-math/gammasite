@@ -1,7 +1,5 @@
 ﻿@using GamMaSite.Services;
 @model ContentMetas;
-@inject UserManager<SiteUser> UserManager
-
 @{
     ViewData["Title"] = "Bibliotek";
 }
@@ -29,10 +27,6 @@
 @if (Model.HasParent())
 {
     <a class="btn btn-secondary" href="@string.Concat("/library?path=", Model.GetParent())">Tilbage</a>
-}
-@if (User.IsInRole("Admin"))
-{
-    <a class="btn btn-primary" href="https://github.com/gamma-math/gammastatic">Redigér filer</a>
 }
 <script>
     $(document).ready(function () {

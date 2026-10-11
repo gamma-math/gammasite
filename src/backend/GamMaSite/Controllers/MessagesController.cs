@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
  */
 namespace GamMaSite.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PermissionPolicies.MessagesEdit)]
     public class MessagesController : Controller
     {
         private readonly RoleManager<IdentityRole> _roleManager;

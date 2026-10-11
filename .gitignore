@@ -55,9 +55,15 @@ multiproject.code-workspace
 # Local environment and ad-hoc run files
 .env
 .env.*
+/src/backend/GamMaSite/appsettings.Development.json
 *.log
 run-local.*
 legacy-cleanup-notes.txt
+*TEMP*
 
 # Frontend dependencies
 node_modules/
+
+# Local, user-uploaded content images. Keep the root directory for local setup.
+/src/backend/gammasite-media/*
+!/src/backend/gammasite-media/.gitkeep

@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using GamMaSite.Data;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +16,6 @@ namespace GamMaSite.Controllers
 {
     [ApiController]
     [Route("api/roles")]
-    [Authorize(Roles = "Admin,ADMIN")]
     [AutoValidateAntiforgeryToken]
     /*
      * Provides React admin endpoints for role listing, editing, and membership assignment.
@@ -21,14 +24,20 @@ namespace GamMaSite.Controllers
     {
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly UserManager<SiteUser> _userManager;
+        private readonly ApplicationDbContext _db;
 
-        public ApiRolesController(RoleManager<IdentityRole> roleManager, UserManager<SiteUser> userManager)
+        public ApiRolesController(
+            RoleManager<IdentityRole> roleManager,
+            UserManager<SiteUser> userManager,
+            ApplicationDbContext db = null)
         {
             _roleManager = roleManager;
             _userManager = userManager;
+            _db = db;
         }
 
         [HttpGet]
+        [Authorize(Policy = PermissionPolicies.RolesOrMessages)]
         public async Task<IActionResult> GetRoles()
         {
             var roles = await _roleManager.Roles.OrderBy(role => role.Name).ToListAsync();
@@ -36,6 +45,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> Create(SaveRoleRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.Name))
@@ -49,6 +59,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> Delete(string id)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -67,6 +78,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("{id}/members")]
+        [Authorize(Policy = PermissionPolicies.RolesOrMessages)]
         public async Task<IActionResult> GetMembers(string id)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -89,6 +101,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("{id}/members")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> UpdateMembers(string id, UpdateRoleMembersRequest request)
         {
             var role = await _roleManager.FindByIdAsync(id);
@@ -116,6 +129,103 @@ namespace GamMaSite.Controllers
             }
 
             return await GetMembers(id);
+        }
+
+        [HttpGet("{id}/permissions")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
+        public async Task<IActionResult> GetPermissions(string id)
+        {
+            if (_db == null)
+            {
+                return StatusCode(500, new { error = "Permission-databasen er ikke tilgængelig." });
+            }
+
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null)
+            {
+                return NotFound();
+            }
+
+            var enabledCodes = await _db.RolePermissions
+                .Where(item => item.RoleId == id)
+                .Select(item => item.Permission.Code)
+                .ToListAsync();
+            var enabled = new HashSet<string>(enabledCodes, StringComparer.OrdinalIgnoreCase);
+
+            var permissions = await _db.Permissions
+                .AsNoTracking()
+                .OrderBy(item => item.Code)
+                .ToListAsync();
+
+            return Ok(new RolePermissionsDto
+            {
+                Role = ToDto(role),
+                Permissions = permissions.Select(permission => new PermissionDto
+                {
+                    Id = permission.Id,
+                    Code = permission.Code,
+                    Description = permission.Description,
+                    Enabled = enabled.Contains(permission.Code)
+                }).ToList()
+            });
+        }
+
+        [HttpPut("{id}/permissions")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
+        public async Task<IActionResult> UpdatePermissions(string id, UpdateRolePermissionsRequest request)
+        {
+            if (_db == null)
+            {
+                return StatusCode(500, new { error = "Permission-databasen er ikke tilgængelig." });
+            }
+
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null)
+            {
+                return NotFound();
+            }
+
+            var requestedCodes = new HashSet<string>(
+                request?.PermissionCodes ?? Array.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
+            if (string.Equals(role.Name, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                requestedCodes.UnionWith(new[]
+                {
+                    PermissionCodes.ContentEdit,
+                    PermissionCodes.RegistrationsEdit,
+                    PermissionCodes.MessagesEdit,
+                    PermissionCodes.RolesEdit
+                });
+            }
+            var permissions = await _db.Permissions.ToListAsync();
+            var selected = permissions
+                .Where(permission => requestedCodes.Contains(permission.Code))
+                .ToList();
+
+            var current = await _db.RolePermissions
+                .Where(item => item.RoleId == id)
+                .ToListAsync();
+            _db.RolePermissions.RemoveRange(current);
+            _db.RolePermissions.AddRange(selected.Select(permission => new RolePermission
+            {
+                RoleId = id,
+                PermissionId = permission.Id
+            }));
+            await _db.SaveChangesAsync();
+
+            var existingClaims = await _roleManager.GetClaimsAsync(role);
+            foreach (var claim in existingClaims.Where(claim => claim.Type == "permission").ToList())
+            {
+                await _roleManager.RemoveClaimAsync(role, claim);
+            }
+
+            foreach (var permission in selected)
+            {
+                await _roleManager.AddClaimAsync(role, new Claim("permission", permission.Code));
+            }
+
+            return await GetPermissions(id);
         }
 
         private static RoleDto ToDto(IdentityRole role)

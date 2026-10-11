@@ -6,6 +6,7 @@ using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
 {
@@ -28,10 +29,14 @@ namespace GamMaSite.Services
         };
 
         private readonly ApplicationDbContext _db;
+        private readonly IContentMediaService _contentMedia;
+        private readonly ILogger<ContentService> _logger;
 
-        public ContentService(ApplicationDbContext db)
+        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null, ILogger<ContentService> logger = null)
         {
             _db = db;
+            _contentMedia = contentMedia;
+            _logger = logger;
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
@@ -146,12 +151,25 @@ namespace GamMaSite.Services
 
             var now = DateTime.UtcNow;
             var status = NormalizeStatus(request.Status);
+            var previousSlug = item.Slug;
+            var nextSlug = Required(request.Slug, nameof(request.Slug));
+            var oldPictureUrl = item.PictureUrl;
+            ContentMediaSlugRename slugRename = null;
+
+            if (_contentMedia != null &&
+                !string.Equals(previousSlug, nextSlug, StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(oldPictureUrl) &&
+                string.Equals(request.PictureUrl, oldPictureUrl, StringComparison.Ordinal) &&
+                string.Equals(request.Type, item.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                slugRename = await _contentMedia.PrepareSlugRenameAsync(item, previousSlug, nextSlug);
+            }
 
             item.Title = Required(request.Title, nameof(request.Title));
-            item.Slug = Required(request.Slug, nameof(request.Slug));
+            item.Slug = nextSlug;
             item.Summary = request.Summary;
             item.Body = request.Body;
-            item.PictureUrl = request.PictureUrl;
+            item.PictureUrl = slugRename?.NewUrl ?? request.PictureUrl;
             item.Tags = request.Tags;
             item.Type = NormalizeType(request.Type);
             item.Status = status;
@@ -167,6 +185,35 @@ namespace GamMaSite.Services
 
             await _db.SaveChangesAsync();
 
+            if (slugRename != null)
+            {
+                try
+                {
+                    await _contentMedia.MoveLocalFileAsync(slugRename);
+                }
+                catch (ContentMediaStorageException)
+                {
+                    item.Slug = previousSlug;
+                    item.PictureUrl = oldPictureUrl;
+                    item.Updated = DateTime.UtcNow;
+                    try
+                    {
+                        await _db.SaveChangesAsync();
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        _logger?.LogError(rollbackException,
+                            "Could not restore picture URL for content item {ContentItemId} after its image rename failed.", item.Id);
+                    }
+
+                    throw;
+                }
+            }
+            else if (_contentMedia != null && !string.Equals(oldPictureUrl, item.PictureUrl, StringComparison.Ordinal))
+            {
+                await DeleteLocalFileBestEffortAsync(oldPictureUrl);
+            }
+
             return await GetByIdAsync(item.Id, true);
         }
 
@@ -178,9 +225,40 @@ namespace GamMaSite.Services
                 return false;
             }
 
+            var pictureUrl = item.PictureUrl;
             _db.ContentItems.Remove(item);
             await _db.SaveChangesAsync();
+
+            if (_contentMedia != null)
+            {
+                await DeleteLocalFileBestEffortAsync(pictureUrl);
+            }
+
             return true;
+        }
+
+        private async Task DeleteLocalFileBestEffortAsync(string pictureUrl)
+        {
+            const int attempts = 2;
+            for (var attempt = 1; attempt <= attempts; attempt++)
+            {
+                try
+                {
+                    await _contentMedia.DeleteLocalFileIfUnreferencedAsync(pictureUrl);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex,
+                        "Could not clean up unreferenced content image {PictureUrl} (attempt {Attempt}/{Attempts}).",
+                        pictureUrl, attempt, attempts);
+
+                    if (attempt < attempts)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100));
+                    }
+                }
+            }
         }
 
         private static IQueryable<ContentItem> IncludeLinks(IQueryable<ContentItem> query)

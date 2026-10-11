@@ -22,6 +22,10 @@ namespace GamMaSite.Data
 
         public DbSet<EmailTemplate> EmailTemplates { get; set; }
 
+        public DbSet<Permission> Permissions { get; set; }
+
+        public DbSet<RolePermission> RolePermissions { get; set; }
+
         public ApplicationDbContext() : base()
         {
         }
@@ -59,6 +63,32 @@ namespace GamMaSite.Data
                 entity.Property(m => m.UserId).HasMaxLength(127);
                 entity.Property(m => m.LoginProvider).HasMaxLength(127);
                 entity.Property(m => m.Name).HasMaxLength(127);
+            });
+
+            builder.Entity<Permission>(entity =>
+            {
+                entity.ToTable("Permissions");
+                entity.HasKey(m => m.Id);
+                entity.HasIndex(m => m.Code).IsUnique().HasDatabaseName("UX_Permissions_Code");
+                entity.Property(m => m.Code).HasMaxLength(128).IsRequired();
+                entity.Property(m => m.Description).HasMaxLength(512);
+            });
+
+            builder.Entity<RolePermission>(entity =>
+            {
+                entity.ToTable("RolePermissions");
+                entity.HasKey(m => new { m.RoleId, m.PermissionId });
+                entity.Property(m => m.RoleId).HasMaxLength(128).IsRequired();
+
+                entity.HasOne(m => m.Role)
+                    .WithMany()
+                    .HasForeignKey(m => m.RoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.Permission)
+                    .WithMany(m => m.RolePermissions)
+                    .HasForeignKey(m => m.PermissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<ContentItem>(entity =>

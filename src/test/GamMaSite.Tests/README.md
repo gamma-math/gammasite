@@ -54,6 +54,9 @@ dotnet test GamMaSite.sln --filter FullyQualifiedName~GamMaSite.Tests
 
 - `Api*ControllerTests.cs` covers React API endpoints and HTTP response behavior.
 - `*ServiceTests.cs` covers application service rules using mocks or an in-memory database.
+- `ApiFinanceControllerTests.cs` covers Finance API boundary validation, CSV upload guards, and CSV template downloads.
+- `FinanceImportServiceTests.cs` covers CSV validation, separator/decimal parsing, and required MobilePay fields before the database boundary.
+- `FinanceReportServiceTests.cs` covers budget, posting-group, and posting validation before write operations.
 - `RegisterModelTests.cs` and `ManageIndexModelTests.cs` cover ASP.NET Identity page models.
 - `TestDoubles.cs` contains shared Identity mocks, claims, and page context helpers.
 
@@ -64,3 +67,5 @@ External integrations are not called by the unit tests. Stripe, SMTP, Google Cal
 The test project is included in `GamMaSite.sln`, so running the solution-level command also builds the application and executes this test project.
 
 Authorization attributes, antiforgery middleware, rate limiting, and full HTTP routing are not covered by the current unit-test setup. These remain known integration-test risks and require a separate `WebApplicationFactory` setup.
+
+Finance also has deliberate integration-test gaps: PostgreSQL upserts and conflict keys, import-history persistence, bank/MobilePay matching and derived-posting generation, read/write role permissions, timestamp triggers, and the React workbook export still need tests against a disposable database and browser/API test host.

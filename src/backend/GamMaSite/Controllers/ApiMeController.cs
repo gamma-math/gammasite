@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,10 +16,12 @@ namespace GamMaSite.Controllers
     public class ApiMeController : ControllerBase
     {
         private readonly UserManager<SiteUser> _userManager;
+        private readonly IAccessControlService _accessControl;
 
-        public ApiMeController(UserManager<SiteUser> userManager)
+        public ApiMeController(UserManager<SiteUser> userManager, IAccessControlService accessControl)
         {
             _userManager = userManager;
+            _accessControl = accessControl;
         }
 
         [HttpGet]
@@ -30,7 +33,8 @@ namespace GamMaSite.Controllers
                 return Ok(new
                 {
                     isAuthenticated = false,
-                    roles = new string[] { }
+                    roles = new string[] { },
+                    permissions = new string[] { }
                 });
             }
 
@@ -40,11 +44,13 @@ namespace GamMaSite.Controllers
                 return Ok(new
                 {
                     isAuthenticated = false,
-                    roles = new string[] { }
+                    roles = new string[] { },
+                    permissions = new string[] { }
                 });
             }
 
             var roles = await _userManager.GetRolesAsync(user);
+            var permissions = await _accessControl.GetPermissionsAsync(User);
             return Ok(new
             {
                 isAuthenticated = true,
@@ -52,7 +58,8 @@ namespace GamMaSite.Controllers
                 userName = user.UserName,
                 email = user.Email,
                 name = user.Navn,
-                roles = roles.ToArray()
+                roles = roles.ToArray(),
+                permissions
             });
         }
     }

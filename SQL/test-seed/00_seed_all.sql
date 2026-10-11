@@ -10,6 +10,9 @@ DELETE FROM `ContentItems`;
 DELETE FROM `EmailTemplates`;
 DELETE FROM `AspNetUserTokens`;
 DELETE FROM `AspNetUserRoles`;
+DELETE FROM `AspNetRoleClaims`;
+DELETE FROM `RolePermissions`;
+DELETE FROM `Permissions`;
 DELETE FROM `AspNetUsers`;
 DELETE FROM `AspNetRoles`;
 
@@ -18,6 +21,68 @@ INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) V
 ('role-test', 'Test', 'TEST', '73f673e8-b29b-46dc-9bf1-8ca4a9422cc1'),
 ('role-finance', 'Finance', 'FINANCE', '793dddb1-a177-4a9a-9ff7-a2224f8533e1'),
 ('role-mail', 'Rolle mail test', 'ROLLE MAIL TEST', '2c2212b9-5c03-4f83-94fd-97769ad33dc4');
+
+INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) VALUES
+('role-kasserer', 'Kasserer', 'KASSERER', 'd7b5c54e-1a7a-4d42-a7eb-7e12f45c3f01'),
+('role-revisor', 'Revisor', 'REVISOR', 'e0c7bd31-8935-4db8-88b8-72b0c5b2a302'),
+('role-arrangoer', CONVERT(0x417272616E67C3B872 USING utf8mb4), CONVERT(0x415252414E47C39852 USING utf8mb4), 'f1a6df40-9e4d-4fa7-8e6f-6e5d7f8d7c03'),
+('role-kommunikation', 'Kommunikationsansvarlig', 'KOMMUNIKATIONSANSVARLIG', 'a8e5a4f9-2f06-4a7b-ae11-2d1eb4c7d504');
+
+INSERT INTO `Permissions` (`Code`, `Description`) VALUES
+  ('content.edit', 'Se, oprette, redigere, publicere og slette events og nyheder'),
+  ('registrations.edit', 'Redigere tilmeldinger til alle events'),
+  ('finance.view.all', 'Se alle finanser'),
+  ('finance.edit.all', 'Se og redigere alle finanser'),
+  ('messages.edit', CONVERT(0x5365206265736B65646F6D72C3A5646574206F672073656E6465206265736B65646572 USING utf8mb4)),
+  ('email_templates.edit', 'Se, oprette, redigere og slette beskedskabeloner'),
+  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4))
+ON DUPLICATE KEY UPDATE
+  `Description` = VALUES(`Description`);
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-admin', `Id`
+FROM `Permissions`
+WHERE `Code` IN (
+  'content.edit',
+  'registrations.edit',
+  'finance.view.all',
+  'finance.edit.all',
+  'messages.edit',
+  'email_templates.edit',
+  'roles.edit'
+);
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-kasserer', `Id`
+FROM `Permissions`
+WHERE `Code` IN ('finance.view.all', 'finance.edit.all');
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-revisor', `Id`
+FROM `Permissions`
+WHERE `Code` = 'finance.view.all';
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-arrangoer', `Id`
+FROM `Permissions`
+WHERE `Code` IN ('content.edit', 'registrations.edit');
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-kommunikation', `Id`
+FROM `Permissions`
+WHERE `Code` IN ('messages.edit', 'email_templates.edit');
+
+INSERT INTO `AspNetRoleClaims` (`ClaimType`, `ClaimValue`, `RoleId`)
+SELECT 'permission', p.`Code`, rp.`RoleId`
+FROM `RolePermissions` rp
+INNER JOIN `Permissions` p ON p.`Id` = rp.`PermissionId`
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `AspNetRoleClaims` existing
+  WHERE existing.`ClaimType` = 'permission'
+    AND existing.`ClaimValue` = p.`Code`
+    AND existing.`RoleId` = rp.`RoleId`
+);
 
 INSERT INTO `AspNetUsers` (
   `Id`, `ConcurrencyStamp`, `Email`, `EmailConfirmed`, `PasswordHash`, `SecurityStamp`,
@@ -137,8 +202,22 @@ INSERT INTO `ContentItems` (
 (
   'Professoraften',
   'professoraften-2026',
-  'En faglig aften med oplæg fra professorer og god videnskab.',
-  'Vi runder året af med professoraften: en faglig aften med oplæg fra professorer, god videnskab og tid til spørgsmål og samtaler på tværs af årgange.',
+  'Få et indblik i den matematiske forskningsverden, når Jesper Grodal og en endnu ikke offentliggjort oplægsholder besøger GamMa.',
+  CONCAT(
+    '<h2>Professoraften</h2>',
+    '<p>Kære medlemmer</p>',
+    '<p>Går du og savner et indblik i den matematiske forskningsverden? Så frygt ej!</p>',
+    '<p>Den <strong>2. december</strong> (blot 10 dage før vores årlige julefrokost) inviterer GamMa til professoraften.</p>',
+    '<p>Her får vi besøg af to forskere fra Københavns Universitet, som vil fortælle om deres forskning, faglige interesser og arbejde med matematik.</p>',
+    '<p>Det bliver en spændende aften med mulighed for at få et indblik i, hvad der rører sig på den matematiske forskningsfront.</p>',
+    '<h3>Oplægsholdere</h3>',
+    '<ul>',
+    '<li><strong>Jesper Grodal</strong>, professor ved Københavns Universitet</li>',
+    '<li><strong>TBA</strong></li>',
+    '</ul>',
+    '<p>Sæt derfor allerede nu kryds i kalenderen den 2. december, og kom med til en aften i matematikkens tegn!</p>',
+    '<p>Vi glæder os til at se jer!</p>'
+  ),
   'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=1200&q=80',
   'event,professoraften,faglig-aften',
   'EVENT',
