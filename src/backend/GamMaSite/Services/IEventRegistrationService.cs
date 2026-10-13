@@ -16,6 +16,10 @@ namespace GamMaSite.Services
 
         Task<EventRegistration> GetRegistrationAsync(int contentItemId, string userId);
 
+        Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId);
+
+        Task PromoteWaitlistedAsync(int contentItemId);
+
         Task<EventRegistration> UpdateAsync(int contentItemId, int registrationId, UpdateEventRegistrationRequest request);
 
         Task<bool> UnregisterAsync(int contentItemId, string userId);

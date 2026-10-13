@@ -142,6 +142,7 @@ export const contentApi = {
  */
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
+  summary: (contentId) => request(`/api/content/${contentId}/registrations/summary`),
   register: (contentId, payload) => request(`/api/content/${contentId}/registrations`, { method: "POST", body: JSON.stringify(payload) }),
   add: (contentId, payload) => request(`/api/content/${contentId}/registrations/admin`, { method: "POST", body: JSON.stringify(payload) }),
   unregister: (contentId) => request(`/api/content/${contentId}/registrations/me`, { method: "DELETE" }),

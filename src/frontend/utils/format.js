@@ -58,6 +58,7 @@ export function emptyContent(type) {
     type,
     status: "DRAFT",
     showOnFrontPage: true,
+    maxParticipants: null,
     startDate: "",
     endDate: "",
     publishedAt: "",

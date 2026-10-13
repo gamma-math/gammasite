@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS `ContentItems` (
   `Tags` varchar(512) DEFAULT NULL,
   `Type` varchar(32) NOT NULL,
   `Status` varchar(32) NOT NULL,
+  `MaxParticipants` int DEFAULT NULL,
   `ShowOnFrontPage` tinyint NOT NULL DEFAULT 1,
   `StartDate` datetime DEFAULT NULL,
   `EndDate` datetime DEFAULT NULL,

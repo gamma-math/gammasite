@@ -4,6 +4,7 @@ import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEd
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { contentApi, emailTemplatesApi, membersApi, messagesApi, registrationsApi, rolesApi } from "../services/api.js";
 import { formatDate } from "../utils/format.js";
+import { isWaitlisted } from "../utils/registrationCapacity.js";
 
 const channels = [
   { value: "Email", label: "Email" },
@@ -553,7 +554,7 @@ async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipi
   for (const eventId of recipientEventIds) {
     const registrations = await registrationsApi.list(eventId);
     registrations
-      .filter((registration) => registration.registered ?? registration.Registered)
+      .filter((registration) => (registration.registered ?? registration.Registered) && !isWaitlisted(registration))
       .forEach(add);
   }
 

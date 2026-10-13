@@ -28,5 +28,6 @@ namespace GamMaSite.Models
         public const string Organizer = "ORGANIZER";
         public const string Interested = "INTERESTED";
         public const string Declined = "DECLINED";
+        public const string Waitlisted = "WAITLISTED";
     }
 }

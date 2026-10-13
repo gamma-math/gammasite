@@ -4,7 +4,8 @@ const registrationRoleOrder = {
   ORGANIZER: 0,
   ATTENDEE: 1,
   INTERESTED: 2,
-  DECLINED: 3
+  DECLINED: 3,
+  WAITLISTED: 4
 };
 
 export function sortRegistrations(registrations = []) {

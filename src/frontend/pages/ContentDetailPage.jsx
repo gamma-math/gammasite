@@ -8,6 +8,7 @@ import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
+import { confirmedRegistrationCount, isWaitlisted } from "../utils/registrationCapacity.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -16,6 +17,7 @@ export function ContentDetailPage({ slug, type, user }) {
   const [item, setItem] = useState(null);
   const [registration, setRegistration] = useState(null);
   const [registrations, setRegistrations] = useState([]);
+  const [capacitySummary, setCapacitySummary] = useState(null);
   const [eventAccess, setEventAccess] = useState(null);
   const [calendarHref, setCalendarHref] = useState("");
   const [error, setError] = useState("");
@@ -27,21 +29,30 @@ export function ContentDetailPage({ slug, type, user }) {
   }, [slug]);
 
   useEffect(() => {
-    if (item?.type === "EVENT" && user.isAuthenticated) {
-      Promise.all([
-        registrationsApi.mine(item.id).catch(() => null),
-        registrationsApi.list(item.id).catch(() => []),
-        contentApi.access(item.id).catch(() => null)
-      ])
-        .then(([mine, eventRegistrations, access]) => {
-          setRegistration(mine);
-          setRegistrations(eventRegistrations);
-          setEventAccess(access);
-        })
-        .catch(() => setRegistration(null));
-    } else {
+    if (item?.type !== "EVENT") {
+      setCapacitySummary(null);
       setEventAccess(null);
+      return undefined;
     }
+
+    const requests = [
+      user.isAuthenticated ? registrationsApi.mine(item.id).catch(() => null) : Promise.resolve(null),
+      user.isAuthenticated ? registrationsApi.list(item.id).catch(() => []) : Promise.resolve([]),
+      user.isAuthenticated ? contentApi.access(item.id).catch(() => null) : Promise.resolve(null),
+      registrationsApi.summary(item.id).catch(() => null)
+    ];
+
+    Promise.all(requests)
+      .then(([mine, eventRegistrations, access, summary]) => {
+        setRegistration(mine);
+        setRegistrations(eventRegistrations);
+        setEventAccess(access);
+        setCapacitySummary(summary);
+      })
+      .catch(() => {
+        setRegistration(null);
+        setCapacitySummary(null);
+      });
   }, [item?.id, item?.type, user.isAuthenticated, user.permissions]);
 
   useEffect(() => {
@@ -75,12 +86,20 @@ export function ContentDetailPage({ slug, type, user }) {
   const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
   const registrationOpen = isRegistrationOpen(item);
+  const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
+  const confirmedParticipants = capacitySummary?.confirmedParticipants ?? confirmedRegistrationCount(registrations);
+  const isCapacityReached = maxParticipants != null && (capacitySummary?.isFull ?? confirmedParticipants >= maxParticipants);
 
   async function toggleRegistration() {
     if (registration) {
       await registrationsApi.unregister(item.id);
       setRegistration(null);
-      setRegistrations((current) => current.filter((eventRegistration) => eventRegistration.userId !== registration.userId));
+      const [nextRegistrations, nextSummary] = await Promise.all([
+        registrationsApi.list(item.id).catch(() => []),
+        registrationsApi.summary(item.id).catch(() => null)
+      ]);
+      setRegistrations(nextRegistrations);
+      setCapacitySummary(nextSummary);
       return;
     }
 
@@ -90,6 +109,7 @@ export function ContentDetailPage({ slug, type, user }) {
       const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
       return [...withoutCurrentUser, next];
     });
+    setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
   }
 
   return (
@@ -118,12 +138,14 @@ export function ContentDetailPage({ slug, type, user }) {
                 {item.location && <div><strong>Sted:</strong> {item.location}</div>}
                 {item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}
                 {item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}
+                {maxParticipants != null && <div><strong>Pladser:</strong> {confirmedParticipants}/{maxParticipants}</div>}
+                {isCapacityReached && <div className="event-capacity-message">Der er ikke flere ledige pladser. Du kan skrive dig på venteliste.</div>}
               </div>
             )}
             {isEvent && (
               <div className="menu-detail-bottom-bar">
                 <div className="menu-attendee-preview" aria-hidden="true">
-                  {registrations.slice(0, 4).map((eventRegistration) => (
+                  {registrations.filter((eventRegistration) => !isWaitlisted(eventRegistration)).slice(0, 4).map((eventRegistration) => (
                     <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
                   ))}
                 </div>
@@ -131,12 +153,12 @@ export function ContentDetailPage({ slug, type, user }) {
                   {registrationOpen && user.isAuthenticated ? (
                     <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
                       {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
-                      {registration ? "Afmeld" : "Tilmeld"}
+                      {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
                     </button>
                   ) : registrationOpen ? (
                     <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
                       <LogIn size={16} />
-                      Tilmeld
+                      {isCapacityReached ? "Venteliste" : "Tilmeld"}
                     </a>
                   ) : null}
                   {canViewRegistrations && (

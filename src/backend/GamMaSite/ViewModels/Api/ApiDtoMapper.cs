@@ -21,6 +21,7 @@ namespace GamMaSite.ViewModels.Api
                 Tags = item.Tags,
                 Type = item.Type,
                 Status = item.Status,
+                MaxParticipants = item.MaxParticipants,
                 ShowOnFrontPage = item.ShowOnFrontPage,
                 StartDate = item.StartDate,
                 EndDate = item.EndDate,

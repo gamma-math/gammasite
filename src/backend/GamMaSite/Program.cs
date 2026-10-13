@@ -271,6 +271,12 @@ static async Task EnsureContentItemsShowOnFrontPageColumnAsync(IServiceProvider 
         {
             await ExecuteSchemaCommandAsync(connection, "CREATE INDEX `IX_ContentItems_ShowOnFrontPage` ON `ContentItems` (`ShowOnFrontPage`)");
         }
+
+        if (!await SchemaValueExistsAsync(connection,
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContentItems' AND COLUMN_NAME = 'MaxParticipants'"))
+        {
+            await ExecuteSchemaCommandAsync(connection, "ALTER TABLE `ContentItems` ADD COLUMN `MaxParticipants` int NULL DEFAULT NULL AFTER `Status`");
+        }
     }
     finally
     {

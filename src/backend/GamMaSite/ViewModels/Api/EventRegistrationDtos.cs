@@ -28,6 +28,19 @@ namespace GamMaSite.ViewModels.Api
         public DateTime Updated { get; set; }
     }
 
+    public class EventRegistrationSummaryDto
+    {
+        public int ContentItemId { get; set; }
+
+        public int? MaxParticipants { get; set; }
+
+        public int ConfirmedParticipants { get; set; }
+
+        public int WaitlistedParticipants { get; set; }
+
+        public bool IsFull { get; set; }
+    }
+
     public class SaveEventRegistrationRequest
     {
         public string RegistrationType { get; set; }
@@ -50,7 +63,7 @@ namespace GamMaSite.ViewModels.Api
 
         public string RegistrationType { get; set; }
 
-        public bool Registered { get; set; } = true;
+        public bool Registered { get; set; }
 
         public string ResponseText { get; set; }
     }

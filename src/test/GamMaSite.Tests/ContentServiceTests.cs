@@ -60,6 +60,120 @@ public class ContentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PersistsEventCapacity()
+    {
+        await using var db = CreateDb();
+
+        var item = await new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Limited event", Slug = "limited-event", Type = ContentTypes.Event,
+            Status = ContentStatuses.Published, MaxParticipants = 20
+        }, "admin");
+
+        Assert.Equal(20, item.MaxParticipants);
+        Assert.Equal(20, (await db.ContentItems.FindAsync(item.Id)).MaxParticipants);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsNegativeEventCapacity()
+    {
+        await using var db = CreateDb();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Invalid event", Slug = "invalid-event", Type = ContentTypes.Event,
+            Status = ContentStatuses.Published, MaxParticipants = -1
+        }, "admin"));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsCapacityBelowExistingParticipants()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        var item = Item("capacity-event", DateTime.UtcNow);
+        db.ContentItems.Add(item);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItem = item, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = false },
+            new EventRegistration { ContentItem = item, UserId = "user-2", RegistrationType = RegistrationTypes.Organizer, Registered = false });
+        await db.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => new ContentService(db).UpdateAsync(item.Id, new SaveContentItemRequest
+        {
+            Title = item.Title,
+            Slug = item.Slug,
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            MaxParticipants = 1,
+            StartDate = item.StartDate
+        }));
+
+        Assert.Equal("Der angivne maks. antal deltagere er lavere end det nuværende antal deltagere og arrangører.", exception.Message);
+        Assert.Null((await db.ContentItems.FindAsync(item.Id)).MaxParticipants);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_AllowsCapacityAtOrAboveExistingParticipants()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        var item = Item("capacity-event", DateTime.UtcNow);
+        db.ContentItems.Add(item);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItem = item, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee },
+            new EventRegistration { ContentItem = item, UserId = "user-2", RegistrationType = RegistrationTypes.Organizer });
+        await db.SaveChangesAsync();
+
+        var result = await new ContentService(db).UpdateAsync(item.Id, new SaveContentItemRequest
+        {
+            Title = item.Title,
+            Slug = item.Slug,
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            MaxParticipants = 2,
+            StartDate = item.StartDate
+        });
+
+        Assert.Equal(2, result.MaxParticipants);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PromotesWaitlistedMembersWhenCapacityIncreases()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" },
+            new SiteUser { Id = "user-3", UserName = "user-3" });
+        var item = Item("capacity-event", DateTime.UtcNow);
+        item.MaxParticipants = 1;
+        db.ContentItems.Add(item);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItem = item, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee },
+            new EventRegistration { ContentItem = item, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow.AddMinutes(-2) },
+            new EventRegistration { ContentItem = item, UserId = "user-3", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow.AddMinutes(-1) });
+        await db.SaveChangesAsync();
+
+        await new ContentService(db, eventRegistrations: new EventRegistrationService(db)).UpdateAsync(item.Id, new SaveContentItemRequest
+        {
+            Title = item.Title,
+            Slug = item.Slug,
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            MaxParticipants = 3,
+            StartDate = item.StartDate
+        });
+
+        var registrations = await db.EventRegistrations.OrderBy(registration => registration.Created).ToListAsync();
+        Assert.Equal(RegistrationTypes.Attendee, registrations[1].RegistrationType);
+        Assert.Equal(RegistrationTypes.Attendee, registrations[2].RegistrationType);
+    }
+
+    [Fact]
     public async Task UpdateAsync_SucceedsWhenLocalImageCleanupFails()
     {
         await using var db = CreateDb();
