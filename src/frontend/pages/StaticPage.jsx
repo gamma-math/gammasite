@@ -2,6 +2,7 @@ import { InfoLayout } from "../layouts/InfoLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 
 const statutesUrl = "https://gamma-math.github.io/gammastatic/vedtaegter-gamma.pdf";
+const cvrUrl = "https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768";
 
 const termsSections = [
   { id: "privatlivspolitik", label: "Privatlivspolitik" },
@@ -98,7 +99,8 @@ function TermsPage() {
       </InfoSection>
 
       <InfoSection id="salgsbetingelser" title="Salgsbetingelser">
-        <p>Disse salgsbetingelser gælder ved betaling for medlemskab og betalingspligtige arrangementer hos Alumneforeningen GamMa, CVR 34637768. Ved betaling indgår du en aftale med GamMa om det medlemskab eller den eventplads, der er beskrevet på den relevante side.</p>
+        <p>Disse salgsbetingelser gælder ved betaling for medlemskab og betalingspligtige arrangementer hos Alumneforeningen GamMa, <a href={cvrUrl} target="_blank" rel="noreferrer">CVR 34637768</a>. Ved betaling indgår du en aftale med GamMa om det medlemskab eller den eventplads, der er beskrevet på den relevante side.</p>
+        <p>GamMas aktuelle virksomhedsoplysninger, herunder registreret adresse, kan findes via CVR-registret.</p>
 
         <h3>1. Oplysninger om aftalen</h3>
         <p>Før betaling vises den relevante ydelse, pris, eventuel dato, sted og andre væsentlige oplysninger. Eventuelle særlige vilkår på den konkrete eventside supplerer disse salgsbetingelser og gælder foran disse, hvis de tydeligt angiver andet.</p>
@@ -118,8 +120,8 @@ function TermsPage() {
 
         <h3>5. Fortrydelse, afbud og tilbagebetaling</h3>
         <p>For medlemskab købt online er fortrydelsesfristen 14 dage fra aftalens indgåelse, medmindre andet følger af ufravigelig lovgivning. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> inden fristens udløb.</p>
-        <p>For betalte arrangementer gælder en fortrydelsesfrist på 14 dage fra aftalens indgåelse, dog senest indtil arrangementets afholdelse. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> inden arrangementet afholdes. Efter arrangementet er afholdt, kan der ikke gøres brug af fortrydelsesretten.</p>
-        <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud, navneændring eller tilbagebetaling. Tilbagebetaling sker, hvis afmeldingen sker rettidigt.</p>
+        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse. Efter denne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
+        <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud eller navneændring. Tilbagebetaling sker, når afmeldingen er meddelt senest 7 dage før arrangementets afholdelse.</p>
 
         <h3>6. Fejl og manglende levering</h3>
         <p>Hvis du ikke modtager den ydelse, du har betalt for, eller hvis der er en væsentlig fejl ved leveringen, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. GamMa vil vurdere sagen og afhjælpe forholdet, tilbyde ombooking eller tilbagebetale helt eller delvist, hvis det følger af aftalen eller gældende lovgivning.</p>
