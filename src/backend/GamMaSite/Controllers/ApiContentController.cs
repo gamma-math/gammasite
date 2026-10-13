@@ -292,7 +292,7 @@ namespace GamMaSite.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetRegistrationSummary(int id)
         {
-            var summary = await _registrationService.GetSummaryAsync(id);
+            var summary = await _registrationService.GetSummaryAsync(id, await UserCanReadUnpublished());
             return summary == null ? NotFound() : Ok(summary);
         }
 

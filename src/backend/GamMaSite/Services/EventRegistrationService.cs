@@ -229,11 +229,13 @@ namespace GamMaSite.Services
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
         }
 
-        public async Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId)
+        public async Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId, bool includeUnpublished = false)
         {
             var content = await _db.ContentItems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Id == contentItemId && item.Type == ContentTypes.Event);
+                .FirstOrDefaultAsync(item => item.Id == contentItemId
+                    && item.Type == ContentTypes.Event
+                    && (includeUnpublished || item.Status == ContentStatuses.Published));
 
             if (content == null)
             {
@@ -260,6 +262,7 @@ namespace GamMaSite.Services
 
         public async Task PromoteWaitlistedAsync(int contentItemId)
         {
+            await using var transaction = await BeginEventTransactionAsync(contentItemId);
             var content = await _db.ContentItems
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.Id == contentItemId);
@@ -270,6 +273,7 @@ namespace GamMaSite.Services
 
             await PromoteWaitlistedAsync(content, null);
             await _db.SaveChangesAsync();
+            await CommitAsync(transaction);
         }
 
         public async Task<EventRegistration> UpdateAsync(int contentItemId, int registrationId, UpdateEventRegistrationRequest request)

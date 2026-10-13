@@ -16,7 +16,7 @@ namespace GamMaSite.Services
 
         Task<EventRegistration> GetRegistrationAsync(int contentItemId, string userId);
 
-        Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId);
+        Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId, bool includeUnpublished = false);
 
         Task PromoteWaitlistedAsync(int contentItemId);
 

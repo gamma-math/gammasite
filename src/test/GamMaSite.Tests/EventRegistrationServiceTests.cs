@@ -90,6 +90,37 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task GetSummaryAsync_DoesNotExposeUnpublishedEventUnlessRequested()
+    {
+        await using var db = CreateDb();
+        db.ContentItems.Add(Event(ContentStatuses.Draft, DateTime.UtcNow.AddDays(1), 2));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        Assert.Null(await service.GetSummaryAsync(1));
+        Assert.NotNull(await service.GetSummaryAsync(1, includeUnpublished: true));
+    }
+
+    [Fact]
+    public async Task PromoteWaitlistedAsync_PromotesOldestRegistrationWhenCapacityIsAvailable()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow.AddMinutes(-1) },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        await new EventRegistrationService(db).PromoteWaitlistedAsync(1);
+
+        Assert.Equal(RegistrationTypes.Attendee, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-1")).RegistrationType);
+        Assert.Equal(RegistrationTypes.Waitlisted, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2")).RegistrationType);
+    }
+
+    [Fact]
     public async Task AddAsync_RejectsConfirmedRegistrationWhenCapacityIsReached()
     {
         await using var db = CreateDb();
