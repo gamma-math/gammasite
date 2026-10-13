@@ -115,6 +115,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   async function save(event) {
     event.preventDefault();
     setError("");
+    setMessage("");
     try {
       const payload = buildSavePayload(selected, type);
       const result = selected.id ? await contentApi.update(selected.id, payload) : await contentApi.create(payload);
@@ -225,6 +226,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           {type === "EVENT" && <label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label>}
+          {type === "EVENT" && <label className="admin-field"><span>Maks. antal deltagere</span><input type="number" min="0" value={selected.maxParticipants ?? ""} onChange={(event) => update("maxParticipants", event.target.value === "" ? null : Number(event.target.value))} placeholder="Ingen begrænsning" /></label>}
         </div>
         <LinkEditor links={selected.links ?? []} onChange={(links) => update("links", links)} />
         <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-secondary" type="button" onClick={() => setShowPreview(true)}><Eye size={16} /> Preview</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
@@ -425,6 +427,7 @@ function normalizeContentItem(item, type) {
   return {
     ...item,
     type: item.type ?? item.Type ?? type,
+    maxParticipants: item.maxParticipants ?? item.MaxParticipants ?? null,
     showOnFrontPage: item.showOnFrontPage ?? item.ShowOnFrontPage ?? true
   };
 }
@@ -444,6 +447,7 @@ function buildSavePayload(item, type) {
     type,
     status: item.status ?? "DRAFT",
     showOnFrontPage: isShownOnFrontPage(item),
+    maxParticipants: type === "EVENT" && item.maxParticipants !== "" && item.maxParticipants != null ? Number(item.maxParticipants) : null,
     startDate: item.startDate || null,
     endDate: item.endDate || null,
     location: item.location ?? "",

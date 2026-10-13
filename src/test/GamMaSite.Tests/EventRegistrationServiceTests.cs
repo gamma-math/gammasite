@@ -27,7 +27,7 @@ public class EventRegistrationServiceTests
         var registration = await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest { RegistrationType = "attendee" });
 
         Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
-        Assert.True(registration.Registered);
+        Assert.False(registration.Registered);
     }
 
     [Theory]
@@ -68,6 +68,160 @@ public class EventRegistrationServiceTests
             new SaveEventRegistrationRequest { RegistrationType = RegistrationTypes.Declined });
 
         Assert.False(registration.Registered);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_PutsAttendeeOnWaitlistWhenCapacityIsReached()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        var confirmed = await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+        var waitlisted = await service.RegisterAsync(1, "user-2", new SaveEventRegistrationRequest());
+
+        Assert.Equal(RegistrationTypes.Attendee, confirmed.RegistrationType);
+        Assert.Equal(RegistrationTypes.Waitlisted, waitlisted.RegistrationType);
+        Assert.False(waitlisted.Registered);
+    }
+
+    [Fact]
+    public async Task GetSummaryAsync_DoesNotExposeUnpublishedEventUnlessRequested()
+    {
+        await using var db = CreateDb();
+        db.ContentItems.Add(Event(ContentStatuses.Draft, DateTime.UtcNow.AddDays(1), 2));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        Assert.Null(await service.GetSummaryAsync(1));
+        Assert.NotNull(await service.GetSummaryAsync(1, includeUnpublished: true));
+    }
+
+    [Fact]
+    public async Task PromoteWaitlistedAsync_PromotesOldestRegistrationWhenCapacityIsAvailable()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow.AddMinutes(-1) },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Created = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        await new EventRegistrationService(db).PromoteWaitlistedAsync(1);
+
+        Assert.Equal(RegistrationTypes.Attendee, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-1")).RegistrationType);
+        Assert.Equal(RegistrationTypes.Waitlisted, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2")).RegistrationType);
+    }
+
+    [Fact]
+    public async Task AddAsync_RejectsConfirmedRegistrationWhenCapacityIsReached()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        var added = await service.AddAsync(1, new AddEventRegistrationRequest { UserId = "user-1" });
+        Assert.False(added.Registered);
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => service.AddAsync(1,
+            new AddEventRegistrationRequest { UserId = "user-2", RegistrationType = RegistrationTypes.Attendee, Registered = true }));
+
+        Assert.Equal("Der er allerede maks antal deltagere.", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsChangingWaitlistedRegistrationToConfirmedWhenCapacityIsReached()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Registered = true });
+        await db.SaveChangesAsync();
+
+        var registration = await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2");
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => new EventRegistrationService(db).UpdateAsync(1, registration.Id,
+            new UpdateEventRegistrationRequest { RegistrationType = RegistrationTypes.Attendee, Registered = true }));
+
+        Assert.Equal("Der er allerede maks antal deltagere.", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_AllowsChangingParticipantToWaitlist()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = 1,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false
+        });
+        await db.SaveChangesAsync();
+
+        var registration = await db.EventRegistrations.SingleAsync();
+        var updated = await new EventRegistrationService(db).UpdateAsync(1, registration.Id,
+            new UpdateEventRegistrationRequest { RegistrationType = RegistrationTypes.Waitlisted, Registered = false });
+
+        Assert.Equal(RegistrationTypes.Waitlisted, updated.RegistrationType);
+        Assert.False(updated.Registered);
+    }
+
+    [Fact]
+    public async Task UnregisterAsync_PromotesOldestWaitlistedRegistration()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" },
+            new SiteUser { Id = "user-3", UserName = "user-3" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Registered = true, Created = DateTime.UtcNow.AddMinutes(-2) },
+            new EventRegistration { ContentItemId = 1, UserId = "user-3", RegistrationType = RegistrationTypes.Waitlisted, Registered = true, Created = DateTime.UtcNow.AddMinutes(-1) });
+        await db.SaveChangesAsync();
+
+        var result = await new EventRegistrationService(db).UnregisterAsync(1, "user-1");
+
+        Assert.True(result);
+        Assert.Equal(RegistrationTypes.Attendee, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2")).RegistrationType);
+        Assert.Equal(RegistrationTypes.Waitlisted, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-3")).RegistrationType);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PromotesWaitlistedRegistrationWhenConfirmedPlaceIsReleased()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Registered = true, Created = DateTime.UtcNow.AddMinutes(-1) });
+        await db.SaveChangesAsync();
+
+        var confirmed = await db.EventRegistrations.SingleAsync(item => item.UserId == "user-1");
+        await new EventRegistrationService(db).UpdateAsync(1, confirmed.Id,
+            new UpdateEventRegistrationRequest { RegistrationType = RegistrationTypes.Interested, Registered = true });
+
+        Assert.Equal(RegistrationTypes.Attendee, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2")).RegistrationType);
     }
 
     [Fact]
@@ -159,10 +313,10 @@ public class EventRegistrationServiceTests
             new SaveEventRegistrationRequest { RegistrationType = "UNKNOWN" }));
     }
 
-    private static ContentItem Event(string status, DateTime endDate) => new()
+    private static ContentItem Event(string status, DateTime endDate, int? maxParticipants = null) => new()
     {
         Title = "Event", Slug = "event", Type = ContentTypes.Event, Status = status,
-        StartDate = DateTime.UtcNow.AddHours(-1), EndDate = endDate
+        StartDate = DateTime.UtcNow.AddHours(-1), EndDate = endDate, MaxParticipants = maxParticipants
     };
 
     private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()

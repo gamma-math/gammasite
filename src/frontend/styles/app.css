@@ -576,6 +576,13 @@ img {
   font-size: 1.1rem;
 }
 
+.menu-detail-capacity {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 .menu-event-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -734,6 +741,12 @@ img {
   background: #dc35451a;
 }
 
+.event-capacity-message {
+  margin-top: 10px;
+  color: #8f1f2d;
+  font-weight: 700;
+}
+
 .menu-detail-hero > .menu-detail-status {
   flex-shrink: 0;
 }
@@ -849,13 +862,40 @@ img {
   border-radius: 18px;
 }
 
+.menu-registration-error {
+  margin-top: 12px;
+}
+
+.menu-registration-mobile-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .menu-registration-avatar {
   width: 44px;
   height: 44px;
 }
 
 .menu-registration-table th:first-child {
-  width: 52%;
+  width: 35%;
+}
+
+.menu-registration-table th:nth-child(2) {
+  width: 20%;
+}
+
+.menu-registration-table th:nth-child(3) {
+  width: 21%;
+}
+
+.menu-registration-table th:nth-child(4) {
+  width: 24%;
+}
+
+.menu-registration-table td:nth-child(2) {
+  white-space: nowrap;
 }
 
 .menu-registration-add {
@@ -957,7 +997,7 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .menu-registration-mobile-toggle,

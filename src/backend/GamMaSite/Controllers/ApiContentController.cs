@@ -288,6 +288,14 @@ namespace GamMaSite.Controllers
             return registration == null ? NoContent() : Ok(registration.ToDto(await _accessControl.HasAnyPermissionAsync(User, PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit)));
         }
 
+        [HttpGet("{id:int}/registrations/summary")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRegistrationSummary(int id)
+        {
+            var summary = await _registrationService.GetSummaryAsync(id, await UserCanReadUnpublished());
+            return summary == null ? NotFound() : Ok(summary);
+        }
+
         [HttpGet("{id:int}/registrations")]
         [Authorize]
         public async Task<IActionResult> GetRegistrations(int id)

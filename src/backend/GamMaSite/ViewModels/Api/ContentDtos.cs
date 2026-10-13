@@ -39,6 +39,8 @@ namespace GamMaSite.ViewModels.Api
 
         public string Status { get; set; }
 
+        public int? MaxParticipants { get; set; }
+
         public bool ShowOnFrontPage { get; set; }
 
         public DateTime? StartDate { get; set; }
@@ -75,6 +77,8 @@ namespace GamMaSite.ViewModels.Api
         public string Type { get; set; }
 
         public string Status { get; set; }
+
+        public int? MaxParticipants { get; set; }
 
         public bool ShowOnFrontPage { get; set; } = true;
 

@@ -31,12 +31,14 @@ namespace GamMaSite.Services
         private readonly ApplicationDbContext _db;
         private readonly IContentMediaService _contentMedia;
         private readonly ILogger<ContentService> _logger;
+        private readonly IEventRegistrationService _eventRegistrations;
 
-        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null, ILogger<ContentService> logger = null)
+        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null, ILogger<ContentService> logger = null, IEventRegistrationService eventRegistrations = null)
         {
             _db = db;
             _contentMedia = contentMedia;
             _logger = logger;
+            _eventRegistrations = eventRegistrations ?? new EventRegistrationService(db);
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
@@ -121,6 +123,7 @@ namespace GamMaSite.Services
                 Tags = request.Tags,
                 Type = NormalizeType(request.Type),
                 Status = status,
+                MaxParticipants = ValidateMaxParticipants(request.MaxParticipants),
                 ShowOnFrontPage = request.ShowOnFrontPage,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
@@ -151,16 +154,20 @@ namespace GamMaSite.Services
 
             var now = DateTime.UtcNow;
             var status = NormalizeStatus(request.Status);
+            var nextType = NormalizeType(request.Type);
+            var nextMaxParticipants = ValidateMaxParticipants(request.MaxParticipants);
             var previousSlug = item.Slug;
             var nextSlug = Required(request.Slug, nameof(request.Slug));
             var oldPictureUrl = item.PictureUrl;
             ContentMediaSlugRename slugRename = null;
 
+            await EnsureMaxParticipantsCanBeReducedAsync(item, nextType, nextMaxParticipants);
+
             if (_contentMedia != null &&
                 !string.Equals(previousSlug, nextSlug, StringComparison.Ordinal) &&
                 !string.IsNullOrWhiteSpace(oldPictureUrl) &&
                 string.Equals(request.PictureUrl, oldPictureUrl, StringComparison.Ordinal) &&
-                string.Equals(request.Type, item.Type, StringComparison.OrdinalIgnoreCase))
+                string.Equals(nextType, item.Type, StringComparison.OrdinalIgnoreCase))
             {
                 slugRename = await _contentMedia.PrepareSlugRenameAsync(item, previousSlug, nextSlug);
             }
@@ -171,8 +178,9 @@ namespace GamMaSite.Services
             item.Body = request.Body;
             item.PictureUrl = slugRename?.NewUrl ?? request.PictureUrl;
             item.Tags = request.Tags;
-            item.Type = NormalizeType(request.Type);
+            item.Type = nextType;
             item.Status = status;
+            item.MaxParticipants = nextMaxParticipants;
             item.ShowOnFrontPage = request.ShowOnFrontPage;
             item.StartDate = request.StartDate;
             item.EndDate = request.EndDate;
@@ -184,6 +192,11 @@ namespace GamMaSite.Services
             item.Links = BuildLinks(request.Links, now);
 
             await _db.SaveChangesAsync();
+
+            if (string.Equals(nextType, ContentTypes.Event, StringComparison.OrdinalIgnoreCase))
+            {
+                await _eventRegistrations.PromoteWaitlistedAsync(item.Id);
+            }
 
             if (slugRename != null)
             {
@@ -264,6 +277,37 @@ namespace GamMaSite.Services
         private static IQueryable<ContentItem> IncludeLinks(IQueryable<ContentItem> query)
         {
             return query.Include(item => item.Links.OrderBy(link => link.SortOrder));
+        }
+
+        private static int? ValidateMaxParticipants(int? maxParticipants)
+        {
+            if (maxParticipants < 0)
+            {
+                throw new ArgumentException("MaxParticipants must be zero or greater");
+            }
+
+            return maxParticipants;
+        }
+
+        private async Task EnsureMaxParticipantsCanBeReducedAsync(ContentItem item, string nextType, int? nextMaxParticipants)
+        {
+            if (!string.Equals(nextType, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)
+                || !nextMaxParticipants.HasValue
+                || item.MaxParticipants == nextMaxParticipants)
+            {
+                return;
+            }
+
+            var participantCount = await _db.EventRegistrations
+                .AsNoTracking()
+                .CountAsync(registration => registration.ContentItemId == item.Id
+                    && (registration.RegistrationType == RegistrationTypes.Attendee
+                        || registration.RegistrationType == RegistrationTypes.Organizer));
+
+            if (participantCount > nextMaxParticipants.Value)
+            {
+                throw new ArgumentException("Der angivne maks. antal deltagere er lavere end det nuværende antal deltagere og arrangører.");
+            }
         }
 
         private static List<ContentLink> BuildLinks(IEnumerable<SaveContentLinkRequest> links, DateTime now)
