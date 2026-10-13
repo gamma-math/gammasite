@@ -115,6 +115,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   async function save(event) {
     event.preventDefault();
     setError("");
+    setMessage("");
     try {
       const payload = buildSavePayload(selected, type);
       const result = selected.id ? await contentApi.update(selected.id, payload) : await contentApi.create(payload);
