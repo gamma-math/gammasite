@@ -120,8 +120,8 @@ function TermsPage() {
 
         <h3>5. Fortrydelse, afbud og tilbagebetaling</h3>
         <p>For medlemskab købt online er fortrydelsesfristen 14 dage fra aftalens indgåelse, medmindre andet følger af ufravigelig lovgivning. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> inden fristens udløb.</p>
-        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse. Efter denne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
-        <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud eller navneændring. Tilbagebetaling sker, når afmeldingen er meddelt senest 7 dage før arrangementets afholdelse.</p>
+        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse, medmindre andet er angivet i eventbeskrivelsen. Efter den angivne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
+        <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud eller navneændring. Tilbagebetaling sker, når afmeldingen er meddelt inden den frist, der er angivet i disse salgsbetingelser eller i eventbeskrivelsen.</p>
 
         <h3>6. Fejl og manglende levering</h3>
         <p>Hvis du ikke modtager den ydelse, du har betalt for, eller hvis der er en væsentlig fejl ved leveringen, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. GamMa vil vurdere sagen og afhjælpe forholdet, tilbyde ombooking eller tilbagebetale helt eller delvist, hvis det følger af aftalen eller gældende lovgivning.</p>
