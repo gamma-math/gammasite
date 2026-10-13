@@ -171,6 +171,7 @@ export function EventRegistrationsPage({ slug, user }) {
   const registrationOpen = isRegistrationOpen(item);
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? 0;
+  const registrationTableColumnCount = canEditRegistrations ? 4 : 3;
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -245,7 +246,7 @@ export function EventRegistrationsPage({ slug, user }) {
           <thead>
             <tr>
               <th>Navn</th>
-              <th>Tilmeldt</th>
+              {canEditRegistrations && <th>Tilmeldt</th>}
               <th>Rolle</th>
               <th>Betalt</th>
             </tr>
@@ -273,9 +274,11 @@ export function EventRegistrationsPage({ slug, user }) {
                         <span>{attendeeName(registration)}</span>
                       </div>
                     </td>
-                    <td className="menu-registration-desktop-cell">
-                      {formatDate(registration.created ?? registration.Created)}
-                    </td>
+                    {canEditRegistrations && (
+                      <td className="menu-registration-desktop-cell">
+                        {formatDate(registration.created ?? registration.Created)}
+                      </td>
+                    )}
                     <td className="menu-registration-desktop-cell">
                       {canEditRegistrations ? (
                         <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
@@ -300,7 +303,7 @@ export function EventRegistrationsPage({ slug, user }) {
                   </tr>
                   {canEditRegistrations && isExpanded && (
                     <tr className="menu-registration-mobile-detail-row">
-                      <td colSpan="4">
+                      <td colSpan={registrationTableColumnCount}>
                         <div className="menu-registration-mobile-details">
                           <p className="menu-registration-mobile-date">Tilmeldt: {formatDate(registration.created ?? registration.Created)}</p>
                           <label className="admin-field">
@@ -324,7 +327,7 @@ export function EventRegistrationsPage({ slug, user }) {
             })}
             {sortedRegistrations.length === 0 && (
               <tr>
-                <td colSpan="4">Der er ingen tilmeldte endnu.</td>
+                <td colSpan={registrationTableColumnCount}>Der er ingen tilmeldte endnu.</td>
               </tr>
             )}
           </tbody>
