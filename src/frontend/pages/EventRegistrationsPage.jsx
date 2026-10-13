@@ -13,7 +13,8 @@ import { isRegistrationOpen } from "../utils/registrationOpen.js";
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
   { value: "ORGANIZER", label: "Arrangør" },
-  { value: "INTERESTED", label: "Interesseret" }
+  { value: "INTERESTED", label: "Interesseret" },
+  { value: "WAITLISTED", label: "Venteliste" }
 ];
 
 /**
@@ -24,9 +25,10 @@ export function EventRegistrationsPage({ slug, user }) {
   const [registrations, setRegistrations] = useState([]);
   const [members, setMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState("");
-  const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: true });
+  const [addForm, setAddForm] = useState({ userId: "", registrationType: "ATTENDEE", registered: false });
   const [expandedRegistrationIds, setExpandedRegistrationIds] = useState(new Set());
   const [eventAccess, setEventAccess] = useState(null);
+  const [capacitySummary, setCapacitySummary] = useState(null);
   const [registrationToRemove, setRegistrationToRemove] = useState(null);
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [error, setError] = useState("");
@@ -43,11 +45,15 @@ export function EventRegistrationsPage({ slug, user }) {
         }
 
         setItem(content);
-        const access = user.isAuthenticated ? await contentApi.access(content.id).catch(() => null) : null;
+        const [access, summary] = await Promise.all([
+          user.isAuthenticated ? contentApi.access(content.id).catch(() => null) : Promise.resolve(null),
+          registrationsApi.summary(content.id).catch(() => null)
+        ]);
         if (!active) {
           return;
         }
         setEventAccess(access);
+        setCapacitySummary(summary);
         if (user.isAuthenticated && canViewRegistrations) {
           setRegistrations(await registrationsApi.list(content.id));
         }
@@ -67,14 +73,20 @@ export function EventRegistrationsPage({ slug, user }) {
   }, [slug, user.isAuthenticated, canViewRegistrations, permissionCanEditRegistrations]);
 
   async function updateRegistration(registration, changes) {
+    setError("");
     const payload = {
       registrationType: registration.registrationType,
       registered: registration.registered,
       responseText: registration.responseText,
       ...changes
     };
-    const updated = await registrationsApi.update(item.id, registration.id, payload);
-    setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+    try {
+      const updated = await registrationsApi.update(item.id, registration.id, payload);
+      setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+      setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   async function unregisterRegistration(registration) {
@@ -83,9 +95,11 @@ export function EventRegistrationsPage({ slug, user }) {
     }
 
     setIsRemovingRegistration(true);
+    setError("");
     try {
       await registrationsApi.remove(item.id, registrationToRemove.id);
       setRegistrations((current) => current.filter((entry) => entry.id !== registrationToRemove.id));
+      setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
       setRegistrationToRemove(null);
     } catch (requestError) {
       setError(requestError.message);
@@ -96,13 +110,19 @@ export function EventRegistrationsPage({ slug, user }) {
 
   async function addRegistration(event) {
     event.preventDefault();
-    const added = await registrationsApi.add(item.id, addForm);
-    setRegistrations((current) => {
-      const withoutExisting = current.filter((entry) => entry.id !== added.id && entry.userId !== added.userId);
-      return [...withoutExisting, added].sort((left, right) => attendeeName(left).localeCompare(attendeeName(right), "da-DK"));
-    });
-    setAddForm({ userId: "", registrationType: "ATTENDEE", registered: true });
-    setMemberSearch("");
+    setError("");
+    try {
+      const added = await registrationsApi.add(item.id, addForm);
+      setRegistrations((current) => {
+        const withoutExisting = current.filter((entry) => entry.id !== added.id && entry.userId !== added.userId);
+        return [...withoutExisting, added].sort((left, right) => attendeeName(left).localeCompare(attendeeName(right), "da-DK"));
+      });
+      setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+      setAddForm({ userId: "", registrationType: "ATTENDEE", registered: false });
+      setMemberSearch("");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   function toggleRegistrationDetails(registrationId) {
@@ -117,7 +137,7 @@ export function EventRegistrationsPage({ slug, user }) {
     });
   }
 
-  if (error) {
+  if (error && !item) {
     return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
@@ -149,6 +169,8 @@ export function EventRegistrationsPage({ slug, user }) {
 
   const sortedRegistrations = sortRegistrations(registrations);
   const registrationOpen = isRegistrationOpen(item);
+  const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
+  const confirmedParticipants = capacitySummary?.confirmedParticipants ?? 0;
   const availableMembers = members.filter((member) => !registrations.some((registration) => registration.userId === member.id));
   const selectedMember = members.find((member) => member.id === addForm.userId);
   const memberSearchTerm = memberSearch.toLowerCase();
@@ -164,6 +186,11 @@ export function EventRegistrationsPage({ slug, user }) {
           <p className="menu-detail-kicker">{formatDate(item.startDate)}</p>
           <h1>{item.title}</h1>
           <p className="menu-panel-lead">Se tilmeldte</p>
+          {maxParticipants != null && (
+            <p className="menu-detail-capacity">
+              Pladser: {confirmedParticipants}/{maxParticipants} · Venteliste: {capacitySummary?.waitlistedParticipants ?? 0}
+            </p>
+          )}
         </div>
         <Link className="frontpage-button frontpage-button-secondary" href={`/react/events/${item.slug}`}>
           Begivenheden
@@ -204,7 +231,7 @@ export function EventRegistrationsPage({ slug, user }) {
           </label>
           <label className="menu-registration-check menu-registration-add-check">
             <input type="checkbox" checked={addForm.registered} onChange={(event) => setAddForm((current) => ({ ...current, registered: event.target.checked }))} />
-            <span>Registered</span>
+            <span>Betalt</span>
           </label>
           <button className="menu-attend-button menu-attend-button-primary" type="submit" disabled={!addForm.userId}>
             <Plus size={16} />
@@ -218,8 +245,9 @@ export function EventRegistrationsPage({ slug, user }) {
           <thead>
             <tr>
               <th>Navn</th>
+              <th>Tilmeldt</th>
               <th>Rolle</th>
-              <th>Registered</th>
+              <th>Betalt</th>
             </tr>
           </thead>
           <tbody>
@@ -246,6 +274,9 @@ export function EventRegistrationsPage({ slug, user }) {
                       </div>
                     </td>
                     <td className="menu-registration-desktop-cell">
+                      {formatDate(registration.created ?? registration.Created)}
+                    </td>
+                    <td className="menu-registration-desktop-cell">
                       {canEditRegistrations ? (
                         <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                       ) : (
@@ -269,8 +300,9 @@ export function EventRegistrationsPage({ slug, user }) {
                   </tr>
                   {canEditRegistrations && isExpanded && (
                     <tr className="menu-registration-mobile-detail-row">
-                      <td colSpan="3">
+                      <td colSpan="4">
                         <div className="menu-registration-mobile-details">
+                          <p className="menu-registration-mobile-date">Tilmeldt: {formatDate(registration.created ?? registration.Created)}</p>
                           <label className="admin-field">
                             <span>Rolle</span>
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
@@ -292,12 +324,14 @@ export function EventRegistrationsPage({ slug, user }) {
             })}
             {sortedRegistrations.length === 0 && (
               <tr>
-                <td colSpan="3">Der er ingen tilmeldte endnu.</td>
+                <td colSpan="4">Der er ingen tilmeldte endnu.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {error && <p className="status-message status-message-error menu-registration-error" role="alert">{error}</p>}
 
       {registrationToRemove && (
         <ConfirmationDialog

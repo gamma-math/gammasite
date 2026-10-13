@@ -268,7 +268,9 @@ namespace GamMaSite.Controllers
             {
                 var eventUserIds = await _db.EventRegistrations
                     .AsNoTracking()
-                    .Where(registration => eventIds.Contains(registration.ContentItemId) && registration.Registered)
+                    .Where(registration => eventIds.Contains(registration.ContentItemId)
+                        && registration.Registered
+                        && registration.RegistrationType != RegistrationTypes.Waitlisted)
                     .Select(registration => registration.UserId)
                     .Distinct()
                     .ToListAsync();
