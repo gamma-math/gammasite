@@ -523,7 +523,7 @@ function Footer() {
           <h2>Alumneforeningen GamMa</h2>
           <ul className="frontpage-contact-list">
             <li>
-              Vedtægter: <Link href="/react/betingelser">Link til dem</Link>
+              Betingelser og vedtægter: <Link href="/react/betingelser">Link til dem</Link>
             </li>
             <li>CVR: 34637768</li>
             <li>
