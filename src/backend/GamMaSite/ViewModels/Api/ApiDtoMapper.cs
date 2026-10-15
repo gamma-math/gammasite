@@ -49,6 +49,31 @@ namespace GamMaSite.ViewModels.Api
             };
         }
 
+        public static PaymentOfferDto ToDto(this PaymentOffer offer)
+        {
+            var link = offer.ContentItem?.Links?
+                .FirstOrDefault(item => item.Type == "PAYMENT" && item.Url.Contains($"/pay/{offer.Id}", System.StringComparison.OrdinalIgnoreCase));
+
+            return new PaymentOfferDto
+            {
+                Id = offer.Id,
+                ContentItemId = offer.ContentItemId,
+                Provider = offer.Provider,
+                OfferType = offer.OfferType,
+                ProductName = offer.ProductName,
+                AmountMinor = offer.AmountMinor,
+                Currency = offer.Currency,
+                IsActive = offer.IsActive,
+                ProviderProductId = offer.ProviderProductId,
+                ProviderPriceId = offer.ProviderPriceId,
+                ProviderPaymentUrl = offer.ProviderPaymentUrl,
+                LinkLabel = link?.Label,
+                PaymentUrl = link?.Url,
+                EventTitle = offer.ContentItem?.Title,
+                EventSlug = offer.ContentItem?.Slug
+            };
+        }
+
         public static EventRegistrationDto ToDto(this EventRegistration registration, bool includePrivateDetails = false)
         {
             return new EventRegistrationDto

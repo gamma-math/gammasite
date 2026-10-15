@@ -94,7 +94,25 @@ namespace GamMaSite.Controllers
 
         private async Task HandleCheckoutCompletedAsync(Session session, CancellationToken cancellationToken)
         {
-            if (session == null || !IsMembershipProduct(session.Metadata))
+            if (session == null)
+            {
+                return;
+            }
+
+            if (int.TryParse(MetadataValue(session.Metadata, "PaymentOfferId"), out var paymentOfferId))
+            {
+                await HandleEventPaymentAsync(session, paymentOfferId, cancellationToken);
+                return;
+            }
+
+            var legacyEventOffer = await FindEventOfferAsync(session.Metadata, cancellationToken);
+            if (legacyEventOffer != null)
+            {
+                await HandleEventPaymentAsync(session, legacyEventOffer.Id, cancellationToken);
+                return;
+            }
+
+            if (!IsMembershipProduct(session.Metadata))
             {
                 return;
             }
@@ -159,6 +177,63 @@ namespace GamMaSite.Controllers
                 user.KontingentDato = paidAt;
             }
 
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task<PaymentOffer> FindEventOfferAsync(
+            System.Collections.Generic.IDictionary<string, string> metadata,
+            CancellationToken cancellationToken)
+        {
+            var providerProductId = MetadataValue(metadata, "Product");
+            var productName = MetadataValue(metadata, "ProductName");
+            if (string.IsNullOrWhiteSpace(providerProductId))
+            {
+                return null;
+            }
+
+            return await _db.PaymentOffers
+                .Where(item => item.IsActive && item.Provider == PaymentOfferProviders.Stripe && item.ProviderProductId == providerProductId &&
+                    (string.IsNullOrWhiteSpace(productName) || item.ProductName == productName))
+                .OrderByDescending(item => item.Updated)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task HandleEventPaymentAsync(Session session, int paymentOfferId, CancellationToken cancellationToken)
+        {
+            if (!string.Equals(session.Mode, "payment", StringComparison.OrdinalIgnoreCase) ||
+                (!string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(session.PaymentStatus, "no_payment_required", StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            var userId = session.ClientReferenceId ?? MetadataValue(session.Metadata, "GamMaUserId");
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("Event payment {SessionId} could not be mapped to a GamMa user.", session.Id);
+                return;
+            }
+
+            var offer = await _db.PaymentOffers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
+            if (offer == null)
+            {
+                _logger.LogWarning("Event payment {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
+                return;
+            }
+
+            var registration = await _db.EventRegistrations
+                .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
+            if (registration == null ||
+                !string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Event payment {SessionId} has no attendee registration for user {UserId}.", session.Id, userId);
+                return;
+            }
+
+            registration.Registered = true;
+            registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
         }
 

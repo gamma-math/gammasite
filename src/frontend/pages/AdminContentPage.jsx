@@ -3,7 +3,7 @@ import { Eye, ImagePlus, Plus, Save, Trash2, X } from "lucide-react";
 import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
-import { contentApi } from "../services/api.js";
+import { contentApi, paymentOffersApi } from "../services/api.js";
 import { contentMetaLabel, detailPath, emptyContent, formatDate } from "../utils/format.js";
 import { isLocalContentImage, isSupportedContentImage } from "../utils/contentMedia.js";
 import { sanitizeHtml } from "../utils/richText.js";
@@ -92,6 +92,9 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [paymentOffers, setPaymentOffers] = useState([]);
+  const [paymentOfferDrafts, setPaymentOfferDrafts] = useState([]);
+  const [linksEditorVersion, setLinksEditorVersion] = useState(0);
   const basePath = `/react/admin/${type === "EVENT" ? "events" : "news"}`;
   const label = type === "EVENT" ? "Begivenheder" : "Nyheder";
 
@@ -99,16 +102,21 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     if (!itemId) {
       setSelected(emptyContent(type));
       setEventAccess(null);
+      setPaymentOffers([]);
+      setPaymentOfferDrafts([]);
       setIsLoading(false);
       return;
     }
     setIsLoading(true);
     Promise.all([
       contentApi.getById(itemId),
-      type === "EVENT" ? contentApi.access(itemId).catch(() => null) : Promise.resolve(null)
-    ]).then(([item, access]) => {
+      type === "EVENT" ? contentApi.access(itemId).catch(() => null) : Promise.resolve(null),
+      type === "EVENT" ? paymentOffersApi.listForEvent(itemId).catch(() => []) : Promise.resolve([])
+    ]).then(([item, access, offers]) => {
       if (item) setSelected(normalizeContentItem(item, type));
       setEventAccess(access);
+      setPaymentOffers(offers ?? []);
+      setPaymentOfferDrafts([]);
     }).catch((reason) => setError(reason.message)).finally(() => setIsLoading(false));
   }, [type, itemId]);
 
@@ -119,7 +127,32 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     try {
       const payload = buildSavePayload(selected, type);
       const result = selected.id ? await contentApi.update(selected.id, payload) : await contentApi.create(payload);
-      setSelected(normalizeContentItem(result, type));
+      let nextItem = normalizeContentItem(result, type);
+      if (type === "EVENT" && paymentOfferDrafts.some(hasPaymentOfferDraft)) {
+        const savedOffers = [];
+        for (const draft of paymentOfferDrafts.filter(hasPaymentOfferDraft)) {
+          savedOffers.push(await paymentOffersApi.saveForEvent(nextItem.id, {
+            linkLabel: draft.linkLabel,
+            provider: draft.provider,
+            amount: Number(draft.amount),
+            productName: draft.productName
+          }));
+        }
+        setPaymentOffers((current) => {
+          const next = [...current];
+          savedOffers.forEach((offer) => {
+            const index = next.findIndex((currentOffer) => currentOffer.provider === offer.provider);
+            if (index >= 0) next[index] = offer;
+            else next.push(offer);
+          });
+          return next;
+        });
+        const refreshed = await contentApi.getById(nextItem.id);
+        nextItem = normalizeContentItem(refreshed, type);
+        setPaymentOfferDrafts([]);
+      }
+      setSelected(nextItem);
+      setLinksEditorVersion((current) => current + 1);
       setMessage("Gemt");
     } catch (reason) {
       setError(reason.message);
@@ -134,6 +167,27 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     try {
       await contentApi.delete(selected.id);
       navigate(basePath);
+    } catch (reason) {
+      setError(reason.message);
+    }
+  }
+
+  async function removePaymentOffer(offerId) {
+    if (!window.confirm("Fjern betalingslinket og deaktiver den tilhørende betaling?")) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    try {
+      await paymentOffersApi.remove(offerId);
+      setPaymentOffers((current) => current.filter((offer) => offer.id !== offerId));
+      setPaymentOfferDrafts((current) => current.filter((draft) => draft.offerId !== offerId));
+      setSelected((current) => ({
+        ...current,
+        links: (current.links ?? []).filter((link) => !isPaymentOfferLink(link, offerId))
+      }));
+      setMessage("Betalingslinket er fjernet.");
     } catch (reason) {
       setError(reason.message);
     }
@@ -187,7 +241,12 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     <AdminLayout active={basePath} canWrite={canEdit}>
       <div className="menu-panel-header">
         <div><p className="menu-section-title">{label}</p><h1>{selected.id ? "Rediger" : "Opret ny"} {type === "EVENT" ? "begivenhed" : "nyhed"}</h1></div>
-        {isAdmin && <Link className="frontpage-button frontpage-button-secondary" href={basePath}>Tilbage til oversigt</Link>}
+        <div className="menu-panel-header-actions">
+          {type === "EVENT" && selected.id && selected.slug && (
+            <Link className="frontpage-button frontpage-button-secondary" href={detailPath(selected)}>Se begivenhed</Link>
+          )}
+          {isAdmin && <Link className="frontpage-button frontpage-button-secondary" href={basePath}>Tilbage til oversigt</Link>}
+        </div>
       </div>
       <form className="menu-editor-form admin-content-editor" onSubmit={save}>
         <label className="admin-field"><span>Titel</span><input value={selected.title ?? ""} onChange={(event) => update("title", event.target.value)} required /></label>
@@ -228,7 +287,37 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           {type === "EVENT" && <label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Maks. antal deltagere</span><input type="number" min="0" value={selected.maxParticipants ?? ""} onChange={(event) => update("maxParticipants", event.target.value === "" ? null : Number(event.target.value))} placeholder="Ingen begrænsning" /></label>}
         </div>
-        <LinkEditor links={selected.links ?? []} onChange={(links) => update("links", links)} />
+        <LinkEditor key={linksEditorVersion} links={selected.links ?? []} onChange={(links) => update("links", links)} />
+        {type === "EVENT" && (
+          <PaymentOfferEditorMultiple
+            offers={paymentOffers}
+            drafts={paymentOfferDrafts}
+            onChange={setPaymentOfferDrafts}
+            onAdd={() => setPaymentOfferDrafts((current) => [...current, emptyPaymentOffer()])}
+            onRemove={(draft, index) => {
+              if (draft.offerId) {
+                removePaymentOffer(draft.offerId);
+              } else {
+                setPaymentOfferDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
+              }
+            }}
+            onEdit={(offer) => setPaymentOfferDrafts((current) => {
+              const draft = {
+                offerId: offer.id,
+                linkLabel: offer.linkLabel ?? "",
+                provider: offer.provider ?? "STRIPE",
+                amount: offer.amountMinor ? String(offer.amountMinor / 100) : "",
+                productName: offer.productName ?? ""
+              };
+              const existingIndex = current.findIndex((item) => item.offerId === offer.id);
+              if (existingIndex < 0) {
+                return [...current, draft];
+              }
+
+              return current.map((item, index) => index === existingIndex ? draft : item);
+            })}
+          />
+        )}
         <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-secondary" type="button" onClick={() => setShowPreview(true)}><Eye size={16} /> Preview</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
         {message && <p className="status-message status-message-success">{message}</p>}
         {error && <p className="status-message status-message-error">{error}</p>}
@@ -381,14 +470,29 @@ function RichTextEditor({ value, onChange }) {
  * Editor for related content links such as payment, calendar, or external URLs.
  */
 function LinkEditor({ links, onChange }) {
-  function update(index, field, value) {
-    onChange(links.map((link, currentIndex) => currentIndex === index ? { ...link, [field]: value } : link));
+  const paymentLinks = links.filter((link) => String(link.type ?? "").toUpperCase() === "PAYMENT");
+  const editableLinks = links.filter((link) => String(link.type ?? "").toUpperCase() !== "PAYMENT");
+  const [editingLinkIds, setEditingLinkIds] = useState(() => new Set());
+  const savedLinks = editableLinks.filter((link) => link.id);
+  const draftLinks = editableLinks.filter((link) => !link.id);
+
+  function updateLinks(nextEditableLinks) {
+    onChange([...nextEditableLinks, ...paymentLinks].map((link, index) => ({ ...link, sortOrder: index })));
   }
 
-  return (
-    <div className="menu-editor-link-row">
-      {links.map((link, index) => (
-        <div className="menu-editor-grid" key={index}>
+  function update(index, field, value) {
+    updateLinks(editableLinks.map((link, currentIndex) => currentIndex === index ? { ...link, [field]: value } : link));
+  }
+
+  function removeLink(index) {
+    updateLinks(editableLinks.filter((_, linkIndex) => linkIndex !== index));
+  }
+
+  function renderLinkEditor(link) {
+    const index = editableLinks.indexOf(link);
+    return (
+      <div className="admin-payment-offer-draft" key={link.id ?? `draft-${index}`}>
+        <div className="menu-editor-grid">
           <label className="admin-field">
             <span>Link label</span>
             <input value={link.label ?? ""} onChange={(event) => update(index, "label", event.target.value)} />
@@ -403,18 +507,131 @@ function LinkEditor({ links, onChange }) {
               <option value="FACEBOOK">FACEBOOK</option>
               <option value="INSTAGRAM">INSTAGRAM</option>
               <option value="LINKEDIN">LINKEDIN</option>
-              <option value="PAYMENT">PAYMENT</option>
               <option value="OTHER">OTHER</option>
             </select>
           </label>
         </div>
-      ))}
-      <button className="menu-inline-add-button" type="button" onClick={() => onChange([...links, { label: "", url: "", type: "OTHER", sortOrder: links.length }])}>
+        <button className="admin-action-button admin-action-button-danger" type="button" onClick={() => removeLink(index)}>Fjern</button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="menu-editor-link-row admin-payment-offer-editor">
+      <div>
+        <span className="admin-field-label">Links</span>
+      </div>
+      {savedLinks.length > 0 && (
+        <div className="admin-payment-offer-list">
+          {savedLinks.map((link) => {
+            const index = editableLinks.indexOf(link);
+            const isEditing = editingLinkIds.has(link.id);
+            return (
+              <div className="admin-payment-offer-entry" key={link.id}>
+                <div className="admin-payment-offer-summary">
+                  <span><strong>{link.label || "Link"}</strong> · {link.type || "OTHER"}</span>
+                  <button className="admin-action-button" type="button" onClick={() => setEditingLinkIds((current) => new Set(current).add(link.id))}>Rediger</button>
+                </div>
+                {isEditing && renderLinkEditor(link, index)}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {draftLinks.map((link) => renderLinkEditor(link))}
+      <button className="menu-inline-add-button" type="button" onClick={() => updateLinks([...editableLinks, { label: "", url: "", type: "OTHER" }])}>
         <Plus size={16} />
         Tilføj link
       </button>
-    </div>
+    </section>
   );
+}
+
+function PaymentOfferEditorMultiple({ offers, drafts, onChange, onAdd, onEdit, onRemove }) {
+  function update(index, field, value) {
+    onChange(drafts.map((draft, draftIndex) => draftIndex === index ? { ...draft, [field]: value } : draft));
+  }
+
+  function renderDraft(draft, index) {
+    return (
+      <div className="admin-payment-offer-draft" key={draft.offerId ?? `draft-${index}`}>
+        <div className="menu-editor-grid">
+          <label className="admin-field">
+            <span>Link label</span>
+            <input value={draft.linkLabel} onChange={(event) => update(index, "linkLabel", event.target.value)} placeholder="Køb billet" />
+          </label>
+          <label className="admin-field">
+            <span>Type</span>
+            <select value={draft.provider} onChange={(event) => update(index, "provider", event.target.value)}>
+              <option value="STRIPE">Stripe</option>
+              <option value="MOBILEPAY">MobilePay / Vipps</option>
+            </select>
+          </label>
+          <label className="admin-field">
+            <span>Pris (DKK)</span>
+            <input type="number" min="0.01" step="0.01" value={draft.amount} onChange={(event) => update(index, "amount", event.target.value)} placeholder="150" />
+          </label>
+          <label className="admin-field">
+            <span>Produktnavn</span>
+            <input value={draft.productName} onChange={(event) => update(index, "productName", event.target.value)} placeholder="Billet til arrangementet" />
+          </label>
+        </div>
+        <button className="admin-action-button admin-action-button-danger" type="button" onClick={() => onRemove(draft, index)}>Fjern</button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="menu-editor-link-row admin-payment-offer-editor">
+      <div>
+        <span className="admin-field-label">Betalingslink</span>
+      </div>
+      {offers.length > 0 && (
+        <div className="admin-payment-offer-list">
+          {offers.map((offer) => {
+            const draftIndex = drafts.findIndex((draft) => draft.offerId === offer.id);
+            return (
+              <div className="admin-payment-offer-entry" key={offer.id}>
+                <div className="admin-payment-offer-summary">
+                  <span><strong>{offer.linkLabel || "Betalingslink"}</strong> · {offer.provider} · {formatOfferAmount(offer.amountMinor)} DKK</span>
+                  <button className="admin-action-button" type="button" onClick={() => onEdit(offer)}>Rediger</button>
+                </div>
+                {draftIndex >= 0 && renderDraft(drafts[draftIndex], draftIndex)}
+              </div>
+            );
+          })}
+          {drafts.map((draft, index) => !draft.offerId && renderDraft(draft, index))}
+        </div>
+      )}
+      {offers.length === 0 && drafts.map((draft, index) => renderDraft(draft, index))}
+      <button className="menu-inline-add-button" type="button" onClick={onAdd}>
+        <Plus size={16} />
+        Tilføj betalingslink
+      </button>
+    </section>
+  );
+}
+
+function emptyPaymentOffer() {
+  return {
+    linkLabel: "",
+    provider: "STRIPE",
+    amount: "",
+    productName: ""
+  };
+}
+
+function hasPaymentOfferDraft(draft) {
+  return Boolean(draft?.linkLabel || draft?.amount || draft?.productName);
+}
+
+function formatOfferAmount(amountMinor) {
+  return amountMinor == null ? "-" : (Number(amountMinor) / 100).toLocaleString("da-DK", { minimumFractionDigits: 2 });
+}
+
+function isPaymentOfferLink(link, offerId) {
+  return String(link.type ?? "").toUpperCase() === "PAYMENT"
+    && link.url?.endsWith(`/pay/${offerId}`);
 }
 
 function normalizeLinks(links) {

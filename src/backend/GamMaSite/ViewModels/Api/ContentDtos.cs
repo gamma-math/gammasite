@@ -103,4 +103,48 @@ namespace GamMaSite.ViewModels.Api
 
         public int SortOrder { get; set; }
     }
+
+    public class PaymentOfferDto
+    {
+        public int Id { get; set; }
+
+        public int ContentItemId { get; set; }
+
+        public string Provider { get; set; }
+
+        public string OfferType { get; set; }
+
+        public string ProductName { get; set; }
+
+        public long? AmountMinor { get; set; }
+
+        public string Currency { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public string ProviderProductId { get; set; }
+
+        public string ProviderPriceId { get; set; }
+
+        public string LinkLabel { get; set; }
+
+        public string PaymentUrl { get; set; }
+
+        public string ProviderPaymentUrl { get; set; }
+
+        public string EventTitle { get; set; }
+
+        public string EventSlug { get; set; }
+    }
+
+    public class SavePaymentOfferRequest
+    {
+        public string LinkLabel { get; set; }
+
+        public string Provider { get; set; }
+
+        public decimal Amount { get; set; }
+
+        public string ProductName { get; set; }
+    }
 }

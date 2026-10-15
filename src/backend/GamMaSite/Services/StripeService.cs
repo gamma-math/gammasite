@@ -13,7 +13,7 @@ namespace GamMaSite.Services
      */
     public interface IStripeService
     {
-        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment");
+        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null);
 
         string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
 
@@ -29,6 +29,14 @@ namespace GamMaSite.Services
 
         Task<Product> GetProductByNameAsync(string name);
 
+        Task<Product> GetProductByExactNameAsync(string name);
+
+        Task<Product> CreateProductAsync(string name, string description);
+
+        Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency);
+
+        Task<bool> DeactivatePriceAsync(string id);
+
         Task<Price> GetPriceAsync(string product);
 
         Task<Price> GetPriceByIdAsync(string id);
@@ -43,9 +51,9 @@ namespace GamMaSite.Services
      */
     public class StripeService : IStripeService
     {
-        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment")
+        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null)
         {
-            Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode);
+            Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata);
 
             return session.Id;
         }
@@ -108,6 +116,76 @@ namespace GamMaSite.Services
         {
             var matches = (await GetAllProductsAsync()).Where(p => p.Name.ToLower().Contains(name.ToLower()));
             return matches.MinBy(p => p.Name.Length);
+        }
+
+        public async Task<Product> GetProductByExactNameAsync(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            return (await GetAllProductsAsync())
+                .FirstOrDefault(product => string.Equals(product.Name, name.Trim(), StringComparison.Ordinal));
+        }
+
+        public async Task<Product> CreateProductAsync(string name, string description)
+        {
+            try
+            {
+                return await new ProductService().CreateAsync(new ProductCreateOptions
+                {
+                    Name = name,
+                    Description = description
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency)
+        {
+            try
+            {
+                return await new PriceService().CreateAsync(new PriceCreateOptions
+                {
+                    Product = productId,
+                    UnitAmount = amountMinor,
+                    Currency = currency
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<bool> DeactivatePriceAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return true;
+            }
+
+            try
+            {
+                await new PriceService().UpdateAsync(id, new PriceUpdateOptions
+                {
+                    Active = false
+                });
+                return true;
+            }
+            catch (StripeException exception) when (string.Equals(exception.StripeError?.Code, "resource_missing", StringComparison.OrdinalIgnoreCase))
+            {
+                // The Stripe price is already gone, so there is nothing left to deactivate.
+                return true;
+            }
+            catch (StripeException)
+            {
+                return false;
+            }
         }
 
         public async Task<Price> GetPriceAsync(string product)
@@ -212,8 +290,22 @@ namespace GamMaSite.Services
             return session;
         }
 
-        private Session GetCreateSession(string priceId, string productId, string productName, string user, string successUrl, string cancelUrl, string mode = "payment")
+        private Session GetCreateSession(string priceId, string productId, string productName, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null)
         {
+            var sessionMetadata = new Dictionary<string, string>
+            {
+                { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
+                { "Product", productId },
+                { "ProductName", productName }
+            };
+            if (metadata != null)
+            {
+                foreach (var entry in metadata)
+                {
+                    sessionMetadata[entry.Key] = entry.Value;
+                }
+            }
+
             var options = new SessionCreateOptions
             {
                 PaymentMethodTypes = new List<string>
@@ -228,12 +320,7 @@ namespace GamMaSite.Services
                         Quantity = 1
                     }
                 ],
-                Metadata = new Dictionary<string, string>
-                {
-                    { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
-                    { "Product", productId },
-                    { "ProductName", productName }
-                },
+                Metadata = sessionMetadata,
                 ClientReferenceId = user,
                 Mode = mode,
                 SubscriptionData = string.Equals(mode, "subscription", StringComparison.OrdinalIgnoreCase)

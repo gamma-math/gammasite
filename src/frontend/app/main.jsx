@@ -43,6 +43,7 @@ import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
 import {
   GenericPaymentPage,
+  EventPaymentPage,
   PaymentPage,
   PaymentStatusPage,
   ProductPaymentPage,
@@ -261,13 +262,21 @@ function renderRoute(route, user, isAdmin, access) {
     return <GenericPaymentPage user={user} />;
   }
   if (path === "/react/pay/success" || path === "/Pay/Success") {
-    return <PaymentStatusPage status="success" user={user} />;
+    return <PaymentStatusPage status="success" session={new URLSearchParams(route.search).get("session")} user={user} />;
   }
   if (path === "/react/pay/kontingent-success") {
     return <PaymentStatusPage status="kontingent-success" user={user} />;
   }
   if (path === "/react/pay/cancel" || path === "/Pay/Cancel") {
     return <PaymentStatusPage status="cancel" user={user} />;
+  }
+  const eventPaymentSuccessMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/success$/);
+  if (eventPaymentSuccessMatch) {
+    return <PaymentStatusPage status="event-success" eventSlug={decodeURIComponent(eventPaymentSuccessMatch[1])} user={user} />;
+  }
+  const eventPaymentMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/(\d+)$/);
+  if (eventPaymentMatch) {
+    return <EventPaymentPage offerId={Number(eventPaymentMatch[2])} user={user} />;
   }
   const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
   if (oldProductMatch && oldProductMatch[1]) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarPlus, Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, registrationsApi } from "../services/api.js";
@@ -20,6 +21,8 @@ export function ContentDetailPage({ slug, type, user }) {
   const [capacitySummary, setCapacitySummary] = useState(null);
   const [eventAccess, setEventAccess] = useState(null);
   const [calendarHref, setCalendarHref] = useState("");
+  const [showUnregisterConfirmation, setShowUnregisterConfirmation] = useState(false);
+  const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -89,9 +92,30 @@ export function ContentDetailPage({ slug, type, user }) {
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? confirmedRegistrationCount(registrations);
   const isCapacityReached = maxParticipants != null && (capacitySummary?.isFull ?? confirmedParticipants >= maxParticipants);
+  const canPayForEvent = isEvent
+    && registrationOpen
+    && user.isAuthenticated
+    && Boolean(registration)
+    && registration.registered === false
+    && !isWaitlisted(registration);
+  const paymentCompleted = isEvent
+    && user.isAuthenticated
+    && Boolean(registration)
+    && registration.registered === true
+    && !isWaitlisted(registration);
+  const visibleLinks = (item.links ?? []).filter((link) => {
+    const isPaymentLink = String(link.type ?? "").toUpperCase() === "PAYMENT";
+    return !isPaymentLink || canPayForEvent || paymentCompleted;
+  });
 
-  async function toggleRegistration() {
-    if (registration) {
+  async function unregisterCurrentUser() {
+    if (!registration || isRemovingRegistration) {
+      return;
+    }
+
+    setIsRemovingRegistration(true);
+    setError("");
+    try {
       await registrationsApi.unregister(item.id);
       setRegistration(null);
       const [nextRegistrations, nextSummary] = await Promise.all([
@@ -100,16 +124,32 @@ export function ContentDetailPage({ slug, type, user }) {
       ]);
       setRegistrations(nextRegistrations);
       setCapacitySummary(nextSummary);
+      setShowUnregisterConfirmation(false);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsRemovingRegistration(false);
+    }
+  }
+
+  async function toggleRegistration() {
+    if (registration) {
+      setShowUnregisterConfirmation(true);
       return;
     }
 
-    const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
-    setRegistration(next);
-    setRegistrations((current) => {
-      const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
-      return [...withoutCurrentUser, next];
-    });
-    setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+    setError("");
+    try {
+      const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
+      setRegistration(next);
+      setRegistrations((current) => {
+        const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
+        return [...withoutCurrentUser, next];
+      });
+      setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   return (
@@ -181,17 +221,41 @@ export function ContentDetailPage({ slug, type, user }) {
               </div>
             )}
           </div>
-          {(item.links ?? []).length > 0 && (
+          {visibleLinks.length > 0 && (
             <aside className="menu-detail-side" aria-label="Event links">
-            {(item.links ?? []).map((link) => (
-              <a className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`} href={link.url} target="_blank" rel="noreferrer" key={link.id}>
-                <span>{shortLinkLabel(link.label)}</span>
-              </a>
+            {visibleLinks.map((link) => (
+              String(link.type ?? "").toUpperCase() === "PAYMENT" && paymentCompleted ? (
+                <div className="menu-detail-side-link menu-detail-side-link-payment menu-detail-side-link-paid" aria-label="Betaling gennemført" key={link.id}>
+                  <span>{shortLinkLabel(link.label)}</span>
+                  <strong>Betalt</strong>
+                </div>
+              ) : (
+                <a
+                  className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`}
+                  href={link.url}
+                  target={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/react/") ? undefined : "_blank"}
+                  rel={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/react/") ? undefined : "noreferrer"}
+                  key={link.id}
+                >
+                  <span>{shortLinkLabel(link.label)}</span>
+                </a>
+              )
             ))}
             </aside>
           )}
         </div>
       </article>
+      {showUnregisterConfirmation && registration && (
+        <ConfirmationDialog
+          title={isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld tilmelding"}
+          message={isWaitlisted(registration) ? "Er du sikker på, at du vil afmelde dig fra ventelisten?" : "Er du sikker på, at du vil afmelde din tilmelding?"}
+          confirmLabel="Ja, afmeld"
+          busyLabel="Afmelder..."
+          isBusy={isRemovingRegistration}
+          onConfirm={unregisterCurrentUser}
+          onCancel={() => !isRemovingRegistration && setShowUnregisterConfirmation(false)}
+        />
+      )}
     </MenuLayout>
   );
 }

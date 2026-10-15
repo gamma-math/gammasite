@@ -28,6 +28,8 @@ namespace GamMaSite.Data
 
         public DbSet<PaymentSubscription> PaymentSubscriptions { get; set; }
 
+        public DbSet<PaymentOffer> PaymentOffers { get; set; }
+
         public ApplicationDbContext() : base()
         {
         }
@@ -138,6 +140,35 @@ namespace GamMaSite.Data
 
                 entity.HasOne(m => m.ContentItem)
                     .WithMany(m => m.Links)
+                    .HasForeignKey(m => m.ContentItemId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<PaymentOffer>(entity =>
+            {
+                entity.ToTable("PaymentOffers");
+                entity.HasKey(m => m.Id);
+                entity.HasIndex(m => new { m.ContentItemId, m.Provider, m.OfferType })
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentOffers_ContentItemId_Provider_OfferType");
+                entity.HasIndex(m => m.ContentItemId).HasDatabaseName("IX_PaymentOffers_ContentItemId");
+                entity.HasIndex(m => new { m.Provider, m.ProviderPriceId })
+                    .HasDatabaseName("IX_PaymentOffers_ProviderPriceId");
+
+                entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.OfferType).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.ProductName).HasMaxLength(256).IsRequired();
+                entity.Property(m => m.ProviderProductId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPriceId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPaymentLinkId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPaymentUrl).HasColumnType("text");
+                entity.Property(m => m.Currency).HasMaxLength(3);
+                entity.Property(m => m.IsActive).HasDefaultValue(true);
+                entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(m => m.ContentItem)
+                    .WithMany(m => m.PaymentOffers)
                     .HasForeignKey(m => m.ContentItemId)
                     .OnDelete(DeleteBehavior.Cascade);
             });

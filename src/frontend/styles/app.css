@@ -331,6 +331,13 @@ img {
     linear-gradient(180deg, var(--action-soft), rgba(255, 255, 255, 0.72));
 }
 
+.menu-panel-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .menu-shell {
   width: min(1380px, calc(100% - 40px));
   margin: 34px auto 44px;
@@ -552,6 +559,50 @@ img {
 
 .menu-editor-link-row > .menu-inline-add-button {
   margin-top: 10px;
+}
+
+.admin-payment-offer-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #dbe4f2;
+}
+
+.admin-payment-offer-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-payment-offer-entry {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-payment-offer-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe4f2;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.admin-payment-offer-draft {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbe4f2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.payment-offer-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--action-blue);
 }
 
 .admin-editor-shell > .status-message {
@@ -815,6 +866,20 @@ img {
   color: #ffffff;
   border-color: #3859ef;
   background: #3859ef;
+}
+
+.menu-detail-side-link-paid {
+  justify-content: space-between;
+  gap: 12px;
+  color: #176b4d;
+  border-color: #9bd9bd;
+  background: #effaf3;
+}
+
+.menu-detail-side-link-paid strong {
+  color: #198754;
+  font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .menu-detail-bottom-bar {
@@ -2645,6 +2710,22 @@ img {
 
 .menu-payment-status-card > .frontpage-button {
   justify-self: start;
+}
+
+.menu-payment-event-success {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  max-width: 920px;
+  padding: 36px;
+  border: 1px solid #d7e1ef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.menu-payment-event-success h1,
+.menu-payment-event-success p {
+  margin: 0;
 }
 
 .menu-payment-product-card h1 {

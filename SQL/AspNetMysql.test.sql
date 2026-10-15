@@ -271,6 +271,31 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
     ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `PaymentOffers` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int NOT NULL,
+  `Provider` varchar(32) NOT NULL,
+  `OfferType` varchar(32) NOT NULL,
+  `ProductName` varchar(256) NOT NULL,
+  `ProviderProductId` varchar(128) DEFAULT NULL,
+  `ProviderPriceId` varchar(128) DEFAULT NULL,
+  `ProviderPaymentLinkId` varchar(128) DEFAULT NULL,
+  `ProviderPaymentUrl` text,
+  `AmountMinor` bigint DEFAULT NULL,
+  `Currency` varchar(3) DEFAULT NULL,
+  `IsActive` tinyint NOT NULL DEFAULT '1',
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_PaymentOffers_ContentItemId_Provider_OfferType`
+    (`ContentItemId`, `Provider`, `OfferType`),
+  KEY `IX_PaymentOffers_ContentItemId` (`ContentItemId`),
+  KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
+  CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
+    FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `EventRegistrations` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ContentItemId` int NOT NULL,

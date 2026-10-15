@@ -59,6 +59,56 @@ public sealed class StripeWebhookControllerTests
     }
 
     [Fact]
+    public async Task Receive_MarksEventRegistrationAsPaid()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "member@example.com", Status = UserStatus.OPRETTET });
+        var eventItem = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Test event",
+            Slug = "test-event",
+            StartDate = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        var offer = new PaymentOffer
+        {
+            ContentItem = eventItem,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Test ticket",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItem = eventItem,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new Mock<IStripeService>().Object);
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = $"{{\"id\":\"evt_event_payment\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"cs_event_payment\",\"object\":\"checkout.session\",\"mode\":\"payment\",\"payment_status\":\"paid\",\"client_reference_id\":\"user-1\",\"created\":{created},\"metadata\":{{\"PaymentOfferId\":\"{offer.Id}\"}}}}}},\"livemode\":false,\"type\":\"checkout.session.completed\"}}";
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var registration = await db.EventRegistrations.SingleAsync();
+        Assert.True(registration.Registered);
+    }
+
+    [Fact]
     public async Task Receive_UpsertsRecurringMembershipSubscription()
     {
         await using var db = CreateDb();

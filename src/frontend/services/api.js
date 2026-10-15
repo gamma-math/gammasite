@@ -142,6 +142,15 @@ export const contentApi = {
 /**
  * Event registration API for signups and attendee administration.
  */
+export const paymentOffersApi = {
+  listForEvent: (contentItemId) => request("/api/payment-offers/event/" + contentItemId),
+  saveForEvent: (contentItemId, payload) => request("/api/payment-offers/event/" + contentItemId, { method: "POST", body: JSON.stringify(payload) }),
+  get: (id) => request("/api/payment-offers/" + id),
+  successContext: (session) => request(`/api/payment-offers/success-context?session=${encodeURIComponent(session)}`),
+  checkout: (id) => request("/api/payment-offers/" + id + "/checkout", { method: "POST" }),
+  remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
+};
+
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
   summary: (contentId) => request(`/api/content/${contentId}/registrations/summary`),

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
-import { accountApi, paymentsApi } from "../services/api.js";
+import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
@@ -181,6 +181,98 @@ export function ProductPaymentPage({ productId, user }) {
   );
 }
 
+export function EventPaymentPage({ offerId, user }) {
+  const [offer, setOffer] = useState(null);
+  const [error, setError] = useState("");
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+
+  useEffect(() => {
+    paymentOffersApi.get(offerId).then(setOffer).catch(() => setError("Betalingstilbuddet kunne ikke hentes."));
+  }, [offerId]);
+
+  if (!user.isAuthenticated) {
+    const returnUrl = window.location.pathname + window.location.search;
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={false}>
+        <section className="frontpage-section">
+          <h1>Betaling</h1>
+          <p className="muted">Du skal være logget ind for at betale.</p>
+          <a className="frontpage-button frontpage-button-primary" href={"/react/account/login?ReturnUrl=" + encodeURIComponent(returnUrl)}>Log ind</a>
+        </section>
+      </MenuLayout>
+    );
+  }
+
+  if (!offer && !error) {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+        <div className="menu-loading-card">
+          <span className="menu-loading-dot" aria-hidden="true" />
+          <p>Henter betaling...</p>
+        </div>
+      </MenuLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+        <p className="status-message status-message-error">{error}</p>
+      </MenuLayout>
+    );
+  }
+
+  async function checkout() {
+    if (offer.provider !== "STRIPE" || isStartingCheckout) {
+      return;
+    }
+
+    setIsStartingCheckout(true);
+    setError("");
+    try {
+      const config = await paymentsApi.config();
+      const session = await paymentOffersApi.checkout(offer.id);
+      await redirectToStripe(config.publicApiKey, session.id);
+    } catch (reason) {
+      setError(reason.message || "Betalingen kunne ikke startes.");
+      setIsStartingCheckout(false);
+    }
+  }
+
+  const amount = offer.amountMinor == null
+    ? ""
+    : (Number(offer.amountMinor) / 100).toLocaleString("da-DK", { minimumFractionDigits: 2 }) + " " + String(offer.currency || "DKK").toUpperCase();
+  const providerReady = offer.provider === "STRIPE";
+  const mobilePayReady = offer.provider === "MOBILEPAY" && Boolean(offer.providerPaymentUrl);
+
+  return (
+    <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
+      <article className="menu-payment-card menu-payment-product-card">
+        <div className="menu-payment-product-hero">
+          <p className="menu-section-title">Betaling for event</p>
+          <h1>{offer.productName}</h1>
+        </div>
+        <div className="menu-payment-product-body">
+          <p className="muted">{offer.eventTitle}</p>
+          <p className="payment-offer-price">{amount}</p>
+          {providerReady ? (
+            <button className="menu-payment-button" type="button" onClick={checkout} disabled={isStartingCheckout}>
+              {isStartingCheckout ? "Åbner betaling..." : "Betal med kort"}
+            </button>
+          ) : mobilePayReady ? (
+            <a className="menu-payment-button" href={offer.providerPaymentUrl} target="_blank" rel="noreferrer">
+              Betal med MobilePay
+            </a>
+          ) : (
+            <p className="status-message status-message-warning">Betaling med {offer.provider} er ikke tilgængelig endnu.</p>
+          )}
+          {error && <p className="status-message status-message-error">{error}</p>}
+        </div>
+      </article>
+    </MenuLayout>
+  );
+}
+
 /**
  * Generic payment page for custom amount Stripe checkout.
  */
@@ -215,8 +307,60 @@ export function GenericPaymentPage({ user }) {
 /**
  * Displays payment success, membership success, or cancellation states.
  */
-export function PaymentStatusPage({ status, user }) {
+export function PaymentStatusPage({ status, eventSlug, session, user }) {
+  const [paymentContext, setPaymentContext] = useState(null);
+  const [isLoadingPaymentContext, setIsLoadingPaymentContext] = useState(Boolean(status === "success" && session));
   const success = status === "success" || status === "kontingent-success";
+
+  useEffect(() => {
+    if (status !== "success" || !session) {
+      setIsLoadingPaymentContext(false);
+      return undefined;
+    }
+
+    let active = true;
+    paymentOffersApi.successContext(session)
+      .then((context) => {
+        if (active) {
+          setPaymentContext(context);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) {
+          setIsLoadingPaymentContext(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [status, session]);
+
+  const resolvedEventSlug = eventSlug || paymentContext?.eventSlug;
+  if (status === "success" && session && isLoadingPaymentContext) {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <p className="muted">Bekræfter betaling...</p>
+      </MenuLayout>
+    );
+  }
+
+  if ((status === "event-success" || paymentContext?.type === "EVENT") && resolvedEventSlug) {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>Betaling gennemført</h1>
+          <p className="muted">Din betaling til arrangementet er gennemført.</p>
+          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(eventSlug)}`}>
+            Til begivenheden
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
   return (
     <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated}>
       <article className="menu-payment-card menu-payment-status-card">
