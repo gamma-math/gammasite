@@ -105,6 +105,7 @@ export const accountApi = {
   forgotPassword: (email) => request("/api/account/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resendEmailConfirmation: (email) => request("/api/account/resend-email-confirmation", { method: "POST", body: JSON.stringify({ email }) }),
   profile: () => request("/api/account/profile"),
+  subscriptions: () => request("/api/account/subscriptions"),
   updateProfile: (payload) => request("/api/account/profile", { method: "PUT", body: JSON.stringify(payload) }),
   changeEmail: (newEmail) => request("/api/account/change-email", { method: "POST", body: JSON.stringify({ newEmail }) }),
   sendVerificationEmail: () => request("/api/account/send-verification-email", { method: "POST" }),

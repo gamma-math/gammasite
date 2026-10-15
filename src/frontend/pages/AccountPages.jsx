@@ -22,6 +22,7 @@ const manageItems = [
   { href: "/react/account/manage/email", label: "Email" },
   { href: "/react/account/manage/password", label: "Password" },
   { href: "/react/account/manage/two-factor", label: "To-faktor authentication" },
+  { href: "/react/account/manage/subscriptions", label: "Mine abonnementer" },
   { href: "/react/account/manage/finance", label: "Mine transaktioner" },
   { href: "/react/account/manage/personal-data", label: "Privat data" },
   { href: "/react/account/manage/logout", label: "Log ud" }
@@ -205,16 +206,19 @@ export function AccountManagePage({ user, section = "profile" }) {
   }
 
   const isFinanceSection = section === "finance";
+  const isSubscriptionsSection = section === "subscriptions";
 
   return (
     <MenuLayout active={`/react/account/manage${section === "profile" ? "" : `/${section}`}`} title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>{isFinanceSection ? "Mine transaktioner" : "Administrér din bruger"}</h1>
+          <h1>{isFinanceSection ? "Mine transaktioner" : isSubscriptionsSection ? "Mine abonnementer" : "Administrér din bruger"}</h1>
           <p className="menu-panel-lead menu-panel-lead-inline">
             {isFinanceSection
               ? "Se dine egne transaktioner i GamMa."
+              : isSubscriptionsSection
+                ? "Se dine aktive og tidligere abonnementer i GamMa."
               : "Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se."}
           </p>
         </div>
@@ -267,6 +271,7 @@ export function AccountManagePage({ user, section = "profile" }) {
           }} />
         )}
         {section === "two-factor" && <TwoFactorPanel />}
+        {section === "subscriptions" && <PaymentSubscriptionsPanel />}
         {section === "finance" && <FinancePostingsPanel setLastUpdated={setFinanceLastUpdated} />}
         {section === "personal-data" && <PersonalDataPanel />}
         {section === "delete-personal-data" && <DeletePersonalDataPanel />}
@@ -274,6 +279,85 @@ export function AccountManagePage({ user, section = "profile" }) {
         <Status message={message} error={error} />
       </section>
     </MenuLayout>
+  );
+}
+
+function PaymentSubscriptionsPanel() {
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    accountApi.subscriptions()
+      .then((result) => {
+        if (active) {
+          setSubscriptions(Array.isArray(result) ? result : []);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <section className="account-subscriptions-panel">
+      <h2>Mine abonnementer</h2>
+      {isLoading && <p className="muted">Henter dine abonnementer...</p>}
+      {error && <p className="status-message status-message-error">{error}</p>}
+      {!isLoading && !error && (
+        <div className="menu-table-wrap account-finance-table-wrap">
+          <table className="menu-member-table account-finance-table account-subscriptions-table">
+            <thead>
+              <tr>
+                <th>Udbyder</th>
+                <th>Produkt</th>
+                <th>Status</th>
+                <th>Senest betalt</th>
+                <th>Næste opkrævning</th>
+                <th>Oprettet</th>
+                <th>Opdateret</th>
+                <th aria-label="Handlinger" />
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptions.map((subscription, index) => (
+                <tr key={`${subscription.provider}-${subscription.created}-${index}`}>
+                  <td>{subscription.provider || "—"}</td>
+                  <td>{subscription.productName || "—"}</td>
+                  <td>{subscription.status || "—"}</td>
+                  <td>{formatSubscriptionDate(subscription.lastPaidAt)}</td>
+                  <td>{formatSubscriptionDate(subscription.nextChargeAt)}</td>
+                  <td>{formatSubscriptionDate(subscription.created)}</td>
+                  <td>{formatSubscriptionDate(subscription.updated)}</td>
+                  <td>
+                    <button className="account-subscription-delete-button" type="button" disabled>
+                      Slet abonnement
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {subscriptions.length === 0 && (
+                <tr>
+                  <td colSpan="8">Du har ingen abonnementer endnu.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -601,6 +685,25 @@ function formatPostingDate(value) {
     day: "2-digit",
     month: "short",
     year: "numeric"
+  }).format(date);
+}
+
+function formatSubscriptionDate(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
   }).format(date);
 }
 

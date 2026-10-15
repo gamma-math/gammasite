@@ -26,6 +26,8 @@ namespace GamMaSite.Data
 
         public DbSet<RolePermission> RolePermissions { get; set; }
 
+        public DbSet<PaymentSubscription> PaymentSubscriptions { get; set; }
+
         public ApplicationDbContext() : base()
         {
         }
@@ -182,6 +184,36 @@ namespace GamMaSite.Data
                 entity.Property(m => m.IsActive).HasDefaultValue(true);
                 entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            builder.Entity<PaymentSubscription>(entity =>
+            {
+                entity.ToTable("PaymentSubscriptions");
+                entity.HasKey(m => m.Id);
+                entity.HasIndex(m => m.UserId)
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentSubscriptions_UserId");
+                entity.HasIndex(m => new { m.Provider, m.ProviderSubscriptionId })
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentSubscriptions_ProviderSubscriptionId");
+                entity.HasIndex(m => m.Status).HasDatabaseName("IX_PaymentSubscriptions_Status");
+                entity.HasIndex(m => m.ProviderPriceId).HasDatabaseName("IX_PaymentSubscriptions_ProviderPriceId");
+
+                entity.Property(m => m.UserId).HasMaxLength(128).IsRequired();
+                entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.ProviderSubscriptionId).HasMaxLength(128).IsRequired();
+                entity.Property(m => m.ProductName).HasMaxLength(256);
+                entity.Property(m => m.ProviderProductId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPriceId).HasMaxLength(128);
+                entity.Property(m => m.Status).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.CancelAtPeriodEnd).HasDefaultValue(false);
+                entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne<SiteUser>()
+                    .WithMany()
+                    .HasForeignKey(m => m.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

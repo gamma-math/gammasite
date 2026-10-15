@@ -320,6 +320,9 @@ function renderRoute(route, user, isAdmin, access) {
   if (path === "/react/account/manage/two-factor") {
     return <AccountManagePage user={user} section="two-factor" />;
   }
+  if (path === "/react/account/manage/subscriptions") {
+    return <AccountManagePage user={user} section="subscriptions" />;
+  }
   if (path === "/react/account/manage/finance") {
     return <AccountManagePage user={user} section="finance" />;
   }

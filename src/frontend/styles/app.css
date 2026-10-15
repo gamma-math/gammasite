@@ -2909,6 +2909,37 @@ img {
   width: 100%;
 }
 
+.account-subscriptions-panel {
+  margin-bottom: 32px;
+}
+
+.account-subscriptions-panel h2 {
+  margin: 0 0 16px;
+  color: var(--ink-strong);
+  font-size: 1.2rem;
+}
+
+.account-subscriptions-table {
+  min-width: 1120px;
+}
+
+.account-subscriptions-table th,
+.account-subscriptions-table td {
+  white-space: nowrap;
+}
+
+.account-subscription-delete-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #d6deec;
+  border-radius: 10px;
+  color: #7a889b;
+  background: #f4f6f9;
+  font: inherit;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
 .account-finance-table-container {
   min-width: 0;
 }
