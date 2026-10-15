@@ -24,7 +24,7 @@ import {
   FinanceAdminPostingDetailPage,
   FinanceAdminPostingsPage,
 } from "../pages/AdminFinancePage.jsx";
-import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
+import { AdminMemberSubscriptionsPage, AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
 import {
   AdminRolesEditorPage,
@@ -449,6 +449,12 @@ function renderRoute(route, user, isAdmin, access) {
     return (
       <AdminTemplateEditorPage isAdmin={access.emailTemplatesEdit} templateId={templateId} />
     );
+  }
+  if (
+    /^\/react\/admin\/users\/[^/]+\/subscriptions$/.test(path)
+  ) {
+    const memberId = decodeURIComponent(path.split("/")[4]);
+    return <AdminMemberSubscriptionsPage isAdmin={access.rolesEdit} memberId={memberId} />;
   }
   if (
     path === "/react/admin/users" ||

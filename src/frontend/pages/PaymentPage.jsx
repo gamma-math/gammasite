@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
-import { paymentsApi } from "../services/api.js";
+import { accountApi, paymentsApi } from "../services/api.js";
+import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
 const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
@@ -11,13 +12,21 @@ const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betal
  */
 export function PaymentPage({ user }) {
   const [products, setProducts] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [paymentType, setPaymentType] = useState("one-time");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [isMembershipStatusLoading, setIsMembershipStatusLoading] = useState(true);
 
   useEffect(() => {
     if (user.isAuthenticated) {
-      paymentsApi.products().then(setProducts).catch(() => setProducts([]));
+      Promise.all([
+        paymentsApi.products().catch(() => []),
+        accountApi.subscriptions().catch(() => [])
+      ]).then(([nextProducts, nextSubscriptions]) => {
+        setProducts(nextProducts);
+        setSubscriptions(nextSubscriptions);
+      }).finally(() => setIsMembershipStatusLoading(false));
     }
   }, [user.isAuthenticated]);
 
@@ -26,6 +35,7 @@ export function PaymentPage({ user }) {
   }
 
   const membershipProduct = products[0];
+  const membershipAlreadyPaid = hasPaidMembership(user, subscriptions);
 
   async function startStripeCheckout() {
     if (!membershipProduct || isStartingCheckout) {
@@ -52,46 +62,59 @@ export function PaymentPage({ user }) {
         </div>
       </div>
 
-      <article className="menu-payment-card menu-payment-choice-card">
-        <p className="menu-payment-kicker">Vælg betalingstype</p>
-        <fieldset className="payment-type-options">
-          <legend className="sr-only">Vælg betalingstype</legend>
-          <label className={`payment-type-option${paymentType === "one-time" ? " is-selected" : ""}`}>
-            <input type="radio" name="paymentType" value="one-time" checked={paymentType === "one-time"} onChange={() => setPaymentType("one-time")} />
-            <span>
-              <strong>Betal én gang</strong>
-              <small>Betal medlemskabet manuelt for den aktuelle periode.</small>
+      <article className={`menu-payment-card menu-payment-choice-card${membershipAlreadyPaid ? " membership-paid-card" : ""}`}>
+        {isMembershipStatusLoading ? (
+          <p className="muted">Henter medlemsstatus...</p>
+        ) : membershipAlreadyPaid ? (
+          <div className="membership-paid-message" role="status">
+            <span className="membership-paid-icon" aria-hidden="true">✓</span>
+            <span className="membership-paid-copy">
+              <strong>Medlemskab er aktivt</strong>
+              <small>Dit medlemskab er allerede registreret.</small>
             </span>
-          </label>
-          <label className={`payment-type-option${paymentType === "recurring" ? " is-selected" : ""}`}>
-            <input type="radio" name="paymentType" value="recurring" checked={paymentType === "recurring"} onChange={() => setPaymentType("recurring")} />
-            <span>
-              <strong>Automatisk fornyelse</strong>
-              <small>Medlemskabet fornyes automatisk hvert år.</small>
-            </span>
-          </label>
-        </fieldset>
+          </div>
+        ) : (
+          <>
+            <p id="payment-type-heading" className="menu-payment-kicker payment-method-kicker">Vælg betalingstype</p>
+            <fieldset className="payment-type-options" aria-labelledby="payment-type-heading">
+              <label className={`payment-type-option${paymentType === "one-time" ? " is-selected" : ""}`}>
+                <input type="radio" name="paymentType" value="one-time" checked={paymentType === "one-time"} onChange={() => setPaymentType("one-time")} />
+                <span>
+                  <strong>Betal én gang</strong>
+                  <small>Betal medlemskabet manuelt for den aktuelle periode.</small>
+                </span>
+              </label>
+              <label className={`payment-type-option${paymentType === "recurring" ? " is-selected" : ""}`}>
+                <input type="radio" name="paymentType" value="recurring" checked={paymentType === "recurring"} onChange={() => setPaymentType("recurring")} />
+                <span>
+                  <strong>Automatisk fornyelse</strong>
+                  <small>Medlemskabet fornyes automatisk hvert år.</small>
+                </span>
+              </label>
+            </fieldset>
 
-        {paymentType === "recurring" && (
-          <p className="payment-type-note">Automatisk fornyelse er i første omgang kun tilgængelig med betalingskort. MobilePay-linket nedenfor gennemfører den almindelige manuelle betaling.</p>
+            {paymentType === "recurring" && (
+              <p className="payment-type-note">Automatisk fornyelse er i første omgang kun tilgængelig med betalingskort. MobilePay-linket nedenfor gennemfører den almindelige manuelle betaling.</p>
+            )}
+
+            <p className="menu-payment-kicker payment-method-kicker">Vælg betalingsmetode</p>
+            <div className="payment-choice-actions">
+              {membershipProduct ? (
+                <button className="menu-payment-button menu-payment-button-large" type="button" onClick={startStripeCheckout} disabled={isStartingCheckout}>
+                  {isStartingCheckout ? "Åbner Stripe..." : "Betal med hævekort"}
+                </button>
+              ) : (
+                <button className="menu-payment-button menu-payment-button-large" type="button" disabled>
+                  Henter hævekort
+                </button>
+              )}
+              <span className="payment-choice-divider">eller</span>
+              <a className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" href={mobilePayMembershipUrl} target="_blank" rel="noreferrer">
+                Betal med MobilePay
+              </a>
+            </div>
+          </>
         )}
-
-        <p className="menu-payment-kicker payment-method-kicker">Vælg betalingsmetode</p>
-        <div className="payment-choice-actions">
-          {membershipProduct ? (
-            <button className="menu-payment-button menu-payment-button-large" type="button" onClick={startStripeCheckout} disabled={isStartingCheckout}>
-              {isStartingCheckout ? "Åbner Stripe..." : "Betal med hævekort"}
-            </button>
-          ) : (
-            <button className="menu-payment-button menu-payment-button-large" type="button" disabled>
-              Henter hævekort
-            </button>
-          )}
-          <span className="payment-choice-divider">eller</span>
-          <a className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" href={mobilePayMembershipUrl} target="_blank" rel="noreferrer">
-            Betal med MobilePay
-          </a>
-        </div>
         {checkoutError && <p className="status-message status-message-error">{checkoutError}</p>}
       </article>
     </MenuLayout>

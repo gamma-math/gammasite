@@ -2128,6 +2128,95 @@ img {
   background: #f8faff;
 }
 
+.admin-mass-fields {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+
+.admin-mass-exclusion {
+  flex-basis: 100%;
+}
+
+.admin-subscription-detail-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #d7dfe9;
+  background: linear-gradient(115deg, #ffffff, #f1f4ff);
+}
+
+.admin-subscription-detail-header h1 {
+  margin: 0 0 8px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-detail-list {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-subscription-detail-card {
+  padding: 22px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-subscription-detail-card h2 {
+  margin: 0 0 18px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-detail-card .account-readonly-row strong {
+  overflow-wrap: anywhere;
+}
+
+.admin-subscription-dashboard-link {
+  justify-self: start;
+  width: fit-content;
+  margin-top: 2px;
+}
+
+.admin-subscription-link {
+  color: var(--action-blue);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .admin-mass-fields {
+    align-items: stretch;
+  }
+
+  .admin-mass-fields .admin-field,
+  .admin-mass-fields .profile-button {
+    width: 100%;
+  }
+
+  .admin-subscription-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+}
+
+.admin-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
 .menu-member-status-select {
   min-height: 40px;
   padding: 0 12px;
@@ -2339,6 +2428,84 @@ img {
   background: #ffffff;
 }
 
+.membership-paid-card {
+  display: block;
+  padding: 18px 0 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.membership-paid-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  max-width: 620px;
+  color: #146846;
+}
+
+.membership-paid-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 3px solid #2caf70;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #2caf70;
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.membership-paid-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.membership-paid-copy strong {
+  color: var(--ink-strong);
+  font-size: 1.1rem;
+}
+
+.membership-paid-copy small {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  .membership-paid-card {
+    padding: 14px 0 18px;
+  }
+
+  .membership-paid-message {
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .membership-paid-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.45rem;
+  }
+
+  .membership-paid-copy {
+    gap: 3px;
+  }
+
+  .membership-paid-copy strong {
+    font-size: 1rem;
+  }
+
+  .membership-paid-copy small {
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+}
+
 .payment-choice-actions {
   display: grid;
   justify-items: center;
@@ -2350,10 +2517,16 @@ img {
   .payment-type-options {
     display: grid;
     gap: 12px;
-    max-width: 720px;
+    max-width: 100%;
     margin: 18px 0 0;
     padding: 0;
     border: 0;
+  }
+
+  @media (min-width: 800px) {
+    .payment-type-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .payment-type-option {
@@ -2919,8 +3092,23 @@ img {
   font-size: 1.2rem;
 }
 
+.account-subscription-expander-header,
+.account-subscription-expander-cell,
+.account-subscription-expanded-row {
+  display: none;
+}
+
+.account-subscriptions-scroll-wrap {
+  display: block;
+  width: 0;
+  min-width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+}
+
 .account-subscriptions-table {
-  min-width: 1120px;
+  width: 100%;
+  min-width: 1450px;
 }
 
 .account-subscriptions-table th,
@@ -2931,12 +3119,24 @@ img {
 .account-subscription-delete-button {
   min-height: 36px;
   padding: 7px 12px;
-  border: 1px solid #d6deec;
+  border: 1px solid var(--action-blue);
   border-radius: 10px;
-  color: #7a889b;
-  background: #f4f6f9;
+  color: #ffffff;
+  background: var(--action-blue);
   font: inherit;
   font-weight: 700;
+  cursor: pointer;
+}
+
+.account-subscription-delete-button:hover {
+  background: #2f4bd3;
+  border-color: #2f4bd3;
+}
+
+.account-subscription-delete-button:disabled {
+  border-color: #d6deec;
+  color: #7a889b;
+  background: #f4f6f9;
   cursor: not-allowed;
 }
 
@@ -3058,6 +3258,92 @@ img {
 
   .account-finance-table-container.is-expanded {
     padding: 14px 12px 16px;
+  }
+
+  .account-subscriptions-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .account-subscriptions-scroll-wrap {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+  }
+
+  .account-subscriptions-table th,
+  .account-subscriptions-table td {
+    padding: 10px 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .account-subscription-expander-header,
+  .account-subscription-expander-cell {
+    display: table-cell;
+    width: 38px;
+    padding-right: 0 !important;
+    padding-left: 4px !important;
+  }
+
+  .account-subscriptions-table th:nth-child(2),
+  .account-subscriptions-table td:nth-child(2) {
+    width: 24%;
+    text-align: left;
+  }
+
+  .account-subscriptions-table th:nth-child(3),
+  .account-subscriptions-table td:nth-child(3) {
+    width: 31%;
+    text-align: left;
+  }
+
+  .account-subscriptions-table th:nth-child(4),
+  .account-subscriptions-table td:nth-child(4) {
+    width: 29%;
+    text-align: left;
+  }
+
+  .account-subscription-mobile-hidden {
+    display: none;
+  }
+
+  .account-subscription-expanded-row {
+    display: table-row;
+  }
+
+  .account-subscription-expanded-row > td {
+    padding: 12px 12px 16px;
+    background: #f8faff;
+  }
+
+  .account-subscription-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+
+  .account-subscription-details div {
+    display: grid;
+    gap: 3px;
+  }
+
+  .account-subscription-details dt {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .account-subscription-details dd {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: 0.85rem;
+  }
+
+  .account-subscription-expanded-row .account-subscription-delete-button {
+    width: 100%;
   }
 }
 

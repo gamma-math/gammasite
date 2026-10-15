@@ -72,9 +72,12 @@ jobs:
           SmsSender.ApiKey: ${{ secrets.SMS_APIGATEWAY_KEY }}
           StripeConfig.PublicApiKey: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
           StripeConfig.SecretApiKey: ${{ secrets.STRIPE_SECRET_API_KEY }}
+          StripeConfig.AccountId: ${{ vars.STRIPE_ACCOUNT_ID }}
+          StripeConfig.Environment: ${{ vars.STRIPE_ENVIRONMENT }}
           StripeConfig.MembershipProductId: ${{ vars.STRIPE_MEMBERSHIP_PRODUCT_ID }}
           StripeConfig.PaymentOneTimeId: ${{ vars.STRIPE_PAYMENT_ONETIME_ID }}
           StripeConfig.PaymentRecurringId: ${{ vars.STRIPE_PAYMENT_RECURRING_ID }}
+          StripeConfig.WebhookSecret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           GitHub.Token: ${{ secrets.GH_API_KEY }}
           GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
           ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}

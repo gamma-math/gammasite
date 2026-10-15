@@ -59,7 +59,7 @@ export function adminPermissionForPath(path) {
   if (path === "/react/admin/templates" || path.startsWith("/react/admin/templates/")) {
     return permissions.emailTemplatesEdit;
   }
-  if (path === "/react/admin/users" || path === "/react/admin/roles" || path.startsWith("/react/admin/roles/")) {
+  if (path === "/react/admin/users" || path.startsWith("/react/admin/users/") || path === "/react/admin/roles" || path.startsWith("/react/admin/roles/")) {
     return permissions.rolesEdit;
   }
   if (path === "/react/admin/finance/postings/edit") {

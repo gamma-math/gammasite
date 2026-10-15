@@ -32,6 +32,10 @@ namespace GamMaSite.Services
         Task<Price> GetPriceAsync(string product);
 
         Task<Price> GetPriceByIdAsync(string id);
+
+        Task<Subscription> GetSubscriptionAsync(string id);
+
+        Task<Subscription> CancelSubscriptionAsync(string id);
     }
 
     /*
@@ -143,6 +147,40 @@ namespace GamMaSite.Services
             }
         }
 
+        public async Task<Subscription> GetSubscriptionAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await new SubscriptionService().GetAsync(id);
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Subscription> CancelSubscriptionAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await new SubscriptionService().CancelAsync(id);
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
         private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string user, string successUrl, string cancelUrl)
         {
             var options = new SessionCreateOptions
@@ -160,7 +198,7 @@ namespace GamMaSite.Services
                 ],
                 Metadata = new Dictionary<string, string> 
                 { 
-                    { "SessionCreated", DateTime.UtcNow.ToString(CultureInfo.InvariantCulture) },
+                    { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
                     { "Product", priceData?.Product },
                     { "ProductName", priceData?.ProductData?.Name }
                 },
@@ -192,12 +230,23 @@ namespace GamMaSite.Services
                 ],
                 Metadata = new Dictionary<string, string>
                 {
-                    { "SessionCreated", DateTime.UtcNow.ToString(CultureInfo.InvariantCulture) },
+                    { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
                     { "Product", productId },
                     { "ProductName", productName }
                 },
                 ClientReferenceId = user,
                 Mode = mode,
+                SubscriptionData = string.Equals(mode, "subscription", StringComparison.OrdinalIgnoreCase)
+                    ? new SessionSubscriptionDataOptions
+                    {
+                        Metadata = new Dictionary<string, string>
+                        {
+                            { "GamMaUserId", user },
+                            { "Product", productId },
+                            { "ProductName", productName }
+                        }
+                    }
+                    : null,
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,
             };

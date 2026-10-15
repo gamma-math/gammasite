@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Models;
@@ -93,20 +94,46 @@ namespace GamMaSite.Controllers
             var kontingentProduct = await _stripeService.GetProductAsync(configuredProductId);
             var stripeSession = await _stripeService.GetSessionAsync(session);
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
+            var sessionProductId = stripeSession?.Metadata != null &&
+                stripeSession.Metadata.TryGetValue("Product", out var productId)
+                ? productId
+                : null;
             var correctProduct = kontingentProduct != null &&
-                stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
+                sessionProductId == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
-            var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
-            if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct)
+            var sessionCreated = TryGetSessionCreated(stripeSession);
+            if (sessionCreated.HasValue && DateTime.UtcNow < sessionCreated.Value.AddHours(1) && hasPayed && correctProduct && user != null)
             {
-                user?.MarkAsPayed();
-                await _userManager.UpdateAsync(user);
+                if (!string.Equals(stripeSession.Mode, "subscription", StringComparison.OrdinalIgnoreCase))
+                {
+                    user.MarkAsPayed();
+                    await _userManager.UpdateAsync(user);
+                }
+
                 return View(user);
             }
             else
             {
                 return RedirectToAction("Index");
             }
+        }
+
+        private static DateTime? TryGetSessionCreated(Stripe.Checkout.Session session)
+        {
+            if (session?.Metadata == null ||
+                !session.Metadata.TryGetValue("SessionCreated", out var value) ||
+                string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return DateTime.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed)
+                ? parsed
+                : null;
         }
 
         public IActionResult Cancel()

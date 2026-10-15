@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using GamMaSite.Data;
+using GamMaSite.Models;
 using Microsoft.AspNetCore.Mvc;
 using GamMaSite.Services;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace GamMaSite.Controllers
 {
@@ -18,11 +22,13 @@ namespace GamMaSite.Controllers
     {
         private readonly IStripeService _stripeService;
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _db;
 
-        public StripeController(IStripeService stripeService, IConfiguration configuration)
+        public StripeController(IStripeService stripeService, IConfiguration configuration, ApplicationDbContext db)
         {
             this._stripeService = stripeService;
             this._configuration = configuration;
+            this._db = db;
         }
 
         [HttpPost("Product")]
@@ -33,6 +39,31 @@ namespace GamMaSite.Controllers
             if (!isRecurring && !string.Equals(paymentType, "one-time", StringComparison.OrdinalIgnoreCase))
             {
                 return BadRequest("Ugyldig betalingstype.");
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                user = currentUserId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user))
+            {
+                var member = await _db.Users
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(member => member.Id == user, HttpContext.RequestAborted);
+                var hasPaidMembership = member?.Status == UserStatus.BETALT || member?.Status == UserStatus.STUDERENDE;
+                var hasActiveSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
+                    subscription.UserId == user && (subscription.Status == PaymentSubscriptionStatuses.Active ||
+                        subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                        subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                        subscription.Status == PaymentSubscriptionStatuses.Incomplete),
+                    HttpContext.RequestAborted);
+
+                if (hasPaidMembership || hasActiveSubscription)
+                {
+                    return Conflict("Du har allerede betalt medlemskab.");
+                }
             }
 
             var priceId = _configuration[isRecurring

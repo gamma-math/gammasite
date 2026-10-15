@@ -2,6 +2,14 @@ using System;
 
 namespace GamMaSite.Models
 {
+    public static class PaymentSubscriptionStatuses
+    {
+        public const string Active = "active";
+        public const string Trialing = "trialing";
+        public const string PastDue = "past_due";
+        public const string Incomplete = "incomplete";
+    }
+
     /*
      * Stores the current subscription state for a user. Payment history remains
      * outside this table; provider webhooks update this current-state record.

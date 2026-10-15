@@ -6,9 +6,12 @@ using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Data;
 using GamMaSite.Models;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using Stripe;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -50,6 +53,51 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         Assert.Equal("Kontingent", subscription.GetProperty("productName").GetString());
     }
 
+    [Fact]
+    public async Task Delete_CancelsCurrentUsersStripeSubscription()
+    {
+        await using var db = CreateDb();
+        var paymentSubscription = Subscription("user-1", "sub-1", "Kontingent");
+        paymentSubscription.Provider = "Stripe";
+        db.PaymentSubscriptions.Add(paymentSubscription);
+        await db.SaveChangesAsync();
+
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.CancelSubscriptionAsync("sub-1"))
+            .ReturnsAsync(new Subscription { Id = "sub-1", Status = "canceled" });
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, stripe.Object);
+
+        var result = await controller.Delete("sub-1", default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal("canceled", ok.Value?.GetType().GetProperty("status")?.GetValue(ok.Value));
+        Assert.Equal("canceled", (await db.PaymentSubscriptions.SingleAsync()).Status);
+        stripe.Verify(value => value.CancelSubscriptionAsync("sub-1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Delete_DoesNotCancelSubscriptionOwnedByAnotherUser()
+    {
+        await using var db = CreateDb();
+        db.PaymentSubscriptions.Add(Subscription("user-2", "sub-2", "Kontingent"));
+        await db.SaveChangesAsync();
+
+        var stripe = new Mock<IStripeService>();
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, stripe.Object);
+
+        var result = await controller.Delete("sub-2", default);
+
+        Assert.IsType<NotFoundResult>(result);
+        stripe.Verify(value => value.CancelSubscriptionAsync(It.IsAny<string>()), Times.Never);
+        Assert.Equal("active", (await db.PaymentSubscriptions.SingleAsync()).Status);
+    }
+
     private static PaymentSubscription Subscription(string userId, string providerSubscriptionId, string productName) => new()
     {
         UserId = userId,
@@ -61,9 +109,9 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         Updated = DateTime.UtcNow
     };
 
-    private static ApiPaymentSubscriptionsController CreateController(ApplicationDbContext db, ClaimsPrincipal user)
+    private static ApiPaymentSubscriptionsController CreateController(ApplicationDbContext db, ClaimsPrincipal user, IStripeService stripe = null!)
     {
-        return new ApiPaymentSubscriptionsController(db)
+        return new ApiPaymentSubscriptionsController(db, stripe)
         {
             ControllerContext = new ControllerContext
             {

@@ -58,6 +58,7 @@ namespace GamMaSite.Controllers
                 userName = user.UserName,
                 email = user.Email,
                 name = user.Navn,
+                status = user.Status.ToString(),
                 roles = roles.ToArray(),
                 permissions
             });

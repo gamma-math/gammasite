@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { CircleMinus, CirclePlus, KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./MembersPage.jsx";
 import { accountApi } from "../services/api.js";
@@ -286,6 +287,9 @@ function PaymentSubscriptionsPanel() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState("");
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState(null);
+  const [expandedSubscriptionIds, setExpandedSubscriptionIds] = useState(new Set());
 
   useEffect(() => {
     let active = true;
@@ -311,53 +315,149 @@ function PaymentSubscriptionsPanel() {
     };
   }, []);
 
+  const requestCancelSubscription = (subscription) => {
+    if (!subscription.providerSubscriptionId || deletingId) {
+      return;
+    }
+
+    setError("");
+    setSubscriptionToCancel(subscription);
+  };
+
+  const cancelSubscription = async () => {
+    const subscription = subscriptionToCancel;
+    if (!subscription?.providerSubscriptionId || deletingId) {
+      return;
+    }
+
+    setDeletingId(subscription.providerSubscriptionId);
+    try {
+      const result = await accountApi.cancelSubscription(subscription.providerSubscriptionId);
+      setSubscriptions((current) => current.map((item) => item.providerSubscriptionId === subscription.providerSubscriptionId
+        ? { ...item, status: result?.status || "canceled" }
+        : item));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId("");
+      setSubscriptionToCancel(null);
+    }
+  };
+
+  const toggleSubscription = (subscriptionId) => {
+    setExpandedSubscriptionIds((current) => {
+      const next = new Set(current);
+      if (next.has(subscriptionId)) {
+        next.delete(subscriptionId);
+      } else {
+        next.add(subscriptionId);
+      }
+      return next;
+    });
+  };
+
   return (
     <section className="account-subscriptions-panel">
       <h2>Mine abonnementer</h2>
       {isLoading && <p className="muted">Henter dine abonnementer...</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
       {!isLoading && !error && (
-        <div className="menu-table-wrap account-finance-table-wrap">
-          <table className="menu-member-table account-finance-table account-subscriptions-table">
+        <div className="account-finance-table-container">
+          <div className="menu-table-wrap account-finance-table-wrap account-subscriptions-scroll-wrap">
+            <table className="menu-member-table account-finance-table account-subscriptions-table">
             <thead>
               <tr>
+                <th className="account-subscription-expander-header" aria-label="Detaljer" />
                 <th>Udbyder</th>
                 <th>Produkt</th>
                 <th>Status</th>
-                <th>Senest betalt</th>
-                <th>Næste opkrævning</th>
-                <th>Oprettet</th>
-                <th>Opdateret</th>
-                <th aria-label="Handlinger" />
+                <th className="account-subscription-mobile-hidden">Senest betalt</th>
+                <th className="account-subscription-mobile-hidden">Næste opkrævning</th>
+                <th className="account-subscription-mobile-hidden">Oprettet</th>
+                <th className="account-subscription-mobile-hidden">Opdateret</th>
+                <th className="account-subscription-mobile-hidden" aria-label="Handlinger" />
               </tr>
             </thead>
             <tbody>
-              {subscriptions.map((subscription, index) => (
-                <tr key={`${subscription.provider}-${subscription.created}-${index}`}>
-                  <td>{subscription.provider || "—"}</td>
-                  <td>{subscription.productName || "—"}</td>
-                  <td>{subscription.status || "—"}</td>
-                  <td>{formatSubscriptionDate(subscription.lastPaidAt)}</td>
-                  <td>{formatSubscriptionDate(subscription.nextChargeAt)}</td>
-                  <td>{formatSubscriptionDate(subscription.created)}</td>
-                  <td>{formatSubscriptionDate(subscription.updated)}</td>
-                  <td>
-                    <button className="account-subscription-delete-button" type="button" disabled>
-                      Slet abonnement
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {subscriptions.map((subscription, index) => {
+                const subscriptionKey = `${subscription.providerSubscriptionId || subscription.provider}-${subscription.created}-${index}`;
+                const isExpanded = expandedSubscriptionIds.has(subscriptionKey);
+                return (
+                  <Fragment key={subscriptionKey}>
+                    <tr>
+                      <td className="account-subscription-expander-cell">
+                        <button
+                          className="menu-member-expander"
+                          type="button"
+                          aria-label={isExpanded ? "Skjul abonnementsdetaljer" : "Vis abonnementsdetaljer"}
+                          aria-expanded={isExpanded}
+                          onClick={() => toggleSubscription(subscriptionKey)}
+                        >
+                          {isExpanded ? <CircleMinus size={18} /> : <CirclePlus size={18} />}
+                        </button>
+                      </td>
+                      <td>{subscription.provider || "—"}</td>
+                      <td>{subscription.productName || "—"}</td>
+                      <td>{subscription.status || "—"}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.lastPaidAt)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.nextChargeAt)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.created)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.updated)}</td>
+                      <td className="account-subscription-mobile-hidden"><SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} /></td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="account-subscription-expanded-row">
+                        <td></td>
+                        <td colSpan="3">
+                          <dl className="account-subscription-details">
+                            <div><dt>Senest betalt</dt><dd>{formatSubscriptionDate(subscription.lastPaidAt)}</dd></div>
+                            <div><dt>Næste opkrævning</dt><dd>{formatSubscriptionDate(subscription.nextChargeAt)}</dd></div>
+                            <div><dt>Oprettet</dt><dd>{formatSubscriptionDate(subscription.created)}</dd></div>
+                            <div><dt>Opdateret</dt><dd>{formatSubscriptionDate(subscription.updated)}</dd></div>
+                          </dl>
+                          <SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
               {subscriptions.length === 0 && (
                 <tr>
-                  <td colSpan="8">Du har ingen abonnementer endnu.</td>
+                  <td colSpan="9">Du har ingen abonnementer endnu.</td>
                 </tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
+
+      {subscriptionToCancel && (
+        <ConfirmationDialog
+          title="Annuller abonnement"
+          message={`Er du sikker på, at du vil annullere abonnementet${subscriptionToCancel.productName ? ` for ${subscriptionToCancel.productName}` : ""}? Abonnementet annulleres hos Stripe, og fremtidige opkrævninger stoppes.`}
+          confirmLabel="Ja, annuller abonnement"
+          busyLabel="Annullerer..."
+          onConfirm={cancelSubscription}
+          onCancel={() => !deletingId && setSubscriptionToCancel(null)}
+          isBusy={Boolean(deletingId)}
+        />
+      )}
     </section>
+  );
+}
+
+function SubscriptionCancelButton({ subscription, deletingId, onRequestCancel }) {
+  return (
+    <button
+      className="account-subscription-delete-button"
+      type="button"
+      disabled={!subscription.providerSubscriptionId || subscription.status === "canceled" || deletingId === subscription.providerSubscriptionId}
+      onClick={() => onRequestCancel(subscription)}
+    >
+      {deletingId === subscription.providerSubscriptionId ? "Annullerer..." : subscription.status === "canceled" ? "Annulleret" : "Annuller"}
+    </button>
   );
 }
 

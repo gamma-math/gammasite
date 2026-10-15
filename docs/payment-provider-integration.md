@@ -166,6 +166,14 @@ MobilePay recommends polling the payment as a fallback if a webhook is delayed. 
 
 Create a recurring Stripe Price and a Checkout Session in `subscription` mode. Store the resulting subscription ID in `PaymentSubscriptions`.
 
+The implemented webhook endpoint is `/api/payments/stripe/webhook`. For local development, start the application and Stripe CLI forwarding in separate terminals:
+
+```powershell
+stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,invoice.payment_action_required --forward-to http://localhost:5000/api/payments/stripe/webhook
+```
+
+Copy the `whsec_...` value printed by Stripe CLI into `STRIPE_WEBHOOK_SECRET` in `.env.local`, then restart `run-local.ps1`. The webhook verifies the raw request signature before it updates membership status or `PaymentSubscriptions`.
+
 Handle at least:
 
 ```text
