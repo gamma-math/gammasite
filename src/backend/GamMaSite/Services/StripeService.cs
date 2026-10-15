@@ -13,7 +13,7 @@ namespace GamMaSite.Services
      */
     public interface IStripeService
     {
-        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl);
+        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment");
 
         string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
 
@@ -30,6 +30,8 @@ namespace GamMaSite.Services
         Task<Product> GetProductByNameAsync(string name);
 
         Task<Price> GetPriceAsync(string product);
+
+        Task<Price> GetPriceByIdAsync(string id);
     }
 
     /*
@@ -37,9 +39,9 @@ namespace GamMaSite.Services
      */
     public class StripeService : IStripeService
     {
-        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl)
+        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment")
         {
-            Session session = GetCreateSession(GetPriceData(product, price), user, successUrl, cancelUrl);
+            Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode);
 
             return session.Id;
         }
@@ -124,6 +126,23 @@ namespace GamMaSite.Services
             }
         }
 
+        public async Task<Price> GetPriceByIdAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await new PriceService().GetAsync(id);
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
         private Session GetCreateSession(SessionLineItemPriceDataOptions priceData, string user, string successUrl, string cancelUrl)
         {
             var options = new SessionCreateOptions
@@ -155,22 +174,43 @@ namespace GamMaSite.Services
             return session;
         }
 
+        private Session GetCreateSession(string priceId, string productId, string productName, string user, string successUrl, string cancelUrl, string mode = "payment")
+        {
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string>
+                {
+                    "card"
+                },
+                LineItems =
+                [
+                    new SessionLineItemOptions
+                    {
+                        Price = priceId,
+                        Quantity = 1
+                    }
+                ],
+                Metadata = new Dictionary<string, string>
+                {
+                    { "SessionCreated", DateTime.UtcNow.ToString(CultureInfo.InvariantCulture) },
+                    { "Product", productId },
+                    { "ProductName", productName }
+                },
+                ClientReferenceId = user,
+                Mode = mode,
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
+            };
+
+            return new SessionService().Create(options);
+        }
+
         private static ProductListOptions GetProductListOptions()
         {
             return new ProductListOptions
             {
                 Limit = 100,
                 Active = true
-            };
-        }
-
-        private static SessionLineItemPriceDataOptions GetPriceData(Product product, Price price)
-        {
-            return new SessionLineItemPriceDataOptions
-            {
-                Product = product.Id,
-                UnitAmount = price.UnitAmount,
-                Currency = price.Currency
             };
         }
 

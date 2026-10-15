@@ -2347,6 +2347,62 @@ img {
   margin-top: 26px;
 }
 
+  .payment-type-options {
+    display: grid;
+    gap: 12px;
+    max-width: 720px;
+    margin: 18px 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .payment-type-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid #d7dfe9;
+    border-radius: 14px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .payment-type-option.is-selected {
+    border-color: var(--accent);
+    background: #eef8fd;
+    box-shadow: 0 0 0 2px rgba(27, 169, 220, 0.12);
+  }
+
+  .payment-type-option input {
+    flex: 0 0 auto;
+    margin-top: 4px;
+    accent-color: var(--accent);
+  }
+
+  .payment-type-option span {
+    display: grid;
+    gap: 4px;
+  }
+
+  .payment-type-option small {
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .payment-type-note {
+    max-width: 720px;
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+    background: #f4f9fd;
+    line-height: 1.45;
+  }
+
+  .payment-method-kicker {
+    margin-top: 28px;
+  }
+
 .payment-choice-divider {
   display: flex;
   align-items: center;

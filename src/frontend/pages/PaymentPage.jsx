@@ -7,10 +7,13 @@ import { LoginRequired } from "./MembersPage.jsx";
 const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
 
 /**
- * Member payment overview that lists available Stripe products.
+ * Member payment overview with a separate choice for billing type and provider.
  */
 export function PaymentPage({ user }) {
   const [products, setProducts] = useState([]);
+  const [paymentType, setPaymentType] = useState("one-time");
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   useEffect(() => {
     if (user.isAuthenticated) {
@@ -24,6 +27,23 @@ export function PaymentPage({ user }) {
 
   const membershipProduct = products[0];
 
+  async function startStripeCheckout() {
+    if (!membershipProduct || isStartingCheckout) {
+      return;
+    }
+
+    setCheckoutError("");
+    setIsStartingCheckout(true);
+    try {
+      const config = await paymentsApi.config();
+      const session = await paymentsApi.startProductCheckout(membershipProduct.id, user.id, paymentType);
+      await redirectToStripe(config.publicApiKey, session.id);
+    } catch (error) {
+      setCheckoutError(error.message || "Betalingen kunne ikke startes.");
+      setIsStartingCheckout(false);
+    }
+  }
+
   return (
     <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
@@ -33,12 +53,35 @@ export function PaymentPage({ user }) {
       </div>
 
       <article className="menu-payment-card menu-payment-choice-card">
-        <p className="menu-payment-kicker">Vælg betalingsform</p>
+        <p className="menu-payment-kicker">Vælg betalingstype</p>
+        <fieldset className="payment-type-options">
+          <legend className="sr-only">Vælg betalingstype</legend>
+          <label className={`payment-type-option${paymentType === "one-time" ? " is-selected" : ""}`}>
+            <input type="radio" name="paymentType" value="one-time" checked={paymentType === "one-time"} onChange={() => setPaymentType("one-time")} />
+            <span>
+              <strong>Betal én gang</strong>
+              <small>Betal medlemskabet manuelt for den aktuelle periode.</small>
+            </span>
+          </label>
+          <label className={`payment-type-option${paymentType === "recurring" ? " is-selected" : ""}`}>
+            <input type="radio" name="paymentType" value="recurring" checked={paymentType === "recurring"} onChange={() => setPaymentType("recurring")} />
+            <span>
+              <strong>Automatisk fornyelse</strong>
+              <small>Medlemskabet fornyes automatisk hvert år.</small>
+            </span>
+          </label>
+        </fieldset>
+
+        {paymentType === "recurring" && (
+          <p className="payment-type-note">Automatisk fornyelse er i første omgang kun tilgængelig med betalingskort. MobilePay-linket nedenfor gennemfører den almindelige manuelle betaling.</p>
+        )}
+
+        <p className="menu-payment-kicker payment-method-kicker">Vælg betalingsmetode</p>
         <div className="payment-choice-actions">
           {membershipProduct ? (
-            <Link className="menu-payment-button menu-payment-button-large" href={`/react/pay/products/${membershipProduct.id}`}>
-              Betal med hævekort
-            </Link>
+            <button className="menu-payment-button menu-payment-button-large" type="button" onClick={startStripeCheckout} disabled={isStartingCheckout}>
+              {isStartingCheckout ? "Åbner Stripe..." : "Betal med hævekort"}
+            </button>
           ) : (
             <button className="menu-payment-button menu-payment-button-large" type="button" disabled>
               Henter hævekort
@@ -49,6 +92,7 @@ export function PaymentPage({ user }) {
             Betal med MobilePay
           </a>
         </div>
+        {checkoutError && <p className="status-message status-message-error">{checkoutError}</p>}
       </article>
     </MenuLayout>
   );

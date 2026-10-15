@@ -1,4 +1,4 @@
-using System.Linq;
+using System;
 using System.Threading.Tasks;
 using GamMaSite.ViewModels.Api;
 using GamMaSite.Services;
@@ -35,27 +35,49 @@ namespace GamMaSite.Controllers
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
         {
-            var products = await _stripeService.GetAllProductsAsync();
-            var results = await Task.WhenAll(products.Select(async product =>
+            var productId = _configuration["StripeConfig:MembershipProductId"];
+            var priceId = _configuration["StripeConfig:PaymentOneTimeId"];
+            if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(priceId))
             {
-                var price = await _stripeService.GetPriceAsync(product.Id);
-                return ToDto(product, price);
-            }));
+                return Problem("Stripe-medlemskabsproduktet er ikke konfigureret.");
+            }
 
-            return Ok(results);
+            var product = await _stripeService.GetProductAsync(productId);
+            var price = await _stripeService.GetPriceByIdAsync(priceId);
+            if (!IsPriceForProduct(price, product))
+            {
+                return NotFound();
+            }
+
+            return Ok(new[] { ToDto(product, price) });
         }
 
         [HttpGet("products/{id}")]
         public async Task<IActionResult> GetProduct(string id)
         {
-            var product = await _stripeService.GetProductAsync(id);
-            if (product == null)
+            var configuredProductId = _configuration["StripeConfig:MembershipProductId"];
+            var priceId = _configuration["StripeConfig:PaymentOneTimeId"];
+            if (string.IsNullOrWhiteSpace(configuredProductId) ||
+                !string.Equals(id, configuredProductId, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(priceId))
             {
                 return NotFound();
             }
 
-            var price = await _stripeService.GetPriceAsync(id);
+            var product = await _stripeService.GetProductAsync(configuredProductId);
+            var price = await _stripeService.GetPriceByIdAsync(priceId);
+            if (!IsPriceForProduct(price, product))
+            {
+                return NotFound();
+            }
+
             return Ok(ToDto(product, price));
+        }
+
+        private static bool IsPriceForProduct(Price price, Product product)
+        {
+            return price != null && product != null &&
+                string.Equals(price.ProductId, product.Id, StringComparison.Ordinal);
         }
 
         private static PaymentProductDto ToDto(Product product, Price price)

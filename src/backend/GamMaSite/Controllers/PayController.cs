@@ -41,9 +41,19 @@ namespace GamMaSite.Controllers
 
         public async Task<IActionResult> ProductAsync(string id)
         {
-            var product = await _stripeService.GetProductAsync(id);
-            var price = await _stripeService.GetPriceAsync(id);
-            if (product != null && price != null)
+            var configuredProductId = _configuration["StripeConfig:MembershipProductId"];
+            var priceId = _configuration["StripeConfig:PaymentOneTimeId"];
+            if (string.IsNullOrWhiteSpace(configuredProductId) ||
+                !string.Equals(id, configuredProductId, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(priceId))
+            {
+                return RedirectToAction("Index");
+            }
+
+            var product = await _stripeService.GetProductAsync(configuredProductId);
+            var price = await _stripeService.GetPriceByIdAsync(priceId);
+            if (product != null && price != null &&
+                string.Equals(price.ProductId, product.Id, StringComparison.Ordinal))
             {
                 var apiKey = _configuration["StripeConfig:PublicApiKey"];
                 return View(new ProductInfo(product, price, apiKey));
@@ -79,10 +89,12 @@ namespace GamMaSite.Controllers
 
         public async Task<IActionResult> KontingentSuccessAsync(string session)
         {
-            var kontingentProduct = await _stripeService.GetProductByNameAsync("kontingent");
+            var configuredProductId = _configuration["StripeConfig:MembershipProductId"];
+            var kontingentProduct = await _stripeService.GetProductAsync(configuredProductId);
             var stripeSession = await _stripeService.GetSessionAsync(session);
             var hasPayed = _stripeService.IsPaymentComplete(stripeSession);
-            var correctProduct = stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
+            var correctProduct = kontingentProduct != null &&
+                stripeSession?.Metadata?["Product"] == kontingentProduct.Id;
             var user = await _userManager.FindByIdAsync(stripeSession?.ClientReferenceId);
             var sessionCreated = stripeSession != null ? DateTime.Parse(stripeSession.Metadata["SessionCreated"]) : DateTime.MinValue;
             if (DateTime.UtcNow < sessionCreated.AddHours(1) && hasPayed && correctProduct)
