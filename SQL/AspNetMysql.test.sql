@@ -276,6 +276,7 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `ContentItemId` int NOT NULL,
   `Provider` varchar(32) NOT NULL,
   `OfferType` varchar(32) NOT NULL,
+  `LinkLabel` varchar(128) DEFAULT NULL,
   `ProductName` varchar(256) NOT NULL,
   `ProviderProductId` varchar(128) DEFAULT NULL,
   `ProviderPriceId` varchar(128) DEFAULT NULL,

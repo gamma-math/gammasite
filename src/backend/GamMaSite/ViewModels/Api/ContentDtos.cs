@@ -58,6 +58,8 @@ namespace GamMaSite.ViewModels.Api
         public DateTime? PublishedAt { get; set; }
 
         public List<ContentLinkDto> Links { get; set; } = new List<ContentLinkDto>();
+
+        public List<PaymentOfferDto> PaymentOffers { get; set; } = new List<PaymentOfferDto>();
     }
 
     public class SaveContentItemRequest
@@ -114,6 +116,8 @@ namespace GamMaSite.ViewModels.Api
 
         public string OfferType { get; set; }
 
+        public string LinkLabel { get; set; }
+
         public string ProductName { get; set; }
 
         public long? AmountMinor { get; set; }
@@ -125,8 +129,6 @@ namespace GamMaSite.ViewModels.Api
         public string ProviderProductId { get; set; }
 
         public string ProviderPriceId { get; set; }
-
-        public string LinkLabel { get; set; }
 
         public string PaymentUrl { get; set; }
 

@@ -35,7 +35,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add the database connection
 var mysqlConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var serverVersion = new MySqlServerVersion(new Version(8, 0));
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySql(mysqlConn, serverVersion));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(
+        mysqlConn,
+        serverVersion,
+        mySqlOptions => mySqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+    )
+);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add HSTS

@@ -1,4 +1,5 @@
 using System.Linq;
+using System;
 using GamMaSite.Models;
 
 namespace GamMaSite.ViewModels.Api
@@ -31,10 +32,27 @@ namespace GamMaSite.ViewModels.Api
                 Updated = item.Updated,
                 PublishedAt = item.PublishedAt,
                 Links = item.Links
+                    .Where(link => !IsManagedPaymentLink(link))
                     .OrderBy(link => link.SortOrder)
                     .Select(link => link.ToDto())
+                    .ToList(),
+                PaymentOffers = item.PaymentOffers
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id)
+                    .Select(offer => offer.ToDto(item))
                     .ToList()
             };
+        }
+
+        private static bool IsManagedPaymentLink(ContentLink link)
+        {
+            return string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
+                && Uri.TryCreate(link.Url, UriKind.RelativeOrAbsolute, out var uri)
+                && System.Text.RegularExpressions.Regex.IsMatch(
+                    uri.IsAbsoluteUri ? uri.AbsolutePath : link.Url,
+                    @"/react/events/[^/]+/pay/\d+$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
 
         public static ContentLinkDto ToDto(this ContentLink link)
@@ -49,10 +67,15 @@ namespace GamMaSite.ViewModels.Api
             };
         }
 
-        public static PaymentOfferDto ToDto(this PaymentOffer offer)
+        public static PaymentOfferDto ToDto(this PaymentOffer offer, ContentItem contentItem = null)
         {
-            var link = offer.ContentItem?.Links?
-                .FirstOrDefault(item => item.Type == "PAYMENT" && item.Url.Contains($"/pay/{offer.Id}", System.StringComparison.OrdinalIgnoreCase));
+            var owner = contentItem ?? offer.ContentItem;
+            var paymentUrl = owner?.Slug == null
+                ? null
+                : $"/react/events/{Uri.EscapeDataString(owner.Slug)}/pay/{offer.Id}";
+            var legacyLabel = owner?.Links?
+                .FirstOrDefault(link => IsManagedPaymentLink(link) && link.Url?.EndsWith($"/pay/{offer.Id}", StringComparison.OrdinalIgnoreCase) == true)?
+                .Label;
 
             return new PaymentOfferDto
             {
@@ -60,6 +83,7 @@ namespace GamMaSite.ViewModels.Api
                 ContentItemId = offer.ContentItemId,
                 Provider = offer.Provider,
                 OfferType = offer.OfferType,
+                LinkLabel = offer.LinkLabel ?? legacyLabel,
                 ProductName = offer.ProductName,
                 AmountMinor = offer.AmountMinor,
                 Currency = offer.Currency,
@@ -67,10 +91,9 @@ namespace GamMaSite.ViewModels.Api
                 ProviderProductId = offer.ProviderProductId,
                 ProviderPriceId = offer.ProviderPriceId,
                 ProviderPaymentUrl = offer.ProviderPaymentUrl,
-                LinkLabel = link?.Label,
-                PaymentUrl = link?.Url,
-                EventTitle = offer.ContentItem?.Title,
-                EventSlug = offer.ContentItem?.Slug
+                PaymentUrl = paymentUrl,
+                EventTitle = owner?.Title,
+                EventSlug = owner?.Slug
             };
         }
 

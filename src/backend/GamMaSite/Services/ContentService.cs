@@ -278,7 +278,10 @@ namespace GamMaSite.Services
         {
             return query
                 .Include(item => item.Links.OrderBy(link => link.SortOrder))
-                .Include(item => item.PaymentOffers);
+                .Include(item => item.PaymentOffers
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id));
         }
 
         private static int? ValidateMaxParticipants(int? maxParticipants)

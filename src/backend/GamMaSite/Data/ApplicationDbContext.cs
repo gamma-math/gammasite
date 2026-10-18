@@ -157,6 +157,7 @@ namespace GamMaSite.Data
 
                 entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.OfferType).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.LinkLabel).HasMaxLength(128);
                 entity.Property(m => m.ProductName).HasMaxLength(256).IsRequired();
                 entity.Property(m => m.ProviderProductId).HasMaxLength(128);
                 entity.Property(m => m.ProviderPriceId).HasMaxLength(128);

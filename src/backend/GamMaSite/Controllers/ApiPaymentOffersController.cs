@@ -44,7 +44,8 @@ namespace GamMaSite.Controllers
                 .Include(offer => offer.ContentItem)
                 .ThenInclude(item => item.Links)
                 .Where(offer => offer.ContentItemId == contentItemId)
-                .OrderBy(offer => offer.Provider)
+                .OrderBy(offer => offer.Created)
+                .ThenBy(offer => offer.Id)
                 .ToListAsync();
 
             return Ok(offers.Select(offer => offer.ToDto()));
@@ -174,6 +175,7 @@ namespace GamMaSite.Controllers
                 }
 
                 offer.ProductName = productName;
+                offer.LinkLabel = linkLabel;
                 offer.AmountMinor = amountMinor;
                 offer.Currency = Currency;
                 offer.IsActive = true;
@@ -192,36 +194,16 @@ namespace GamMaSite.Controllers
                 }
 
                 await _db.SaveChangesAsync();
-
-                var paymentUrl = $"/react/events/{Uri.EscapeDataString(item.Slug)}/pay/{offer.Id}";
-                var link = item.Links.FirstOrDefault(current =>
-                    string.Equals(current.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase) &&
-                    current.Url.EndsWith($"/pay/{offer.Id}", StringComparison.OrdinalIgnoreCase));
-
-                if (link == null)
+                var legacyPaymentLinks = item.Links
+                    .Where(link => IsLegacyPaymentLink(link, offer.Id))
+                    .ToList();
+                if (legacyPaymentLinks.Count > 0)
                 {
-                    item.Links.Add(new ContentLink
-                    {
-                        ContentItemId = item.Id,
-                        Label = linkLabel,
-                        Url = paymentUrl,
-                        Type = "PAYMENT",
-                        SortOrder = item.Links.Count,
-                        Created = DateTime.UtcNow,
-                        Updated = DateTime.UtcNow
-                    });
-                }
-                else
-                {
-                    link.Label = linkLabel;
-                    link.Url = paymentUrl;
-                    link.Updated = DateTime.UtcNow;
+                    _db.ContentLinks.RemoveRange(legacyPaymentLinks);
+                    await _db.SaveChangesAsync();
                 }
 
-                await _db.SaveChangesAsync();
-                await _db.Entry(offer).Reference(current => current.ContentItem).LoadAsync();
-                await _db.Entry(offer.ContentItem).Collection(current => current.Links).LoadAsync();
-                return Ok(offer.ToDto());
+                return Ok(offer.ToDto(item));
             }
             catch (ArgumentException ex)
             {
@@ -328,10 +310,9 @@ namespace GamMaSite.Controllers
                 }
             }
 
-            var paymentUrl = $"/pay/{offer.Id}";
             var paymentLinks = offer.ContentItem?.Links?
                 .Where(link => string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
-                    && link.Url?.EndsWith(paymentUrl, StringComparison.OrdinalIgnoreCase) == true)
+                    && IsLegacyPaymentLink(link, offer.Id))
                 .ToList() ?? new();
 
             _db.ContentLinks.RemoveRange(paymentLinks);
@@ -339,6 +320,12 @@ namespace GamMaSite.Controllers
             await _db.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private static bool IsLegacyPaymentLink(ContentLink link, int offerId)
+        {
+            return string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
+                && link.Url?.EndsWith($"/pay/{offerId}", StringComparison.OrdinalIgnoreCase) == true;
         }
 
         private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string eventTitle, string productName, long amountMinor)

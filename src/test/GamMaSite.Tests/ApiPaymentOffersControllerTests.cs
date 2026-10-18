@@ -5,6 +5,7 @@ using GamMaSite.Controllers;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
+using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -34,7 +35,7 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
-    public async Task Delete_RemovesOfferAndPaymentLinkAndDeactivatesStripePrice()
+    public async Task Delete_RemovesOfferAndLegacyPaymentLinkButPreservesManualPaymentLink()
     {
         await using var db = CreateDatabase();
         var offer = await SeedOfferAsync(db);
@@ -51,8 +52,64 @@ public sealed class ApiPaymentOffersControllerTests
 
         Assert.IsType<NoContentResult>(result);
         Assert.Null(await db.PaymentOffers.FindAsync(offer.Id));
-        Assert.Empty(await db.ContentLinks.Where(link => link.ContentItemId == offer.ContentItemId).ToListAsync());
+        var remainingLinks = await db.ContentLinks
+            .Where(link => link.ContentItemId == offer.ContentItemId)
+            .ToListAsync();
+        var remainingLink = Assert.Single(remainingLinks);
+        Assert.Equal("https://tickets.example.com/event", remainingLink.Url);
+        Assert.Equal("PAYMENT", remainingLink.Type);
         stripe.Verify(value => value.DeactivatePriceAsync("price_event"), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveForEventStoresPaymentOfferLabelWithoutCreatingContentLink()
+    {
+        await using var db = CreateDatabase();
+        var item = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Test event",
+            Slug = "test-event",
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow,
+            Links =
+            {
+                new ContentLink
+                {
+                    Label = "Ekstern betaling",
+                    Url = "https://tickets.example.com/event",
+                    Type = "PAYMENT",
+                    Created = DateTime.UtcNow,
+                    Updated = DateTime.UtcNow
+                }
+            }
+        };
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        var access = new Mock<IAccessControlService>();
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), item.Id))
+            .ReturnsAsync(true);
+        var stripe = new Mock<IStripeService>();
+        var controller = new ApiPaymentOffersController(db, stripe.Object, access.Object);
+
+        var result = await controller.SaveForEvent(item.Id, new SavePaymentOfferRequest
+        {
+            LinkLabel = "Køb billet",
+            Provider = PaymentOfferProviders.MobilePay,
+            Amount = 125,
+            ProductName = "Billet"
+        });
+
+        var response = Assert.IsType<OkObjectResult>(result);
+        var offer = Assert.IsType<PaymentOfferDto>(response.Value);
+        Assert.Equal("Køb billet", offer.LinkLabel);
+        Assert.Equal("/react/events/test-event/pay/1", offer.PaymentUrl);
+        Assert.Single(await db.PaymentOffers.Where(value => value.ContentItemId == item.Id).ToListAsync());
+        var links = await db.ContentLinks.Where(link => link.ContentItemId == item.Id).ToListAsync();
+        var manualLink = Assert.Single(links);
+        Assert.Equal("https://tickets.example.com/event", manualLink.Url);
     }
 
     private static ApplicationDbContext CreateDatabase()
@@ -90,6 +147,14 @@ public sealed class ApiPaymentOffersControllerTests
         {
             Label = "Betalingslink",
             Url = $"/react/events/test-event/pay/{offer.Id}",
+            Type = "PAYMENT",
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        item.Links.Add(new ContentLink
+        {
+            Label = "Ekstern betaling",
+            Url = "https://tickets.example.com/event",
             Type = "PAYMENT",
             Created = DateTime.UtcNow,
             Updated = DateTime.UtcNow

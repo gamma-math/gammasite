@@ -338,6 +338,10 @@ namespace GamMaSite.Controllers
             return await _db.ContentItems
                 .AsNoTracking()
                 .Include(item => item.Links)
+                .Include(item => item.PaymentOffers
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id))
                 .Where(item => ids.Contains(item.Id))
                 .OrderBy(item => item.Type)
                 .ThenBy(item => item.StartDate ?? item.PublishedAt ?? item.Created)
@@ -382,10 +386,19 @@ namespace GamMaSite.Controllers
             var url = $"{publicBaseUrl}/react/{urlType}/{item.Slug}";
             var links = item.Links?
                 .OrderBy(link => link.SortOrder)
+                .Where(link => !IsManagedPaymentLink(link))
                 .Where(link => !string.IsNullOrWhiteSpace(link.Url))
                 .ToList() ?? new List<ContentLink>();
             var ctaText = isEvent ? "Tilmeld dig" : "Læs mere";
             var linkItems = string.Concat(links.Select(RenderRelatedLinkButton));
+            if (isEvent)
+            {
+                linkItems += string.Concat((item.PaymentOffers ?? new List<PaymentOffer>())
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id)
+                    .Select(offer => RenderPaymentOfferButton(item, offer, publicBaseUrl)));
+            }
             var eventMeta = isEvent
                 ? $@"
   {(string.IsNullOrWhiteSpace(item.Location) ? string.Empty : $@"<p style=""margin:0 0 6px;""><strong>Sted:</strong> {Html(item.Location)}</p>")}
@@ -415,6 +428,25 @@ namespace GamMaSite.Controllers
             var borderColor = isPayment ? "#4353f4" : "#c9d8ea";
 
             return $@"<a href=""{Html(link.Url)}"" target=""_blank"" style=""display:block;margin:0 0 10px;padding:12px 16px;background-color:{backgroundColor};color:{textColor};border:1px solid {borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;"">{Html(label)}</a>";
+        }
+
+        private static string RenderPaymentOfferButton(ContentItem item, PaymentOffer offer, string publicBaseUrl)
+        {
+            var url = $"{publicBaseUrl}/react/events/{Uri.EscapeDataString(item.Slug)}/pay/{offer.Id}";
+            var legacyLabel = item.Links?
+                .FirstOrDefault(link => IsManagedPaymentLink(link)
+                    && link.Url?.EndsWith($"/pay/{offer.Id}", StringComparison.OrdinalIgnoreCase) == true)?
+                .Label;
+            var label = string.IsNullOrWhiteSpace(offer.LinkLabel)
+                ? (string.IsNullOrWhiteSpace(legacyLabel) ? "Betalingslink" : legacyLabel)
+                : offer.LinkLabel;
+            return $@"<a href=""{Html(url)}"" target=""_blank"" style=""display:block;margin:0 0 10px;padding:12px 16px;background-color:#4353f4;color:#ffffff;border:1px solid #4353f4;text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;"">{Html(label)}</a>";
+        }
+
+        private static bool IsManagedPaymentLink(ContentLink link)
+        {
+            return string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
+                && Regex.IsMatch(link.Url ?? string.Empty, @"/react/events/[^/]+/pay/\d+$", RegexOptions.IgnoreCase);
         }
 
         private static string RenderContentBlock(ContentItem item)

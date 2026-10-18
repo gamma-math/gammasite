@@ -27,6 +27,8 @@ namespace GamMaSite.Models
 
         public string OfferType { get; set; }
 
+        public string LinkLabel { get; set; }
+
         public string ProductName { get; set; }
 
         public string ProviderProductId { get; set; }

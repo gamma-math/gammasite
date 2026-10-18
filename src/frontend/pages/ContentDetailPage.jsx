@@ -103,7 +103,15 @@ export function ContentDetailPage({ slug, type, user }) {
     && Boolean(registration)
     && registration.registered === true
     && !isWaitlisted(registration);
-  const visibleLinks = (item.links ?? []).filter((link) => {
+  const paymentOfferLinks = (item.paymentOffers ?? item.PaymentOffers ?? [])
+    .filter((offer) => offer.isActive !== false && offer.paymentUrl)
+    .map((offer) => ({
+      id: `payment-offer-${offer.id}`,
+      label: offer.linkLabel || "Betalingslink",
+      url: offer.paymentUrl,
+      type: "PAYMENT"
+    }));
+  const visibleLinks = [...(item.links ?? []), ...paymentOfferLinks].filter((link) => {
     const isPaymentLink = String(link.type ?? "").toUpperCase() === "PAYMENT";
     return !isPaymentLink || canPayForEvent || paymentCompleted;
   });

@@ -590,11 +590,14 @@ function renderLocalContentBlock(item, design) {
   const pathType = isEvent ? "events" : "news";
   const url = `${window.location.origin}/react/${pathType}/${item.slug}`;
   const links = item.links ?? item.Links ?? [];
+  const paymentOffers = (item.paymentOffers ?? item.PaymentOffers ?? [])
+    .filter((offer) => offer.isActive !== false && offer.id != null);
   const ctaText = isEvent ? "Tilmeld dig" : "Læs mere";
   const linkItems = links
     .filter((link) => link.url || link.Url)
     .map(renderLocalRelatedLinkButton)
-    .join("");
+    .join("")
+    + (isEvent ? paymentOffers.map((offer) => renderLocalPaymentOfferButton(item, offer)).join("") : "");
   const eventMeta = isEvent
     ? `
   ${item.location ? `<p style="margin:0 0 6px;"><strong>Sted:</strong> ${escapeHtml(item.location)}</p>` : ""}
@@ -621,6 +624,12 @@ function renderLocalRelatedLinkButton(link) {
   const borderColor = isPayment ? "#4353f4" : "#c9d8ea";
 
   return `<a href="${escapeHtml(linkUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:${backgroundColor};color:${textColor};border:1px solid ${borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
+}
+
+function renderLocalPaymentOfferButton(item, offer) {
+  const offerUrl = `${window.location.origin}/react/events/${encodeURIComponent(item.slug)}/pay/${offer.id}`;
+  const label = offer.linkLabel ?? offer.LinkLabel ?? "Betalingslink";
+  return `<a href="${escapeHtml(offerUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:#4353f4;color:#ffffff;border:1px solid #4353f4;text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
 }
 
 function messageStatusClass(message) {

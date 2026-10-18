@@ -467,17 +467,16 @@ function RichTextEditor({ value, onChange }) {
 }
 
 /**
- * Editor for related content links such as payment, calendar, or external URLs.
+ * Editor for manually configured related content links, including external payment links.
  */
 function LinkEditor({ links, onChange }) {
-  const paymentLinks = links.filter((link) => String(link.type ?? "").toUpperCase() === "PAYMENT");
-  const editableLinks = links.filter((link) => String(link.type ?? "").toUpperCase() !== "PAYMENT");
+  const editableLinks = links;
   const [editingLinkIds, setEditingLinkIds] = useState(() => new Set());
   const savedLinks = editableLinks.filter((link) => link.id);
   const draftLinks = editableLinks.filter((link) => !link.id);
 
   function updateLinks(nextEditableLinks) {
-    onChange([...nextEditableLinks, ...paymentLinks].map((link, index) => ({ ...link, sortOrder: index })));
+    onChange(nextEditableLinks.map((link, index) => ({ ...link, sortOrder: index })));
   }
 
   function update(index, field, value) {
@@ -507,6 +506,7 @@ function LinkEditor({ links, onChange }) {
               <option value="FACEBOOK">FACEBOOK</option>
               <option value="INSTAGRAM">INSTAGRAM</option>
               <option value="LINKEDIN">LINKEDIN</option>
+              <option value="PAYMENT">PAYMENT</option>
               <option value="OTHER">OTHER</option>
             </select>
           </label>
