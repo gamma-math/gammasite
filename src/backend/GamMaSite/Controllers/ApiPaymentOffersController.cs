@@ -97,7 +97,6 @@ namespace GamMaSite.Controllers
                 .AsNoTracking()
                 .Where(offer => offer.IsActive &&
                     offer.Scope == PaymentOfferScopes.Membership &&
-                    offer.OfferType == PaymentOfferTypes.OneTime &&
                     offer.ContentItemId == null)
                 .OrderBy(offer => offer.Provider)
                 .ThenBy(offer => offer.Id)
@@ -214,6 +213,14 @@ namespace GamMaSite.Controllers
                         (string.IsNullOrWhiteSpace(productName) || item.ProductName == productName))
                     .OrderByDescending(item => item.Updated)
                     .FirstOrDefaultAsync();
+            }
+
+            if (offer != null &&
+                string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(stripeSession.Mode, "payment", StringComparison.OrdinalIgnoreCase))
+            {
+                await MarkMembershipPaidAsync(userId, HttpContext.RequestAborted);
             }
 
             if (offer?.ContentItem?.Type != ContentTypes.Event || string.IsNullOrWhiteSpace(offer.ContentItem.Slug))
@@ -344,6 +351,11 @@ namespace GamMaSite.Controllers
 
             if (IsMembershipOffer(offer))
             {
+                if (string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CheckoutStripeMembershipAsync(offer, userId, cancellationToken);
+                }
+
                 return await CheckoutMembershipAsync(offer, userId, cancellationToken);
             }
 
@@ -569,6 +581,87 @@ namespace GamMaSite.Controllers
                 !offer.ContentItemId.HasValue;
         }
 
+        private async Task<IActionResult> CheckoutStripeMembershipAsync(
+            PaymentOffer offer,
+            string userId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId) ||
+                (offer.OfferType != PaymentOfferTypes.OneTime && offer.OfferType != PaymentOfferTypes.Recurring))
+            {
+                return BadRequest("Dette medlemskabstilbud kan ikke gennemføre betaling endnu.");
+            }
+
+            var member = await _db.Users.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            var hasPaidMembership = member?.Status == UserStatus.BETALT || member?.Status == UserStatus.STUDERENDE;
+            var hasActiveSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
+                subscription.UserId == userId &&
+                (subscription.Status == PaymentSubscriptionStatuses.Active ||
+                 subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                 subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                 subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
+            if (hasPaidMembership || hasActiveSubscription)
+            {
+                return Conflict("Du har allerede betalt medlemskab.");
+            }
+
+            if (!offer.AmountMinor.HasValue || offer.AmountMinor.Value <= 0 ||
+                !string.Equals(offer.Currency, Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict("Betalingstilbuddet stemmer ikke længere overens med Stripe.");
+            }
+
+            try
+            {
+                if (string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                {
+                    offer.BillingInterval ??= "YEAR";
+                    offer.BillingIntervalCount ??= 1;
+                }
+
+                await EnsureStripeOfferReferencesAsync(offer, "Betaling for medlemskab.");
+                await _db.SaveChangesAsync(cancellationToken);
+
+                var product = await _stripeService.GetProductAsync(offer.ProviderProductId);
+                var price = await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId);
+                if (!IsMatchingStripePrice(price, offer, product))
+                {
+                    return Conflict("Betalingstilbuddet stemmer ikke længere overens med Stripe.");
+                }
+
+                var sessionParameter = "?session={CHECKOUT_SESSION_ID}";
+                var successUrl = $"{Request.Scheme}://{Request.Host}/react/pay/success{sessionParameter}";
+                var cancelUrl = $"{Request.Scheme}://{Request.Host}/react/pay/cancel";
+                var mode = string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase)
+                    ? "subscription"
+                    : "payment";
+                var sessionId = _stripeService.StartPayment(
+                    product,
+                    price,
+                    userId,
+                    successUrl,
+                    cancelUrl,
+                    mode,
+                    new System.Collections.Generic.Dictionary<string, string>
+                    {
+                        ["PaymentOfferId"] = offer.Id.ToString(),
+                        ["Scope"] = PaymentOfferScopes.Membership,
+                        ["GamMaUserId"] = userId
+                    });
+
+                return Ok(new { provider = PaymentOfferProviders.Stripe, id = sessionId });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(exception.Message);
+            }
+        }
+
         private async Task<IActionResult> CheckoutMembershipAsync(
             PaymentOffer offer,
             string userId,
@@ -686,6 +779,99 @@ namespace GamMaSite.Controllers
 
             offer.ProviderProductId = product.Id;
             offer.ProviderPriceId = price.Id;
+        }
+
+        private async Task EnsureStripeOfferReferencesAsync(PaymentOffer offer, string description)
+        {
+            var product = !string.IsNullOrWhiteSpace(offer.ProviderProductId)
+                ? await _stripeService.GetProductAsync(offer.ProviderProductId)
+                : null;
+
+            if (product == null || !string.Equals(product.Name, offer.ProductName, StringComparison.Ordinal))
+            {
+                product = await _stripeService.GetProductByExactNameAsync(offer.ProductName);
+            }
+
+            if (product == null)
+            {
+                product = await _stripeService.CreateProductAsync(offer.ProductName, description);
+            }
+
+            if (product == null)
+            {
+                throw new InvalidOperationException("Stripe-produktet kunne ikke oprettes.");
+            }
+
+            var price = !string.IsNullOrWhiteSpace(offer.ProviderPriceId)
+                ? await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId)
+                : null;
+
+            if (price == null)
+            {
+                price = await _stripeService.GetPriceAsync(product.Id);
+            }
+
+            if (!IsMatchingStripePrice(price, offer, product))
+            {
+                price = string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase)
+                    ? await _stripeService.CreateRecurringPriceAsync(
+                        product.Id,
+                        offer.AmountMinor.GetValueOrDefault(),
+                        Currency,
+                        ToStripeInterval(offer.BillingInterval),
+                        offer.BillingIntervalCount.GetValueOrDefault(1))
+                    : await _stripeService.CreateOneTimePriceAsync(
+                        product.Id,
+                        offer.AmountMinor.GetValueOrDefault(),
+                        Currency);
+            }
+
+            if (price == null)
+            {
+                throw new InvalidOperationException("Stripe-prisen kunne ikke oprettes.");
+            }
+
+            offer.ProviderProductId = product.Id;
+            offer.ProviderPriceId = price.Id;
+        }
+
+        private static bool IsMatchingStripePrice(Stripe.Price price, PaymentOffer offer, Stripe.Product product)
+        {
+            if (price == null || product == null ||
+                price.ProductId != product.Id ||
+                price.UnitAmount != offer.AmountMinor ||
+                !string.Equals(price.Currency, offer.Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase))
+            {
+                return price.Type == "one_time";
+            }
+
+            return string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase) &&
+                price.Type == "recurring" &&
+                price.Recurring != null &&
+                string.Equals(price.Recurring.Interval, ToStripeInterval(offer.BillingInterval), StringComparison.OrdinalIgnoreCase) &&
+                price.Recurring.IntervalCount == offer.BillingIntervalCount.GetValueOrDefault(1);
+        }
+
+        private static string ToStripeInterval(string interval)
+        {
+            if (string.IsNullOrWhiteSpace(interval))
+            {
+                return "year";
+            }
+
+            return interval?.Trim().ToUpperInvariant() switch
+            {
+                "DAY" => "day",
+                "WEEK" => "week",
+                "MONTH" => "month",
+                "YEAR" => "year",
+                _ => throw new ArgumentException("Stripe-betalinger kræver et gyldigt betalingsinterval.")
+            };
         }
 
         private static bool IsEventPaymentOpen(ContentItem item)

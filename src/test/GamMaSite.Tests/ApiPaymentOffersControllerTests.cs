@@ -1,14 +1,17 @@
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using Stripe.Checkout;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -212,6 +215,139 @@ public sealed class ApiPaymentOffersControllerTests
         Assert.Equal("Nyt kontingent", updated.ProductName);
         Assert.Equal(17500, updated.AmountMinor);
         Assert.False(updated.IsActive);
+    }
+
+    [Fact]
+    public async Task CheckoutCreatesStripeReferencesForMembershipOffer()
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            LinkLabel = "Betal én gang",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var product = new Stripe.Product { Id = "prod_membership", Name = "Kontingent" };
+        var price = new Stripe.Price
+        {
+            Id = "price_membership",
+            ProductId = product.Id,
+            Type = "one_time",
+            UnitAmount = 15000,
+            Currency = "dkk"
+        };
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetProductByExactNameAsync("Kontingent")).ReturnsAsync(product);
+        stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null);
+        stripe.Setup(value => value.CreateOneTimePriceAsync(product.Id, 15000, "dkk")).ReturnsAsync(price);
+        stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
+        stripe.Setup(value => value.GetPriceByIdAsync(price.Id)).ReturnsAsync(price);
+        stripe.Setup(value => value.StartPayment(
+                product,
+                price,
+                "user-1",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "payment",
+                It.IsAny<System.Collections.Generic.IDictionary<string, string>>()))
+            .Returns("cs_membership");
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            stripe.Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-1")
+                }, "test"))
+            }
+        };
+
+        var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
+
+        Assert.Contains("cs_membership", result.Value.ToString());
+        var savedOffer = await db.PaymentOffers.SingleAsync();
+        Assert.Equal(product.Id, savedOffer.ProviderProductId);
+        Assert.Equal(price.Id, savedOffer.ProviderPriceId);
+    }
+
+    [Fact]
+    public async Task SuccessContextMarksCompletedStripeMembershipPaymentAsPaid()
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Kontingent",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var offer = await db.PaymentOffers.SingleAsync();
+        var session = new Session
+        {
+            Id = "cs_membership",
+            Mode = "payment",
+            ClientReferenceId = "user-1",
+            Created = DateTime.UtcNow,
+            Metadata = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["PaymentOfferId"] = offer.Id.ToString()
+            }
+        };
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetSessionAsync("cs_membership")).ReturnsAsync(session);
+        stripe.Setup(value => value.IsPaymentComplete(session)).Returns(true);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            stripe.Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-1")
+                }, "test"))
+            }
+        };
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetSuccessContext("cs_membership"));
+
+        Assert.Contains("MEMBERSHIP", result.Value.ToString());
+        var user = await db.Users.SingleAsync();
+        Assert.Equal(UserStatus.BETALT, user.Status);
     }
 
     private static ApplicationDbContext CreateDatabase()

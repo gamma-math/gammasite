@@ -101,7 +101,7 @@ namespace GamMaSite.Controllers
 
             if (int.TryParse(MetadataValue(session.Metadata, "PaymentOfferId"), out var paymentOfferId))
             {
-                await HandleEventPaymentAsync(session, paymentOfferId, cancellationToken);
+                await HandlePaymentOfferAsync(session, paymentOfferId, cancellationToken);
                 return;
             }
 
@@ -159,6 +159,81 @@ namespace GamMaSite.Controllers
             await HandleSubscriptionAsync(
                 subscription,
                 new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed),
+                cancellationToken);
+        }
+
+        private async Task HandlePaymentOfferAsync(
+            Session session,
+            int paymentOfferId,
+            CancellationToken cancellationToken)
+        {
+            var offer = await _db.PaymentOffers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
+
+            if (offer == null)
+            {
+                _logger.LogWarning("Stripe payment session {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
+                return;
+            }
+
+            if (string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleMembershipOfferPaymentAsync(session, cancellationToken);
+                return;
+            }
+
+            if (string.Equals(offer.Scope, PaymentOfferScopes.Event, StringComparison.OrdinalIgnoreCase) ||
+                offer.ContentItemId.HasValue)
+            {
+                await HandleEventPaymentAsync(session, paymentOfferId, cancellationToken);
+            }
+        }
+
+        private async Task HandleMembershipOfferPaymentAsync(
+            Session session,
+            CancellationToken cancellationToken)
+        {
+            var userId = session.ClientReferenceId ?? MetadataValue(session.Metadata, "GamMaUserId");
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("Stripe membership payment {SessionId} could not be mapped to a GamMa user.", session.Id);
+                return;
+            }
+
+            var paymentConfirmed = string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(session.PaymentStatus, "no_payment_required", StringComparison.OrdinalIgnoreCase);
+
+            if (string.Equals(session.Mode, "payment", StringComparison.OrdinalIgnoreCase))
+            {
+                if (paymentConfirmed)
+                {
+                    await MarkMembershipAsPaidAsync(userId, session.Created.ToUniversalTime(), cancellationToken);
+                }
+
+                return;
+            }
+
+            if (!string.Equals(session.Mode, "subscription", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(session.SubscriptionId))
+            {
+                return;
+            }
+
+            var subscription = await _stripeService.GetSubscriptionAsync(session.SubscriptionId);
+            if (subscription == null)
+            {
+                _logger.LogWarning("Stripe subscription {SubscriptionId} could not be loaded for membership checkout session {SessionId}.", session.SubscriptionId, session.Id);
+                return;
+            }
+
+            await HandleSubscriptionAsync(
+                subscription,
+                new SubscriptionContext(
+                    userId,
+                    paymentConfirmed ? session.Created.ToUniversalTime() : null,
+                    paymentConfirmed),
                 cancellationToken);
         }
 
@@ -242,8 +317,24 @@ namespace GamMaSite.Controllers
             SubscriptionContext context,
             CancellationToken cancellationToken)
         {
-            if (subscription == null || string.IsNullOrWhiteSpace(subscription.Id) ||
-                !IsMembershipProduct(subscription.Metadata))
+            if (subscription == null || string.IsNullOrWhiteSpace(subscription.Id))
+            {
+                return;
+            }
+
+            PaymentOffer paymentOffer = null;
+            if (int.TryParse(MetadataValue(subscription.Metadata, "PaymentOfferId"), out var paymentOfferId))
+            {
+                paymentOffer = await _db.PaymentOffers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
+            }
+
+            var isMembershipOffer = paymentOffer != null
+                ? string.Equals(paymentOffer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
+                  string.Equals(paymentOffer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase)
+                : IsMembershipProduct(subscription.Metadata);
+            if (!isMembershipOffer)
             {
                 return;
             }

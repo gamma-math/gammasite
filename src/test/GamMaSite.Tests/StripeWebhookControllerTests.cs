@@ -59,6 +59,40 @@ public sealed class StripeWebhookControllerTests
     }
 
     [Fact]
+    public async Task Receive_MarksPaymentOfferMembershipPaymentAsPaid()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "member@example.com", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            LinkLabel = "Betal én gang",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var offer = await db.PaymentOffers.SingleAsync();
+
+        var controller = CreateController(db, new Mock<IStripeService>().Object);
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = $"{{\"id\":\"evt_offer_membership\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"cs_offer_membership\",\"object\":\"checkout.session\",\"mode\":\"payment\",\"payment_status\":\"paid\",\"client_reference_id\":\"user-1\",\"created\":{created},\"metadata\":{{\"PaymentOfferId\":\"{offer.Id}\"}}}}}},\"livemode\":false,\"type\":\"checkout.session.completed\"}}";
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var user = await db.Users.SingleAsync(item => item.Id == "user-1");
+        Assert.Equal(UserStatus.BETALT, user.Status);
+        Assert.NotEqual(default, user.KontingentDato);
+    }
+
+    [Fact]
     public async Task Receive_MarksEventRegistrationAsPaid()
     {
         await using var db = CreateDb();

@@ -9,7 +9,6 @@ import { LoginRequired } from "./MembersPage.jsx";
  * Member payment overview with a separate choice for billing type and provider.
  */
 export function PaymentPage({ user }) {
-  const [products, setProducts] = useState([]);
   const [membershipOffers, setMembershipOffers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [paymentType, setPaymentType] = useState("one-time");
@@ -20,11 +19,9 @@ export function PaymentPage({ user }) {
   useEffect(() => {
     if (user.isAuthenticated) {
       Promise.all([
-        paymentsApi.products().catch(() => []),
         accountApi.subscriptions().catch(() => []),
         paymentOffersApi.listMembership().catch(() => [])
-      ]).then(([nextProducts, nextSubscriptions, nextMembershipOffers]) => {
-        setProducts(nextProducts);
+      ]).then(([nextSubscriptions, nextMembershipOffers]) => {
         setSubscriptions(nextSubscriptions);
         setMembershipOffers(nextMembershipOffers);
       }).finally(() => setIsMembershipStatusLoading(false));
@@ -35,13 +32,16 @@ export function PaymentPage({ user }) {
     return <LoginRequired title="Betaling" />;
   }
 
-  const membershipProduct = products[0];
+  const stripeMembershipOffer = membershipOffers.find((offer) =>
+    offer.provider === "STRIPE" &&
+    offer.offerType === (paymentType === "recurring" ? "RECURRING" : "ONE_TIME") &&
+    offer.isActive);
   const mobilePayMembershipOffer = membershipOffers.find((offer) =>
     offer.provider === "MOBILEPAY" && offer.offerType === "ONE_TIME" && offer.isActive);
   const membershipAlreadyPaid = hasPaidMembership(user, subscriptions);
 
   async function startStripeCheckout() {
-    if (!membershipProduct || isStartingCheckout) {
+    if (!stripeMembershipOffer || isStartingCheckout) {
       return;
     }
 
@@ -49,7 +49,7 @@ export function PaymentPage({ user }) {
     setIsStartingCheckout(true);
     try {
       const config = await paymentsApi.config();
-      const session = await paymentsApi.startProductCheckout(membershipProduct.id, user.id, paymentType);
+      const session = await paymentOffersApi.checkout(stripeMembershipOffer.id);
       await redirectToStripe(config.publicApiKey, session.id);
     } catch (error) {
       setCheckoutError(error.message || "Betalingen kunne ikke startes.");
@@ -118,7 +118,7 @@ export function PaymentPage({ user }) {
 
             <p className="menu-payment-kicker payment-method-kicker">Vælg betalingsmetode</p>
             <div className="payment-choice-actions">
-              {membershipProduct ? (
+              {stripeMembershipOffer ? (
                 <button className="menu-payment-button menu-payment-button-large" type="button" onClick={startStripeCheckout} disabled={isStartingCheckout}>
                   {isStartingCheckout ? "Åbner Stripe..." : "Betal med hævekort"}
                 </button>

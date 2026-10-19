@@ -35,6 +35,8 @@ namespace GamMaSite.Services
 
         Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency);
 
+        Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount);
+
         Task<bool> DeactivatePriceAsync(string id);
 
         Task<Price> GetPriceAsync(string product);
@@ -154,6 +156,28 @@ namespace GamMaSite.Services
                     Product = productId,
                     UnitAmount = amountMinor,
                     Currency = currency
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount)
+        {
+            try
+            {
+                return await new PriceService().CreateAsync(new PriceCreateOptions
+                {
+                    Product = productId,
+                    UnitAmount = amountMinor,
+                    Currency = currency,
+                    Recurring = new PriceRecurringOptions
+                    {
+                        Interval = interval,
+                        IntervalCount = intervalCount
+                    }
                 });
             }
             catch (StripeException)
@@ -337,6 +361,14 @@ namespace GamMaSite.Services
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,
             };
+
+            if (string.Equals(mode, "subscription", StringComparison.OrdinalIgnoreCase) && metadata != null)
+            {
+                foreach (var entry in metadata)
+                {
+                    options.SubscriptionData.Metadata[entry.Key] = entry.Value;
+                }
+            }
 
             return new SessionService().Create(options);
         }
