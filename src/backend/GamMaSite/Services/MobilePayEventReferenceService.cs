@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +11,10 @@ public interface IMobilePayEventReferenceService
     string Create(int registrationId, int offerId);
 
     bool TryParse(string reference, out int registrationId, out int offerId);
+
+    string CreateMembership(string userId, int offerId);
+
+    bool TryParseMembership(string reference, out string userId, out int offerId);
 }
 
 public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceService
@@ -53,6 +58,72 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
         return CryptographicOperations.FixedTimeEquals(
             Encoding.ASCII.GetBytes(expected),
             Encoding.ASCII.GetBytes(suppliedSignature));
+    }
+
+    public string CreateMembership(string userId, int offerId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("Bruger-id er påkrævet.", nameof(userId));
+        }
+
+        var encodedUserId = Encode(userId);
+        var nonce = Guid.NewGuid().ToString("N")[..6];
+        var payload = $"{userId}:{offerId}:{nonce}";
+        return $"gm{encodedUserId}-o{offerId}-n{nonce}-{CreateSignature(payload)[..16]}";
+    }
+
+    public bool TryParseMembership(string reference, out string userId, out int offerId)
+    {
+        userId = null;
+        offerId = 0;
+
+        var parts = reference?.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts is null ||
+            parts.Length < 4 ||
+            !parts[0].StartsWith("gm", StringComparison.Ordinal) ||
+            !parts[^3].StartsWith('o') ||
+            !parts[^2].StartsWith('n') ||
+            parts[^2].Length <= 1 ||
+            !int.TryParse(parts[^3][1..], out offerId))
+        {
+            return false;
+        }
+
+        var encodedUserId = string.Join('-', parts.Take(parts.Length - 3))[2..];
+        try
+        {
+            userId = Decode(encodedUserId);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return false;
+        }
+
+        var nonce = parts[^2][1..];
+        var expected = CreateSignature($"{userId}:{offerId}:{nonce}")[..16];
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.ASCII.GetBytes(expected),
+            Encoding.ASCII.GetBytes(parts[^1]));
+    }
+
+    private static string Encode(string value)
+    {
+        return Guid.TryParse(value, out var guid)
+            ? guid.ToString("N")
+            : value;
+    }
+
+    private static string Decode(string value)
+    {
+        return value.Length == 32 && Guid.TryParseExact(value, "N", out var guid)
+            ? guid.ToString()
+            : value;
     }
 
     private string CreateSignature(string payload)

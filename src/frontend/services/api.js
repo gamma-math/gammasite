@@ -144,6 +144,7 @@ export const contentApi = {
  */
 export const paymentOffersApi = {
   listForEvent: (contentItemId) => request("/api/payment-offers/event/" + contentItemId),
+  listMembership: () => request("/api/payment-offers/membership"),
   listAdmin: () => request("/api/payment-offers/admin"),
   getAdmin: (id) => request(`/api/payment-offers/admin/${id}`),
   updateAdmin: (id, payload) => request(`/api/payment-offers/admin/${id}`, { method: "PUT", body: JSON.stringify(payload) }),

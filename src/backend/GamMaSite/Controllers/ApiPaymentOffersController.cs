@@ -89,6 +89,23 @@ namespace GamMaSite.Controllers
             return offer == null ? NotFound() : Ok(offer.ToDto());
         }
 
+        [HttpGet("membership")]
+        [Authorize]
+        public async Task<IActionResult> GetMembershipOffers()
+        {
+            var offers = await _db.PaymentOffers
+                .AsNoTracking()
+                .Where(offer => offer.IsActive &&
+                    offer.Scope == PaymentOfferScopes.Membership &&
+                    offer.OfferType == PaymentOfferTypes.OneTime &&
+                    offer.ContentItemId == null)
+                .OrderBy(offer => offer.Provider)
+                .ThenBy(offer => offer.Id)
+                .ToListAsync();
+
+            return Ok(offers.Select(offer => offer.ToDto()));
+        }
+
         [HttpPut("admin/{id:int}")]
         [Authorize(Policy = PermissionPolicies.ContentEdit)]
         public async Task<IActionResult> UpdateForAdmin(int id, UpdatePaymentOfferRequest request)
@@ -320,7 +337,17 @@ namespace GamMaSite.Controllers
                 .Include(item => item.ContentItem)
                 .FirstOrDefaultAsync(item => item.Id == id && item.IsActive);
 
-            if (offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
+            if (offer == null)
+            {
+                return NotFound();
+            }
+
+            if (IsMembershipOffer(offer))
+            {
+                return await CheckoutMembershipAsync(offer, userId, cancellationToken);
+            }
+
+            if (!IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
             {
                 return NotFound();
             }
@@ -412,15 +439,29 @@ namespace GamMaSite.Controllers
         [Authorize]
         public async Task<IActionResult> GetMobilePayContext(string reference, CancellationToken cancellationToken)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (_mobilePayReferenceService.TryParseMembership(reference, out var membershipUserId, out var membershipOfferId))
+            {
+                if (!string.Equals(currentUserId, membershipUserId, StringComparison.Ordinal))
+                {
+                    return NotFound();
+                }
+
+                return await GetMembershipMobilePayContextAsync(
+                    reference,
+                    membershipUserId,
+                    membershipOfferId,
+                    cancellationToken);
+            }
+
             if (!_mobilePayReferenceService.TryParse(reference, out var registrationId, out var offerId))
             {
                 return NotFound();
             }
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var registration = await _db.EventRegistrations
                 .Include(item => item.ContentItem)
-                .FirstOrDefaultAsync(item => item.Id == registrationId && item.UserId == userId, cancellationToken);
+                .FirstOrDefaultAsync(item => item.Id == registrationId && item.UserId == currentUserId, cancellationToken);
             var offer = await _db.PaymentOffers
                 .Include(item => item.ContentItem)
                 .FirstOrDefaultAsync(item => item.Id == offerId && item.IsActive, cancellationToken);
@@ -519,6 +560,93 @@ namespace GamMaSite.Controllers
                 (string.IsNullOrWhiteSpace(offer.Scope) ||
                  string.Equals(offer.Scope, PaymentOfferScopes.Event, StringComparison.OrdinalIgnoreCase)) &&
                 offer.ContentItemId.HasValue;
+        }
+
+        private static bool IsMembershipOffer(PaymentOffer offer)
+        {
+            return offer != null &&
+                string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
+                !offer.ContentItemId.HasValue;
+        }
+
+        private async Task<IActionResult> CheckoutMembershipAsync(
+            PaymentOffer offer,
+            string userId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || offer.OfferType != PaymentOfferTypes.OneTime)
+            {
+                return BadRequest("Dette medlemskabstilbud kan ikke gennemføre betaling endnu.");
+            }
+
+            if (offer.Provider != PaymentOfferProviders.MobilePay ||
+                !offer.AmountMinor.HasValue || offer.AmountMinor.Value <= 0 ||
+                !string.Equals(offer.Currency, Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Dette MobilePay-medlemskab kan ikke gennemføre betaling endnu.");
+            }
+
+            var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id);
+            var returnUrl = $"{Request.Scheme}://{Request.Host}/react/pay/success?reference={Uri.EscapeDataString(reference)}";
+            try
+            {
+                var payment = await _mobilePayService.CreateOneTimePaymentAsync(
+                    reference,
+                    offer.AmountMinor.Value,
+                    offer.Currency,
+                    offer.ProductName,
+                    returnUrl,
+                    cancellationToken);
+                return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
+        }
+
+        private async Task<IActionResult> GetMembershipMobilePayContextAsync(
+            string reference,
+            string userId,
+            int offerId,
+            CancellationToken cancellationToken)
+        {
+            var offer = await _db.PaymentOffers
+                .FirstOrDefaultAsync(item => item.Id == offerId, cancellationToken);
+
+            if (offer == null || !IsMembershipOffer(offer) ||
+                offer.Provider != PaymentOfferProviders.MobilePay ||
+                offer.OfferType != PaymentOfferTypes.OneTime)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                var payment = await _mobilePayService.GetPaymentAsync(reference, cancellationToken);
+                if (payment.CapturedAmountMinor >= offer.AmountMinor.GetValueOrDefault())
+                {
+                    await MarkMembershipPaidAsync(userId, cancellationToken);
+                    return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
+                }
+
+                if (string.Equals(payment.State, "AUTHORIZED", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _mobilePayService.CaptureAsync(reference, offer.AmountMinor.GetValueOrDefault(), offer.Currency, cancellationToken);
+                    return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
+                }
+
+                var isCancelled = IsCancelledPaymentState(payment.State);
+                return Ok(new
+                {
+                    type = "MEMBERSHIP",
+                    status = isCancelled ? "CANCELLED" : "PENDING"
+                });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
         }
 
         private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string eventTitle, string productName, long amountMinor)
@@ -629,6 +757,25 @@ namespace GamMaSite.Controllers
                 registration.Updated = DateTime.UtcNow;
                 await _db.SaveChangesAsync(cancellationToken);
             }
+        }
+
+        private async Task MarkMembershipPaidAsync(string userId, CancellationToken cancellationToken)
+        {
+            var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            if (user == null)
+            {
+                return;
+            }
+
+            user.MarkAsPayed();
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private static bool IsCancelledPaymentState(string state)
+        {
+            return string.Equals(state, "ABORTED", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(state, "EXPIRED", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(state, "CANCELLED", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

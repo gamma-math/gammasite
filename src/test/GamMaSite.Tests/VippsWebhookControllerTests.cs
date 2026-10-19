@@ -5,10 +5,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
+using GamMaSite.Data;
+using GamMaSite.Models;
+using GamMaSite.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -38,6 +43,51 @@ public sealed class VippsWebhookControllerTests
         var result = await controller.Receive(default);
 
         Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task ReceiveMarksMembershipUserAsPaidForCapturedPayment()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.Users.Add(new SiteUser { Id = "user-member-test", UserName = "member@gamma.test", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Id = 7,
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
+                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+            })
+            .Build();
+        var referenceService = new MobilePayEventReferenceService(configuration);
+        var reference = referenceService.CreateMembership("user-member-test", 7);
+        var payload = $"{{\"reference\":\"{reference}\",\"name\":\"CAPTURED\"}}";
+        var controller = CreateController(
+            payload,
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: referenceService);
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var user = await db.Users.SingleAsync(item => item.Id == "user-member-test");
+        Assert.Equal(UserStatus.BETALT, user.Status);
     }
 
     [Fact]
@@ -87,7 +137,12 @@ public sealed class VippsWebhookControllerTests
         Assert.Equal(500, problem.StatusCode);
     }
 
-    private static VippsWebhookController CreateController(string payload, string? webhookSecret = WebhookSecret)
+    private static VippsWebhookController CreateController(
+        string payload,
+        string? webhookSecret = WebhookSecret,
+        ApplicationDbContext db = null,
+        IMobilePayService mobilePayService = null,
+        IMobilePayEventReferenceService referenceService = null)
     {
         var configurationValues = new Dictionary<string, string?>();
         if (webhookSecret != null)
@@ -102,9 +157,9 @@ public sealed class VippsWebhookControllerTests
         var controller = new VippsWebhookController(
             configuration,
             NullLogger<VippsWebhookController>.Instance,
-            null,
-            null,
-            null);
+            db,
+            mobilePayService,
+            referenceService);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = "POST";

@@ -5,13 +5,12 @@ import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
-const mobilePayMembershipUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
-
 /**
  * Member payment overview with a separate choice for billing type and provider.
  */
 export function PaymentPage({ user }) {
   const [products, setProducts] = useState([]);
+  const [membershipOffers, setMembershipOffers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [paymentType, setPaymentType] = useState("one-time");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
@@ -22,10 +21,12 @@ export function PaymentPage({ user }) {
     if (user.isAuthenticated) {
       Promise.all([
         paymentsApi.products().catch(() => []),
-        accountApi.subscriptions().catch(() => [])
-      ]).then(([nextProducts, nextSubscriptions]) => {
+        accountApi.subscriptions().catch(() => []),
+        paymentOffersApi.listMembership().catch(() => [])
+      ]).then(([nextProducts, nextSubscriptions, nextMembershipOffers]) => {
         setProducts(nextProducts);
         setSubscriptions(nextSubscriptions);
+        setMembershipOffers(nextMembershipOffers);
       }).finally(() => setIsMembershipStatusLoading(false));
     }
   }, [user.isAuthenticated]);
@@ -35,6 +36,8 @@ export function PaymentPage({ user }) {
   }
 
   const membershipProduct = products[0];
+  const mobilePayMembershipOffer = membershipOffers.find((offer) =>
+    offer.provider === "MOBILEPAY" && offer.offerType === "ONE_TIME" && offer.isActive);
   const membershipAlreadyPaid = hasPaidMembership(user, subscriptions);
 
   async function startStripeCheckout() {
@@ -48,6 +51,22 @@ export function PaymentPage({ user }) {
       const config = await paymentsApi.config();
       const session = await paymentsApi.startProductCheckout(membershipProduct.id, user.id, paymentType);
       await redirectToStripe(config.publicApiKey, session.id);
+    } catch (error) {
+      setCheckoutError(error.message || "Betalingen kunne ikke startes.");
+      setIsStartingCheckout(false);
+    }
+  }
+
+  async function startMobilePayCheckout() {
+    if (!mobilePayMembershipOffer || isStartingCheckout) {
+      return;
+    }
+
+    setCheckoutError("");
+    setIsStartingCheckout(true);
+    try {
+      const payment = await paymentOffersApi.checkout(mobilePayMembershipOffer.id);
+      window.location.assign(payment.url);
     } catch (error) {
       setCheckoutError(error.message || "Betalingen kunne ikke startes.");
       setIsStartingCheckout(false);
@@ -109,9 +128,15 @@ export function PaymentPage({ user }) {
                 </button>
               )}
               <span className="payment-choice-divider">eller</span>
-              <a className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" href={mobilePayMembershipUrl} target="_blank" rel="noreferrer">
-                Betal med MobilePay
-              </a>
+              {paymentType === "one-time" && mobilePayMembershipOffer ? (
+                <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" onClick={startMobilePayCheckout} disabled={isStartingCheckout}>
+                  {isStartingCheckout ? "Åbner MobilePay..." : "Betal med MobilePay"}
+                </button>
+              ) : (
+                <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" disabled>
+                  MobilePay kommer snart
+                </button>
+              )}
             </div>
           </>
         )}
@@ -339,7 +364,7 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   }, [status, session]);
 
   useEffect(() => {
-    if (status !== "event-success" || !reference) {
+    if (!reference || (status !== "event-success" && status !== "success") || session) {
       return undefined;
     }
 
@@ -391,6 +416,14 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
     );
   }
 
+  if (status === "success" && reference && eventPaymentState === "loading") {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <p className="muted">Bekræfter betaling...</p>
+      </MenuLayout>
+    );
+  }
+
   if (status === "event-success" && resolvedEventSlug && reference && eventPaymentState === "loading") {
     return (
       <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
@@ -408,6 +441,36 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
           <p className="muted">{eventPaymentState === "pending" ? "Betalingen er modtaget og bliver bekræftet. Du kan genindlæse siden om lidt." : "Din betaling til arrangementet er gennemført."}</p>
           <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}`}>
             Til begivenheden
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
+  if (status === "success" && paymentContext?.type === "MEMBERSHIP" && eventPaymentState !== "cancelled" && eventPaymentState !== "error") {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>{eventPaymentState === "pending" ? "Betaling modtages" : "Betaling gennemført"}</h1>
+          <p className="muted">{eventPaymentState === "pending" ? "Betalingen er modtaget og bliver bekræftet. Du kan genindlæse siden om lidt." : "Dit medlemskab er nu registreret som betalt."}</p>
+          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
+            Til betaling
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
+  if (status === "success" && reference && paymentContext?.type === "MEMBERSHIP") {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>Betaling ikke gennemført</h1>
+          <p className="muted">Betalingen blev ikke gennemført.</p>
+          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
+            Tilbage til betaling
           </Link>
         </section>
       </MenuLayout>

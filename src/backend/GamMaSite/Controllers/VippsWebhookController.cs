@@ -90,11 +90,68 @@ public sealed class VippsWebhookController : ControllerBase
 
             if (_db != null && _mobilePayService != null && _referenceService != null)
             {
-                await HandleEventPaymentAsync(name, reference, cancellationToken);
+                await HandlePaymentAsync(name, reference, cancellationToken);
             }
         }
 
         return Ok();
+    }
+
+    private async Task HandlePaymentAsync(string name, string reference, CancellationToken cancellationToken)
+    {
+        if (_referenceService.TryParseMembership(reference, out var userId, out var membershipOfferId))
+        {
+            await HandleMembershipPaymentAsync(name, reference, userId, membershipOfferId, cancellationToken);
+            return;
+        }
+
+        await HandleEventPaymentAsync(name, reference, cancellationToken);
+    }
+
+    private async Task HandleMembershipPaymentAsync(
+        string name,
+        string reference,
+        string userId,
+        int offerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(name, "AUTHORIZED", StringComparison.OrdinalIgnoreCase))
+        {
+            var payment = await _mobilePayService.GetPaymentAsync(reference, cancellationToken);
+            if (payment.CapturedAmountMinor < payment.AmountMinor && payment.AmountMinor > 0)
+            {
+                await _mobilePayService.CaptureAsync(reference, payment.AmountMinor, payment.Currency ?? "DKK", cancellationToken);
+            }
+
+            return;
+        }
+
+        if (!string.Equals(name, "CAPTURED", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var offer = await _db.PaymentOffers
+            .FirstOrDefaultAsync(item => item.Id == offerId, cancellationToken);
+        if (offer == null ||
+            !string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) ||
+            offer.ContentItemId.HasValue ||
+            !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Could not resolve MobilePay membership payment {Reference}.", reference);
+            return;
+        }
+
+        var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+        if (user == null)
+        {
+            _logger.LogWarning("MobilePay membership payment {Reference} could not be mapped to user {UserId}.", reference, userId);
+            return;
+        }
+
+        user.MarkAsPayed();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task HandleEventPaymentAsync(string name, string reference, CancellationToken cancellationToken)

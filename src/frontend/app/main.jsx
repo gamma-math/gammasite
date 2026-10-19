@@ -264,7 +264,8 @@ function renderRoute(route, user, isAdmin, access) {
     return <GenericPaymentPage user={user} />;
   }
   if (path === "/react/pay/success" || path === "/Pay/Success") {
-    return <PaymentStatusPage status="success" session={new URLSearchParams(route.search).get("session")} user={user} />;
+    const query = new URLSearchParams(route.search);
+    return <PaymentStatusPage status="success" session={query.get("session")} reference={query.get("reference")} user={user} />;
   }
   if (path === "/react/pay/kontingent-success") {
     return <PaymentStatusPage status="kontingent-success" user={user} />;
