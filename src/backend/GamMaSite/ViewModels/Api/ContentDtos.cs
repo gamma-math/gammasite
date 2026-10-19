@@ -110,7 +110,9 @@ namespace GamMaSite.ViewModels.Api
     {
         public int Id { get; set; }
 
-        public int ContentItemId { get; set; }
+        public int? ContentItemId { get; set; }
+
+        public string Scope { get; set; }
 
         public string Provider { get; set; }
 
@@ -123,6 +125,10 @@ namespace GamMaSite.ViewModels.Api
         public long? AmountMinor { get; set; }
 
         public string Currency { get; set; }
+
+        public string BillingInterval { get; set; }
+
+        public int? BillingIntervalCount { get; set; }
 
         public bool IsActive { get; set; }
 
@@ -148,5 +154,20 @@ namespace GamMaSite.ViewModels.Api
         public decimal Amount { get; set; }
 
         public string ProductName { get; set; }
+    }
+
+    public class UpdatePaymentOfferRequest
+    {
+        public string LinkLabel { get; set; }
+
+        public string ProductName { get; set; }
+
+        public decimal? Amount { get; set; }
+
+        public bool? IsActive { get; set; }
+
+        public string BillingInterval { get; set; }
+
+        public int? BillingIntervalCount { get; set; }
     }
 }

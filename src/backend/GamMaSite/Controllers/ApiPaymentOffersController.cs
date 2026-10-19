@@ -59,6 +59,92 @@ namespace GamMaSite.Controllers
             return Ok(offers.Select(offer => offer.ToDto()));
         }
 
+        [HttpGet("admin")]
+        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        public async Task<IActionResult> GetForAdmin()
+        {
+            var offers = await _db.PaymentOffers
+                .Include(offer => offer.ContentItem)
+                .AsNoTracking()
+                .OrderBy(offer => offer.Scope)
+                .ThenBy(offer => offer.ContentItem == null ? string.Empty : offer.ContentItem.Title)
+                .ThenBy(offer => offer.ProductName)
+                .ThenBy(offer => offer.Provider)
+                .ThenBy(offer => offer.OfferType)
+                .ThenBy(offer => offer.Id)
+                .ToListAsync();
+
+            return Ok(offers.Select(offer => offer.ToDto()));
+        }
+
+        [HttpGet("admin/{id:int}")]
+        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        public async Task<IActionResult> GetForAdmin(int id)
+        {
+            var offer = await _db.PaymentOffers
+                .Include(item => item.ContentItem)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == id);
+
+            return offer == null ? NotFound() : Ok(offer.ToDto());
+        }
+
+        [HttpPut("admin/{id:int}")]
+        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        public async Task<IActionResult> UpdateForAdmin(int id, UpdatePaymentOfferRequest request)
+        {
+            var offer = await _db.PaymentOffers
+                .Include(item => item.ContentItem)
+                .FirstOrDefaultAsync(item => item.Id == id);
+
+            if (offer == null)
+            {
+                return NotFound();
+            }
+
+            if (request == null)
+            {
+                return BadRequest(new { error = "Produktet mangler." });
+            }
+
+            try
+            {
+                offer.LinkLabel = Required(request?.LinkLabel, "Link label");
+                offer.ProductName = Required(request?.ProductName, "Produktnavn");
+
+                if (request.Amount.HasValue)
+                {
+                    offer.AmountMinor = ToMinorUnits(request.Amount.Value);
+                }
+
+                if (string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                {
+                    offer.BillingInterval = string.IsNullOrWhiteSpace(request.BillingInterval)
+                        ? offer.BillingInterval
+                        : request.BillingInterval.Trim().ToUpperInvariant();
+                    offer.BillingIntervalCount = request.BillingIntervalCount ?? offer.BillingIntervalCount;
+                }
+                else
+                {
+                    offer.BillingInterval = null;
+                    offer.BillingIntervalCount = null;
+                }
+
+                if (request.IsActive.HasValue)
+                {
+                    offer.IsActive = request.IsActive.Value;
+                }
+
+                offer.Updated = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                return Ok(offer.ToDto());
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> Get(int id)
@@ -68,7 +154,7 @@ namespace GamMaSite.Controllers
                 .ThenInclude(item => item.Links)
                 .FirstOrDefaultAsync(item => item.Id == id && item.IsActive);
 
-            return offer == null || !IsEventPaymentOpen(offer.ContentItem)
+            return offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem)
                 ? NotFound()
                 : Ok(offer.ToDto());
         }
@@ -175,6 +261,7 @@ namespace GamMaSite.Controllers
                     offer = new PaymentOffer
                     {
                         ContentItemId = item.Id,
+                        Scope = PaymentOfferScopes.Event,
                         Provider = provider,
                         OfferType = PaymentOfferTypes.OneTime,
                         Created = DateTime.UtcNow
@@ -184,6 +271,7 @@ namespace GamMaSite.Controllers
 
                 offer.ProductName = productName;
                 offer.LinkLabel = linkLabel;
+                offer.Scope = PaymentOfferScopes.Event;
                 offer.AmountMinor = amountMinor;
                 offer.Currency = Currency;
                 offer.IsActive = true;
@@ -232,7 +320,7 @@ namespace GamMaSite.Controllers
                 .Include(item => item.ContentItem)
                 .FirstOrDefaultAsync(item => item.Id == id && item.IsActive);
 
-            if (offer == null || !IsEventPaymentOpen(offer.ContentItem))
+            if (offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
             {
                 return NotFound();
             }
@@ -391,7 +479,7 @@ namespace GamMaSite.Controllers
                 return NotFound();
             }
 
-            if (!await _accessControl.CanEditEventAsync(User, offer.ContentItemId))
+            if (!IsEventOffer(offer) || !await _accessControl.CanEditEventAsync(User, offer.ContentItemId.Value))
             {
                 return Forbid();
             }
@@ -423,6 +511,14 @@ namespace GamMaSite.Controllers
         {
             return string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
                 && link.Url?.EndsWith($"/pay/{offerId}", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        private static bool IsEventOffer(PaymentOffer offer)
+        {
+            return offer != null &&
+                (string.IsNullOrWhiteSpace(offer.Scope) ||
+                 string.Equals(offer.Scope, PaymentOfferScopes.Event, StringComparison.OrdinalIgnoreCase)) &&
+                offer.ContentItemId.HasValue;
         }
 
         private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string eventTitle, string productName, long amountMinor)

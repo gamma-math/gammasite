@@ -77,6 +77,7 @@ public sealed class StripeWebhookControllerTests
         var offer = new PaymentOffer
         {
             ContentItem = eventItem,
+            Scope = PaymentOfferScopes.Event,
             Provider = PaymentOfferProviders.Stripe,
             OfferType = PaymentOfferTypes.OneTime,
             ProductName = "Test ticket",

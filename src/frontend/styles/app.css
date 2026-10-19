@@ -1468,6 +1468,14 @@ img {
   color: var(--ink-strong);
 }
 
+.admin-product-editor .admin-field select:disabled {
+  border-color: #d7dde6;
+  background: #eef1f5;
+  color: #7b8491;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .admin-color-field input[type="color"] {
   width: 92px;
   min-height: 46px;
@@ -1915,6 +1923,15 @@ img {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
+}
+
+.admin-products-filters {
+  align-items: end;
+  justify-content: flex-start;
+}
+
+.admin-products-filters .admin-field {
+  width: min(280px, 100%);
 }
 
 .menu-table-page-size {

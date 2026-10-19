@@ -148,13 +148,14 @@ namespace GamMaSite.Data
             {
                 entity.ToTable("PaymentOffers");
                 entity.HasKey(m => m.Id);
-                entity.HasIndex(m => new { m.ContentItemId, m.Provider, m.OfferType })
+                entity.HasIndex(m => new { m.Scope, m.ContentItemId, m.Provider, m.OfferType })
                     .IsUnique()
-                    .HasDatabaseName("UX_PaymentOffers_ContentItemId_Provider_OfferType");
+                    .HasDatabaseName("UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType");
                 entity.HasIndex(m => m.ContentItemId).HasDatabaseName("IX_PaymentOffers_ContentItemId");
                 entity.HasIndex(m => new { m.Provider, m.ProviderPriceId })
                     .HasDatabaseName("IX_PaymentOffers_ProviderPriceId");
 
+                entity.Property(m => m.Scope).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.OfferType).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.LinkLabel).HasMaxLength(128);
@@ -164,6 +165,7 @@ namespace GamMaSite.Data
                 entity.Property(m => m.ProviderPaymentLinkId).HasMaxLength(128);
                 entity.Property(m => m.ProviderPaymentUrl).HasColumnType("text");
                 entity.Property(m => m.Currency).HasMaxLength(3);
+                entity.Property(m => m.BillingInterval).HasMaxLength(32);
                 entity.Property(m => m.IsActive).HasDefaultValue(true);
                 entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");

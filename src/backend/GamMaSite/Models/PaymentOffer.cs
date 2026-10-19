@@ -8,20 +8,30 @@ namespace GamMaSite.Models
         public const string MobilePay = "MOBILEPAY";
     }
 
+    public static class PaymentOfferScopes
+    {
+        public const string Event = "EVENT";
+        public const string Membership = "MEMBERSHIP";
+    }
+
     public static class PaymentOfferTypes
     {
         public const string OneTime = "ONE_TIME";
+        public const string Recurring = "RECURRING";
     }
 
     /*
-     * Stores the current payment offer attached to an event. Provider-specific
-     * identifiers stay here; events and users remain provider independent.
+     * Stores a payment offer for either an event or the global membership flow.
+     * Provider-specific identifiers stay here; events and users remain provider
+     * independent.
      */
     public class PaymentOffer
     {
         public int Id { get; set; }
 
-        public int ContentItemId { get; set; }
+        public int? ContentItemId { get; set; }
+
+        public string Scope { get; set; }
 
         public string Provider { get; set; }
 
@@ -42,6 +52,10 @@ namespace GamMaSite.Models
         public long? AmountMinor { get; set; }
 
         public string Currency { get; set; }
+
+        public string BillingInterval { get; set; }
+
+        public int? BillingIntervalCount { get; set; }
 
         public bool IsActive { get; set; }
 

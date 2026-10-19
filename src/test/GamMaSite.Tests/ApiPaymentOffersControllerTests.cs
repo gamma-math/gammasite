@@ -21,7 +21,7 @@ public sealed class ApiPaymentOffersControllerTests
         await using var db = CreateDatabase();
         var offer = await SeedOfferAsync(db);
         var access = new Mock<IAccessControlService>();
-        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId))
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId.Value))
             .ReturnsAsync(false);
 
         var stripe = new Mock<IStripeService>();
@@ -40,7 +40,7 @@ public sealed class ApiPaymentOffersControllerTests
         await using var db = CreateDatabase();
         var offer = await SeedOfferAsync(db);
         var access = new Mock<IAccessControlService>();
-        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId))
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId.Value))
             .ReturnsAsync(true);
 
         var stripe = new Mock<IStripeService>();
@@ -112,6 +112,108 @@ public sealed class ApiPaymentOffersControllerTests
         Assert.Equal("https://tickets.example.com/event", manualLink.Url);
     }
 
+    [Fact]
+    public async Task GetForAdminReturnsEventAndMembershipOffers()
+    {
+        await using var db = CreateDatabase();
+        var eventItem = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Test event",
+            Slug = "test-event",
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.AddRange(
+            new PaymentOffer
+            {
+                ContentItem = eventItem,
+                Scope = PaymentOfferScopes.Event,
+                Provider = PaymentOfferProviders.Stripe,
+                OfferType = PaymentOfferTypes.OneTime,
+                LinkLabel = "Køb billet",
+                ProductName = "Billet",
+                AmountMinor = 2500,
+                Currency = "DKK",
+                IsActive = true,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new PaymentOffer
+            {
+                Scope = PaymentOfferScopes.Membership,
+                Provider = PaymentOfferProviders.MobilePay,
+                OfferType = PaymentOfferTypes.Recurring,
+                LinkLabel = "Betal automatisk",
+                ProductName = "Kontingent",
+                AmountMinor = 15000,
+                Currency = "DKK",
+                IsActive = true,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetForAdmin());
+        var offers = Assert.IsAssignableFrom<System.Collections.IEnumerable>(result.Value)
+            .Cast<PaymentOfferDto>()
+            .ToList();
+
+        Assert.Equal(2, offers.Count);
+        Assert.Contains(offers, offer => offer.Scope == PaymentOfferScopes.Event && offer.EventTitle == "Test event");
+        Assert.Contains(offers, offer => offer.Scope == PaymentOfferScopes.Membership && offer.EventTitle == null);
+    }
+
+    [Fact]
+    public async Task UpdateForAdminUpdatesProductSettings()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Gammelt label",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = "Nyt label",
+            ProductName = "Nyt kontingent",
+            Amount = 175,
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = false
+        }));
+
+        var updated = Assert.IsType<PaymentOfferDto>(result.Value);
+        Assert.Equal("Nyt label", updated.LinkLabel);
+        Assert.Equal("Nyt kontingent", updated.ProductName);
+        Assert.Equal(17500, updated.AmountMinor);
+        Assert.False(updated.IsActive);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         return new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -133,6 +235,7 @@ public sealed class ApiPaymentOffersControllerTests
         var offer = new PaymentOffer
         {
             ContentItem = item,
+            Scope = PaymentOfferScopes.Event,
             Provider = PaymentOfferProviders.Stripe,
             OfferType = PaymentOfferTypes.OneTime,
             ProductName = "Test product",

@@ -273,7 +273,8 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
 
 CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `Id` int NOT NULL AUTO_INCREMENT,
-  `ContentItemId` int NOT NULL,
+  `ContentItemId` int DEFAULT NULL,
+  `Scope` varchar(32) NOT NULL DEFAULT 'EVENT',
   `Provider` varchar(32) NOT NULL,
   `OfferType` varchar(32) NOT NULL,
   `LinkLabel` varchar(128) DEFAULT NULL,
@@ -284,12 +285,14 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `ProviderPaymentUrl` text,
   `AmountMinor` bigint DEFAULT NULL,
   `Currency` varchar(3) DEFAULT NULL,
+  `BillingInterval` varchar(32) DEFAULT NULL,
+  `BillingIntervalCount` int DEFAULT NULL,
   `IsActive` tinyint NOT NULL DEFAULT '1',
   `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
-  UNIQUE KEY `UX_PaymentOffers_ContentItemId_Provider_OfferType`
-    (`ContentItemId`, `Provider`, `OfferType`),
+  UNIQUE KEY `UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType`
+    (`Scope`, `ContentItemId`, `Provider`, `OfferType`),
   KEY `IX_PaymentOffers_ContentItemId` (`ContentItemId`),
   KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
   CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`

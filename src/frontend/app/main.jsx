@@ -34,6 +34,8 @@ import {
   AdminTemplateEditorPage,
   AdminTemplatesPage,
 } from "../pages/AdminTemplatesPage.jsx";
+import { AdminProductsPage } from "../pages/AdminProductsPage.jsx";
+import { AdminProductEditorPage } from "../pages/AdminProductsPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -371,6 +373,20 @@ function renderRoute(route, user, isAdmin, access) {
   }
   if (path === "/react/admin/news") {
     return <AdminContentPage type="NEWS" isAdmin={access.contentEdit} />;
+  }
+  const adminProductEditorMatch = path.match(
+    /^\/react\/admin\/products\/(\d+)\/edit$/,
+  );
+  if (adminProductEditorMatch) {
+    return (
+      <AdminProductEditorPage
+        isAdmin={access.contentEdit}
+        offerId={Number(adminProductEditorMatch[1])}
+      />
+    );
+  }
+  if (path === "/react/admin/products") {
+    return <AdminProductsPage isAdmin={access.contentEdit} />;
   }
   if (path === "/react/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;

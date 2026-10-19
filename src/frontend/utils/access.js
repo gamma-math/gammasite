@@ -14,6 +14,7 @@ export const AccessContext = createContext({ permissions: [] });
 
 const adminDestinations = [
   { path: "/react/admin/events", permission: permissions.contentEdit },
+  { path: "/react/admin/products", permission: permissions.contentEdit },
   { path: "/react/admin/messages", permission: permissions.messagesEdit },
   { path: "/react/admin/templates", permission: permissions.emailTemplatesEdit },
   { path: "/react/admin/users", permission: permissions.rolesEdit },
@@ -51,6 +52,9 @@ export function adminPermissionForPath(path) {
     return permissions.contentEdit;
   }
   if (path === "/react/admin/news" || path.startsWith("/react/admin/news/")) {
+    return permissions.contentEdit;
+  }
+  if (path === "/react/admin/products" || path.startsWith("/react/admin/products/")) {
     return permissions.contentEdit;
   }
   if (path === "/react/admin/messages") {
