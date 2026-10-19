@@ -31,6 +31,8 @@ export function EventRegistrationsPage({ slug, user }) {
   const [capacitySummary, setCapacitySummary] = useState(null);
   const [registrationToRemove, setRegistrationToRemove] = useState(null);
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
+  const [registrationToMarkUnpaid, setRegistrationToMarkUnpaid] = useState(null);
+  const [isUpdatingPaymentStatus, setIsUpdatingPaymentStatus] = useState(false);
   const [error, setError] = useState("");
   const canViewRegistrations = user.isAuthenticated;
   const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
@@ -84,9 +86,33 @@ export function EventRegistrationsPage({ slug, user }) {
       const updated = await registrationsApi.update(item.id, registration.id, payload);
       setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
       setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+      return true;
     } catch (requestError) {
       setError(requestError.message);
+      return false;
     }
+  }
+
+  function requestRegisteredChange(registration, registered) {
+    if (registration.registered && !registered) {
+      setRegistrationToMarkUnpaid(registration);
+      return;
+    }
+
+    updateRegistration(registration, { registered });
+  }
+
+  async function markRegistrationUnpaid() {
+    if (!registrationToMarkUnpaid || isUpdatingPaymentStatus) {
+      return;
+    }
+
+    setIsUpdatingPaymentStatus(true);
+    const updated = await updateRegistration(registrationToMarkUnpaid, { registered: false });
+    if (updated) {
+      setRegistrationToMarkUnpaid(null);
+    }
+    setIsUpdatingPaymentStatus(false);
   }
 
   async function unregisterRegistration(registration) {
@@ -289,7 +315,7 @@ export function EventRegistrationsPage({ slug, user }) {
                     <td className="menu-registration-desktop-cell">
                       {canEditRegistrations ? (
                         <div className="menu-registration-action-group">
-                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
                           {registrationOpen && (
                             <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                               Afmeld
@@ -311,7 +337,7 @@ export function EventRegistrationsPage({ slug, user }) {
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                           </label>
                           <div className="menu-registration-action-group menu-registration-unregister-action">
-                            <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                            <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
                             {registrationOpen && (
                               <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                                 Afmeld
@@ -346,6 +372,18 @@ export function EventRegistrationsPage({ slug, user }) {
           isBusy={isRemovingRegistration}
         />
       )}
+
+      {registrationToMarkUnpaid && (
+        <ConfirmationDialog
+          title="Markér som ikke betalt"
+          message={`Er du sikker på, at ${attendeeName(registrationToMarkUnpaid)} skal registreres som ikke betalt?`}
+          confirmLabel="Ja, markér som ikke betalt"
+          busyLabel="Opdaterer..."
+          onConfirm={markRegistrationUnpaid}
+          onCancel={() => !isUpdatingPaymentStatus && setRegistrationToMarkUnpaid(null)}
+          isBusy={isUpdatingPaymentStatus}
+        />
+      )}
     </MenuLayout>
   );
 }
@@ -358,10 +396,10 @@ function RegistrationTypeSelect({ registration, updateRegistration }) {
   );
 }
 
-function RegistrationRegisteredToggle({ registration, updateRegistration }) {
+function RegistrationRegisteredToggle({ registration, onChange }) {
   return (
     <label className="menu-registration-check">
-      <input type="checkbox" checked={registration.registered} onChange={(event) => updateRegistration(registration, { registered: event.target.checked })} />
+      <input type="checkbox" checked={registration.registered} onChange={(event) => onChange(registration, event.target.checked)} />
       <span>{registration.registered ? "Ja" : "Nej"}</span>
     </label>
   );

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Data;
 using GamMaSite.Models;
@@ -18,16 +19,23 @@ namespace GamMaSite.Controllers
     public sealed class ApiPaymentOffersController : ControllerBase
     {
         private const string Currency = "dkk";
-        private const string MobilePayPaymentUrl = "https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=150&comment=Medlemskab";
-
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;
+        private readonly IMobilePayService _mobilePayService;
+        private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
         private readonly IAccessControlService _accessControl;
 
-        public ApiPaymentOffersController(ApplicationDbContext db, IStripeService stripeService, IAccessControlService accessControl)
+        public ApiPaymentOffersController(
+            ApplicationDbContext db,
+            IStripeService stripeService,
+            IAccessControlService accessControl,
+            IMobilePayService mobilePayService = null,
+            IMobilePayEventReferenceService mobilePayReferenceService = null)
         {
             _db = db;
             _stripeService = stripeService;
+            _mobilePayService = mobilePayService;
+            _mobilePayReferenceService = mobilePayReferenceService;
             _accessControl = accessControl;
         }
 
@@ -190,7 +198,7 @@ namespace GamMaSite.Controllers
                     offer.ProviderProductId = null;
                     offer.ProviderPriceId = null;
                     offer.ProviderPaymentLinkId = null;
-                    offer.ProviderPaymentUrl = MobilePayPaymentUrl;
+                    offer.ProviderPaymentUrl = null;
                 }
 
                 await _db.SaveChangesAsync();
@@ -217,7 +225,7 @@ namespace GamMaSite.Controllers
 
         [HttpPost("{id:int}/checkout")]
         [Authorize]
-        public async Task<IActionResult> Checkout(int id)
+        public async Task<IActionResult> Checkout(int id, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var offer = await _db.PaymentOffers
@@ -240,8 +248,40 @@ namespace GamMaSite.Controllers
                 return Forbid();
             }
 
+            if (offer.OfferType != PaymentOfferTypes.OneTime)
+            {
+                return BadRequest("Denne betalingsudbyder kan ikke gennemføre betaling endnu.");
+            }
+
+            if (offer.Provider == PaymentOfferProviders.MobilePay)
+            {
+                if (!offer.AmountMinor.HasValue || offer.AmountMinor.Value <= 0 ||
+                    !string.Equals(offer.Currency, Currency, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Conflict("Betalingstilbuddet stemmer ikke længere overens med MobilePay.");
+                }
+
+                var reference = _mobilePayReferenceService.Create(registration.Id, offer.Id);
+                var mobilePayEventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
+                var returnUrl = $"{Request.Scheme}://{Request.Host}{mobilePayEventPath}/success?reference={Uri.EscapeDataString(reference)}";
+                try
+                {
+                    var payment = await _mobilePayService.CreateOneTimePaymentAsync(
+                        reference,
+                        offer.AmountMinor.Value,
+                        offer.Currency,
+                        offer.ProductName,
+                        returnUrl,
+                        cancellationToken);
+                    return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
+                }
+                catch (InvalidOperationException exception)
+                {
+                    return StatusCode(502, new { error = exception.Message });
+                }
+            }
+
             if (offer.Provider != PaymentOfferProviders.Stripe ||
-                offer.OfferType != PaymentOfferTypes.OneTime ||
                 string.IsNullOrWhiteSpace(offer.ProviderProductId) ||
                 string.IsNullOrWhiteSpace(offer.ProviderPriceId))
             {
@@ -278,6 +318,63 @@ namespace GamMaSite.Controllers
                 });
 
             return Ok(new { id = sessionId });
+        }
+
+        [HttpGet("mobilepay-context")]
+        [Authorize]
+        public async Task<IActionResult> GetMobilePayContext(string reference, CancellationToken cancellationToken)
+        {
+            if (!_mobilePayReferenceService.TryParse(reference, out var registrationId, out var offerId))
+            {
+                return NotFound();
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var registration = await _db.EventRegistrations
+                .Include(item => item.ContentItem)
+                .FirstOrDefaultAsync(item => item.Id == registrationId && item.UserId == userId, cancellationToken);
+            var offer = await _db.PaymentOffers
+                .Include(item => item.ContentItem)
+                .FirstOrDefaultAsync(item => item.Id == offerId && item.IsActive, cancellationToken);
+
+            if (registration == null || offer == null ||
+                registration.ContentItemId != offer.ContentItemId ||
+                offer.ContentItem?.Type != ContentTypes.Event ||
+                !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                var payment = await _mobilePayService.GetPaymentAsync(reference, cancellationToken);
+                if (payment.CapturedAmountMinor >= offer.AmountMinor.GetValueOrDefault())
+                {
+                    await MarkRegistrationPaidAsync(registration, cancellationToken);
+                    return Ok(new { type = "EVENT", status = "SUCCESS", eventSlug = offer.ContentItem.Slug, offerId });
+                }
+
+                if (string.Equals(payment.State, "AUTHORIZED", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _mobilePayService.CaptureAsync(reference, offer.AmountMinor.GetValueOrDefault(), offer.Currency, cancellationToken);
+                    return Ok(new { type = "EVENT", status = "PENDING", eventSlug = offer.ContentItem.Slug, offerId });
+                }
+
+                var isCancelled = string.Equals(payment.State, "ABORTED", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(payment.State, "EXPIRED", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(payment.State, "CANCELLED", StringComparison.OrdinalIgnoreCase);
+                return Ok(new
+                {
+                    type = "EVENT",
+                    status = isCancelled ? "CANCELLED" : "PENDING",
+                    eventSlug = offer.ContentItem.Slug,
+                    offerId
+                });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
         }
 
         [HttpDelete("{id:int}")]
@@ -425,6 +522,17 @@ namespace GamMaSite.Controllers
         private static string MetadataValue(System.Collections.Generic.IDictionary<string, string> metadata, string key)
         {
             return metadata != null && metadata.TryGetValue(key, out var value) ? value : null;
+        }
+
+        private async Task MarkRegistrationPaidAsync(EventRegistration registration, CancellationToken cancellationToken)
+        {
+            if (string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
+                !registration.Registered)
+            {
+                registration.Registered = true;
+                registration.Updated = DateTime.UtcNow;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

@@ -223,16 +223,20 @@ export function EventPaymentPage({ offerId, user }) {
   }
 
   async function checkout() {
-    if (offer.provider !== "STRIPE" || isStartingCheckout) {
+    if (!["STRIPE", "MOBILEPAY"].includes(offer.provider) || isStartingCheckout) {
       return;
     }
 
     setIsStartingCheckout(true);
     setError("");
     try {
-      const config = await paymentsApi.config();
       const session = await paymentOffersApi.checkout(offer.id);
-      await redirectToStripe(config.publicApiKey, session.id);
+      if (offer.provider === "STRIPE") {
+        const config = await paymentsApi.config();
+        await redirectToStripe(config.publicApiKey, session.id);
+      } else {
+        window.location.assign(session.url);
+      }
     } catch (reason) {
       setError(reason.message || "Betalingen kunne ikke startes.");
       setIsStartingCheckout(false);
@@ -242,8 +246,7 @@ export function EventPaymentPage({ offerId, user }) {
   const amount = offer.amountMinor == null
     ? ""
     : (Number(offer.amountMinor) / 100).toLocaleString("da-DK", { minimumFractionDigits: 2 }) + " " + String(offer.currency || "DKK").toUpperCase();
-  const providerReady = offer.provider === "STRIPE";
-  const mobilePayReady = offer.provider === "MOBILEPAY" && Boolean(offer.providerPaymentUrl);
+  const providerReady = ["STRIPE", "MOBILEPAY"].includes(offer.provider);
 
   return (
     <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
@@ -257,12 +260,8 @@ export function EventPaymentPage({ offerId, user }) {
           <p className="payment-offer-price">{amount}</p>
           {providerReady ? (
             <button className="menu-payment-button" type="button" onClick={checkout} disabled={isStartingCheckout}>
-              {isStartingCheckout ? "Åbner betaling..." : "Betal med kort"}
+              {isStartingCheckout ? "Åbner betaling..." : offer.provider === "MOBILEPAY" ? "Betal med MobilePay" : "Betal med kort"}
             </button>
-          ) : mobilePayReady ? (
-            <a className="menu-payment-button" href={offer.providerPaymentUrl} target="_blank" rel="noreferrer">
-              Betal med MobilePay
-            </a>
           ) : (
             <p className="status-message status-message-warning">Betaling med {offer.provider} er ikke tilgængelig endnu.</p>
           )}
@@ -307,9 +306,11 @@ export function GenericPaymentPage({ user }) {
 /**
  * Displays payment success, membership success, or cancellation states.
  */
-export function PaymentStatusPage({ status, eventSlug, session, user }) {
+export function PaymentStatusPage({ status, eventSlug, session, reference, user }) {
   const [paymentContext, setPaymentContext] = useState(null);
   const [isLoadingPaymentContext, setIsLoadingPaymentContext] = useState(Boolean(status === "success" && session));
+  const [eventPaymentState, setEventPaymentState] = useState(reference ? "loading" : "success");
+  const [eventPaymentError, setEventPaymentError] = useState("");
   const success = status === "success" || status === "kontingent-success";
 
   useEffect(() => {
@@ -337,6 +338,50 @@ export function PaymentStatusPage({ status, eventSlug, session, user }) {
     };
   }, [status, session]);
 
+  useEffect(() => {
+    if (status !== "event-success" || !reference) {
+      return undefined;
+    }
+
+    let active = true;
+    let attempts = 0;
+    let timer;
+    const checkPayment = async () => {
+      try {
+        const context = await paymentOffersApi.mobilePayContext(reference);
+        if (!active) {
+          return;
+        }
+
+        setPaymentContext(context);
+        if (context.status === "SUCCESS" || context.status === "CANCELLED") {
+          setEventPaymentState(context.status.toLowerCase());
+          return;
+        }
+
+        attempts += 1;
+        if (attempts < 20) {
+          timer = window.setTimeout(checkPayment, 1500);
+        } else {
+          setEventPaymentState("pending");
+        }
+      } catch (error) {
+        if (active) {
+          setEventPaymentError(error.message || "Betalingen kunne ikke bekræftes endnu.");
+          setEventPaymentState("error");
+        }
+      }
+    };
+
+    checkPayment();
+    return () => {
+      active = false;
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [status, reference]);
+
   const resolvedEventSlug = eventSlug || paymentContext?.eventSlug;
   if (status === "success" && session && isLoadingPaymentContext) {
     return (
@@ -346,15 +391,38 @@ export function PaymentStatusPage({ status, eventSlug, session, user }) {
     );
   }
 
-  if ((status === "event-success" || paymentContext?.type === "EVENT") && resolvedEventSlug) {
+  if (status === "event-success" && resolvedEventSlug && reference && eventPaymentState === "loading") {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <p className="muted">Bekræfter betaling...</p>
+      </MenuLayout>
+    );
+  }
+
+  if ((status === "event-success" || paymentContext?.type === "EVENT") && resolvedEventSlug && eventPaymentState !== "cancelled" && eventPaymentState !== "error") {
     return (
       <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
-          <h1>Betaling gennemført</h1>
-          <p className="muted">Din betaling til arrangementet er gennemført.</p>
-          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(eventSlug)}`}>
+          <h1>{eventPaymentState === "pending" ? "Betaling modtages" : "Betaling gennemført"}</h1>
+          <p className="muted">{eventPaymentState === "pending" ? "Betalingen er modtaget og bliver bekræftet. Du kan genindlæse siden om lidt." : "Din betaling til arrangementet er gennemført."}</p>
+          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}`}>
             Til begivenheden
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
+  if (status === "event-success" && resolvedEventSlug) {
+    return (
+      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>{eventPaymentState === "cancelled" ? "Betaling ikke gennemført" : "Betaling kunne ikke bekræftes"}</h1>
+          <p className="muted">{eventPaymentError || "Betalingen blev ikke gennemført."}</p>
+          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}${paymentContext?.offerId ? `/pay/${paymentContext.offerId}` : ""}`}>
+            Tilbage til betaling
           </Link>
         </section>
       </MenuLayout>

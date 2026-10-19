@@ -272,7 +272,7 @@ function renderRoute(route, user, isAdmin, access) {
   }
   const eventPaymentSuccessMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/success$/);
   if (eventPaymentSuccessMatch) {
-    return <PaymentStatusPage status="event-success" eventSlug={decodeURIComponent(eventPaymentSuccessMatch[1])} user={user} />;
+    return <PaymentStatusPage status="event-success" eventSlug={decodeURIComponent(eventPaymentSuccessMatch[1])} reference={new URLSearchParams(route.search).get("reference")} user={user} />;
   }
   const eventPaymentMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/(\d+)$/);
   if (eventPaymentMatch) {

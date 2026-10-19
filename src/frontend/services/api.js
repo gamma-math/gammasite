@@ -147,6 +147,7 @@ export const paymentOffersApi = {
   saveForEvent: (contentItemId, payload) => request("/api/payment-offers/event/" + contentItemId, { method: "POST", body: JSON.stringify(payload) }),
   get: (id) => request("/api/payment-offers/" + id),
   successContext: (session) => request(`/api/payment-offers/success-context?session=${encodeURIComponent(session)}`),
+  mobilePayContext: (reference) => request(`/api/payment-offers/mobilepay-context?reference=${encodeURIComponent(reference)}`),
   checkout: (id) => request("/api/payment-offers/" + id + "/checkout", { method: "POST" }),
   remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
 };

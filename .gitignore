@@ -64,6 +64,9 @@ legacy-cleanup-notes.txt
 # Frontend dependencies
 node_modules/
 
+# Local Python development scripts and virtual environments
+scripts/
+
 # Local, user-uploaded content images. Keep the root directory for local setup.
 /src/backend/gammasite-media/*
 !/src/backend/gammasite-media/.gitkeep

@@ -83,6 +83,14 @@ builder.Services.AddTransient<IEmailSender, EmailService>(EmailInstance);
 builder.Services.AddScoped<IStripeService, StripeService>(i => new StripeService());
 StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
+// Add MobilePay/Vipps ePayment integration.
+builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
+{
+    client.BaseAddress = new Uri((builder.Configuration["VIPPS_BASE_URL"] ?? "https://apitest.vipps.no").TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();
+
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IContentMediaService, ContentMediaService>();

@@ -3702,6 +3702,7 @@ img {
 
   .menu-registration-table th:nth-child(2),
   .menu-registration-table th:nth-child(3),
+  .menu-registration-table th:nth-child(4),
   .menu-registration-desktop-cell {
     display: none;
   }
