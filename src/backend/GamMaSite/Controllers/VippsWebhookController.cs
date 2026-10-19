@@ -78,19 +78,35 @@ public sealed class VippsWebhookController : ControllerBase
         using (payload)
         {
             var root = payload.RootElement;
-            var name = ReadString(root, "name") ?? "unknown";
+            var name = ReadString(root, "name") ?? ReadString(root, "eventType") ?? "unknown";
             var reference = ReadString(root, "reference") ?? "unknown";
+            var agreementId = ReadString(root, "agreementId");
+            var chargeId = ReadString(root, "chargeId");
             var webhookId = Request.Headers["Webhook-Id"].FirstOrDefault() ?? "unknown";
 
             _logger.LogInformation(
-                "Received Vipps webhook {Name} for payment {Reference} from webhook {WebhookId}.",
+                "Received Vipps webhook {Name} for payment {Reference}, agreement {AgreementId}, charge {ChargeId} from webhook {WebhookId}.",
                 name,
                 reference,
+                agreementId,
+                chargeId,
                 webhookId);
 
             if (_db != null && _mobilePayService != null && _referenceService != null)
             {
-                await HandlePaymentAsync(name, reference, cancellationToken);
+                if (name.StartsWith("recurring.", StringComparison.OrdinalIgnoreCase))
+                {
+                    await HandleRecurringPaymentAsync(
+                        name,
+                        agreementId,
+                        chargeId,
+                        ReadDateTime(root, "occurred") ?? DateTime.UtcNow,
+                        cancellationToken);
+                }
+                else
+                {
+                    await HandlePaymentAsync(name, reference, cancellationToken);
+                }
             }
         }
 
@@ -205,6 +221,187 @@ public sealed class VippsWebhookController : ControllerBase
         }
     }
 
+    private async Task HandleRecurringPaymentAsync(
+        string eventType,
+        string agreementId,
+        string chargeId,
+        DateTime occurred,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(agreementId))
+        {
+            _logger.LogWarning("MobilePay recurring webhook {EventType} did not contain an agreement ID.", eventType);
+            return;
+        }
+
+        var subscription = await _db.PaymentSubscriptions
+            .FirstOrDefaultAsync(item => item.Provider == PaymentOfferProviders.MobilePay &&
+                item.ProviderSubscriptionId == agreementId, cancellationToken);
+        if (subscription == null)
+        {
+            _logger.LogWarning("Could not resolve MobilePay agreement {AgreementId}.", agreementId);
+            return;
+        }
+
+        if (eventType.Equals("recurring.agreement-activated.v1", StringComparison.OrdinalIgnoreCase))
+        {
+            // Our agreements always contain an initial DIRECT_CAPTURE charge.
+            // MobilePay only activates such an agreement after that initial
+            // payment has succeeded, so this event is sufficient to mark the
+            // membership as paid even if the charge webhook arrives later.
+            var activatedOffer = await FindRecurringMembershipOfferAsync(subscription, cancellationToken);
+            subscription.Status = PaymentSubscriptionStatuses.Active;
+            subscription.LastPaidAt = occurred;
+            subscription.CurrentPeriodStart = occurred;
+            subscription.NextChargeAt = activatedOffer == null ? null : GetNextChargeDate(occurred, activatedOffer);
+            subscription.Updated = DateTime.UtcNow;
+
+            var activatedUser = await _db.Users.SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
+            if (activatedUser != null)
+            {
+                activatedUser.MarkAsPayed();
+                if (activatedUser.KontingentDato == default || activatedUser.KontingentDato < occurred)
+                {
+                    activatedUser.KontingentDato = occurred;
+                }
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (eventType.Equals("recurring.agreement-stopped.v1", StringComparison.OrdinalIgnoreCase))
+        {
+            subscription.Status = PaymentSubscriptionStatuses.Canceled;
+            subscription.Updated = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (eventType.Equals("recurring.agreement-expired.v1", StringComparison.OrdinalIgnoreCase) ||
+            eventType.Equals("recurring.agreement-rejected.v1", StringComparison.OrdinalIgnoreCase))
+        {
+            subscription.Status = PaymentSubscriptionStatuses.Expired;
+            subscription.Updated = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (eventType.Equals("recurring.charge-failed.v1", StringComparison.OrdinalIgnoreCase) ||
+            eventType.Equals("recurring.charge-creation-failed.v1", StringComparison.OrdinalIgnoreCase))
+        {
+            subscription.Status = PaymentSubscriptionStatuses.PastDue;
+            subscription.Updated = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (!eventType.Equals("recurring.charge-captured.v1", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(chargeId))
+        {
+            return;
+        }
+
+        var offer = await FindRecurringMembershipOfferAsync(subscription, cancellationToken);
+        subscription.Status = PaymentSubscriptionStatuses.Active;
+        subscription.LastPaidAt = occurred;
+        subscription.CurrentPeriodStart = occurred;
+        subscription.NextChargeAt = offer == null ? null : GetNextChargeDate(occurred, offer);
+        subscription.Updated = DateTime.UtcNow;
+
+        var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
+        if (user != null)
+        {
+            user.MarkAsPayed();
+            if (user.KontingentDato == default || user.KontingentDato < occurred)
+            {
+                user.KontingentDato = occurred;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (offer == null || !subscription.NextChargeAt.HasValue)
+        {
+            _logger.LogWarning("MobilePay agreement {AgreementId} was paid, but its payment offer could not be resolved.", agreementId);
+            return;
+        }
+
+        var nextChargeId = CreateNextChargeId(agreementId, subscription.NextChargeAt.Value);
+        try
+        {
+            await _mobilePayService.CreateRecurringChargeAsync(
+                agreementId,
+                nextChargeId,
+                offer.AmountMinor.GetValueOrDefault(),
+                offer.Currency ?? "DKK",
+                offer.ProductName,
+                subscription.NextChargeAt.Value,
+                cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogError(
+                exception,
+                "MobilePay agreement {AgreementId} was paid, but the next charge {ChargeId} could not be created.",
+                agreementId,
+                nextChargeId);
+        }
+    }
+
+    private async Task<PaymentOffer> FindRecurringMembershipOfferAsync(
+        PaymentSubscription subscription,
+        CancellationToken cancellationToken)
+    {
+        if (int.TryParse(subscription.ProviderProductId, out var paymentOfferId))
+        {
+            var offer = await _db.PaymentOffers
+                .FirstOrDefaultAsync(item => item.Id == paymentOfferId, cancellationToken);
+            if (IsRecurringMembershipOffer(offer))
+            {
+                return offer;
+            }
+        }
+
+        return await _db.PaymentOffers
+            .Where(item => item.IsActive &&
+                item.Scope == PaymentOfferScopes.Membership &&
+                item.Provider == PaymentOfferProviders.MobilePay &&
+                item.OfferType == PaymentOfferTypes.Recurring &&
+                item.ProductName == subscription.ProductName)
+            .OrderByDescending(item => item.Updated)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool IsRecurringMembershipOffer(PaymentOffer offer)
+    {
+        return offer != null && offer.IsActive &&
+            string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static DateTime GetNextChargeDate(DateTime paidAt, PaymentOffer offer)
+    {
+        var interval = string.IsNullOrWhiteSpace(offer.BillingInterval)
+            ? "YEAR"
+            : offer.BillingInterval.Trim().ToUpperInvariant();
+        var count = offer.BillingIntervalCount.GetValueOrDefault(1);
+        return interval switch
+        {
+            "DAY" => paidAt.AddDays(count),
+            "WEEK" => paidAt.AddDays(count * 7),
+            "MONTH" => paidAt.AddMonths(count),
+            _ => paidAt.AddYears(count)
+        };
+    }
+
+    private static string CreateNextChargeId(string agreementId, DateTime due)
+    {
+        var safeAgreementId = new string(agreementId.Where(char.IsLetterOrDigit).ToArray());
+        return $"gamma-{safeAgreementId}-{due:yyyyMMdd}";
+    }
+
     private bool IsValidSignature(string secret, byte[] body)
     {
         var date = Request.Headers["x-ms-date"].ToString();
@@ -256,5 +453,11 @@ public sealed class VippsWebhookController : ControllerBase
         return root.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
+    }
+
+    private static DateTime? ReadDateTime(JsonElement root, string propertyName)
+    {
+        var value = ReadString(root, propertyName);
+        return DateTime.TryParse(value, out var result) ? result.ToUniversalTime() : null;
     }
 }

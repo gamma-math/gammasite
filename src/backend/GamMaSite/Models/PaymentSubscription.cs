@@ -4,10 +4,13 @@ namespace GamMaSite.Models
 {
     public static class PaymentSubscriptionStatuses
     {
+        public const string Pending = "pending";
         public const string Active = "active";
         public const string Trialing = "trialing";
         public const string PastDue = "past_due";
         public const string Incomplete = "incomplete";
+        public const string Canceled = "canceled";
+        public const string Expired = "expired";
     }
 
     /*

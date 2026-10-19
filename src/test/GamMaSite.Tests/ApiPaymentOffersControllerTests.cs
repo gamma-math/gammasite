@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Data;
@@ -248,6 +249,7 @@ public sealed class ApiPaymentOffersControllerTests
         {
             Id = "price_membership",
             ProductId = product.Id,
+            Active = true,
             Type = "one_time",
             UnitAmount = 15000,
             Currency = "dkk"
@@ -289,6 +291,89 @@ public sealed class ApiPaymentOffersControllerTests
         var savedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal(product.Id, savedOffer.ProviderProductId);
         Assert.Equal(price.Id, savedOffer.ProviderPriceId);
+    }
+
+    [Fact]
+    public async Task CheckoutReusesClosedMembershipSubscriptionForMobilePayRecurringOffer()
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            PhoneNumber = "+4512345678",
+            Status = UserStatus.OPRETTET
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "old-agreement",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Canceled,
+            Created = DateTime.UtcNow.AddDays(-1),
+            Updated = DateTime.UtcNow.AddDays(-1)
+        });
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.CreateRecurringAgreementAsync(
+                "membership-reference",
+                "+4512345678",
+                15000,
+                "DKK",
+                "YEAR",
+                1,
+                "Kontingent",
+                "Automatisk betaling for Kontingent",
+                "https://localhost:5001/react/pay/success?reference=membership-reference",
+                "https://localhost:5001/react/account/manage/subscriptions",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("new-agreement", "https://vipps.example/confirm", "CREATED", "charge-1"));
+        var reference = new Mock<IMobilePayEventReferenceService>();
+        reference.Setup(value => value.CreateMembership("user-1", offer.Id)).Returns("membership-reference");
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object,
+            reference.Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-1")
+                }, "test"))
+            }
+        };
+        controller.HttpContext.Request.Scheme = "https";
+        controller.HttpContext.Request.Host = new HostString("localhost:5001");
+
+        var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
+
+        Assert.Contains("vipps.example/confirm", result.Value.ToString());
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal("new-agreement", subscription.ProviderSubscriptionId);
+        Assert.Equal(PaymentSubscriptionStatuses.Pending, subscription.Status);
     }
 
     [Fact]

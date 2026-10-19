@@ -54,6 +54,88 @@ public sealed class ApiPaymentSubscriptionsControllerTests
     }
 
     [Fact]
+    public async Task Get_ReconcilesCanceledMobilePayAgreement()
+    {
+        await using var db = CreateDb();
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-pending",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agr-pending", It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agr-pending", null, "STOPPED", null));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
+
+        var result = await controller.Get(default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        Assert.Equal("canceled", json.RootElement[0].GetProperty("status").GetString());
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, (await db.PaymentSubscriptions.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Get_PopulatesMobilePayPaymentDatesFromActiveAgreement()
+    {
+        await using var db = CreateDb();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var start = new DateTime(2026, 10, 19, 8, 34, 0, DateTimeKind.Utc);
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-active",
+            ProviderProductId = offer.Id.ToString(),
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = start,
+            Updated = start
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agr-active", It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agr-active", null, "ACTIVE", "charge-1", start, start));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
+
+        await controller.Get(default);
+
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
+        Assert.Equal(start, subscription.LastPaidAt);
+        Assert.Equal(start, subscription.CurrentPeriodStart);
+        Assert.Equal(start.AddYears(1), subscription.NextChargeAt);
+    }
+
+    [Fact]
     public async Task Delete_CancelsCurrentUsersStripeSubscription()
     {
         await using var db = CreateDb();
@@ -109,9 +191,13 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         Updated = DateTime.UtcNow
     };
 
-    private static ApiPaymentSubscriptionsController CreateController(ApplicationDbContext db, ClaimsPrincipal user, IStripeService stripe = null!)
+    private static ApiPaymentSubscriptionsController CreateController(
+        ApplicationDbContext db,
+        ClaimsPrincipal user,
+        IStripeService stripe = null!,
+        IMobilePayService mobilePay = null!)
     {
-        return new ApiPaymentSubscriptionsController(db, stripe)
+        return new ApiPaymentSubscriptionsController(db, stripe, mobilePay)
         {
             ControllerContext = new ControllerContext
             {

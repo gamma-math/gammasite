@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Data;
@@ -88,6 +89,142 @@ public sealed class VippsWebhookControllerTests
         Assert.IsType<OkResult>(result);
         var user = await db.Users.SingleAsync(item => item.Id == "user-member-test");
         Assert.Equal(UserStatus.BETALT, user.Status);
+    }
+
+    [Fact]
+    public async Task ReceiveMarksRecurringMembershipAsPaidAndSchedulesNextCharge()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.Users.Add(new SiteUser { Id = "user-recurring-test", UserName = "recurring@gamma.test", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Id = 8,
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-recurring-test",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr_test",
+            ProviderProductId = "8",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
+                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+            })
+            .Build();
+        var referenceService = new MobilePayEventReferenceService(configuration);
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(service => service.CreateRecurringChargeAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<long>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var controller = CreateController(
+            "{\"eventType\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            db: db,
+            mobilePayService: mobilePay.Object,
+            referenceService: referenceService);
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var user = await db.Users.SingleAsync(item => item.Id == "user-recurring-test");
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(UserStatus.BETALT, user.Status);
+        Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
+        Assert.Equal(new DateTime(2027, 10, 19, 8, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        mobilePay.Verify(service => service.CreateRecurringChargeAsync(
+            "agr_test",
+            It.Is<string>(value => value.StartsWith("gamma-agrtest-20271019")),
+            15000,
+            "DKK",
+            "Kontingent",
+            subscription.NextChargeAt.Value,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReceiveMarksRecurringMembershipAsPaidWhenAgreementIsActivated()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.Users.Add(new SiteUser { Id = "user-activated-test", UserName = "activated@gamma.test", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Id = 9,
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-activated-test",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr_activated",
+            ProviderProductId = "9",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
+                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+            })
+            .Build();
+        var referenceService = new MobilePayEventReferenceService(configuration);
+        var controller = CreateController(
+            "{\"eventType\":\"recurring.agreement-activated.v1\",\"agreementId\":\"agr_activated\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: referenceService);
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var user = await db.Users.SingleAsync(item => item.Id == "user-activated-test");
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(UserStatus.BETALT, user.Status);
+        Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
+        Assert.Equal(new DateTime(2027, 10, 19, 8, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
     }
 
     [Fact]

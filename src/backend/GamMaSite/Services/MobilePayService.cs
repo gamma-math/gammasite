@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -25,6 +26,32 @@ public interface IMobilePayService
     Task<MobilePayPayment> GetPaymentAsync(string reference, CancellationToken cancellationToken = default);
 
     Task CaptureAsync(string reference, long amountMinor, string currency, CancellationToken cancellationToken = default);
+
+    Task<MobilePayAgreement> CreateRecurringAgreementAsync(
+        string externalId,
+        string phoneNumber,
+        long amountMinor,
+        string currency,
+        string billingInterval,
+        int billingIntervalCount,
+        string productName,
+        string productDescription,
+        string merchantRedirectUrl,
+        string merchantAgreementUrl,
+        CancellationToken cancellationToken = default);
+
+    Task<MobilePayAgreement> GetAgreementAsync(string agreementId, CancellationToken cancellationToken = default);
+
+    Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default);
+
+    Task CreateRecurringChargeAsync(
+        string agreementId,
+        string orderId,
+        long amountMinor,
+        string currency,
+        string description,
+        DateTime due,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record MobilePayPayment(
@@ -34,6 +61,14 @@ public sealed record MobilePayPayment(
     long AmountMinor,
     long CapturedAmountMinor,
     string Currency);
+
+public sealed record MobilePayAgreement(
+    string AgreementId,
+    string RedirectUrl,
+    string Status,
+    string InitialChargeId,
+    DateTime? CreatedAt = null,
+    DateTime? StartAt = null);
 
 public sealed class MobilePayService : IMobilePayService
 {
@@ -59,7 +94,7 @@ public sealed class MobilePayService : IMobilePayService
     {
         var token = await GetAccessTokenAsync(cancellationToken);
         using var request = CreateRequest(HttpMethod.Post, "/epayment/v1/payments", token);
-        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(reference));
         request.Content = JsonContent.Create(new
         {
             amount = new { currency = currency.ToUpperInvariant(), value = amountMinor },
@@ -104,6 +139,132 @@ public sealed class MobilePayService : IMobilePayService
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, "capture MobilePay-betaling");
+    }
+
+    public async Task<MobilePayAgreement> CreateRecurringAgreementAsync(
+        string externalId,
+        string phoneNumber,
+        long amountMinor,
+        string currency,
+        string billingInterval,
+        int billingIntervalCount,
+        string productName,
+        string productDescription,
+        string merchantRedirectUrl,
+        string merchantAgreementUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(HttpMethod.Post, "/recurring/v3/agreements", token);
+        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(externalId));
+        request.Content = JsonContent.Create(new
+        {
+            pricing = new
+            {
+                type = "LEGACY",
+                amount = amountMinor,
+                currency = currency.ToUpperInvariant()
+            },
+            interval = new
+            {
+                unit = billingInterval.ToUpperInvariant(),
+                count = billingIntervalCount
+            },
+            initialCharge = new
+            {
+                amount = amountMinor,
+                currency = currency.ToUpperInvariant(),
+                description = productName,
+                transactionType = "DIRECT_CAPTURE"
+            },
+            merchantRedirectUrl,
+            merchantAgreementUrl,
+            phoneNumber,
+            productName,
+            productDescription,
+            externalId
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "oprette MobilePay-abonnement");
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+        var root = document.RootElement;
+        var agreementId = ReadString(root, "agreementId") ?? ReadString(root, "id");
+        var redirectUrl = ReadString(root, "vippsConfirmationUrl");
+        if (string.IsNullOrWhiteSpace(agreementId) || string.IsNullOrWhiteSpace(redirectUrl))
+        {
+            throw new InvalidOperationException("MobilePay returnerede ikke en gyldig abonnementsaftale.");
+        }
+
+        return new MobilePayAgreement(
+            agreementId,
+            redirectUrl,
+            ReadString(root, "status"),
+            ReadString(root, "chargeId"),
+            ReadDateTime(root, "created"),
+            ReadDateTime(root, "start"));
+    }
+
+    public async Task<MobilePayAgreement> GetAgreementAsync(string agreementId, CancellationToken cancellationToken = default)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Get,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}",
+            token);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "hente MobilePay-abonnement");
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+        var root = document.RootElement;
+        return new MobilePayAgreement(
+            ReadString(root, "agreementId") ?? ReadString(root, "id") ?? agreementId,
+            ReadString(root, "vippsConfirmationUrl"),
+            ReadString(root, "status"),
+            ReadString(root, "chargeId"));
+    }
+
+    public async Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Patch,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}",
+            token);
+        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(agreementId + ":stop"));
+        request.Content = JsonContent.Create(new { status = "STOPPED" });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "stoppe MobilePay-abonnement");
+    }
+
+    public async Task CreateRecurringChargeAsync(
+        string agreementId,
+        string orderId,
+        long amountMinor,
+        string currency,
+        string description,
+        DateTime due,
+        CancellationToken cancellationToken = default)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Post,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}/charges",
+            token);
+        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(agreementId + ":" + orderId));
+        request.Content = JsonContent.Create(new
+        {
+            amount = amountMinor,
+            transactionType = "DIRECT_CAPTURE",
+            type = "RECURRING",
+            description,
+            due = due.ToString("yyyy-MM-dd"),
+            retryDays = 2,
+            orderId
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "oprette næste MobilePay-opkrævning");
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
@@ -192,6 +353,18 @@ public sealed class MobilePayService : IMobilePayService
         }
 
         return current.ValueKind == JsonValueKind.String ? current.GetString() : null;
+    }
+
+    private static DateTime? ReadDateTime(JsonElement root, params string[] path)
+    {
+        var value = ReadString(root, path);
+        return DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed)
+            ? parsed.UtcDateTime
+            : null;
     }
 
     private static string ReadState(JsonElement root)

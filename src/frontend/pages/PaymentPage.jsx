@@ -37,7 +37,9 @@ export function PaymentPage({ user }) {
     offer.offerType === (paymentType === "recurring" ? "RECURRING" : "ONE_TIME") &&
     offer.isActive);
   const mobilePayMembershipOffer = membershipOffers.find((offer) =>
-    offer.provider === "MOBILEPAY" && offer.offerType === "ONE_TIME" && offer.isActive);
+    offer.provider === "MOBILEPAY" &&
+    offer.offerType === (paymentType === "recurring" ? "RECURRING" : "ONE_TIME") &&
+    offer.isActive);
   const membershipAlreadyPaid = hasPaidMembership(user, subscriptions);
 
   async function startStripeCheckout() {
@@ -112,10 +114,6 @@ export function PaymentPage({ user }) {
               </label>
             </fieldset>
 
-            {paymentType === "recurring" && (
-              <p className="payment-type-note">Automatisk fornyelse er i første omgang kun tilgængelig med betalingskort. MobilePay-linket nedenfor gennemfører den almindelige manuelle betaling.</p>
-            )}
-
             <p className="menu-payment-kicker payment-method-kicker">Vælg betalingsmetode</p>
             <div className="payment-choice-actions">
               {stripeMembershipOffer ? (
@@ -128,9 +126,11 @@ export function PaymentPage({ user }) {
                 </button>
               )}
               <span className="payment-choice-divider">eller</span>
-              {paymentType === "one-time" && mobilePayMembershipOffer ? (
+              {mobilePayMembershipOffer ? (
                 <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" onClick={startMobilePayCheckout} disabled={isStartingCheckout}>
-                  {isStartingCheckout ? "Åbner MobilePay..." : "Betal med MobilePay"}
+                  {isStartingCheckout
+                    ? "Åbner MobilePay..."
+                    : paymentType === "recurring" ? "Tilmeld med MobilePay" : "Betal med MobilePay"}
                 </button>
               ) : (
                 <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" disabled>
@@ -485,6 +485,21 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
           <h1>{eventPaymentState === "cancelled" ? "Betaling ikke gennemført" : "Betaling kunne ikke bekræftes"}</h1>
           <p className="muted">{eventPaymentError || "Betalingen blev ikke gennemført."}</p>
           <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}${paymentContext?.offerId ? `/pay/${paymentContext.offerId}` : ""}`}>
+            Tilbage til betaling
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
+  if (status === "cancel") {
+    return (
+      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>Betaling ikke gennemført</h1>
+          <p className="muted">Betalingen blev ikke gennemført.</p>
+          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
             Tilbage til betaling
           </Link>
         </section>

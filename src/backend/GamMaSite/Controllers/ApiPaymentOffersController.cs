@@ -356,6 +356,12 @@ namespace GamMaSite.Controllers
                     return await CheckoutStripeMembershipAsync(offer, userId, cancellationToken);
                 }
 
+                if (string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CheckoutMobilePayRecurringMembershipAsync(offer, userId, cancellationToken);
+                }
+
                 return await CheckoutMembershipAsync(offer, userId, cancellationToken);
             }
 
@@ -660,6 +666,10 @@ namespace GamMaSite.Controllers
             {
                 return BadRequest(exception.Message);
             }
+            catch (Stripe.StripeException exception)
+            {
+                return StatusCode(502, new { error = $"Stripe kunne ikke starte betalingen: {exception.Message}" });
+            }
         }
 
         private async Task<IActionResult> CheckoutMembershipAsync(
@@ -698,6 +708,127 @@ namespace GamMaSite.Controllers
             }
         }
 
+        private async Task<IActionResult> CheckoutMobilePayRecurringMembershipAsync(
+            PaymentOffer offer,
+            string userId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId) ||
+                offer.Provider != PaymentOfferProviders.MobilePay ||
+                offer.OfferType != PaymentOfferTypes.Recurring ||
+                !offer.AmountMinor.HasValue || offer.AmountMinor.Value <= 0 ||
+                !string.Equals(offer.Currency, Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Dette MobilePay-abonnement kan ikke gennemføre betaling endnu.");
+            }
+
+            var member = await _db.Users.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            if (member == null || string.IsNullOrWhiteSpace(member.PhoneNumber))
+            {
+                return BadRequest("Der mangler et gyldigt telefonnummer til MobilePay-abonnementet.");
+            }
+
+            var hasPaidMembership = member?.Status == UserStatus.BETALT || member?.Status == UserStatus.STUDERENDE;
+            var openSubscription = await _db.PaymentSubscriptions
+                .FirstOrDefaultAsync(subscription =>
+                    subscription.UserId == userId &&
+                    (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                     subscription.Status == PaymentSubscriptionStatuses.Active ||
+                     subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                     subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                     subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
+            if (openSubscription != null &&
+                string.Equals(openSubscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                await RefreshMobilePaySubscriptionAsync(openSubscription, cancellationToken))
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            var hasOpenSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
+                subscription.UserId == userId &&
+                (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                 subscription.Status == PaymentSubscriptionStatuses.Active ||
+                 subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                 subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                 subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
+            if (hasPaidMembership || hasOpenSubscription)
+            {
+                return Conflict("Du har allerede et aktivt eller afventende medlemskab.");
+            }
+
+            var billingInterval = string.IsNullOrWhiteSpace(offer.BillingInterval)
+                ? "YEAR"
+                : offer.BillingInterval.Trim().ToUpperInvariant();
+            var billingIntervalCount = offer.BillingIntervalCount.GetValueOrDefault(1);
+            if (!IsSupportedMobilePayInterval(billingInterval) || billingIntervalCount <= 0)
+            {
+                return BadRequest("MobilePay-medlemskabet har et ugyldigt betalingsinterval.");
+            }
+
+            var merchantAgreementUrl = $"{Request.Scheme}://{Request.Host}/react/account/manage/subscriptions";
+            try
+            {
+                var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id);
+                var merchantRedirectUrl =
+                    $"{Request.Scheme}://{Request.Host}/react/pay/success?reference={Uri.EscapeDataString(reference)}";
+                var agreement = await _mobilePayService.CreateRecurringAgreementAsync(
+                    reference,
+                    member.PhoneNumber,
+                    offer.AmountMinor.Value,
+                    offer.Currency,
+                    billingInterval,
+                    billingIntervalCount,
+                    offer.ProductName,
+                    $"Automatisk betaling for {offer.ProductName}",
+                    merchantRedirectUrl,
+                    merchantAgreementUrl,
+                    cancellationToken);
+
+                var now = DateTime.UtcNow;
+                var subscription = await _db.PaymentSubscriptions
+                    .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+                if (subscription == null)
+                {
+                    subscription = new PaymentSubscription
+                    {
+                        UserId = userId,
+                        Created = now
+                    };
+                    _db.PaymentSubscriptions.Add(subscription);
+                }
+
+                // PaymentSubscriptions stores the current subscription only. Reuse a
+                // closed record when a member starts a new agreement; UserId is unique.
+                subscription.Provider = PaymentOfferProviders.MobilePay;
+                subscription.ProviderSubscriptionId = agreement.AgreementId;
+                subscription.ProductName = offer.ProductName;
+                subscription.ProviderProductId = offer.Id.ToString();
+                subscription.Status = PaymentSubscriptionStatuses.Pending;
+                subscription.CurrentPeriodStart = null;
+                subscription.CurrentPeriodEnd = null;
+                subscription.NextChargeAt = null;
+                subscription.LastPaidAt = null;
+                subscription.CancelAtPeriodEnd = false;
+                subscription.Updated = now;
+                await _db.SaveChangesAsync(cancellationToken);
+
+                return Ok(new
+                {
+                    provider = PaymentOfferProviders.MobilePay,
+                    url = agreement.RedirectUrl
+                });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
+            catch (DbUpdateException)
+            {
+                return Conflict("Medlemskabet kunne ikke gemmes. Prøv igen.");
+            }
+        }
+
         private async Task<IActionResult> GetMembershipMobilePayContextAsync(
             string reference,
             string userId,
@@ -709,9 +840,18 @@ namespace GamMaSite.Controllers
 
             if (offer == null || !IsMembershipOffer(offer) ||
                 offer.Provider != PaymentOfferProviders.MobilePay ||
-                offer.OfferType != PaymentOfferTypes.OneTime)
+                (offer.OfferType != PaymentOfferTypes.OneTime && offer.OfferType != PaymentOfferTypes.Recurring))
             {
                 return NotFound();
+            }
+
+            if (offer.OfferType == PaymentOfferTypes.Recurring)
+            {
+                return await GetMembershipMobilePayRecurringContextAsync(
+                    reference,
+                    userId,
+                    offer,
+                    cancellationToken);
             }
 
             try
@@ -735,6 +875,56 @@ namespace GamMaSite.Controllers
                     type = "MEMBERSHIP",
                     status = isCancelled ? "CANCELLED" : "PENDING"
                 });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(502, new { error = exception.Message });
+            }
+        }
+
+        private async Task<IActionResult> GetMembershipMobilePayRecurringContextAsync(
+            string reference,
+            string userId,
+            PaymentOffer offer,
+            CancellationToken cancellationToken)
+        {
+            var subscription = await _db.PaymentSubscriptions
+                .Where(item => item.UserId == userId &&
+                    item.Provider == PaymentOfferProviders.MobilePay &&
+                    item.ProviderProductId == offer.Id.ToString())
+                .OrderByDescending(item => item.Created)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (subscription == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                var agreement = await _mobilePayService.GetAgreementAsync(
+                    subscription.ProviderSubscriptionId,
+                    cancellationToken);
+                var status = agreement.Status?.ToUpperInvariant();
+                if (status == "ACTIVE")
+                {
+                    subscription.Status = PaymentSubscriptionStatuses.Active;
+                    subscription.Updated = DateTime.UtcNow;
+                    await _db.SaveChangesAsync(cancellationToken);
+                    return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
+                }
+
+                if (status == "STOPPED" || status == "EXPIRED" || status == "REJECTED")
+                {
+                    subscription.Status = status == "EXPIRED"
+                        ? PaymentSubscriptionStatuses.Expired
+                        : PaymentSubscriptionStatuses.Canceled;
+                    subscription.Updated = DateTime.UtcNow;
+                    await _db.SaveChangesAsync(cancellationToken);
+                    return Ok(new { type = "MEMBERSHIP", status = "CANCELLED" });
+                }
+
+                return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
             }
             catch (InvalidOperationException exception)
             {
@@ -838,6 +1028,7 @@ namespace GamMaSite.Controllers
         private static bool IsMatchingStripePrice(Stripe.Price price, PaymentOffer offer, Stripe.Product product)
         {
             if (price == null || product == null ||
+                !price.Active ||
                 price.ProductId != product.Id ||
                 price.UnitAmount != offer.AmountMinor ||
                 !string.Equals(price.Currency, offer.Currency, StringComparison.OrdinalIgnoreCase))
@@ -885,6 +1076,51 @@ namespace GamMaSite.Controllers
 
             var deadline = item.EndDate ?? item.StartDate;
             return deadline.HasValue && deadline.Value > DateTime.UtcNow;
+        }
+
+        private static bool IsSupportedMobilePayInterval(string interval)
+        {
+            return interval == "DAY" || interval == "WEEK" || interval == "MONTH" || interval == "YEAR";
+        }
+
+        private async Task<bool> RefreshMobilePaySubscriptionAsync(
+            PaymentSubscription subscription,
+            CancellationToken cancellationToken)
+        {
+            if (_mobilePayService == null)
+            {
+                return false;
+            }
+
+            MobilePayAgreement agreement;
+            try
+            {
+                agreement = await _mobilePayService.GetAgreementAsync(
+                    subscription.ProviderSubscriptionId,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+
+            var providerStatus = agreement.Status?.Trim().ToUpperInvariant();
+            var status = providerStatus switch
+            {
+                "ACTIVE" => PaymentSubscriptionStatuses.Active,
+                "STOPPED" => PaymentSubscriptionStatuses.Canceled,
+                "EXPIRED" or "REJECTED" => PaymentSubscriptionStatuses.Expired,
+                _ => null
+            };
+
+            if (status == null || string.Equals(subscription.Status, status, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            subscription.Status = status;
+            subscription.Updated = DateTime.UtcNow;
+            return true;
         }
 
         private static string NormalizeProvider(string value)
