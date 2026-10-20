@@ -157,8 +157,7 @@ export const paymentOffersApi = {
 };
 
 export const paymentSubscriptionsApi = {
-  listAdmin: () => request("/api/payment-subscriptions/admin"),
-  chargeAdmin: (id) => request(`/api/payment-subscriptions/admin/${id}/charge`, { method: "POST" })
+  listAdmin: () => request("/api/payment-subscriptions/admin")
 };
 
 export const registrationsApi = {

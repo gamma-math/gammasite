@@ -201,7 +201,7 @@ recurring.charge-captured.v1
 recurring.charge-failed.v1
 ```
 
-Unlike Stripe, MobilePay requires the application to schedule future charges. A hosted background job or scheduled worker should find active subscriptions where `NextChargeAt` is due, create the next charge with an idempotency key, and update the subscription after the webhook is received.
+Unlike Stripe, MobilePay requires the application to schedule future charges. GamMa creates the next MobilePay charge when the agreement is activated and after each captured recurring charge. For annual membership offers, the next charge is scheduled for 1 February of the following year. The webhook remains the source of truth for updating the subscription after the charge is captured.
 
 ## Provider abstraction
 

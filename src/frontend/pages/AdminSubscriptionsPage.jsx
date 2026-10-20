@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { CircleMinus, CirclePlus } from "lucide-react";
+import { MultiSelectDropdown } from "../components/MultiSelectDropdown.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { paymentSubscriptionsApi } from "../services/api.js";
 
@@ -42,12 +43,9 @@ function scopeLabel(scope) {
 
 export function AdminSubscriptionsPage({ isAdmin }) {
   const [subscriptions, setSubscriptions] = useState([]);
-  const [providerFilter, setProviderFilter] = useState("");
-  const [userFilter, setUserFilter] = useState("");
+  const [userFilters, setUserFilters] = useState([]);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [isLoading, setIsLoading] = useState(Boolean(isAdmin));
-  const [chargingId, setChargingId] = useState(null);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -60,27 +58,26 @@ export function AdminSubscriptionsPage({ isAdmin }) {
       .finally(() => setIsLoading(false));
   }, [isAdmin]);
 
-  const providerOptions = useMemo(() => [...new Set(
-    subscriptions
-      .map((subscription) => subscription.provider)
-      .filter(Boolean),
-  )].sort((left, right) => left.localeCompare(right, "da")), [subscriptions]);
-
   const userOptions = useMemo(() => {
     const options = new Map();
     for (const subscription of subscriptions) {
       const value = subscription.userId || subscription.userEmail || "";
       if (!value) continue;
-      options.set(value, subscription.userName || subscription.userEmail || subscription.userId);
+      options.set(value, {
+        id: value,
+        title: subscription.userName || subscription.userEmail || subscription.userId,
+        summary: subscription.userEmail || subscription.userId,
+      });
     }
-    return [...options.entries()].sort((left, right) => left[1].localeCompare(right[1], "da"));
+    return [...options.entries()]
+      .sort((left, right) => left[1].title.localeCompare(right[1].title, "da"))
+      .map(([, item]) => item);
   }, [subscriptions]);
 
   const filteredSubscriptions = useMemo(() => subscriptions.filter((subscription) => {
     const userValue = subscription.userId || subscription.userEmail || "";
-    return (!providerFilter || subscription.provider === providerFilter)
-      && (!userFilter || userValue === userFilter);
-  }), [providerFilter, subscriptions, userFilter]);
+    return userFilters.length === 0 || userFilters.includes(userValue);
+  }), [subscriptions, userFilters]);
 
   function toggleExpanded(id) {
     setExpandedIds((current) => {
@@ -89,23 +86,6 @@ export function AdminSubscriptionsPage({ isAdmin }) {
       else next.add(id);
       return next;
     });
-  }
-
-  async function charge(subscription) {
-    if (!subscription?.canCharge || chargingId) return;
-    if (!window.confirm(`Vil du oprette en MobilePay-opkrævning for ${subscription.userName || subscription.userEmail || "brugeren"}?`)) return;
-
-    setChargingId(subscription.id);
-    setMessage("");
-    setError("");
-    try {
-      const result = await paymentSubscriptionsApi.chargeAdmin(subscription.id);
-      setMessage(`Opkrævningen er oprettet og forfalder ${formatDate(result?.due)}.`);
-    } catch (chargeError) {
-      setError(chargeError.message || "Opkrævningen kunne ikke oprettes.");
-    } finally {
-      setChargingId(null);
-    }
   }
 
   if (!isAdmin) {
@@ -126,25 +106,19 @@ export function AdminSubscriptionsPage({ isAdmin }) {
 
       {isLoading && <p className="muted">Henter betalingsaftaler...</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
-      {message && <p className="status-message status-message-success">{message}</p>}
 
       {!isLoading && !error && (
         <>
           <div className="menu-table-toolbar admin-products-filters admin-subscriptions-filters">
-            <label className="admin-field">
-              <span>Udbyder</span>
-              <select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)}>
-                <option value="">Alle udbydere</option>
-                {providerOptions.map((provider) => <option value={provider} key={provider}>{providerLabel(provider)}</option>)}
-              </select>
-            </label>
-            <label className="admin-field">
-              <span>Bruger</span>
-              <select value={userFilter} onChange={(event) => setUserFilter(event.target.value)}>
-                <option value="">Alle brugere</option>
-                {userOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select>
-            </label>
+            <MultiSelectDropdown
+              label="Bruger"
+              placeholder="Alle brugere"
+              items={userOptions}
+              selectedIds={userFilters}
+              onChange={setUserFilters}
+              showMeta={false}
+              searchable
+            />
           </div>
 
           <div className="menu-table-wrap admin-subscriptions-list">
@@ -159,21 +133,11 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                   <th className="admin-subscription-mobile-hidden">Status</th>
                   <th className="admin-subscription-mobile-hidden">Senest betalt</th>
                   <th className="admin-subscription-mobile-hidden">Næste opkrævning</th>
-                  <th className="admin-subscription-mobile-hidden">Handling</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSubscriptions.map((subscription) => {
                   const isExpanded = expandedIds.has(subscription.id);
-                  const action = subscription.canCharge ? (
-                    <button className="admin-table-button" type="button" disabled={chargingId === subscription.id} onClick={() => charge(subscription)}>
-                      {chargingId === subscription.id ? "Opretter..." : "Opkræv"}
-                    </button>
-                  ) : subscription.provider === "STRIPE" ? (
-                    <span className="muted">Automatisk hos Stripe</span>
-                  ) : (
-                    <span className="muted">—</span>
-                  );
 
                   return (
                     <Fragment key={subscription.id}>
@@ -198,12 +162,11 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                         <td className="admin-subscription-mobile-hidden">{subscription.status || "—"}</td>
                         <td className="admin-subscription-mobile-hidden">{formatDate(subscription.lastPaidAt)}</td>
                         <td className="admin-subscription-mobile-hidden">{formatDate(subscription.nextChargeAt)}</td>
-                        <td className="table-actions admin-subscription-mobile-hidden">{action}</td>
                       </tr>
                       {isExpanded && (
                         <tr className="admin-subscription-detail-row">
                           <td></td>
-                          <td colSpan="8">
+                          <td colSpan="7">
                             <dl className="admin-subscription-details">
                               <div><dt>Produkt</dt><dd>{subscription.productName || "—"}</dd></div>
                               <div><dt>Pris</dt><dd>{formatAmount(subscription.amountMinor, subscription.currency)}</dd></div>
@@ -212,7 +175,6 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                               <div><dt>Næste opkrævning</dt><dd>{formatDate(subscription.nextChargeAt)}</dd></div>
                               <div><dt>Scope</dt><dd>{scopeLabel(subscription.scope)}</dd></div>
                             </dl>
-                            <div className="table-actions">{action}</div>
                           </td>
                         </tr>
                       )}
@@ -221,7 +183,7 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                 })}
                 {filteredSubscriptions.length === 0 && (
                   <tr>
-                    <td colSpan="9" className="muted">Ingen betalingsaftaler matcher filtrene.</td>
+                    <td colSpan="8" className="muted">Ingen betalingsaftaler matcher filtrene.</td>
                   </tr>
                 )}
               </tbody>

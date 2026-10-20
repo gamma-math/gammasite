@@ -41,8 +41,8 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Kontrollér aftalen i MobilePay med:
   `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --agreement-status agr_sWPvEGT`
 - [x] Opsig aftalen fra hjemmesiden, og kontrollér status med `--agreement-status`.
-- [x] Opret en testopkrævning med `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --create-charge agr_sWPvEGT`.
-- [x] Kontrollér opkrævningen med `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --charge-status agr_sWPvEGT gamma-charge-cfdd8058a26a4960` samt webhook, datoer og email.
+- [x] Kontrollér MobilePay-aftalens charges med `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --list-charges <agreement-id>`.
+- [ ] Kontrollér at næste MobilePay-charge oprettes automatisk til 1. februar det følgende år, og at en ny charge oprettes efter næste gennemførte betaling.
 - [x] Test afbrudt betaling, og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.
 
 ## Events

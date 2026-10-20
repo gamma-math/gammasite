@@ -51,7 +51,6 @@ This document describes the backend APIs currently used by the React pages. The 
 |---|---|---|---|---|---|
 | GET | `/api/payment-offers/admin` | Admin products page | `PaymentOffers`, `ContentItems` | Lists global and event payment products. Requires `payments.edit.all`; event-specific product management remains on the event API. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
 | GET | `/api/payment-subscriptions/admin` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, `AspNetUsers` | Lists all payment agreements. Requires `payments.edit.all`. | Not yet covered |
-| POST | `/api/payment-subscriptions/admin/{id}/charge` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, MobilePay | Creates a recurring MobilePay charge for an active agreement. Stripe agreements are charged automatically by Stripe. Requires `payments.edit.all`. | Not yet covered |
 
 ## Event registration API
 

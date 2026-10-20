@@ -1965,6 +1965,10 @@ img {
   justify-content: flex-start;
 }
 
+.admin-subscriptions-filters .admin-multi-select {
+  width: min(280px, 100%);
+}
+
 .menu-table-page-size {
   display: inline-flex;
   align-items: center;
@@ -3547,6 +3551,23 @@ img {
 }
 
 @media (max-width: 640px) {
+  .admin-subscriptions-filters {
+    display: block;
+  }
+
+  .admin-subscriptions-filters .admin-multi-select {
+    width: 100%;
+  }
+
+  .admin-subscriptions-filters .admin-multi-select-menu {
+    position: static;
+    width: 100%;
+    max-height: 240px;
+    border-top: 1px solid #cfd8e6;
+    border-radius: 0 0 5px 5px;
+    box-shadow: none;
+  }
+
   .admin-subscriptions-list {
     overflow-x: hidden;
   }

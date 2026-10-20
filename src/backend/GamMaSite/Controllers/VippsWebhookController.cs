@@ -302,6 +302,8 @@ public sealed class VippsWebhookController : ControllerBase
                     recurring: true,
                     cancellationToken: cancellationToken);
             }
+
+            await ScheduleNextChargeAsync(subscription, activatedOffer, agreementId, cancellationToken);
             return;
         }
 
@@ -379,6 +381,20 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
+        await ScheduleNextChargeAsync(subscription, offer, agreementId, cancellationToken);
+    }
+
+    private async Task ScheduleNextChargeAsync(
+        PaymentSubscription subscription,
+        PaymentOffer offer,
+        string agreementId,
+        CancellationToken cancellationToken)
+    {
+        if (_mobilePayService == null || offer == null || !subscription.NextChargeAt.HasValue)
+        {
+            return;
+        }
+
         var nextChargeId = CreateNextChargeId(agreementId, subscription.NextChargeAt.Value);
         try
         {
@@ -450,6 +466,19 @@ public sealed class VippsWebhookController : ControllerBase
             ? "YEAR"
             : offer.BillingInterval.Trim().ToUpperInvariant();
         var count = offer.BillingIntervalCount.GetValueOrDefault(1);
+
+        if (interval == "YEAR")
+        {
+            return new DateTime(
+                paidAt.Year + Math.Max(count, 1),
+                2,
+                1,
+                0,
+                0,
+                0,
+                DateTimeKind.Utc);
+        }
+
         return interval switch
         {
             "DAY" => paidAt.AddDays(count),

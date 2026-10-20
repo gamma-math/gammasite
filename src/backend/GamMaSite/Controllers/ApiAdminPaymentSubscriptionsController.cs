@@ -18,14 +18,9 @@ namespace GamMaSite.Controllers
     public sealed class ApiAdminPaymentSubscriptionsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        private readonly IMobilePayService _mobilePayService;
-
-        public ApiAdminPaymentSubscriptionsController(
-            ApplicationDbContext db,
-            IMobilePayService mobilePayService = null)
+        public ApiAdminPaymentSubscriptionsController(ApplicationDbContext db)
         {
             _db = db;
-            _mobilePayService = mobilePayService;
         }
 
         [HttpGet]
@@ -72,64 +67,9 @@ namespace GamMaSite.Controllers
                     nextChargeAt = subscription.NextChargeAt,
                     cancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
                     created = subscription.Created,
-                    updated = subscription.Updated,
-                    canCharge = string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(offer?.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase) &&
-                        !string.IsNullOrWhiteSpace(subscription.ProviderSubscriptionId) &&
-                        subscription.Status == PaymentSubscriptionStatuses.Active
+                    updated = subscription.Updated
                 };
             }));
-        }
-
-        [HttpPost("{id:int}/charge")]
-        public async Task<IActionResult> Charge(int id, CancellationToken cancellationToken)
-        {
-            if (_mobilePayService == null)
-            {
-                return Problem("MobilePay-tjenesten er ikke konfigureret.");
-            }
-
-            var subscription = await _db.PaymentSubscriptions
-                .Include(item => item.PaymentOffer)
-                .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-            if (subscription == null)
-            {
-                return NotFound();
-            }
-
-            var offer = subscription.PaymentOffer;
-            if (!string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(offer?.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest("Kun gentagne MobilePay-aftaler kan opkræves her.");
-            }
-
-            if (subscription.Status != PaymentSubscriptionStatuses.Active ||
-                string.IsNullOrWhiteSpace(subscription.ProviderSubscriptionId) ||
-                offer.AmountMinor.GetValueOrDefault() <= 0)
-            {
-                return BadRequest("Betalingsaftalen er ikke aktiv eller mangler et gyldigt beløb.");
-            }
-
-            var due = DateTime.UtcNow.Date.AddDays(1).AddHours(1);
-            var orderId = $"gamma-admin-{subscription.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}";
-            try
-            {
-                await _mobilePayService.CreateRecurringChargeAsync(
-                    subscription.ProviderSubscriptionId,
-                    orderId,
-                    offer.AmountMinor.Value,
-                    offer.Currency ?? "DKK",
-                    offer.ProductName,
-                    due,
-                    cancellationToken);
-            }
-            catch (InvalidOperationException exception)
-            {
-                return BadRequest(exception.Message);
-            }
-
-            return Ok(new { orderId, due });
         }
     }
 }

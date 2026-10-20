@@ -157,10 +157,10 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
-        Assert.Equal(new DateTime(2027, 10, 19, 8, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
         mobilePay.Verify(service => service.CreateRecurringChargeAsync(
             "agr_test",
-            It.Is<string>(value => value.StartsWith("gamma-agrtest-20271019")),
+            It.Is<string>(value => value.StartsWith("gamma-agrtest-20270201")),
             15000,
             "DKK",
             "Kontingent",
@@ -211,10 +211,20 @@ public sealed class VippsWebhookControllerTests
             })
             .Build();
         var referenceService = new MobilePayEventReferenceService(configuration);
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(service => service.CreateRecurringChargeAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<long>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         var controller = CreateController(
             "{\"eventType\":\"recurring.agreement-activated.v1\",\"agreementId\":\"agr_activated\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
             db: db,
-            mobilePayService: new Mock<IMobilePayService>().Object,
+            mobilePayService: mobilePay.Object,
             referenceService: referenceService);
 
         var result = await controller.Receive(default);
@@ -224,7 +234,15 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
-        Assert.Equal(new DateTime(2027, 10, 19, 8, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        mobilePay.Verify(service => service.CreateRecurringChargeAsync(
+            "agr_activated",
+            It.Is<string>(value => value.StartsWith("gamma-agractivated-20270201")),
+            15000,
+            "DKK",
+            "Kontingent",
+            subscription.NextChargeAt.Value,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
