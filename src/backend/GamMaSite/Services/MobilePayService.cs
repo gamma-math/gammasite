@@ -42,6 +42,11 @@ public interface IMobilePayService
 
     Task<MobilePayAgreement> GetAgreementAsync(string agreementId, CancellationToken cancellationToken = default);
 
+    Task UpdateAgreementAmountAsync(
+        string agreementId,
+        long amountMinor,
+        CancellationToken cancellationToken = default);
+
     Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default);
 
     Task CreateRecurringChargeAsync(
@@ -221,6 +226,39 @@ public sealed class MobilePayService : IMobilePayService
             ReadString(root, "vippsConfirmationUrl"),
             ReadString(root, "status"),
             ReadString(root, "chargeId"));
+    }
+
+    public async Task UpdateAgreementAmountAsync(
+        string agreementId,
+        long amountMinor,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(agreementId))
+        {
+            throw new ArgumentException("MobilePay-aftalen mangler et ID.", nameof(agreementId));
+        }
+
+        if (amountMinor <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amountMinor), "MobilePay-beløbet skal være større end 0.");
+        }
+
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Patch,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}",
+            token);
+        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey($"{agreementId}:amount:{amountMinor}"));
+        request.Content = JsonContent.Create(new
+        {
+            pricing = new
+            {
+                amount = amountMinor
+            }
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "opdatere beløbet på MobilePay-aftalen");
     }
 
     public async Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default)

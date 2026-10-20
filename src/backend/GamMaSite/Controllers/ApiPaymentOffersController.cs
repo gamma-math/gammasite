@@ -107,7 +107,10 @@ namespace GamMaSite.Controllers
 
         [HttpPut("admin/{id:int}")]
         [Authorize(Policy = PermissionPolicies.ContentEdit)]
-        public async Task<IActionResult> UpdateForAdmin(int id, UpdatePaymentOfferRequest request)
+        public async Task<IActionResult> UpdateForAdmin(
+            int id,
+            UpdatePaymentOfferRequest request,
+            CancellationToken cancellationToken = default)
         {
             var offer = await _db.PaymentOffers
                 .Include(item => item.ContentItem)
@@ -125,6 +128,7 @@ namespace GamMaSite.Controllers
 
             try
             {
+                var previousAmountMinor = offer.AmountMinor;
                 offer.LinkLabel = Required(request?.LinkLabel, "Link label");
                 offer.ProductName = Required(request?.ProductName, "Produktnavn");
 
@@ -132,6 +136,8 @@ namespace GamMaSite.Controllers
                 {
                     offer.AmountMinor = ToMinorUnits(request.Amount.Value);
                 }
+
+                var amountChanged = request.Amount.HasValue && previousAmountMinor != offer.AmountMinor;
 
                 if (string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
                 {
@@ -151,13 +157,60 @@ namespace GamMaSite.Controllers
                     offer.IsActive = request.IsActive.Value;
                 }
 
+                if (amountChanged &&
+                    string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                {
+                    await UpdateMobilePayAgreementAmountsAsync(offer, offer.AmountMinor.Value, cancellationToken);
+                }
+
                 offer.Updated = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
                 return Ok(offer.ToDto());
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(502, new { error = ex.Message });
+            }
+        }
+
+        private async Task UpdateMobilePayAgreementAmountsAsync(
+            PaymentOffer offer,
+            long amountMinor,
+            CancellationToken cancellationToken)
+        {
+            var offerId = offer.Id.ToString();
+            var subscriptions = await _db.PaymentSubscriptions
+                .Where(subscription =>
+                    subscription.Provider == PaymentOfferProviders.MobilePay &&
+                    subscription.ProviderProductId == offerId &&
+                    (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                     subscription.Status == PaymentSubscriptionStatuses.Active ||
+                     subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                     subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                     subscription.Status == PaymentSubscriptionStatuses.Incomplete))
+                .ToListAsync(cancellationToken);
+
+            if (subscriptions.Count == 0)
+            {
+                return;
+            }
+
+            if (_mobilePayService == null)
+            {
+                throw new InvalidOperationException("MobilePay-tjenesten er ikke konfigureret.");
+            }
+
+            foreach (var subscription in subscriptions)
+            {
+                await _mobilePayService.UpdateAgreementAmountAsync(
+                    subscription.ProviderSubscriptionId,
+                    amountMinor,
+                    cancellationToken);
             }
         }
 

@@ -219,6 +219,100 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task UpdateForAdminUpdatesOpenMobilePayAgreementsWhenRecurringAmountChanges()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        db.PaymentSubscriptions.AddRange(
+            new PaymentSubscription
+            {
+                UserId = "user-1",
+                Provider = PaymentOfferProviders.MobilePay,
+                ProviderSubscriptionId = "active-agreement",
+                ProviderProductId = offer.Id.ToString(),
+                Status = PaymentSubscriptionStatuses.Active,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new PaymentSubscription
+            {
+                UserId = "user-2",
+                Provider = PaymentOfferProviders.MobilePay,
+                ProviderSubscriptionId = "pending-agreement",
+                ProviderProductId = offer.Id.ToString(),
+                Status = PaymentSubscriptionStatuses.Pending,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new PaymentSubscription
+            {
+                UserId = "user-3",
+                Provider = PaymentOfferProviders.MobilePay,
+                ProviderSubscriptionId = "stopped-agreement",
+                ProviderProductId = offer.Id.ToString(),
+                Status = PaymentSubscriptionStatuses.Canceled,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                It.IsAny<string>(),
+                17500,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            Amount = 175,
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true
+        }));
+
+        Assert.IsType<PaymentOfferDto>(result.Value);
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "active-agreement",
+            17500,
+            It.IsAny<CancellationToken>()), Times.Once);
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "pending-agreement",
+            17500,
+            It.IsAny<CancellationToken>()), Times.Once);
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "stopped-agreement",
+            It.IsAny<long>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(17500, (await db.PaymentOffers.SingleAsync()).AmountMinor);
+    }
+
+    [Fact]
     public async Task CheckoutCreatesStripeReferencesForMembershipOffer()
     {
         await using var db = CreateDatabase();
