@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
-import { Link } from "../routes/navigation.jsx";
 import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
@@ -146,66 +145,6 @@ export function PaymentPage({ user }) {
   );
 }
 
-/**
- * Product payment page that creates a Stripe checkout session.
- */
-export function ProductPaymentPage({ productId, user }) {
-  const [product, setProduct] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (user.isAuthenticated) {
-      paymentsApi.product(productId).then(setProduct).catch(() => setError("Produktet kunne ikke hentes."));
-    }
-  }, [productId, user.isAuthenticated]);
-
-  if (!user.isAuthenticated) {
-    return <LoginRequired title="Betaling" />;
-  }
-
-  if (!product && !error) {
-    return (
-      <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
-        <div className="menu-loading-card">
-          <span className="menu-loading-dot" aria-hidden="true" />
-          <p>Henter produkt...</p>
-        </div>
-      </MenuLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
-        <p className="status-message status-message-error">{error}</p>
-      </MenuLayout>
-    );
-  }
-
-  async function checkout() {
-    const config = await paymentsApi.config();
-    const session = await paymentsApi.startProductCheckout(product.id, user.id);
-    await redirectToStripe(config.publicApiKey, session.id);
-  }
-
-  return (
-    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
-      <article className="menu-payment-card menu-payment-product-card">
-        <div className="menu-payment-product-hero">
-          <p className="menu-section-title">Betal medlemskab</p>
-          <h1>{product.name}</h1>
-        </div>
-        <div className="menu-payment-product-body">
-          <p className="muted">{product.description}</p>
-          {product.additional && <p>{product.additional}</p>}
-          <p>Ved køb accepteres de gældende <Link href="/react/betingelser">Betingelser og vedtægter</Link>.</p>
-          <button className="menu-payment-button" type="button" onClick={checkout}>Køb {product.name.toLowerCase()}</button>
-        </div>
-      </article>
-    </MenuLayout>
-  );
-}
-
 export function EventPaymentPage({ offerId, user }) {
   const [offer, setOffer] = useState(null);
   const [error, setError] = useState("");
@@ -293,37 +232,6 @@ export function EventPaymentPage({ offerId, user }) {
           {error && <p className="status-message status-message-error">{error}</p>}
         </div>
       </article>
-    </MenuLayout>
-  );
-}
-
-/**
- * Generic payment page for custom amount Stripe checkout.
- */
-export function GenericPaymentPage({ user }) {
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-
-  if (!user.isAuthenticated) {
-    return <LoginRequired title="Overfør valgfrit beløb" />;
-  }
-
-  async function checkout(event) {
-    event.preventDefault();
-    const config = await paymentsApi.config();
-    const session = await paymentsApi.startGenericCheckout("Generisk", Number(amount) * 100, description, user.id);
-    await redirectToStripe(config.publicApiKey, session.id);
-  }
-
-  return (
-    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
-      <form className="menu-payment-card" onSubmit={checkout}>
-        <p className="menu-payment-kicker">Valgfrit beløb</p>
-        <h1>Overfør valgfrit beløb</h1>
-        <label className="admin-field"><span>Beløb</span><input type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} required /></label>
-        <label className="admin-field"><span>Beskrivelse</span><input value={description} onChange={(event) => setDescription(event.target.value)} required /></label>
-        <button className="menu-payment-button" type="submit">Overfør beløb</button>
-      </form>
     </MenuLayout>
   );
 }

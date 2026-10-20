@@ -23,8 +23,6 @@ namespace GamMaSite.Controllers
         [HttpGet("/Messages")]
         [HttpGet("/Pay")]
         [HttpGet("/Pay/Index")]
-        [HttpGet("/Pay/Product/{id?}")]
-        [HttpGet("/Pay/Generisk")]
         [HttpGet("/Pay/Success")]
         [HttpGet("/Pay/Cancel")]
         [HttpGet("/react")]

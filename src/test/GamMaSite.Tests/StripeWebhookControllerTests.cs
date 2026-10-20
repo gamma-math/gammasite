@@ -43,6 +43,17 @@ public sealed class StripeWebhookControllerTests
     {
         await using var db = CreateDb();
         db.Users.Add(new SiteUser { Id = "user-1", UserName = "member@example.com", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Kontingent",
+            ProviderProductId = MembershipProductId,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
         await db.SaveChangesAsync();
 
         var controller = CreateController(db, new Mock<IStripeService>().Object);
@@ -148,6 +159,18 @@ public sealed class StripeWebhookControllerTests
     {
         await using var db = CreateDb();
         db.Users.Add(new SiteUser { Id = "user-1", UserName = "member@example.com", Status = UserStatus.OPRETTET });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            ProviderProductId = MembershipProductId,
+            ProviderPriceId = "price_recurring",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
         await db.SaveChangesAsync();
 
         var stripe = new Mock<IStripeService>();
@@ -213,7 +236,6 @@ public sealed class StripeWebhookControllerTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["StripeConfig:WebhookSecret"] = WebhookSecret,
-                ["StripeConfig:MembershipProductId"] = MembershipProductId
             })
             .Build();
 

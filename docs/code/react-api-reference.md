@@ -143,11 +143,7 @@ Finance CRUD, PostgreSQL conflict handling, import-history persistence, bank/Mob
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| GET | `/api/payments/config` | Payment page and generic payment page | Application configuration | Returns the public Stripe API key. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
-| GET | `/api/payments/products` | Payment page | External Stripe Products and Prices | Lists available membership or payment products. | Not yet covered |
-| GET | `/api/payments/products/{id}` | Product payment page | External Stripe Product and Price | Loads one Stripe product and its price. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
-| POST | `/api/Stripe/Product` | Product payment page | External Stripe Checkout | Creates a checkout session for a Stripe product. | Not yet covered |
-| POST | `/api/Stripe/Generic` | Generic payment page | External Stripe Checkout | Creates a checkout session for a custom amount and description. | Not yet covered |
+| GET | `/api/payments/config` | Payment page | Application configuration | Returns the public Stripe API key used to open Stripe Checkout for a PaymentOffer. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
 
 ## Rich text editor API
 

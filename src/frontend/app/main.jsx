@@ -44,11 +44,9 @@ import { FrontPage } from "../pages/FrontPage.jsx";
 import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
 import {
-  GenericPaymentPage,
   EventPaymentPage,
   PaymentPage,
   PaymentStatusPage,
-  ProductPaymentPage,
 } from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
@@ -260,9 +258,6 @@ function renderRoute(route, user, isAdmin, access) {
   if (path === "/react/finance") {
     return <FinancePage user={user} />;
   }
-  if (path === "/react/pay/generic" || path === "/Pay/Generisk") {
-    return <GenericPaymentPage user={user} />;
-  }
   if (path === "/react/pay/success" || path === "/Pay/Success") {
     const query = new URLSearchParams(route.search);
     return <PaymentStatusPage status="success" session={query.get("session")} reference={query.get("reference")} user={user} />;
@@ -280,24 +275,6 @@ function renderRoute(route, user, isAdmin, access) {
   const eventPaymentMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/(\d+)$/);
   if (eventPaymentMatch) {
     return <EventPaymentPage offerId={Number(eventPaymentMatch[2])} user={user} />;
-  }
-  const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
-  if (oldProductMatch && oldProductMatch[1]) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(oldProductMatch[1])}
-        user={user}
-      />
-    );
-  }
-  const productMatch = path.match(/^\/react\/pay\/products\/([^/]+)$/);
-  if (productMatch) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(productMatch[1])}
-        user={user}
-      />
-    );
   }
   if (path === "/react/om") {
     return <StaticPage page="about" />;

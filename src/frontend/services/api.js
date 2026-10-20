@@ -219,14 +219,10 @@ export const libraryApi = {
 };
 
 /**
- * Payment API for Stripe product and checkout flows.
+ * Shared Stripe configuration used by PaymentOffers checkout.
  */
 export const paymentsApi = {
-  config: () => request("/api/payments/config"),
-  products: () => request("/api/payments/products"),
-  product: (id) => request(`/api/payments/products/${encodeURIComponent(id)}`),
-  startProductCheckout: (product, user, paymentType = "one-time") => request(`/api/Stripe/Product?product=${encodeURIComponent(product)}&user=${encodeURIComponent(user)}&paymentType=${encodeURIComponent(paymentType)}`, { method: "POST" }),
-  startGenericCheckout: (product, price, description, user) => request(`/api/Stripe/Generic?product=${encodeURIComponent(product)}&price=${encodeURIComponent(price)}&description=${encodeURIComponent(description)}&user=${encodeURIComponent(user)}`, { method: "POST" })
+  config: () => request("/api/payments/config")
 };
 
 /**

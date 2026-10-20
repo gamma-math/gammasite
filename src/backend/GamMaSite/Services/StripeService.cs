@@ -15,19 +15,13 @@ namespace GamMaSite.Services
     {
         string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null);
 
-        string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl);
-
         bool IsPaymentComplete(Session session);
 
         Task<Session> GetSessionAsync(string sessionId);
 
         Task<Product[]> GetAllProductsAsync();
 
-        Task<Product[]> GetProductsAsync(List<string> ids);
-
         Task<Product> GetProductAsync(string id);
-
-        Task<Product> GetProductByNameAsync(string name);
 
         Task<Product> GetProductByExactNameAsync(string name);
 
@@ -49,20 +43,13 @@ namespace GamMaSite.Services
     }
 
     /*
-     * Wraps Stripe SDK calls used by payment APIs and legacy payment redirects.
+     * Wraps Stripe SDK calls used by the PaymentOffers API and webhooks.
      */
     public class StripeService : IStripeService
     {
         public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null)
         {
             Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata);
-
-            return session.Id;
-        }
-
-        public string StartPayment(string name, string description, long price, string currency, string user, string successUrl, string cancelUrl)
-        {
-            var session = GetCreateSession(GetPriceData(name, description, price, currency), user, successUrl, cancelUrl);
 
             return session.Id;
         }
@@ -86,22 +73,6 @@ namespace GamMaSite.Services
             }
         }
 
-        public async Task<Product[]> GetAllProductsAsync()
-        {
-            var service = new ProductService();
-            var products = (await service.ListAsync(GetProductListOptions())).ToArray();
-            return products;
-        }
-
-        public async Task<Product[]> GetProductsAsync(List<string> ids)
-        {
-            var options = GetProductListOptions();
-            options.Ids = ids;
-            var service = new ProductService();
-            var products = (await service.ListAsync(options)).ToArray();
-            return products;
-        }
-
         public async Task<Product> GetProductAsync(string id)
         {
             try
@@ -114,10 +85,15 @@ namespace GamMaSite.Services
             }
         }
 
-        public async Task<Product> GetProductByNameAsync(string name)
+        public async Task<Product[]> GetAllProductsAsync()
         {
-            var matches = (await GetAllProductsAsync()).Where(p => p.Name.ToLower().Contains(name.ToLower()));
-            return matches.MinBy(p => p.Name.Length);
+            var options = new ProductListOptions
+            {
+                Limit = 100,
+                Active = true
+            };
+            var service = new ProductService();
+            return (await service.ListAsync(options)).ToArray();
         }
 
         public async Task<Product> GetProductByExactNameAsync(string name)
@@ -373,27 +349,5 @@ namespace GamMaSite.Services
             return new SessionService().Create(options);
         }
 
-        private static ProductListOptions GetProductListOptions()
-        {
-            return new ProductListOptions
-            {
-                Limit = 100,
-                Active = true
-            };
-        }
-
-        private static SessionLineItemPriceDataOptions GetPriceData(string name, string description, long price, string currency)
-        {
-            return new SessionLineItemPriceDataOptions
-            {
-                UnitAmount = price,
-                Currency = currency,
-                ProductData = new SessionLineItemPriceDataProductDataOptions
-                {
-                    Description = description,
-                    Name = name
-                }
-            };
-        }
     }
 }

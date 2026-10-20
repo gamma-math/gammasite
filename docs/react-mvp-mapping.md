@@ -13,8 +13,6 @@ React er monteret under `/react`, og de mest brugte gamle GET-URL'er serverer nu
 | Kalender | `/react/calendar` | `/Calendar` |
 | Bibliotek | `/react/library?path=...` | Bevares på `/Library` for fil-download-kompatibilitet |
 | Betaling, produktliste | `/react/pay` | `/Pay`, `/Pay/Index` |
-| Betaling, produktdetalje | `/react/pay/products/{id}` | `/Pay/Product/{id}` |
-| Valgfri betaling | `/react/pay/generic` | `/Pay/Generisk` |
 | Betalingsstatus | `/react/pay/success`, `/react/pay/cancel` | `/Pay/Success`, `/Pay/Cancel` |
 | Admin events | `/react/admin/events` | - |
 | Admin nyheder | `/react/admin/news` | - |

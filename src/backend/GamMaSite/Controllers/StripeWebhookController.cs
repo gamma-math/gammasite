@@ -112,7 +112,8 @@ namespace GamMaSite.Controllers
                 return;
             }
 
-            if (!IsMembershipProduct(session.Metadata))
+            var membershipOffer = await FindMembershipOfferAsync(session.Metadata, cancellationToken);
+            if (membershipOffer == null)
             {
                 return;
             }
@@ -267,7 +268,10 @@ namespace GamMaSite.Controllers
             }
 
             return await _db.PaymentOffers
-                .Where(item => item.IsActive && item.Provider == PaymentOfferProviders.Stripe && item.ProviderProductId == providerProductId &&
+                .Where(item => item.IsActive &&
+                    item.Scope == PaymentOfferScopes.Event &&
+                    item.Provider == PaymentOfferProviders.Stripe &&
+                    item.ProviderProductId == providerProductId &&
                     (string.IsNullOrWhiteSpace(productName) || item.ProductName == productName))
                 .OrderByDescending(item => item.Updated)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -330,10 +334,13 @@ namespace GamMaSite.Controllers
                     .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
             }
 
+            var membershipOffer = paymentOffer == null
+                ? await FindMembershipOfferAsync(subscription.Metadata, cancellationToken)
+                : null;
             var isMembershipOffer = paymentOffer != null
                 ? string.Equals(paymentOffer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
                   string.Equals(paymentOffer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase)
-                : IsMembershipProduct(subscription.Metadata);
+                : membershipOffer != null;
             if (!isMembershipOffer)
             {
                 return;
@@ -447,12 +454,22 @@ namespace GamMaSite.Controllers
             await _db.SaveChangesAsync(cancellationToken);
         }
 
-        private bool IsMembershipProduct(System.Collections.Generic.IDictionary<string, string> metadata)
+        private async Task<PaymentOffer> FindMembershipOfferAsync(
+            System.Collections.Generic.IDictionary<string, string> metadata,
+            CancellationToken cancellationToken)
         {
-            var configuredProductId = _configuration["StripeConfig:MembershipProductId"];
             var productId = MetadataValue(metadata, "Product");
-            return !string.IsNullOrWhiteSpace(configuredProductId) &&
-                string.Equals(configuredProductId, productId, StringComparison.Ordinal);
+            if (string.IsNullOrWhiteSpace(productId))
+            {
+                return null;
+            }
+
+            return await _db.PaymentOffers
+                .Where(item => item.Scope == PaymentOfferScopes.Membership &&
+                    item.Provider == PaymentOfferProviders.Stripe &&
+                    item.ProviderProductId == productId)
+                .OrderByDescending(item => item.Updated)
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         private static string MetadataValue(System.Collections.Generic.IDictionary<string, string> metadata, string key)
