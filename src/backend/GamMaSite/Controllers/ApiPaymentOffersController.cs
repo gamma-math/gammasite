@@ -60,7 +60,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        [Authorize(Policy = PermissionPolicies.PaymentsEditAll)]
         public async Task<IActionResult> GetForAdmin()
         {
             var offers = await _db.PaymentOffers
@@ -78,7 +78,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin/{id:int}")]
-        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        [Authorize(Policy = PermissionPolicies.PaymentsEditAll)]
         public async Task<IActionResult> GetForAdmin(int id)
         {
             var offer = await _db.PaymentOffers
@@ -106,7 +106,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpPut("admin/{id:int}")]
-        [Authorize(Policy = PermissionPolicies.ContentEdit)]
+        [Authorize(Policy = PermissionPolicies.PaymentsEditAll)]
         public async Task<IActionResult> UpdateForAdmin(
             int id,
             UpdatePaymentOfferRequest request,
@@ -427,7 +427,7 @@ namespace GamMaSite.Controllers
                 if (provider == PaymentOfferProviders.Stripe)
                 {
                     var previousPriceId = offer.ProviderPriceId;
-                    await EnsureStripeReferencesAsync(offer, productName, amountMinor);
+                    await EnsureStripeReferencesAsync(offer, item.Title, productName, amountMinor);
                     await ArchiveReplacedStripePriceAsync(offer, previousPriceId, default);
                 }
                 else
@@ -1060,7 +1060,11 @@ namespace GamMaSite.Controllers
             }
         }
 
-        private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string productName, long amountMinor)
+        private async Task EnsureStripeReferencesAsync(
+            PaymentOffer offer,
+            string eventTitle,
+            string productName,
+            long amountMinor)
         {
             var product = !string.IsNullOrWhiteSpace(offer.ProviderProductId)
                 ? await _stripeService.GetProductAsync(offer.ProviderProductId)
@@ -1073,7 +1077,7 @@ namespace GamMaSite.Controllers
 
             if (product == null)
             {
-                product = await _stripeService.CreateProductAsync(productName, GetStripeProductDescription(offer));
+                product = await _stripeService.CreateProductAsync(productName, $"Betaling for eventet {eventTitle}.");
             }
 
             if (product == null)
@@ -1081,20 +1085,29 @@ namespace GamMaSite.Controllers
                 throw new InvalidOperationException("Stripe-produktet kunne ikke oprettes.");
             }
 
-            product = await EnsureStripeProductDescriptionAsync(product, offer);
-
             var price = !string.IsNullOrWhiteSpace(offer.ProviderPriceId)
                 ? await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId)
                 : null;
+            var priceWasCreated = false;
             if (price == null || price.ProductId != product.Id || price.UnitAmount != amountMinor ||
                 price.Type != "one_time" || !string.Equals(price.Currency, Currency, StringComparison.OrdinalIgnoreCase))
             {
-                price = await _stripeService.CreateOneTimePriceAsync(product.Id, amountMinor, Currency);
+                price = await _stripeService.CreateOneTimePriceAsync(
+                    product.Id,
+                    amountMinor,
+                    Currency,
+                    GetStripePriceDescription(offer));
+                priceWasCreated = true;
             }
 
             if (price == null)
             {
                 throw new InvalidOperationException("Stripe-prisen kunne ikke oprettes.");
+            }
+
+            if (!priceWasCreated)
+            {
+                price = await EnsureStripePriceNicknameAsync(price, offer);
             }
 
             offer.ProviderProductId = product.Id;
@@ -1116,15 +1129,13 @@ namespace GamMaSite.Controllers
             {
                 product = await _stripeService.CreateProductAsync(
                     offer.ProductName,
-                    GetStripeProductDescription(offer));
+                    "Betaling for medlemskab.");
             }
 
             if (product == null)
             {
                 throw new InvalidOperationException("Stripe-produktet kunne ikke oprettes.");
             }
-
-            product = await EnsureStripeProductDescriptionAsync(product, offer);
 
             var price = !string.IsNullOrWhiteSpace(offer.ProviderPriceId)
                 ? await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId)
@@ -1135,6 +1146,7 @@ namespace GamMaSite.Controllers
                 price = await _stripeService.GetPriceAsync(product.Id);
             }
 
+            var priceWasCreated = false;
             if (!IsMatchingStripePrice(price, offer, product))
             {
                 price = string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase)
@@ -1143,11 +1155,14 @@ namespace GamMaSite.Controllers
                         offer.AmountMinor.GetValueOrDefault(),
                         Currency,
                         ToStripeInterval(offer.BillingInterval),
-                        offer.BillingIntervalCount.GetValueOrDefault(1))
+                        offer.BillingIntervalCount.GetValueOrDefault(1),
+                        GetStripePriceDescription(offer))
                     : await _stripeService.CreateOneTimePriceAsync(
                         product.Id,
                         offer.AmountMinor.GetValueOrDefault(),
-                        Currency);
+                        Currency,
+                        GetStripePriceDescription(offer));
+                priceWasCreated = true;
             }
 
             if (price == null)
@@ -1155,27 +1170,32 @@ namespace GamMaSite.Controllers
                 throw new InvalidOperationException("Stripe-prisen kunne ikke oprettes.");
             }
 
+            if (!priceWasCreated)
+            {
+                price = await EnsureStripePriceNicknameAsync(price, offer);
+            }
+
             offer.ProviderProductId = product.Id;
             offer.ProviderPriceId = price.Id;
         }
 
-        private async Task<Stripe.Product> EnsureStripeProductDescriptionAsync(
-            Stripe.Product product,
+        private async Task<Stripe.Price> EnsureStripePriceNicknameAsync(
+            Stripe.Price price,
             PaymentOffer offer)
         {
-            var description = GetStripeProductDescription(offer);
-            if (string.Equals(product.Description, description, StringComparison.Ordinal))
+            var nickname = GetStripePriceDescription(offer);
+            if (string.Equals(price.Nickname, nickname, StringComparison.Ordinal))
             {
-                return product;
+                return price;
             }
 
-            var updatedProduct = await _stripeService.UpdateProductDescriptionAsync(product.Id, description);
-            if (updatedProduct == null)
+            var updatedPrice = await _stripeService.UpdatePriceNicknameAsync(price.Id, nickname);
+            if (updatedPrice == null)
             {
-                throw new InvalidOperationException("Stripe-produktets beskrivelse kunne ikke opdateres.");
+                throw new InvalidOperationException("Stripe-prisens beskrivelse kunne ikke opdateres.");
             }
 
-            return updatedProduct;
+            return updatedPrice;
         }
 
         private async Task ArchiveReplacedStripePriceAsync(
@@ -1202,7 +1222,7 @@ namespace GamMaSite.Controllers
             }
         }
 
-        private static string GetStripeProductDescription(PaymentOffer offer)
+        private static string GetStripePriceDescription(PaymentOffer offer)
         {
             return $"{offer.ProductName} - {offer.OfferType}";
         }

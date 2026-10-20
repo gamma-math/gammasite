@@ -14,7 +14,8 @@ INSERT INTO `Permissions` (`Code`, `Description`) VALUES
   ('finance.edit.all', 'Se og redigere alle finanser'),
   ('messages.edit', CONVERT(0x5365206265736B65646F6D72C3A5646574206F672073656E6465206265736B65646572 USING utf8mb4)),
   ('email_templates.edit', 'Se, oprette, redigere og slette beskedskabeloner'),
-  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4))
+  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D6973736F6D72C3A5646574 USING utf8mb4)),
+  ('payments.edit.all', 'Se og administrere alle betalingsprodukter og betalingsaftaler')
 ON DUPLICATE KEY UPDATE
   `Description` = VALUES(`Description`);
 
@@ -51,6 +52,11 @@ INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
 SELECT 'role-kommunikation', `Id`
 FROM `Permissions`
 WHERE `Code` IN ('messages.edit', 'email_templates.edit');
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-payments', `Id`
+FROM `Permissions`
+WHERE `Code` = 'payments.edit.all';
 
 -- Keep the same permissions available as ASP.NET Identity role claims.
 INSERT INTO `AspNetRoleClaims` (`ClaimType`, `ClaimValue`, `RoleId`)

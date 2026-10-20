@@ -22,7 +22,8 @@ INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) V
 ('role-admin', 'Admin', 'ADMIN', '3bff48cf-bde8-43f2-8e4f-0d27d5f9ec01'),
 ('role-test', 'Test', 'TEST', '73f673e8-b29b-46dc-9bf1-8ca4a9422cc1'),
 ('role-finance', 'Finance', 'FINANCE', '793dddb1-a177-4a9a-9ff7-a2224f8533e1'),
-('role-mail', 'Rolle mail test', 'ROLLE MAIL TEST', '2c2212b9-5c03-4f83-94fd-97769ad33dc4');
+('role-mail', 'Rolle mail test', 'ROLLE MAIL TEST', '2c2212b9-5c03-4f83-94fd-97769ad33dc4'),
+('role-payments', 'Payments', 'PAYMENTS', '5f69c4d1-8f3b-4ae2-9eea-4a3f4d8a90b1');
 
 INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) VALUES
 ('role-kasserer', 'Kasserer', 'KASSERER', 'd7b5c54e-1a7a-4d42-a7eb-7e12f45c3f01'),
@@ -37,7 +38,8 @@ INSERT INTO `Permissions` (`Code`, `Description`) VALUES
   ('finance.edit.all', 'Se og redigere alle finanser'),
   ('messages.edit', CONVERT(0x5365206265736B65646F6D72C3A5646574206F672073656E6465206265736B65646572 USING utf8mb4)),
   ('email_templates.edit', 'Se, oprette, redigere og slette beskedskabeloner'),
-  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4))
+  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4)),
+  ('payments.edit.all', 'Se og administrere alle betalingsprodukter og betalingsaftaler')
 ON DUPLICATE KEY UPDATE
   `Description` = VALUES(`Description`);
 
@@ -73,6 +75,11 @@ INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
 SELECT 'role-kommunikation', `Id`
 FROM `Permissions`
 WHERE `Code` IN ('messages.edit', 'email_templates.edit');
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-payments', `Id`
+FROM `Permissions`
+WHERE `Code` = 'payments.edit.all';
 
 INSERT INTO `AspNetRoleClaims` (`ClaimType`, `ClaimValue`, `RoleId`)
 SELECT 'permission', p.`Code`, rp.`RoleId`
@@ -123,6 +130,7 @@ INSERT INTO `AspNetUserTokens` (`UserId`, `LoginProvider`, `Name`, `Value`) VALU
 INSERT INTO `AspNetUserRoles` (`UserId`, `RoleId`) VALUES
 ('user-admin-test', 'role-admin'),
 ('user-admin-test', 'role-finance'),
+('user-admin-test', 'role-payments'),
 ('user-member-test', 'role-test'),
 ('user-fake-001', 'role-admin'),
 ('user-fake-002', 'role-test'),

@@ -7,14 +7,16 @@ export const permissions = {
   messagesEdit: "messages.edit",
   rolesEdit: "roles.edit",
   financeViewAll: "finance.view.all",
-  financeEditAll: "finance.edit.all"
+  financeEditAll: "finance.edit.all",
+  paymentsEditAll: "payments.edit.all"
 };
 
 export const AccessContext = createContext({ permissions: [] });
 
 const adminDestinations = [
   { path: "/react/admin/events", permission: permissions.contentEdit },
-  { path: "/react/admin/products", permission: permissions.contentEdit },
+  { path: "/react/admin/products", permission: permissions.paymentsEditAll },
+  { path: "/react/admin/subscriptions", permission: permissions.paymentsEditAll },
   { path: "/react/admin/messages", permission: permissions.messagesEdit },
   { path: "/react/admin/templates", permission: permissions.emailTemplatesEdit },
   { path: "/react/admin/users", permission: permissions.rolesEdit },
@@ -55,7 +57,10 @@ export function adminPermissionForPath(path) {
     return permissions.contentEdit;
   }
   if (path === "/react/admin/products" || path.startsWith("/react/admin/products/")) {
-    return permissions.contentEdit;
+    return permissions.paymentsEditAll;
+  }
+  if (path === "/react/admin/subscriptions" || path.startsWith("/react/admin/subscriptions/")) {
+    return permissions.paymentsEditAll;
   }
   if (path === "/react/admin/messages") {
     return permissions.messagesEdit;

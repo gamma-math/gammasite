@@ -36,6 +36,7 @@ import {
 } from "../pages/AdminTemplatesPage.jsx";
 import { AdminProductsPage } from "../pages/AdminProductsPage.jsx";
 import { AdminProductEditorPage } from "../pages/AdminProductsPage.jsx";
+import { AdminSubscriptionsPage } from "../pages/AdminSubscriptionsPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -128,7 +129,8 @@ function App() {
     messagesEdit: hasPermission(user, permissions.messagesEdit),
     rolesEdit: hasPermission(user, permissions.rolesEdit),
     financeView: hasAnyPermission(user, [permissions.financeViewAll, permissions.financeEditAll]),
-    financeEdit: hasPermission(user, permissions.financeEditAll)
+    financeEdit: hasPermission(user, permissions.financeEditAll),
+    paymentsEditAll: hasPermission(user, permissions.paymentsEditAll)
   };
 
   return (
@@ -358,13 +360,16 @@ function renderRoute(route, user, isAdmin, access) {
   if (adminProductEditorMatch) {
     return (
       <AdminProductEditorPage
-        isAdmin={access.contentEdit}
+        isAdmin={access.paymentsEditAll}
         offerId={Number(adminProductEditorMatch[1])}
       />
     );
   }
   if (path === "/react/admin/products") {
-    return <AdminProductsPage isAdmin={access.contentEdit} />;
+    return <AdminProductsPage isAdmin={access.paymentsEditAll} />;
+  }
+  if (path === "/react/admin/subscriptions") {
+    return <AdminSubscriptionsPage isAdmin={access.paymentsEditAll} />;
   }
   if (path === "/react/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;

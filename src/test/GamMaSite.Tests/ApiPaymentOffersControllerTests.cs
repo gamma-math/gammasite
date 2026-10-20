@@ -390,17 +390,14 @@ public sealed class ApiPaymentOffersControllerTests
         };
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
-        stripe.Setup(value => value.UpdateProductDescriptionAsync(
-                product.Id,
-                "Kontingent - RECURRING"))
-            .ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceByIdAsync(oldPrice.Id)).ReturnsAsync(oldPrice);
         stripe.Setup(value => value.CreateRecurringPriceAsync(
                 product.Id,
                 17500,
                 "dkk",
                 "year",
-                1))
+                1,
+                "Kontingent - RECURRING"))
             .ReturnsAsync(new Stripe.Price
             {
                 Id = "price_new",
@@ -438,13 +435,11 @@ public sealed class ApiPaymentOffersControllerTests
             17500,
             "dkk",
             "year",
-            1), Times.Once);
+            1,
+            "Kontingent - RECURRING"), Times.Once);
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-active", "price_new"), Times.Once);
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-pending", "price_new"), Times.Once);
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-canceled", It.IsAny<string>()), Times.Never);
-        stripe.Verify(value => value.UpdateProductDescriptionAsync(
-            product.Id,
-            "Kontingent - RECURRING"), Times.Once);
         stripe.Verify(value => value.DeactivatePriceAsync("price_old"), Times.Once);
 
         var updatedOffer = await db.PaymentOffers.SingleAsync();
@@ -493,12 +488,13 @@ public sealed class ApiPaymentOffersControllerTests
         };
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetProductByExactNameAsync("Kontingent")).ReturnsAsync(product);
-        stripe.Setup(value => value.UpdateProductDescriptionAsync(
-                product.Id,
-                "Kontingent - ONE_TIME"))
-            .ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null);
-        stripe.Setup(value => value.CreateOneTimePriceAsync(product.Id, 15000, "dkk")).ReturnsAsync(price);
+        stripe.Setup(value => value.CreateOneTimePriceAsync(
+                product.Id,
+                15000,
+                "dkk",
+                "Kontingent - ONE_TIME"))
+            .ReturnsAsync(price);
         stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceByIdAsync(price.Id)).ReturnsAsync(price);
         stripe.Setup(value => value.StartPayment(
@@ -529,9 +525,6 @@ public sealed class ApiPaymentOffersControllerTests
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
         Assert.Contains("cs_membership", result.Value.ToString());
-        stripe.Verify(value => value.UpdateProductDescriptionAsync(
-            product.Id,
-            "Kontingent - ONE_TIME"), Times.Once);
         var savedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal(product.Id, savedOffer.ProviderProductId);
         Assert.Equal(price.Id, savedOffer.ProviderPriceId);

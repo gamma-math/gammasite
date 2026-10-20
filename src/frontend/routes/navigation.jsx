@@ -3,7 +3,13 @@ export const adminSections = [
     items: [
       { href: "/react/admin/events", label: "Events", permission: "content.edit" },
       { href: "/react/admin/news", label: "Nyheder", permission: "content.edit" },
-      { href: "/react/admin/products", label: "Produkter", permission: "content.edit" },
+    ],
+  },
+  {
+    label: "Betalingsaftaler",
+    items: [
+      { href: "/react/admin/products", label: "Produkter", permission: "payments.edit.all" },
+      { href: "/react/admin/subscriptions", label: "Betalingsaftaler", permission: "payments.edit.all" },
     ],
   },
   {

@@ -45,6 +45,14 @@ This document describes the backend APIs currently used by the React pages. The 
 | POST | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Validates and stores one PNG/JPEG of at most 2 MiB and updates `PictureUrl`. Requires `content.edit` or organizer access for an event. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
 | DELETE | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Removes the image reference and deletes an unreferenced local upload. External URLs are only detached. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
 
+## Payment administration API
+
+| Method | Endpoint | React pages | Data source | Purpose | Tests |
+|---|---|---|---|---|---|
+| GET | `/api/payment-offers/admin` | Admin products page | `PaymentOffers`, `ContentItems` | Lists global and event payment products. Requires `payments.edit.all`; event-specific product management remains on the event API. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-subscriptions/admin` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, `AspNetUsers` | Lists all payment agreements. Requires `payments.edit.all`. | Not yet covered |
+| POST | `/api/payment-subscriptions/admin/{id}/charge` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, MobilePay | Creates a recurring MobilePay charge for an active agreement. Stripe agreements are charged automatically by Stripe. Requires `payments.edit.all`. | Not yet covered |
+
 ## Event registration API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |

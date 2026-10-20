@@ -156,6 +156,11 @@ export const paymentOffersApi = {
   remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
 };
 
+export const paymentSubscriptionsApi = {
+  listAdmin: () => request("/api/payment-subscriptions/admin"),
+  chargeAdmin: (id) => request(`/api/payment-subscriptions/admin/${id}/charge`, { method: "POST" })
+};
+
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
   summary: (contentId) => request(`/api/content/${contentId}/registrations/summary`),

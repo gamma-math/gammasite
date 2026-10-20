@@ -27,11 +27,11 @@ namespace GamMaSite.Services
 
         Task<Product> CreateProductAsync(string name, string description);
 
-        Task<Product> UpdateProductDescriptionAsync(string id, string description);
+        Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency, string nickname = null);
 
-        Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency);
+        Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount, string nickname = null);
 
-        Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount);
+        Task<Price> UpdatePriceNicknameAsync(string id, string nickname);
 
         Task<bool> DeactivatePriceAsync(string id);
 
@@ -127,44 +127,11 @@ namespace GamMaSite.Services
             }
         }
 
-        public async Task<Product> UpdateProductDescriptionAsync(string id, string description)
-        {
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                return null;
-            }
-
-            try
-            {
-                return await new ProductService().UpdateAsync(id, new ProductUpdateOptions
-                {
-                    Description = description
-                });
-            }
-            catch (StripeException)
-            {
-                return null;
-            }
-        }
-
-        public async Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency)
-        {
-            try
-            {
-                return await new PriceService().CreateAsync(new PriceCreateOptions
-                {
-                    Product = productId,
-                    UnitAmount = amountMinor,
-                    Currency = currency
-                });
-            }
-            catch (StripeException)
-            {
-                return null;
-            }
-        }
-
-        public async Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount)
+        public async Task<Price> CreateOneTimePriceAsync(
+            string productId,
+            long amountMinor,
+            string currency,
+            string nickname = null)
         {
             try
             {
@@ -173,11 +140,56 @@ namespace GamMaSite.Services
                     Product = productId,
                     UnitAmount = amountMinor,
                     Currency = currency,
+                    Nickname = nickname
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Price> CreateRecurringPriceAsync(
+            string productId,
+            long amountMinor,
+            string currency,
+            string interval,
+            int intervalCount,
+            string nickname = null)
+        {
+            try
+            {
+                return await new PriceService().CreateAsync(new PriceCreateOptions
+                {
+                    Product = productId,
+                    UnitAmount = amountMinor,
+                    Currency = currency,
+                    Nickname = nickname,
                     Recurring = new PriceRecurringOptions
                     {
                         Interval = interval,
                         IntervalCount = intervalCount
                     }
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Price> UpdatePriceNicknameAsync(string id, string nickname)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await new PriceService().UpdateAsync(id, new PriceUpdateOptions
+                {
+                    Nickname = nickname
                 });
             }
             catch (StripeException)
