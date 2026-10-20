@@ -308,8 +308,8 @@ public sealed class MobilePayService : IMobilePayService
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
     {
         using var request = CreateRequest(HttpMethod.Post, "/accesstoken/get", null);
-        request.Headers.Add("client_id", RequiredConfiguration("VIPPS_CLIENT_ID"));
-        request.Headers.Add("client_secret", RequiredConfiguration("VIPPS_CLIENT_SECRET"));
+        request.Headers.Add("client_id", RequiredConfiguration("ClientId"));
+        request.Headers.Add("client_secret", RequiredConfiguration("ClientSecret"));
         request.Content = JsonContent.Create(new { });
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -324,8 +324,8 @@ public sealed class MobilePayService : IMobilePayService
     private HttpRequestMessage CreateRequest(HttpMethod method, string path, string token)
     {
         var request = new HttpRequestMessage(method, path);
-        request.Headers.Add("Ocp-Apim-Subscription-Key", RequiredConfiguration("VIPPS_OCP_APIM_SUBSCRIPTION_KEY"));
-        request.Headers.Add("Merchant-Serial-Number", RequiredConfiguration("VIPPS_MSN"));
+        request.Headers.Add("Ocp-Apim-Subscription-Key", RequiredConfiguration("SubscriptionKey"));
+        request.Headers.Add("Merchant-Serial-Number", RequiredConfiguration("Msn"));
         request.Headers.Add("Vipps-System-Name", SystemName);
         request.Headers.Add("Vipps-System-Version", SystemVersion);
         if (!string.IsNullOrWhiteSpace(token))
@@ -338,9 +338,9 @@ public sealed class MobilePayService : IMobilePayService
 
     private string RequiredConfiguration(string key)
     {
-        var value = _configuration[key];
+        var value = _configuration[$"MobilePay:{key}"];
         return string.IsNullOrWhiteSpace(value)
-            ? throw new InvalidOperationException($"MobilePay-konfigurationen mangler {key}.")
+            ? throw new InvalidOperationException($"MobilePay-konfigurationen mangler MobilePay:{key}.")
             : value;
     }
 

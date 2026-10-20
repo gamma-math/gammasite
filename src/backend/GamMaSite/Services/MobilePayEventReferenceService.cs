@@ -128,7 +128,11 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
 
     private string CreateSignature(string payload)
     {
-        var secret = _configuration["VIPPS_REFERENCE_SECRET"] ?? _configuration["VIPPS_WEBHOOK_SECRET"];
+        var secret = _configuration["MobilePay:ReferenceSecret"];
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            secret = _configuration["MobilePay:WebhookSecret"];
+        }
         if (string.IsNullOrWhiteSpace(secret))
         {
             throw new InvalidOperationException("MobilePay reference secret er ikke konfigureret.");

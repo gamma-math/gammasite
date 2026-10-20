@@ -71,8 +71,8 @@ public sealed class VippsWebhookControllerTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
-                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+                ["MobilePay:WebhookSecret"] = WebhookSecret,
+                ["MobilePay:ReferenceSecret"] = WebhookSecret
             })
             .Build();
         var referenceService = new MobilePayEventReferenceService(configuration);
@@ -129,8 +129,8 @@ public sealed class VippsWebhookControllerTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
-                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+                ["MobilePay:WebhookSecret"] = WebhookSecret,
+                ["MobilePay:ReferenceSecret"] = WebhookSecret
             })
             .Build();
         var referenceService = new MobilePayEventReferenceService(configuration);
@@ -206,8 +206,8 @@ public sealed class VippsWebhookControllerTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["VIPPS_WEBHOOK_SECRET"] = WebhookSecret,
-                ["VIPPS_REFERENCE_SECRET"] = WebhookSecret
+                ["MobilePay:WebhookSecret"] = WebhookSecret,
+                ["MobilePay:ReferenceSecret"] = WebhookSecret
             })
             .Build();
         var referenceService = new MobilePayEventReferenceService(configuration);
@@ -302,7 +302,7 @@ public sealed class VippsWebhookControllerTests
         var configurationValues = new Dictionary<string, string?>();
         if (webhookSecret != null)
         {
-            configurationValues["VIPPS_WEBHOOK_SECRET"] = webhookSecret;
+            configurationValues["MobilePay:WebhookSecret"] = webhookSecret;
         }
 
         var configuration = new ConfigurationBuilder()

@@ -50,7 +50,7 @@ public sealed class VippsWebhookController : ControllerBase
     [HttpPost("webhook")]
     public async Task<IActionResult> Receive(CancellationToken cancellationToken)
     {
-        var secret = _configuration["VIPPS_WEBHOOK_SECRET"];
+        var secret = _configuration["MobilePay:WebhookSecret"];
         if (string.IsNullOrWhiteSpace(secret))
         {
             _logger.LogError("Vipps webhook secret is not configured.");

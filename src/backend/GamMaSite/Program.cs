@@ -86,7 +86,8 @@ StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 // Add MobilePay/Vipps ePayment integration.
 builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
 {
-    client.BaseAddress = new Uri((builder.Configuration["VIPPS_BASE_URL"] ?? "https://apitest.vipps.no").TrimEnd('/') + "/");
+    var baseUrl = builder.Configuration["MobilePay:BaseUrl"];
+    client.BaseAddress = new Uri((string.IsNullOrWhiteSpace(baseUrl) ? "https://apitest.vipps.no" : baseUrl).TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(20);
 });
 builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();

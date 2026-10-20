@@ -50,11 +50,57 @@ jobs:
       - name: Validate deployment settings
         shell: pwsh
         env:
+          WD_USERNAME: ${{ secrets.WD_USERNAME }}
+          WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
+          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+          CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          MAILGUN_HOST: ${{ secrets.MAILGUN_HOST }}
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_MAIL: ${{ secrets.MAILGUN_MAIL }}
+          SMS_APIGATEWAY_KEY: ${{ secrets.SMS_APIGATEWAY_KEY }}
+          STRIPE_PUBLIC_API_KEY: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
+          STRIPE_SECRET_API_KEY: ${{ secrets.STRIPE_SECRET_API_KEY }}
+          STRIPE_ACCOUNT_ID: ${{ vars.STRIPE_ACCOUNT_ID }}
+          STRIPE_ENVIRONMENT: ${{ vars.STRIPE_ENVIRONMENT }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          GH_API_KEY: ${{ secrets.GH_API_KEY }}
+          ICAL_HOST_ADDRESS: ${{ secrets.ICAL_HOST_ADDRESS }}
           FINANCEREAD_CONNECTION_STRING: ${{ secrets.FINANCEREAD__CONNECTION_STRING }}
           FINANCEWRITE_CONNECTION_STRING: ${{ secrets.FINANCEWRITE__CONNECTION_STRING }}
           CONTENT_MEDIA_ROOT_PATH: ${{ vars.CONTENT_MEDIA_ROOT_PATH }}
+          VIPPS_BASE_URL: ${{ vars.VIPPS_BASE_URL }}
+          VIPPS_MSN: ${{ vars.VIPPS_MSN }}
+          VIPPS_CLIENT_ID: ${{ secrets.VIPPS_CLIENT_ID }}
+          VIPPS_CLIENT_SECRET: ${{ secrets.VIPPS_CLIENT_SECRET }}
+          VIPPS_OCP_APIM_SUBSCRIPTION_KEY: ${{ secrets.VIPPS_OCP_APIM_SUBSCRIPTION_KEY }}
+          VIPPS_WEBHOOK_SECRET: ${{ secrets.VIPPS_WEBHOOK_SECRET }}
         run: |
-          $required = @('FINANCEREAD_CONNECTION_STRING', 'FINANCEWRITE_CONNECTION_STRING', 'CONTENT_MEDIA_ROOT_PATH')
+          $required = @(
+            'WD_USERNAME',
+            'WD_PASSWORD',
+            'SITE_DOMAIN',
+            'CONNECTION_STRING',
+            'MAILGUN_HOST',
+            'MAILGUN_API_KEY',
+            'MAILGUN_MAIL',
+            'SMS_APIGATEWAY_KEY',
+            'STRIPE_PUBLIC_API_KEY',
+            'STRIPE_SECRET_API_KEY',
+            'STRIPE_ACCOUNT_ID',
+            'STRIPE_ENVIRONMENT',
+            'STRIPE_WEBHOOK_SECRET',
+            'GH_API_KEY',
+            'ICAL_HOST_ADDRESS',
+            'FINANCEREAD_CONNECTION_STRING',
+            'FINANCEWRITE_CONNECTION_STRING',
+            'CONTENT_MEDIA_ROOT_PATH',
+            'VIPPS_BASE_URL',
+            'VIPPS_MSN',
+            'VIPPS_CLIENT_ID',
+            'VIPPS_CLIENT_SECRET',
+            'VIPPS_OCP_APIM_SUBSCRIPTION_KEY',
+            'VIPPS_WEBHOOK_SECRET'
+          )
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               throw "Missing required deployment setting: $name"
@@ -75,6 +121,12 @@ jobs:
           StripeConfig.AccountId: ${{ vars.STRIPE_ACCOUNT_ID }}
           StripeConfig.Environment: ${{ vars.STRIPE_ENVIRONMENT }}
           StripeConfig.WebhookSecret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          MobilePay.BaseUrl: ${{ vars.VIPPS_BASE_URL }}
+          MobilePay.Msn: ${{ vars.VIPPS_MSN }}
+          MobilePay.ClientId: ${{ secrets.VIPPS_CLIENT_ID }}
+          MobilePay.ClientSecret: ${{ secrets.VIPPS_CLIENT_SECRET }}
+          MobilePay.SubscriptionKey: ${{ secrets.VIPPS_OCP_APIM_SUBSCRIPTION_KEY }}
+          MobilePay.WebhookSecret: ${{ secrets.VIPPS_WEBHOOK_SECRET }}
           GitHub.Token: ${{ secrets.GH_API_KEY }}
           GitLab.Token: ${{ secrets.GITLAB_API_KEY }}
           ICal.ICalAddress: ${{ secrets.ICAL_HOST_ADDRESS }}
