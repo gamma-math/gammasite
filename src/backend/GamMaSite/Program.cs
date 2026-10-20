@@ -236,6 +236,23 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Redirect legacy public URLs to their React equivalents.
+app.MapGet("/events", (HttpContext context) => Results.Redirect($"/react/events{context.Request.QueryString}"));
+app.MapGet("/events/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/events/{path}{context.Request.QueryString}"));
+app.MapGet("/news", (HttpContext context) => Results.Redirect($"/react/news{context.Request.QueryString}"));
+app.MapGet("/news/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/news/{path}{context.Request.QueryString}"));
+app.MapGet("/pay", (HttpContext context) => Results.Redirect($"/react/pay{context.Request.QueryString}"));
+app.MapGet("/pay/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/pay/{path}{context.Request.QueryString}"));
+app.MapGet("/members", (HttpContext context) => Results.Redirect($"/react/members{context.Request.QueryString}"));
+app.MapGet("/calendar", (HttpContext context) => Results.Redirect($"/react/calendar{context.Request.QueryString}"));
+app.MapGet("/library", (HttpContext context) => Results.Redirect($"/react/library{context.Request.QueryString}"));
+app.MapGet("/betingelser", (HttpContext context) => Results.Redirect($"/react/betingelser{context.Request.QueryString}"));
+app.MapGet("/cookies", (HttpContext context) => Results.Redirect($"/react/cookies{context.Request.QueryString}"));
+app.MapGet("/om", (HttpContext context) => Results.Redirect($"/react/om{context.Request.QueryString}"));
+app.MapGet("/account/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/account/{path}{context.Request.QueryString}"));
+app.MapGet("/admin", (HttpContext context) => Results.Redirect($"/react/admin{context.Request.QueryString}"));
+app.MapGet("/admin/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/admin/{path}{context.Request.QueryString}"));
+
 // Controller routes and Razor pages
 app.MapControllers();
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
