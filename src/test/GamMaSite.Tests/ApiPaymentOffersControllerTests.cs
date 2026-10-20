@@ -313,6 +313,133 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task UpdateForAdminCreatesNewStripePriceAndUpdatesOpenSubscriptionsWhenRecurringAmountChanges()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            ProviderProductId = "prod_membership",
+            ProviderPriceId = "price_old",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        db.PaymentSubscriptions.AddRange(
+            new PaymentSubscription
+            {
+                UserId = "user-1",
+                Provider = PaymentOfferProviders.Stripe,
+                ProviderSubscriptionId = "sub-active",
+                ProviderProductId = "prod_membership",
+                ProviderPriceId = "price_old",
+                Status = PaymentSubscriptionStatuses.Active,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new PaymentSubscription
+            {
+                UserId = "user-2",
+                Provider = PaymentOfferProviders.Stripe,
+                ProviderSubscriptionId = "sub-pending",
+                ProviderProductId = "prod_membership",
+                ProviderPriceId = "price_old",
+                Status = PaymentSubscriptionStatuses.Pending,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new PaymentSubscription
+            {
+                UserId = "user-3",
+                Provider = PaymentOfferProviders.Stripe,
+                ProviderSubscriptionId = "sub-canceled",
+                ProviderProductId = "prod_membership",
+                ProviderPriceId = "price_old",
+                Status = PaymentSubscriptionStatuses.Canceled,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var product = new Stripe.Product { Id = "prod_membership", Name = "Kontingent" };
+        var oldPrice = new Stripe.Price
+        {
+            Id = "price_old",
+            ProductId = product.Id,
+            Active = true,
+            Type = "recurring",
+            UnitAmount = 15000,
+            Currency = "dkk"
+        };
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
+        stripe.Setup(value => value.GetPriceByIdAsync(oldPrice.Id)).ReturnsAsync(oldPrice);
+        stripe.Setup(value => value.CreateRecurringPriceAsync(
+                product.Id,
+                17500,
+                "dkk",
+                "year",
+                1))
+            .ReturnsAsync(new Stripe.Price
+            {
+                Id = "price_new",
+                ProductId = product.Id,
+                Active = true,
+                Type = "recurring",
+                UnitAmount = 17500,
+                Currency = "dkk"
+            });
+        stripe.Setup(value => value.UpdateSubscriptionPriceAsync(
+                It.IsAny<string>(),
+                "price_new"))
+            .ReturnsAsync(true);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            stripe.Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            Amount = 175,
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true
+        }));
+
+        Assert.IsType<PaymentOfferDto>(result.Value);
+        stripe.Verify(value => value.CreateRecurringPriceAsync(
+            product.Id,
+            17500,
+            "dkk",
+            "year",
+            1), Times.Once);
+        stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-active", "price_new"), Times.Once);
+        stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-pending", "price_new"), Times.Once);
+        stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-canceled", It.IsAny<string>()), Times.Never);
+
+        var updatedOffer = await db.PaymentOffers.SingleAsync();
+        Assert.Equal("price_new", updatedOffer.ProviderPriceId);
+        var subscriptions = await db.PaymentSubscriptions.OrderBy(value => value.Id).ToListAsync();
+        Assert.Equal("price_new", subscriptions[0].ProviderPriceId);
+        Assert.Equal("price_new", subscriptions[1].ProviderPriceId);
+        Assert.Equal("price_old", subscriptions[2].ProviderPriceId);
+    }
+
+    [Fact]
     public async Task CheckoutCreatesStripeReferencesForMembershipOffer()
     {
         await using var db = CreateDatabase();

@@ -129,6 +129,9 @@ namespace GamMaSite.Controllers
             try
             {
                 var previousAmountMinor = offer.AmountMinor;
+                var previousBillingInterval = offer.BillingInterval;
+                var previousBillingIntervalCount = offer.BillingIntervalCount;
+                var previousStripePriceId = offer.ProviderPriceId;
                 offer.LinkLabel = Required(request?.LinkLabel, "Link label");
                 offer.ProductName = Required(request?.ProductName, "Produktnavn");
 
@@ -152,6 +155,11 @@ namespace GamMaSite.Controllers
                     offer.BillingIntervalCount = null;
                 }
 
+                var recurringDefinitionChanged =
+                    amountChanged ||
+                    !string.Equals(previousBillingInterval, offer.BillingInterval, StringComparison.OrdinalIgnoreCase) ||
+                    previousBillingIntervalCount != offer.BillingIntervalCount;
+
                 if (request.IsActive.HasValue)
                 {
                     offer.IsActive = request.IsActive.Value;
@@ -162,6 +170,13 @@ namespace GamMaSite.Controllers
                     string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
                 {
                     await UpdateMobilePayAgreementAmountsAsync(offer, offer.AmountMinor.Value, cancellationToken);
+                }
+
+                if (recurringDefinitionChanged &&
+                    string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                {
+                    await UpdateStripeSubscriptionPricesAsync(offer, previousStripePriceId, cancellationToken);
                 }
 
                 offer.Updated = DateTime.UtcNow;
@@ -211,6 +226,51 @@ namespace GamMaSite.Controllers
                     subscription.ProviderSubscriptionId,
                     amountMinor,
                     cancellationToken);
+            }
+        }
+
+        private async Task UpdateStripeSubscriptionPricesAsync(
+            PaymentOffer offer,
+            string previousPriceId,
+            CancellationToken cancellationToken)
+        {
+            await EnsureStripeOfferReferencesAsync(offer, "Betaling for medlemskab.");
+
+            if (string.IsNullOrWhiteSpace(offer.ProviderPriceId))
+            {
+                throw new InvalidOperationException("Stripe-prisen kunne ikke oprettes.");
+            }
+
+            var subscriptions = await _db.PaymentSubscriptions
+                .Where(subscription =>
+                    subscription.Provider == PaymentOfferProviders.Stripe &&
+                    (subscription.ProviderPriceId == previousPriceId ||
+                     (string.IsNullOrWhiteSpace(previousPriceId) &&
+                      subscription.ProviderProductId == offer.ProviderProductId)) &&
+                    (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                     subscription.Status == PaymentSubscriptionStatuses.Active ||
+                     subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                     subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                     subscription.Status == PaymentSubscriptionStatuses.Incomplete))
+                .ToListAsync(cancellationToken);
+
+            foreach (var subscription in subscriptions)
+            {
+                if (string.Equals(subscription.ProviderPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (!await _stripeService.UpdateSubscriptionPriceAsync(
+                        subscription.ProviderSubscriptionId,
+                        offer.ProviderPriceId))
+                {
+                    throw new InvalidOperationException(
+                        $"Stripe-abonnementet {subscription.ProviderSubscriptionId} kunne ikke opdateres.");
+                }
+
+                subscription.ProviderPriceId = offer.ProviderPriceId;
+                subscription.Updated = DateTime.UtcNow;
             }
         }
 

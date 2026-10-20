@@ -39,6 +39,8 @@ namespace GamMaSite.Services
 
         Task<Subscription> GetSubscriptionAsync(string id);
 
+        Task<bool> UpdateSubscriptionPriceAsync(string subscriptionId, string priceId);
+
         Task<Subscription> CancelSubscriptionAsync(string id);
     }
 
@@ -239,6 +241,44 @@ namespace GamMaSite.Services
             catch (StripeException)
             {
                 return null;
+            }
+        }
+
+        public async Task<bool> UpdateSubscriptionPriceAsync(string subscriptionId, string priceId)
+        {
+            if (string.IsNullOrWhiteSpace(subscriptionId) || string.IsNullOrWhiteSpace(priceId))
+            {
+                return false;
+            }
+
+            try
+            {
+                var service = new SubscriptionService();
+                var subscription = await service.GetAsync(subscriptionId);
+                var item = subscription?.Items?.Data?.FirstOrDefault();
+                if (item == null || string.IsNullOrWhiteSpace(item.Id))
+                {
+                    return false;
+                }
+
+                await service.UpdateAsync(subscriptionId, new SubscriptionUpdateOptions
+                {
+                    Items = new List<SubscriptionItemOptions>
+                    {
+                        new()
+                        {
+                            Id = item.Id,
+                            Price = priceId
+                        }
+                    },
+                    ProrationBehavior = "none"
+                });
+
+                return true;
+            }
+            catch (StripeException)
+            {
+                return false;
             }
         }
 
