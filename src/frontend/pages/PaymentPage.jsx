@@ -17,15 +17,18 @@ export function PaymentPage({ user }) {
   const [startingPaymentMethod, setStartingPaymentMethod] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [isMembershipStatusLoading, setIsMembershipStatusLoading] = useState(true);
+  const [currentMembershipStatus, setCurrentMembershipStatus] = useState(user.status);
 
   useEffect(() => {
     if (user.isAuthenticated) {
       Promise.all([
         accountApi.subscriptions().catch(() => []),
-        paymentOffersApi.listMembership().catch(() => [])
-      ]).then(([nextSubscriptions, nextMembershipOffers]) => {
+        paymentOffersApi.listMembership().catch(() => []),
+        accountApi.profile().catch(() => null)
+      ]).then(([nextSubscriptions, nextMembershipOffers, profile]) => {
         setSubscriptions(nextSubscriptions);
         setMembershipOffers(nextMembershipOffers);
+        setCurrentMembershipStatus(profile?.status || user.status);
       }).finally(() => setIsMembershipStatusLoading(false));
     }
   }, [user.isAuthenticated]);
@@ -42,7 +45,7 @@ export function PaymentPage({ user }) {
     offer.provider === "MOBILEPAY" &&
     offer.offerType === (paymentType === "recurring" ? "RECURRING" : "ONE_TIME") &&
     offer.isActive);
-  const membershipAlreadyPaid = hasPaidMembership(user, subscriptions);
+  const membershipAlreadyPaid = hasPaidMembership({ ...user, status: currentMembershipStatus }, subscriptions);
 
   async function startStripeCheckout() {
     if (!stripeMembershipOffer || isStartingCheckout) {

@@ -228,6 +228,12 @@ public sealed class StripeWebhookControllerTests
         var user = await db.Users.SingleAsync(item => item.Id == "user-1");
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.NotEqual(default, user.KontingentDato);
+
+        SetRequest(controller, payload, Sign(payload));
+        var duplicateResult = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(duplicateResult);
+        Assert.Single(await db.PaymentSubscriptions.ToListAsync());
     }
 
     private static StripeWebhookController CreateController(ApplicationDbContext db, IStripeService stripe)

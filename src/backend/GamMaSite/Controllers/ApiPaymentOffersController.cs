@@ -131,7 +131,7 @@ namespace GamMaSite.Controllers
                 var previousAmountMinor = offer.AmountMinor;
                 var previousBillingInterval = offer.BillingInterval;
                 var previousBillingIntervalCount = offer.BillingIntervalCount;
-                var previousStripePriceId = offer.ProviderPriceId;
+                var previousProductName = offer.ProductName;
                 offer.LinkLabel = Required(request?.LinkLabel, "Link label");
                 offer.ProductName = Required(request?.ProductName, "Produktnavn");
 
@@ -159,6 +159,8 @@ namespace GamMaSite.Controllers
                     amountChanged ||
                     !string.Equals(previousBillingInterval, offer.BillingInterval, StringComparison.OrdinalIgnoreCase) ||
                     previousBillingIntervalCount != offer.BillingIntervalCount;
+                var stripeDefinitionChanged = recurringDefinitionChanged ||
+                    !string.Equals(previousProductName, offer.ProductName, StringComparison.Ordinal);
 
                 if (request.IsActive.HasValue)
                 {
@@ -172,11 +174,19 @@ namespace GamMaSite.Controllers
                     await UpdateMobilePayAgreementAmountsAsync(offer, offer.AmountMinor.Value, cancellationToken);
                 }
 
-                if (recurringDefinitionChanged &&
-                    string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                if (stripeDefinitionChanged &&
+                    string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
                 {
-                    await UpdateStripeSubscriptionPricesAsync(offer, previousStripePriceId, cancellationToken);
+                    if (string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await UpdateStripeSubscriptionPricesAsync(offer, cancellationToken);
+                    }
+                    else
+                    {
+                        var previousPriceId = offer.ProviderPriceId;
+                        await EnsureStripeOfferReferencesAsync(offer);
+                        await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
+                    }
                 }
 
                 offer.Updated = DateTime.UtcNow;
@@ -198,11 +208,10 @@ namespace GamMaSite.Controllers
             long amountMinor,
             CancellationToken cancellationToken)
         {
-            var offerId = offer.Id.ToString();
             var subscriptions = await _db.PaymentSubscriptions
                 .Where(subscription =>
                     subscription.Provider == PaymentOfferProviders.MobilePay &&
-                    subscription.ProviderProductId == offerId &&
+                    subscription.PaymentOfferId == offer.Id &&
                     (subscription.Status == PaymentSubscriptionStatuses.Pending ||
                      subscription.Status == PaymentSubscriptionStatuses.Active ||
                      subscription.Status == PaymentSubscriptionStatuses.Trialing ||
@@ -231,10 +240,10 @@ namespace GamMaSite.Controllers
 
         private async Task UpdateStripeSubscriptionPricesAsync(
             PaymentOffer offer,
-            string previousPriceId,
             CancellationToken cancellationToken)
         {
-            await EnsureStripeOfferReferencesAsync(offer, "Betaling for medlemskab.");
+            var previousPriceId = offer.ProviderPriceId;
+            await EnsureStripeOfferReferencesAsync(offer);
 
             if (string.IsNullOrWhiteSpace(offer.ProviderPriceId))
             {
@@ -244,9 +253,7 @@ namespace GamMaSite.Controllers
             var subscriptions = await _db.PaymentSubscriptions
                 .Where(subscription =>
                     subscription.Provider == PaymentOfferProviders.Stripe &&
-                    (subscription.ProviderPriceId == previousPriceId ||
-                     (string.IsNullOrWhiteSpace(previousPriceId) &&
-                      subscription.ProviderProductId == offer.ProviderProductId)) &&
+                    subscription.PaymentOfferId == offer.Id &&
                     (subscription.Status == PaymentSubscriptionStatuses.Pending ||
                      subscription.Status == PaymentSubscriptionStatuses.Active ||
                      subscription.Status == PaymentSubscriptionStatuses.Trialing ||
@@ -270,8 +277,11 @@ namespace GamMaSite.Controllers
                 }
 
                 subscription.ProviderPriceId = offer.ProviderPriceId;
+                subscription.ProviderProductId = offer.ProviderProductId;
                 subscription.Updated = DateTime.UtcNow;
             }
+
+            await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
         }
 
         [HttpGet("{id:int}")]
@@ -416,7 +426,9 @@ namespace GamMaSite.Controllers
 
                 if (provider == PaymentOfferProviders.Stripe)
                 {
-                    await EnsureStripeReferencesAsync(offer, item.Title, productName, amountMinor);
+                    var previousPriceId = offer.ProviderPriceId;
+                    await EnsureStripeReferencesAsync(offer, productName, amountMinor);
+                    await ArchiveReplacedStripePriceAsync(offer, previousPriceId, default);
                 }
                 else
                 {
@@ -739,7 +751,9 @@ namespace GamMaSite.Controllers
                     offer.BillingIntervalCount ??= 1;
                 }
 
-                await EnsureStripeOfferReferencesAsync(offer, "Betaling for medlemskab.");
+                var previousPriceId = offer.ProviderPriceId;
+                await EnsureStripeOfferReferencesAsync(offer);
+                await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
                 await _db.SaveChangesAsync(cancellationToken);
 
                 var product = await _stripeService.GetProductAsync(offer.ProviderProductId);
@@ -914,6 +928,7 @@ namespace GamMaSite.Controllers
                 // PaymentSubscriptions stores the current subscription only. Reuse a
                 // closed record when a member starts a new agreement; UserId is unique.
                 subscription.Provider = PaymentOfferProviders.MobilePay;
+                subscription.PaymentOfferId = offer.Id;
                 subscription.ProviderSubscriptionId = agreement.AgreementId;
                 subscription.ProductName = offer.ProductName;
                 subscription.ProviderProductId = offer.Id.ToString();
@@ -1045,7 +1060,7 @@ namespace GamMaSite.Controllers
             }
         }
 
-        private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string eventTitle, string productName, long amountMinor)
+        private async Task EnsureStripeReferencesAsync(PaymentOffer offer, string productName, long amountMinor)
         {
             var product = !string.IsNullOrWhiteSpace(offer.ProviderProductId)
                 ? await _stripeService.GetProductAsync(offer.ProviderProductId)
@@ -1058,13 +1073,15 @@ namespace GamMaSite.Controllers
 
             if (product == null)
             {
-                product = await _stripeService.CreateProductAsync(productName, $"Betaling for eventet {eventTitle}.");
+                product = await _stripeService.CreateProductAsync(productName, GetStripeProductDescription(offer));
             }
 
             if (product == null)
             {
                 throw new InvalidOperationException("Stripe-produktet kunne ikke oprettes.");
             }
+
+            product = await EnsureStripeProductDescriptionAsync(product, offer);
 
             var price = !string.IsNullOrWhiteSpace(offer.ProviderPriceId)
                 ? await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId)
@@ -1084,7 +1101,7 @@ namespace GamMaSite.Controllers
             offer.ProviderPriceId = price.Id;
         }
 
-        private async Task EnsureStripeOfferReferencesAsync(PaymentOffer offer, string description)
+        private async Task EnsureStripeOfferReferencesAsync(PaymentOffer offer)
         {
             var product = !string.IsNullOrWhiteSpace(offer.ProviderProductId)
                 ? await _stripeService.GetProductAsync(offer.ProviderProductId)
@@ -1097,13 +1114,17 @@ namespace GamMaSite.Controllers
 
             if (product == null)
             {
-                product = await _stripeService.CreateProductAsync(offer.ProductName, description);
+                product = await _stripeService.CreateProductAsync(
+                    offer.ProductName,
+                    GetStripeProductDescription(offer));
             }
 
             if (product == null)
             {
                 throw new InvalidOperationException("Stripe-produktet kunne ikke oprettes.");
             }
+
+            product = await EnsureStripeProductDescriptionAsync(product, offer);
 
             var price = !string.IsNullOrWhiteSpace(offer.ProviderPriceId)
                 ? await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId)
@@ -1136,6 +1157,54 @@ namespace GamMaSite.Controllers
 
             offer.ProviderProductId = product.Id;
             offer.ProviderPriceId = price.Id;
+        }
+
+        private async Task<Stripe.Product> EnsureStripeProductDescriptionAsync(
+            Stripe.Product product,
+            PaymentOffer offer)
+        {
+            var description = GetStripeProductDescription(offer);
+            if (string.Equals(product.Description, description, StringComparison.Ordinal))
+            {
+                return product;
+            }
+
+            var updatedProduct = await _stripeService.UpdateProductDescriptionAsync(product.Id, description);
+            if (updatedProduct == null)
+            {
+                throw new InvalidOperationException("Stripe-produktets beskrivelse kunne ikke opdateres.");
+            }
+
+            return updatedProduct;
+        }
+
+        private async Task ArchiveReplacedStripePriceAsync(
+            PaymentOffer offer,
+            string previousPriceId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(previousPriceId) ||
+                string.Equals(previousPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var priceIsUsedByAnotherOffer = await _db.PaymentOffers
+                .AnyAsync(item => item.Id != offer.Id && item.ProviderPriceId == previousPriceId, cancellationToken);
+            if (priceIsUsedByAnotherOffer)
+            {
+                return;
+            }
+
+            if (!await _stripeService.DeactivatePriceAsync(previousPriceId))
+            {
+                throw new InvalidOperationException("Den tidligere Stripe-pris kunne ikke arkiveres.");
+            }
+        }
+
+        private static string GetStripeProductDescription(PaymentOffer offer)
+        {
+            return $"{offer.ProductName} - {offer.OfferType}";
         }
 
         private static bool IsMatchingStripePrice(Stripe.Price price, PaymentOffer offer, Stripe.Product product)

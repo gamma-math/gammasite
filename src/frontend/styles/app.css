@@ -1521,6 +1521,22 @@ img {
   overflow-x: auto;
 }
 
+.admin-template-sections {
+  display: grid;
+  gap: 22px;
+}
+
+.admin-template-section {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-template-section-heading h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1.15rem;
+}
+
 .admin-editor-toolbar {
   display: flex;
   flex-wrap: wrap;

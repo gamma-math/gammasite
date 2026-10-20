@@ -244,6 +244,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-1",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.MobilePay,
                 ProviderSubscriptionId = "active-agreement",
                 ProviderProductId = offer.Id.ToString(),
@@ -254,6 +255,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-2",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.MobilePay,
                 ProviderSubscriptionId = "pending-agreement",
                 ProviderProductId = offer.Id.ToString(),
@@ -264,6 +266,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-3",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.MobilePay,
                 ProviderSubscriptionId = "stopped-agreement",
                 ProviderProductId = offer.Id.ToString(),
@@ -340,6 +343,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-1",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.Stripe,
                 ProviderSubscriptionId = "sub-active",
                 ProviderProductId = "prod_membership",
@@ -351,6 +355,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-2",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.Stripe,
                 ProviderSubscriptionId = "sub-pending",
                 ProviderProductId = "prod_membership",
@@ -362,6 +367,7 @@ public sealed class ApiPaymentOffersControllerTests
             new PaymentSubscription
             {
                 UserId = "user-3",
+                PaymentOfferId = offer.Id,
                 Provider = PaymentOfferProviders.Stripe,
                 ProviderSubscriptionId = "sub-canceled",
                 ProviderProductId = "prod_membership",
@@ -384,6 +390,10 @@ public sealed class ApiPaymentOffersControllerTests
         };
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
+        stripe.Setup(value => value.UpdateProductDescriptionAsync(
+                product.Id,
+                "Kontingent - RECURRING"))
+            .ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceByIdAsync(oldPrice.Id)).ReturnsAsync(oldPrice);
         stripe.Setup(value => value.CreateRecurringPriceAsync(
                 product.Id,
@@ -403,6 +413,8 @@ public sealed class ApiPaymentOffersControllerTests
         stripe.Setup(value => value.UpdateSubscriptionPriceAsync(
                 It.IsAny<string>(),
                 "price_new"))
+            .ReturnsAsync(true);
+        stripe.Setup(value => value.DeactivatePriceAsync("price_old"))
             .ReturnsAsync(true);
 
         var controller = new ApiPaymentOffersController(
@@ -430,6 +442,10 @@ public sealed class ApiPaymentOffersControllerTests
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-active", "price_new"), Times.Once);
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-pending", "price_new"), Times.Once);
         stripe.Verify(value => value.UpdateSubscriptionPriceAsync("sub-canceled", It.IsAny<string>()), Times.Never);
+        stripe.Verify(value => value.UpdateProductDescriptionAsync(
+            product.Id,
+            "Kontingent - RECURRING"), Times.Once);
+        stripe.Verify(value => value.DeactivatePriceAsync("price_old"), Times.Once);
 
         var updatedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal("price_new", updatedOffer.ProviderPriceId);
@@ -477,6 +493,10 @@ public sealed class ApiPaymentOffersControllerTests
         };
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetProductByExactNameAsync("Kontingent")).ReturnsAsync(product);
+        stripe.Setup(value => value.UpdateProductDescriptionAsync(
+                product.Id,
+                "Kontingent - ONE_TIME"))
+            .ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null);
         stripe.Setup(value => value.CreateOneTimePriceAsync(product.Id, 15000, "dkk")).ReturnsAsync(price);
         stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
@@ -509,6 +529,9 @@ public sealed class ApiPaymentOffersControllerTests
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
         Assert.Contains("cs_membership", result.Value.ToString());
+        stripe.Verify(value => value.UpdateProductDescriptionAsync(
+            product.Id,
+            "Kontingent - ONE_TIME"), Times.Once);
         var savedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal(product.Id, savedOffer.ProviderProductId);
         Assert.Equal(price.Id, savedOffer.ProviderPriceId);

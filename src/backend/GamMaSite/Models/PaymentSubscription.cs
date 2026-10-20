@@ -23,6 +23,10 @@ namespace GamMaSite.Models
 
         public string UserId { get; set; }
 
+        public int? PaymentOfferId { get; set; }
+
+        public PaymentOffer PaymentOffer { get; set; }
+
         public string Provider { get; set; }
 
         public string ProviderSubscriptionId { get; set; }

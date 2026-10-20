@@ -59,6 +59,62 @@ public class SystemEmailTemplateServiceTests
         Assert.Contains("https://example.com/reset", html!);
     }
 
+    [Theory]
+    [InlineData(false, SystemEmailTemplateService.PaymentConfirmation, "MOBILEPAY", "MobilePay")]
+    [InlineData(true, SystemEmailTemplateService.PaymentRecurring, "MOBILEPAY", "MobilePay")]
+    [InlineData(false, SystemEmailTemplateService.PaymentConfirmation, "STRIPE", "Stripe")]
+    public async Task SendPaymentConfirmation_SelectsTemplateAndRendersPaymentDetails(
+        bool recurring,
+        string templateType,
+        string provider,
+        string expectedProvider)
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "Payment",
+            Subject = "{{ProductName}} - {{PaymentProvider}}",
+            HtmlBody = "<p>{{Name}}|{{Email}}|{{ProductName}}|{{Amount}}|{{PaymentProvider}}|{{PaymentDate}}|{{BillingPeriod}}|{{SubscriptionUrl}}</p>",
+            TemplateType = templateType,
+            IsActive = true,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var email = new Mock<IEmailService>();
+        string subject = null;
+        string html = null;
+        email.Setup(value => value.SendEmailAsync("member@example.com", It.IsAny<string>(), It.IsAny<string>()))
+            .Callback<string, string, string>((_, currentSubject, currentHtml) =>
+            {
+                subject = currentSubject;
+                html = currentHtml;
+            })
+            .Returns(Task.CompletedTask);
+
+        await new SystemEmailTemplateService(db, email.Object)
+            .SendPaymentConfirmationAsync(
+                "member@example.com",
+                "Member",
+                "Kontingent",
+                15000,
+                "DKK",
+                provider,
+                new DateTime(2026, 10, 20, 10, 30, 0, DateTimeKind.Utc),
+                recurring,
+                "YEAR",
+                1,
+                "https://example.com/account");
+
+        Assert.Equal($"Kontingent - {expectedProvider}", subject);
+        Assert.Contains("150,00 kr.", html);
+        if (recurring)
+        {
+            Assert.Contains("rligt", html);
+        }
+        Assert.Contains("https://example.com/account", html);
+    }
+
     private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }

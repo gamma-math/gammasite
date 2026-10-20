@@ -23,7 +23,7 @@ const manageItems = [
   { href: "/react/account/manage/email", label: "Email" },
   { href: "/react/account/manage/password", label: "Password" },
   { href: "/react/account/manage/two-factor", label: "To-faktor authentication" },
-  { href: "/react/account/manage/subscriptions", label: "Mine abonnementer" },
+  { href: "/react/account/manage/subscriptions", label: "Mine betalingsaftaler" },
   { href: "/react/account/manage/finance", label: "Mine transaktioner" },
   { href: "/react/account/manage/personal-data", label: "Privat data" },
   { href: "/react/account/manage/logout", label: "Log ud" }
@@ -214,12 +214,12 @@ export function AccountManagePage({ user, section = "profile" }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>{isFinanceSection ? "Mine transaktioner" : isSubscriptionsSection ? "Mine abonnementer" : "Administrér din bruger"}</h1>
+          <h1>{isFinanceSection ? "Mine transaktioner" : isSubscriptionsSection ? "Mine betalingsaftaler" : "Administrér din bruger"}</h1>
           <p className="menu-panel-lead menu-panel-lead-inline">
             {isFinanceSection
               ? "Se dine egne transaktioner i GamMa."
               : isSubscriptionsSection
-                ? "Se dine aktive og tidligere abonnementer i GamMa."
+                ? "Se dine betalingsaftaler hos GamMa."
               : "Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se."}
           </p>
         </div>
@@ -358,8 +358,8 @@ function PaymentSubscriptionsPanel() {
 
   return (
     <section className="account-subscriptions-panel">
-      <h2>Mine abonnementer</h2>
-      {isLoading && <p className="muted">Henter dine abonnementer...</p>}
+      <h2>Mine betalingsaftaler</h2>
+      {isLoading && <p className="muted">Henter dine betalingsaftaler...</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
       {!isLoading && !error && (
         <div className="account-finance-table-container">
@@ -370,6 +370,7 @@ function PaymentSubscriptionsPanel() {
                 <th className="account-subscription-expander-header" aria-label="Detaljer" />
                 <th>Udbyder</th>
                 <th>Produkt</th>
+                <th>Pris</th>
                 <th>Status</th>
                 <th className="account-subscription-mobile-hidden">Senest betalt</th>
                 <th className="account-subscription-mobile-hidden">Næste opkrævning</th>
@@ -398,6 +399,7 @@ function PaymentSubscriptionsPanel() {
                       </td>
                       <td>{subscription.provider || "—"}</td>
                       <td>{subscription.productName || "—"}</td>
+                      <td>{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</td>
                       <td>{subscription.status || "—"}</td>
                       <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.lastPaidAt)}</td>
                       <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.nextChargeAt)}</td>
@@ -408,8 +410,9 @@ function PaymentSubscriptionsPanel() {
                     {isExpanded && (
                       <tr className="account-subscription-expanded-row">
                         <td></td>
-                        <td colSpan="3">
+                        <td colSpan="4">
                           <dl className="account-subscription-details">
+                            <div><dt>Pris</dt><dd>{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</dd></div>
                             <div><dt>Senest betalt</dt><dd>{formatSubscriptionDate(subscription.lastPaidAt)}</dd></div>
                             <div><dt>Næste opkrævning</dt><dd>{formatSubscriptionDate(subscription.nextChargeAt)}</dd></div>
                             <div><dt>Oprettet</dt><dd>{formatSubscriptionDate(subscription.created)}</dd></div>
@@ -424,7 +427,7 @@ function PaymentSubscriptionsPanel() {
               })}
               {subscriptions.length === 0 && (
                 <tr>
-                  <td colSpan="9">Du har ingen abonnementer endnu.</td>
+                  <td colSpan="10">Du har ingen betalingsaftaler endnu.</td>
                 </tr>
               )}
             </tbody>
@@ -436,7 +439,7 @@ function PaymentSubscriptionsPanel() {
       {subscriptionToCancel && (
         <ConfirmationDialog
           title="Annuller abonnement"
-          message={`Er du sikker på, at du vil annullere abonnementet${subscriptionToCancel.productName ? ` for ${subscriptionToCancel.productName}` : ""}? Abonnementet annulleres hos Stripe, og fremtidige opkrævninger stoppes.`}
+          message={`Er du sikker på, at du vil annullere abonnementet${subscriptionToCancel.productName ? ` for ${subscriptionToCancel.productName}` : ""}? Aftalen annulleres, og fremtidige opkrævninger stoppes.`}
           confirmLabel="Ja, annuller abonnement"
           busyLabel="Annullerer..."
           onConfirm={cancelSubscription}
@@ -803,8 +806,27 @@ function formatSubscriptionDate(value) {
     month: "short",
     year: "numeric",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: "Europe/Copenhagen"
   }).format(date);
+}
+
+function formatSubscriptionAmount(amountMinor, currency) {
+  if (amountMinor === null || amountMinor === undefined || amountMinor === "") {
+    return "—";
+  }
+
+  const amount = Number(amountMinor);
+  if (!Number.isFinite(amount)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("da-DK", {
+    style: "currency",
+    currency: String(currency || "DKK").toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount / 100);
 }
 
 function formatPostingAmount(value) {

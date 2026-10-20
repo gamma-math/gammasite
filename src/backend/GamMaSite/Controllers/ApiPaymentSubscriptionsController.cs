@@ -42,6 +42,7 @@ namespace GamMaSite.Controllers
             }
 
             var subscriptions = await _db.PaymentSubscriptions
+                .Include(subscription => subscription.PaymentOffer)
                 .Where(subscription => subscription.UserId == userId)
                 .ToListAsync(cancellationToken);
 
@@ -62,7 +63,10 @@ namespace GamMaSite.Controllers
                 {
                     providerSubscriptionId = subscription.ProviderSubscriptionId,
                     provider = subscription.Provider,
+                    paymentOfferId = subscription.PaymentOfferId,
                     productName = subscription.ProductName,
+                    amountMinor = subscription.PaymentOffer == null ? null : subscription.PaymentOffer.AmountMinor,
+                    currency = subscription.PaymentOffer == null ? null : subscription.PaymentOffer.Currency,
                     status = subscription.Status,
                     lastPaidAt = subscription.LastPaidAt,
                     nextChargeAt = subscription.NextChargeAt,

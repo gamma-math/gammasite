@@ -27,6 +27,8 @@ namespace GamMaSite.Services
 
         Task<Product> CreateProductAsync(string name, string description);
 
+        Task<Product> UpdateProductDescriptionAsync(string id, string description);
+
         Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency);
 
         Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount);
@@ -116,6 +118,26 @@ namespace GamMaSite.Services
                 return await new ProductService().CreateAsync(new ProductCreateOptions
                 {
                     Name = name,
+                    Description = description
+                });
+            }
+            catch (StripeException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<Product> UpdateProductDescriptionAsync(string id, string description)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await new ProductService().UpdateAsync(id, new ProductUpdateOptions
+                {
                     Description = description
                 });
             }

@@ -248,6 +248,11 @@ namespace GamMaSite.Data
                     .WithMany()
                     .HasForeignKey(m => m.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.PaymentOffer)
+                    .WithMany()
+                    .HasForeignKey(m => m.PaymentOfferId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

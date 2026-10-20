@@ -27,17 +27,20 @@ namespace GamMaSite.Controllers
         private readonly IStripeService _stripeService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<StripeWebhookController> _logger;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
         public StripeWebhookController(
             ApplicationDbContext db,
             IStripeService stripeService,
             IConfiguration configuration,
-            ILogger<StripeWebhookController> logger)
+            ILogger<StripeWebhookController> logger,
+            ISystemEmailTemplateService systemEmailTemplateService = null)
         {
             _db = db;
             _stripeService = stripeService;
             _configuration = configuration;
             _logger = logger;
+            _systemEmailTemplateService = systemEmailTemplateService;
         }
 
         [HttpPost("webhook")]
@@ -133,7 +136,19 @@ namespace GamMaSite.Controllers
                     return;
                 }
 
+                var member = await _db.Users.AsNoTracking()
+                    .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+                var wasAlreadyPaid = member?.Status == UserStatus.BETALT;
                 await MarkMembershipAsPaidAsync(userId, session.Created.ToUniversalTime(), cancellationToken);
+                if (!wasAlreadyPaid)
+                {
+                    await SendPaymentEmailAsync(
+                        userId,
+                        membershipOffer,
+                        session.Created.ToUniversalTime(),
+                        recurring: false,
+                        cancellationToken: cancellationToken);
+                }
                 return;
             }
 
@@ -181,7 +196,7 @@ namespace GamMaSite.Controllers
             if (string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
             {
-                await HandleMembershipOfferPaymentAsync(session, cancellationToken);
+                await HandleMembershipOfferPaymentAsync(session, offer, cancellationToken);
                 return;
             }
 
@@ -194,6 +209,7 @@ namespace GamMaSite.Controllers
 
         private async Task HandleMembershipOfferPaymentAsync(
             Session session,
+            PaymentOffer offer,
             CancellationToken cancellationToken)
         {
             var userId = session.ClientReferenceId ?? MetadataValue(session.Metadata, "GamMaUserId");
@@ -210,7 +226,19 @@ namespace GamMaSite.Controllers
             {
                 if (paymentConfirmed)
                 {
+                    var member = await _db.Users.AsNoTracking()
+                        .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+                    var wasAlreadyPaid = member?.Status == UserStatus.BETALT;
                     await MarkMembershipAsPaidAsync(userId, session.Created.ToUniversalTime(), cancellationToken);
+                    if (!wasAlreadyPaid)
+                    {
+                        await SendPaymentEmailAsync(
+                            userId,
+                            offer,
+                            session.Created.ToUniversalTime(),
+                            recurring: false,
+                            cancellationToken: cancellationToken);
+                    }
                 }
 
                 return;
@@ -311,9 +339,20 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            var wasRegistered = registration.Registered;
             registration.Registered = true;
             registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
+
+            if (!wasRegistered)
+            {
+                await SendPaymentEmailAsync(
+                    userId,
+                    offer,
+                    session.Created.ToUniversalTime(),
+                    recurring: false,
+                    cancellationToken: cancellationToken);
+            }
         }
 
         private async Task HandleSubscriptionAsync(
@@ -362,6 +401,10 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            var paymentDate = context?.LastPaidAt ?? DateTime.UtcNow;
+            var shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                (!record?.LastPaidAt.HasValue ?? true || record.LastPaidAt.Value < paymentDate);
+
             var subscriptionItem = subscription.Items?.Data?.FirstOrDefault();
             var price = subscriptionItem?.Price;
             var productId = price?.ProductId;
@@ -384,29 +427,82 @@ namespace GamMaSite.Controllers
                 _db.PaymentSubscriptions.Add(record);
             }
 
-            record.UserId = userId ?? record.UserId;
-            record.Provider = Provider;
-            record.ProviderSubscriptionId = subscription.Id;
-            record.ProductName = productName ?? record.ProductName;
-            record.ProviderProductId = productId ?? record.ProviderProductId;
-            record.ProviderPriceId = price?.Id ?? record.ProviderPriceId;
-            record.Status = subscription.Status;
-            record.CurrentPeriodStart = subscriptionItem?.CurrentPeriodStart;
-            record.CurrentPeriodEnd = subscriptionItem?.CurrentPeriodEnd;
-            record.NextChargeAt = subscriptionItem?.CurrentPeriodEnd;
-            record.LastPaidAt = context?.LastPaidAt ?? record.LastPaidAt;
-            record.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
-            record.Updated = DateTime.UtcNow;
+            ApplySubscriptionState(record);
 
-            await _db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (IsPaymentSubscriptionDuplicate(exception) &&
+                _db.Entry(record).State == EntityState.Added)
+            {
+                // Stripe can deliver checkout.session.completed and subscription events
+                // concurrently. The unique user index is the final safeguard; if the
+                // competing request won the insert, reuse its current-state row.
+                _db.Entry(record).State = EntityState.Detached;
+                record = await _db.PaymentSubscriptions
+                    .SingleOrDefaultAsync(item => item.Provider == Provider && item.ProviderSubscriptionId == subscription.Id, cancellationToken);
+
+                if (record == null && !string.IsNullOrWhiteSpace(userId))
+                {
+                    record = await _db.PaymentSubscriptions
+                        .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+                }
+
+                if (record == null)
+                {
+                    throw;
+                }
+
+                shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                    (!record.LastPaidAt.HasValue || record.LastPaidAt.Value < paymentDate);
+                ApplySubscriptionState(record);
+                await _db.SaveChangesAsync(cancellationToken);
+            }
 
             if (context?.MarkUserAsPaid == true && !string.IsNullOrWhiteSpace(record.UserId))
             {
                 await MarkMembershipAsPaidAsync(
                     record.UserId,
-                    context.LastPaidAt ?? DateTime.UtcNow,
+                    paymentDate,
                     cancellationToken);
+
+                if (shouldSendPaymentEmail)
+                {
+                    await SendPaymentEmailAsync(
+                        record.UserId,
+                        paymentOffer ?? membershipOffer,
+                        paymentDate,
+                        recurring: true,
+                        cancellationToken: cancellationToken);
+                }
             }
+
+            void ApplySubscriptionState(PaymentSubscription target)
+            {
+                target.UserId = userId ?? target.UserId;
+                target.PaymentOfferId = paymentOffer?.Id ?? membershipOffer?.Id ?? target.PaymentOfferId;
+                target.Provider = Provider;
+                target.ProviderSubscriptionId = subscription.Id;
+                target.ProductName = productName ?? target.ProductName;
+                target.ProviderProductId = productId ?? target.ProviderProductId;
+                target.ProviderPriceId = price?.Id ?? target.ProviderPriceId;
+                target.Status = subscription.Status;
+                target.CurrentPeriodStart = subscriptionItem?.CurrentPeriodStart;
+                target.CurrentPeriodEnd = subscriptionItem?.CurrentPeriodEnd;
+                target.NextChargeAt = subscriptionItem?.CurrentPeriodEnd;
+                target.LastPaidAt = context?.LastPaidAt ?? target.LastPaidAt;
+                target.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
+                target.Updated = DateTime.UtcNow;
+            }
+        }
+
+        private static bool IsPaymentSubscriptionDuplicate(DbUpdateException exception)
+        {
+            var message = exception.ToString();
+            return message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase) &&
+                (message.Contains("UX_PaymentSubscriptions_UserId", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("UX_PaymentSubscriptions_ProviderSubscriptionId", StringComparison.OrdinalIgnoreCase));
         }
 
         private async Task HandleInvoicePaidAsync(Invoice invoice, CancellationToken cancellationToken)
@@ -470,6 +566,41 @@ namespace GamMaSite.Controllers
                     item.ProviderProductId == productId)
                 .OrderByDescending(item => item.Updated)
                 .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task SendPaymentEmailAsync(
+            string userId,
+            PaymentOffer offer,
+            DateTime paymentDate,
+            bool recurring,
+            CancellationToken cancellationToken)
+        {
+            if (_systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
+            {
+                return;
+            }
+
+            var user = await _db.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            if (user == null || string.IsNullOrWhiteSpace(user.Email))
+            {
+                _logger.LogWarning("Stripe payment for user {UserId} could not be emailed because the user or email is missing.", userId);
+                return;
+            }
+
+            await _systemEmailTemplateService.SendPaymentConfirmationAsync(
+                user.Email,
+                user.Navn,
+                offer.ProductName,
+                offer.AmountMinor.GetValueOrDefault(),
+                offer.Currency,
+                PaymentOfferProviders.Stripe,
+                paymentDate,
+                recurring,
+                offer.BillingInterval,
+                offer.BillingIntervalCount,
+                null);
         }
 
         private static string MetadataValue(System.Collections.Generic.IDictionary<string, string> metadata, string key)

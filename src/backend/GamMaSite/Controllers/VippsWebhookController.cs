@@ -29,19 +29,22 @@ public sealed class VippsWebhookController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IMobilePayService _mobilePayService;
     private readonly IMobilePayEventReferenceService _referenceService;
+    private readonly ISystemEmailTemplateService _systemEmailTemplateService;
 
     public VippsWebhookController(
         IConfiguration configuration,
         ILogger<VippsWebhookController> logger,
         ApplicationDbContext db,
         IMobilePayService mobilePayService,
-        IMobilePayEventReferenceService referenceService)
+        IMobilePayEventReferenceService referenceService,
+        ISystemEmailTemplateService systemEmailTemplateService = null)
     {
         _configuration = configuration;
         _logger = logger;
         _db = db;
         _mobilePayService = mobilePayService;
         _referenceService = referenceService;
+        _systemEmailTemplateService = systemEmailTemplateService;
     }
 
     [HttpPost("webhook")]
@@ -166,8 +169,19 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
+        var wasAlreadyPaid = user.Status == UserStatus.BETALT;
         user.MarkAsPayed();
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (!wasAlreadyPaid)
+        {
+            await SendPaymentEmailAsync(
+                userId,
+                offer,
+                DateTime.UtcNow,
+                recurring: false,
+                cancellationToken: cancellationToken);
+        }
     }
 
     private async Task HandleEventPaymentAsync(string name, string reference, CancellationToken cancellationToken)
@@ -213,11 +227,22 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
-        if (!registration.Registered)
+        var wasRegistered = registration.Registered;
+        if (!wasRegistered)
         {
             registration.Registered = true;
             registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        if (!wasRegistered)
+        {
+            await SendPaymentEmailAsync(
+                registration.UserId,
+                offer,
+                DateTime.UtcNow,
+                recurring: false,
+                cancellationToken: cancellationToken);
         }
     }
 
@@ -250,6 +275,7 @@ public sealed class VippsWebhookController : ControllerBase
             // payment has succeeded, so this event is sufficient to mark the
             // membership as paid even if the charge webhook arrives later.
             var activatedOffer = await FindRecurringMembershipOfferAsync(subscription, cancellationToken);
+            var wasAlreadyProcessed = subscription.LastPaidAt.HasValue;
             subscription.Status = PaymentSubscriptionStatuses.Active;
             subscription.LastPaidAt = occurred;
             subscription.CurrentPeriodStart = occurred;
@@ -267,6 +293,15 @@ public sealed class VippsWebhookController : ControllerBase
             }
 
             await _db.SaveChangesAsync(cancellationToken);
+            if (!wasAlreadyProcessed && activatedOffer != null)
+            {
+                await SendPaymentEmailAsync(
+                    subscription.UserId,
+                    activatedOffer,
+                    occurred,
+                    recurring: true,
+                    cancellationToken: cancellationToken);
+            }
             return;
         }
 
@@ -303,6 +338,13 @@ public sealed class VippsWebhookController : ControllerBase
         }
 
         var offer = await FindRecurringMembershipOfferAsync(subscription, cancellationToken);
+        if (offer != null && subscription.PaymentOfferId != offer.Id)
+        {
+            subscription.PaymentOfferId = offer.Id;
+        }
+        var isInitialCharge = subscription.LastPaidAt.HasValue &&
+            subscription.CurrentPeriodStart.HasValue &&
+            occurred.Date <= subscription.CurrentPeriodStart.Value.Date;
         subscription.Status = PaymentSubscriptionStatuses.Active;
         subscription.LastPaidAt = occurred;
         subscription.CurrentPeriodStart = occurred;
@@ -320,6 +362,16 @@ public sealed class VippsWebhookController : ControllerBase
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (!isInitialCharge && offer != null)
+        {
+            await SendPaymentEmailAsync(
+                subscription.UserId,
+                offer,
+                occurred,
+                recurring: true,
+                cancellationToken: cancellationToken);
+        }
 
         if (offer == null || !subscription.NextChargeAt.HasValue)
         {
@@ -353,12 +405,23 @@ public sealed class VippsWebhookController : ControllerBase
         PaymentSubscription subscription,
         CancellationToken cancellationToken)
     {
+        if (subscription.PaymentOfferId.HasValue && subscription.PaymentOfferId.Value > 0)
+        {
+            var linkedOffer = await _db.PaymentOffers
+                .FirstOrDefaultAsync(item => item.Id == subscription.PaymentOfferId, cancellationToken);
+            if (IsRecurringMembershipOffer(linkedOffer))
+            {
+                return linkedOffer;
+            }
+        }
+
         if (int.TryParse(subscription.ProviderProductId, out var paymentOfferId))
         {
             var offer = await _db.PaymentOffers
                 .FirstOrDefaultAsync(item => item.Id == paymentOfferId, cancellationToken);
             if (IsRecurringMembershipOffer(offer))
             {
+                subscription.PaymentOfferId = offer.Id;
                 return offer;
             }
         }
@@ -400,6 +463,41 @@ public sealed class VippsWebhookController : ControllerBase
     {
         var safeAgreementId = new string(agreementId.Where(char.IsLetterOrDigit).ToArray());
         return $"gamma-{safeAgreementId}-{due:yyyyMMdd}";
+    }
+
+    private async Task SendPaymentEmailAsync(
+        string userId,
+        PaymentOffer offer,
+        DateTime paymentDate,
+        bool recurring,
+        CancellationToken cancellationToken)
+    {
+        if (_systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var user = await _db.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+        if (user == null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            _logger.LogWarning("MobilePay payment for user {UserId} could not be emailed because the user or email is missing.", userId);
+            return;
+        }
+
+        await _systemEmailTemplateService.SendPaymentConfirmationAsync(
+            user.Email,
+            user.Navn,
+            offer.ProductName,
+            offer.AmountMinor.GetValueOrDefault(),
+            offer.Currency,
+            PaymentOfferProviders.MobilePay,
+            paymentDate,
+            recurring,
+            offer.BillingInterval,
+            offer.BillingIntervalCount,
+            null);
     }
 
     private bool IsValidSignature(string secret, byte[] body)

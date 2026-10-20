@@ -95,6 +95,8 @@ public sealed class ApiPaymentSubscriptionsControllerTests
             Provider = PaymentOfferProviders.MobilePay,
             OfferType = PaymentOfferTypes.Recurring,
             ProductName = "Kontingent",
+            AmountMinor = 12500,
+            Currency = "DKK",
             BillingInterval = "YEAR",
             BillingIntervalCount = 1,
             IsActive = true,
@@ -108,6 +110,7 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         db.PaymentSubscriptions.Add(new PaymentSubscription
         {
             UserId = "user-1",
+            PaymentOfferId = offer.Id,
             Provider = PaymentOfferProviders.MobilePay,
             ProviderSubscriptionId = "agr-active",
             ProviderProductId = offer.Id.ToString(),
@@ -126,13 +129,18 @@ public sealed class ApiPaymentSubscriptionsControllerTests
             "Test"));
         var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
 
-        await controller.Get(default);
+        var response = Assert.IsType<OkObjectResult>(await controller.Get(default));
 
         var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(offer.Id, subscription.PaymentOfferId);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
         Assert.Equal(start, subscription.LastPaidAt);
         Assert.Equal(start, subscription.CurrentPeriodStart);
         Assert.Equal(start.AddYears(1), subscription.NextChargeAt);
+
+        using var responseJson = JsonDocument.Parse(JsonSerializer.Serialize(response.Value));
+        Assert.Equal(12500, responseJson.RootElement[0].GetProperty("amountMinor").GetInt64());
+        Assert.Equal("DKK", responseJson.RootElement[0].GetProperty("currency").GetString());
     }
 
     [Fact]

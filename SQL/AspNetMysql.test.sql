@@ -129,38 +129,6 @@ CREATE TABLE IF NOT EXISTS `AspNetUsers` (
 -- --------------------------------------------------------
 
 --
--- Current membership subscriptions
---
-
-CREATE TABLE IF NOT EXISTS `PaymentSubscriptions` (
-  `Id` int NOT NULL AUTO_INCREMENT,
-  `UserId` varchar(128) NOT NULL,
-  `Provider` varchar(32) NOT NULL,
-  `ProviderSubscriptionId` varchar(128) NOT NULL,
-  `ProductName` varchar(256) DEFAULT NULL,
-  `ProviderProductId` varchar(128) DEFAULT NULL,
-  `ProviderPriceId` varchar(128) DEFAULT NULL,
-  `Status` varchar(32) NOT NULL,
-  `CurrentPeriodStart` datetime DEFAULT NULL,
-  `CurrentPeriodEnd` datetime DEFAULT NULL,
-  `NextChargeAt` datetime DEFAULT NULL,
-  `LastPaidAt` datetime DEFAULT NULL,
-  `CancelAtPeriodEnd` tinyint NOT NULL DEFAULT '0',
-  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Id`),
-  UNIQUE KEY `UX_PaymentSubscriptions_UserId` (`UserId`),
-  UNIQUE KEY `UX_PaymentSubscriptions_ProviderSubscriptionId` (`Provider`, `ProviderSubscriptionId`),
-  KEY `IX_PaymentSubscriptions_Status` (`Status`),
-  KEY `IX_PaymentSubscriptions_ProviderPriceId` (`ProviderPriceId`),
-  CONSTRAINT `FK_PaymentSubscriptions_AspNetUsers_UserId`
-    FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`)
-    ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `aspnetusertokens`
 --
 
@@ -297,6 +265,43 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
   CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
     FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Current membership subscriptions
+--
+
+CREATE TABLE IF NOT EXISTS `PaymentSubscriptions` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(128) NOT NULL,
+  `PaymentOfferId` int DEFAULT NULL,
+  `Provider` varchar(32) NOT NULL,
+  `ProviderSubscriptionId` varchar(128) NOT NULL,
+  `ProductName` varchar(256) DEFAULT NULL,
+  `ProviderProductId` varchar(128) DEFAULT NULL,
+  `ProviderPriceId` varchar(128) DEFAULT NULL,
+  `Status` varchar(32) NOT NULL,
+  `CurrentPeriodStart` datetime DEFAULT NULL,
+  `CurrentPeriodEnd` datetime DEFAULT NULL,
+  `NextChargeAt` datetime DEFAULT NULL,
+  `LastPaidAt` datetime DEFAULT NULL,
+  `CancelAtPeriodEnd` tinyint NOT NULL DEFAULT '0',
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_PaymentSubscriptions_UserId` (`UserId`),
+  UNIQUE KEY `UX_PaymentSubscriptions_ProviderSubscriptionId` (`Provider`, `ProviderSubscriptionId`),
+  KEY `IX_PaymentSubscriptions_Status` (`Status`),
+  KEY `IX_PaymentSubscriptions_ProviderPriceId` (`ProviderPriceId`),
+  KEY `IX_PaymentSubscriptions_PaymentOfferId` (`PaymentOfferId`),
+  CONSTRAINT `FK_PaymentSubscriptions_PaymentOffers_PaymentOfferId`
+    FOREIGN KEY (`PaymentOfferId`) REFERENCES `PaymentOffers` (`Id`)
+    ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_PaymentSubscriptions_AspNetUsers_UserId`
+    FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`)
     ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

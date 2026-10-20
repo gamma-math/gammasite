@@ -38,6 +38,12 @@ export function AdminTemplatesPage({ isAdmin }) {
     [templates]
   );
   const sortedTemplates = useSortedMembers(sortableTemplates, sort);
+  const contentTemplates = sortedTemplates.filter((template) => ["EVENT", "NEWSLETTER"].includes(
+    String(template.templateType ?? template.TemplateType ?? "").toUpperCase()
+  ));
+  const systemTemplates = sortedTemplates.filter((template) => String(
+    template.templateType ?? template.TemplateType ?? ""
+  ).toUpperCase().startsWith("SYSTEM"));
 
   useEffect(() => {
     if (isAdmin) {
@@ -83,6 +89,34 @@ export function AdminTemplatesPage({ isAdmin }) {
       </div>
 
       {error && <p className="status-message status-message-error">{error}</p>}
+      <div className="admin-template-sections">
+        <TemplateSection
+          title="Event- og newsletter-skabeloner"
+          templates={contentTemplates}
+          emptyMessage="Ingen event- eller newsletter-skabeloner endnu."
+          sort={sort}
+          setSort={setSort}
+          onRemove={remove}
+        />
+        <TemplateSection
+          title="System mails"
+          templates={systemTemplates}
+          emptyMessage="Ingen systemmails endnu."
+          sort={sort}
+          setSort={setSort}
+          onRemove={remove}
+        />
+      </div>
+    </AdminLayout>
+  );
+}
+
+function TemplateSection({ title, templates, emptyMessage, sort, setSort, onRemove }) {
+  return (
+    <section className="admin-template-section">
+      <div className="admin-template-section-heading">
+        <h2>{title}</h2>
+      </div>
       <div className="menu-table-wrap">
         <table className="menu-member-table admin-template-table">
           <thead>
@@ -95,7 +129,7 @@ export function AdminTemplatesPage({ isAdmin }) {
             </tr>
           </thead>
           <tbody>
-            {sortedTemplates.map((template) => (
+            {templates.map((template) => (
               <tr key={template.id}>
                 <td>{template.name}</td>
                 <td>{template.templateType}</td>
@@ -103,7 +137,7 @@ export function AdminTemplatesPage({ isAdmin }) {
                 <td>{formatDate(template.updated)}</td>
                 <td className="table-actions">
                   <Link className="admin-table-button" href={`/react/admin/templates/${template.id}/edit`}>Rediger</Link>
-                  <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => remove(template)}>
+                  <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => onRemove(template)}>
                     <Trash2 size={14} />
                     Slet
                   </button>
@@ -112,13 +146,13 @@ export function AdminTemplatesPage({ isAdmin }) {
             ))}
             {templates.length === 0 && (
               <tr>
-                <td colSpan="5">Ingen templates endnu.</td>
+                <td colSpan="5">{emptyMessage}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </AdminLayout>
+    </section>
   );
 }
 
