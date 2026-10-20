@@ -19,6 +19,7 @@ namespace GamMaSite.Controllers
     public sealed class ApiPaymentOffersController : ControllerBase
     {
         private const string Currency = "dkk";
+        private const long MinimumAmountMinor = 1000;
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;
         private readonly IMobilePayService _mobilePayService;
@@ -75,6 +76,24 @@ namespace GamMaSite.Controllers
                 .ToListAsync();
 
             return Ok(offers.Select(offer => offer.ToDto()));
+        }
+
+        [HttpGet("admin/events")]
+        [Authorize(Policy = PermissionPolicies.PaymentsEditAll)]
+        public async Task<IActionResult> GetEventOptionsForAdmin()
+        {
+            var events = await _db.ContentItems
+                .AsNoTracking()
+                .Where(item => item.Type == ContentTypes.Event)
+                .OrderBy(item => item.Title)
+                .Select(item => new
+                {
+                    id = item.Id,
+                    title = item.Title
+                })
+                .ToListAsync();
+
+            return Ok(events);
         }
 
         [HttpGet("admin/{id:int}")]
@@ -1343,12 +1362,12 @@ namespace GamMaSite.Controllers
 
         private static long ToMinorUnits(decimal amount)
         {
-            if (amount <= 0)
+            var minorUnits = decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
+            if (minorUnits < MinimumAmountMinor)
             {
-                throw new ArgumentException("Prisen skal være større end 0.");
+                throw new ArgumentException("Prisen skal være mindst 10,00 kr.");
             }
 
-            var minorUnits = decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
             if (minorUnits > long.MaxValue)
             {
                 throw new ArgumentException("Prisen er for høj.");

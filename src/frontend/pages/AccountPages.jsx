@@ -214,7 +214,6 @@ export function AccountManagePage({ user, section = "profile" }) {
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>{isFinanceSection ? "Mine transaktioner" : isSubscriptionsSection ? "Mine betalingsaftaler" : "Administrér din bruger"}</h1>
           <p className="menu-panel-lead menu-panel-lead-inline">
             {isFinanceSection
               ? "Se dine egne transaktioner i GamMa."

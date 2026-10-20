@@ -9,6 +9,8 @@ import { isLocalContentImage, isSupportedContentImage } from "../utils/contentMe
 import { sanitizeHtml } from "../utils/richText.js";
 import { SortableHeader } from "./MembersPage.jsx";
 
+const MINIMUM_PAYMENT_AMOUNT = 10;
+
 /**
  * Admin overview for event and news content.
  */
@@ -124,13 +126,22 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     event.preventDefault();
     setError("");
     setMessage("");
+    const paymentDrafts = paymentOfferDrafts.filter(hasPaymentOfferDraft);
+    if (type === "EVENT" && paymentDrafts.some((draft) => {
+      const amount = Number(draft.amount);
+      return !Number.isFinite(amount) || amount < MINIMUM_PAYMENT_AMOUNT;
+    })) {
+      setError("Prisen på betalingslinks skal være mindst 10,00 kr.");
+      return;
+    }
+
     try {
       const payload = buildSavePayload(selected, type);
       const result = selected.id ? await contentApi.update(selected.id, payload) : await contentApi.create(payload);
       let nextItem = normalizeContentItem(result, type);
-      if (type === "EVENT" && paymentOfferDrafts.some(hasPaymentOfferDraft)) {
+      if (type === "EVENT" && paymentDrafts.length > 0) {
         const savedOffers = [];
-        for (const draft of paymentOfferDrafts.filter(hasPaymentOfferDraft)) {
+        for (const draft of paymentDrafts) {
           savedOffers.push(await paymentOffersApi.saveForEvent(nextItem.id, {
             linkLabel: draft.linkLabel,
             provider: draft.provider,
@@ -569,7 +580,7 @@ function PaymentOfferEditorMultiple({ offers, drafts, onChange, onAdd, onEdit, o
           </label>
           <label className="admin-field">
             <span>Pris (DKK)</span>
-            <input type="number" min="0.01" step="0.01" value={draft.amount} onChange={(event) => update(index, "amount", event.target.value)} placeholder="150" />
+            <input type="number" min={MINIMUM_PAYMENT_AMOUNT} step="0.01" value={draft.amount} onChange={(event) => update(index, "amount", event.target.value)} placeholder="150" />
           </label>
           <label className="admin-field">
             <span>Produktnavn</span>

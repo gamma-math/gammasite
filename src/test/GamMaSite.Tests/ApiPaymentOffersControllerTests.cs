@@ -117,6 +117,43 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task SaveForEventRejectsPaymentOfferBelowMinimumAmount()
+    {
+        await using var db = CreateDatabase();
+        var item = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Test event",
+            Slug = "test-event",
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        var access = new Mock<IAccessControlService>();
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<ClaimsPrincipal>(), item.Id))
+            .ReturnsAsync(true);
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            access.Object);
+
+        var result = await controller.SaveForEvent(item.Id, new SavePaymentOfferRequest
+        {
+            LinkLabel = "Køb billet",
+            Provider = PaymentOfferProviders.Stripe,
+            Amount = 9.99m,
+            ProductName = "Billet"
+        });
+
+        var response = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("10,00", response.Value.ToString());
+        Assert.Empty(await db.PaymentOffers.ToListAsync());
+    }
+
+    [Fact]
     public async Task GetForAdminReturnsEventAndMembershipOffers()
     {
         await using var db = CreateDatabase();
@@ -175,6 +212,55 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task GetEventOptionsForAdminReturnsEventsForProductFilter()
+    {
+        await using var db = CreateDatabase();
+        db.ContentItems.AddRange(
+            new ContentItem
+            {
+                Type = ContentTypes.Event,
+                Status = ContentStatuses.Published,
+                Title = "B Event",
+                Slug = "b-event",
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new ContentItem
+            {
+                Type = ContentTypes.Event,
+                Status = ContentStatuses.Draft,
+                Title = "A Event",
+                Slug = "a-event",
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            },
+            new ContentItem
+            {
+                Type = ContentTypes.News,
+                Status = ContentStatuses.Published,
+                Title = "A News",
+                Slug = "a-news",
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
+            });
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetEventOptionsForAdmin());
+        var events = Assert.IsAssignableFrom<System.Collections.IEnumerable>(result.Value)
+            .Cast<object>()
+            .ToList();
+
+        Assert.Equal(2, events.Count);
+        Assert.Equal("A Event", events[0].GetType().GetProperty("title")?.GetValue(events[0]));
+        Assert.Equal("B Event", events[1].GetType().GetProperty("title")?.GetValue(events[1]));
+    }
+
+    [Fact]
     public async Task UpdateForAdminUpdatesProductSettings()
     {
         await using var db = CreateDatabase();
@@ -216,6 +302,47 @@ public sealed class ApiPaymentOffersControllerTests
         Assert.Equal("Nyt kontingent", updated.ProductName);
         Assert.Equal(17500, updated.AmountMinor);
         Assert.False(updated.IsActive);
+    }
+
+    [Fact]
+    public async Task UpdateForAdminRejectsPriceBelowMinimumAmount()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = offer.LinkLabel,
+            ProductName = offer.ProductName,
+            Amount = 9.99m,
+            BillingInterval = offer.BillingInterval,
+            BillingIntervalCount = offer.BillingIntervalCount
+        });
+
+        var response = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("10,00", response.Value.ToString());
+        Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
     }
 
     [Fact]

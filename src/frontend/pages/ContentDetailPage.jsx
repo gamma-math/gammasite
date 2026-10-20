@@ -256,7 +256,11 @@ export function ContentDetailPage({ slug, type, user }) {
       {showUnregisterConfirmation && registration && (
         <ConfirmationDialog
           title={isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld tilmelding"}
-          message={isWaitlisted(registration) ? "Er du sikker på, at du vil afmelde dig fra ventelisten?" : "Er du sikker på, at du vil afmelde din tilmelding?"}
+          message={isWaitlisted(registration)
+            ? "Er du sikker på, at du vil afmelde dig fra ventelisten?"
+            : paymentCompleted
+              ? <>Er du sikker på, at du vil afmelde din tilmelding?<br /><br /><strong>Bemærk:</strong> Du har allerede betalt for dette arrangement. Hvis du afmelder dig, bliver beløbet ikke automatisk tilbagebetalt.</>
+              : "Er du sikker på, at du vil afmelde din tilmelding?"}
           confirmLabel="Ja, afmeld"
           busyLabel="Afmelder..."
           isBusy={isRemovingRegistration}

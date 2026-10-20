@@ -47,11 +47,11 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 
 ## Events
 
-- [ ] Opret et event med et Stripe-produkt og et MobilePay-produkt.
-- [ ] Gennemfør eventbetaling med Stripe, og kontrollér succes-side, deltagerstatus og betalingsbekræftelse.
-- [ ] Gennemfør eventbetaling med MobilePay, og kontrollér webhook, deltagerstatus og betalingsbekræftelse.
-- [ ] Afbryd en eventbetaling, og kontrollér at deltageren ikke markeres som betalt.
-- [ ] Kontrollér at betalingsproduktet vises sidst i eventets links og emails.
+- [x] Opret et event med et Stripe-produkt og et MobilePay-produkt.
+- [x] Gennemfør eventbetaling med Stripe, og kontrollér succes-side, deltagerstatus og betalingsbekræftelse.
+- [x] Gennemfør eventbetaling med MobilePay, og kontrollér webhook, deltagerstatus og betalingsbekræftelse.
+- [x] Afbryd en eventbetaling, og kontrollér at deltageren ikke markeres som betalt.
+- [x] Kontrollér at betalingsproduktet vises sidst i eventets links og emails.
 
 ## Email og regression
 

@@ -50,6 +50,7 @@ This document describes the backend APIs currently used by the React pages. The 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
 | GET | `/api/payment-offers/admin` | Admin products page | `PaymentOffers`, `ContentItems` | Lists global and event payment products. Requires `payments.edit.all`; event-specific product management remains on the event API. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/admin/events` | Admin products page | `ContentItems` | Lists event IDs and titles for the product filter. Requires `payments.edit.all`; read-only endpoint. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
 | GET | `/api/payment-subscriptions/admin` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, `AspNetUsers` | Lists all payment agreements. Requires `payments.edit.all`. | Not yet covered |
 
 ## Event registration API

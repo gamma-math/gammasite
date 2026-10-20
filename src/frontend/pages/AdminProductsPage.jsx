@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Save } from "lucide-react";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
-import { contentApi, paymentOffersApi } from "../services/api.js";
+import { paymentOffersApi } from "../services/api.js";
 
 const scopeLabels = {
   EVENT: "Event",
@@ -18,6 +18,8 @@ const offerTypeLabels = {
   ONE_TIME: "Engangsbetaling",
   RECURRING: "Gentagen betaling",
 };
+
+const MINIMUM_PAYMENT_AMOUNT = 10;
 
 function formatAmount(amountMinor, currency) {
   if (amountMinor == null) {
@@ -52,7 +54,7 @@ export function AdminProductsPage({ isAdmin }) {
 
     setIsLoading(true);
     setError("");
-    Promise.all([paymentOffersApi.listAdmin(), contentApi.listAdmin("EVENT")])
+    Promise.all([paymentOffersApi.listAdmin(), paymentOffersApi.listAdminEvents()])
       .then(([offerResult, eventResult]) => {
         setOffers(offerResult ?? []);
         setEvents(eventResult ?? []);
@@ -224,10 +226,16 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
     setError("");
 
     try {
+      const amount = draft.amount === "" ? null : Number(draft.amount);
+      if (amount == null || !Number.isFinite(amount) || amount < MINIMUM_PAYMENT_AMOUNT) {
+        setError("Prisen skal være mindst 10,00 kr.");
+        return;
+      }
+
       const saved = await paymentOffersApi.updateAdmin(offerId, {
         linkLabel: draft.linkLabel,
         productName: draft.productName,
-        amount: draft.amount === "" ? null : Number(draft.amount),
+        amount,
         billingInterval: draft.billingInterval || null,
         billingIntervalCount: draft.billingIntervalCount === "" ? null : Number(draft.billingIntervalCount),
         isActive: draft.isActive,
@@ -279,7 +287,7 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
           <div className="admin-form-row admin-form-row-two">
             <label className="admin-field">
               <span>Pris (DKK)</span>
-              <input type="number" min="0.01" step="0.01" value={draft.amount} onChange={(event) => update("amount", event.target.value)} required />
+              <input type="number" min={MINIMUM_PAYMENT_AMOUNT} step="0.01" value={draft.amount} onChange={(event) => update("amount", event.target.value)} required />
             </label>
             <label className="admin-field">
               <span>Udbyder</span>
