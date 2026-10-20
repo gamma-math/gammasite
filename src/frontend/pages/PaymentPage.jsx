@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { CreditCard, Smartphone } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
+import { Link } from "../routes/navigation.jsx";
 import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
@@ -12,6 +14,7 @@ export function PaymentPage({ user }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [paymentType, setPaymentType] = useState("one-time");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [startingPaymentMethod, setStartingPaymentMethod] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [isMembershipStatusLoading, setIsMembershipStatusLoading] = useState(true);
 
@@ -48,6 +51,7 @@ export function PaymentPage({ user }) {
 
     setCheckoutError("");
     setIsStartingCheckout(true);
+    setStartingPaymentMethod("STRIPE");
     try {
       const config = await paymentsApi.config();
       const session = await paymentOffersApi.checkout(stripeMembershipOffer.id);
@@ -55,6 +59,7 @@ export function PaymentPage({ user }) {
     } catch (error) {
       setCheckoutError(error.message || "Betalingen kunne ikke startes.");
       setIsStartingCheckout(false);
+      setStartingPaymentMethod("");
     }
   }
 
@@ -65,12 +70,14 @@ export function PaymentPage({ user }) {
 
     setCheckoutError("");
     setIsStartingCheckout(true);
+    setStartingPaymentMethod("MOBILEPAY");
     try {
       const payment = await paymentOffersApi.checkout(mobilePayMembershipOffer.id);
       window.location.assign(payment.url);
     } catch (error) {
       setCheckoutError(error.message || "Betalingen kunne ikke startes.");
       setIsStartingCheckout(false);
+      setStartingPaymentMethod("");
     }
   }
 
@@ -117,19 +124,25 @@ export function PaymentPage({ user }) {
             <div className="payment-choice-actions">
               {stripeMembershipOffer ? (
                 <button className="menu-payment-button menu-payment-button-large" type="button" onClick={startStripeCheckout} disabled={isStartingCheckout}>
-                  {isStartingCheckout ? "Åbner Stripe..." : "Betal med hævekort"}
+                  {startingPaymentMethod === "STRIPE" ? (
+                    "Åbner kortbetaling..."
+                  ) : (
+                    <><CreditCard className="payment-method-icon" size={21} strokeWidth={2.2} /> Kort / Apple Pay</>
+                  )}
                 </button>
               ) : (
                 <button className="menu-payment-button menu-payment-button-large" type="button" disabled>
                   Henter hævekort
                 </button>
               )}
-              <span className="payment-choice-divider">eller</span>
+              <span className="payment-choice-divider">Eller</span>
               {mobilePayMembershipOffer ? (
                 <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" onClick={startMobilePayCheckout} disabled={isStartingCheckout}>
-                  {isStartingCheckout
-                    ? "Åbner MobilePay..."
-                    : paymentType === "recurring" ? "Tilmeld med MobilePay" : "Betal med MobilePay"}
+                  {startingPaymentMethod === "MOBILEPAY" ? (
+                    "Åbner MobilePay..."
+                  ) : (
+                    <><Smartphone className="payment-method-icon" size={21} strokeWidth={2.2} /> MobilePay</>
+                  )}
                 </button>
               ) : (
                 <button className="menu-payment-button menu-payment-button-large menu-payment-button-secondary" type="button" disabled>
@@ -141,6 +154,9 @@ export function PaymentPage({ user }) {
         )}
         {checkoutError && <p className="status-message status-message-error">{checkoutError}</p>}
       </article>
+      <p className="payment-terms-note">
+        Betalinger gennemføres i henhold til vores <Link href="/react/betingelser#salgsbetingelser">salgsbetingelser</Link>.
+      </p>
     </MenuLayout>
   );
 }

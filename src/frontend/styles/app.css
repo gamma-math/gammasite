@@ -2592,7 +2592,7 @@ img {
   display: grid;
   justify-items: center;
   gap: 16px;
-  width: min(100%, 520px);
+  width: 100%;
   margin-top: 26px;
 }
 
@@ -2677,10 +2677,23 @@ img {
   background: #d7dfe9;
 }
 
+@media (min-width: 800px) {
+  .payment-choice-actions {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .payment-choice-divider {
+    width: auto;
+    min-width: 130px;
+  }
+}
+
 .menu-payment-button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
+  gap: 8px;
   justify-self: start;
   min-height: 48px;
   padding: 0 18px;
@@ -2701,6 +2714,22 @@ img {
   color: var(--ink-strong);
   border-color: #cfd8e6;
   background: #ffffff;
+}
+
+.payment-method-icon {
+  flex: 0 0 auto;
+}
+
+.payment-terms-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-align: center;
+}
+
+.payment-terms-note a {
+  color: var(--accent-deep);
+  font-weight: 700;
 }
 
 .menu-payment-product-card {
