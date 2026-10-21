@@ -58,7 +58,7 @@
         <ol class="steps">
           <li>Deploy til Simply, og kontroll&eacute;r at den offentlige MobilePay-URL svarer over HTTPS. Simply hoster endpointet; selve webhook-registreringen oprettes hos MobilePay.</li>
           <li>V&aelig;lg test- eller produktionsmilj&oslash;et hos MobilePay, og brug credentials fra det samme milj&oslash;. Testcredentials m&aring; ikke bruges i produktion.</li>
-          <li>Install&eacute;r scriptets afh&aelig;ngigheder fra <code>scripts/vipps/requirements.txt</code>. K&oslash;rselsfilen er <code>scripts/vipps/vipps.py</code>, og den komplette ops&aelig;tning st&aring;r i <code>scripts/vipps/README.md</code>.</li>
+          <li>Install&eacute;r scriptets afh&aelig;ngigheder fra <code>src/scripts/vipps/requirements.txt</code>. K&oslash;rselsfilen er <code>src/scripts/vipps/vipps.py</code>, og den komplette ops&aelig;tning st&aring;r i <code>src/scripts/vipps/README.md</code>.</li>
           <li>Se eksisterende webhooks med <code>--list-webhooks</code>, og not&eacute;r ID'et p&aring; den webhook, der skal udskiftes.</li>
           <li>Opret en ny webhook med <code>--rotate-webhook &lt;gammelt-webhook-id&gt; &lt;offentlig-url&gt;</code>. Scriptet opretter den nye webhook og verificerer URL'en, men sletter ikke den gamle endnu.</li>
           <li>Gem webhook-hemmeligheden i GitHub Environment som <code>VIPPS_WEBHOOK_SECRET</code>. Pipelinen skriver den til <code>MobilePay:WebhookSecret</code>; secretet m&aring; ikke committes.</li>

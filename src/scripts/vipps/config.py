@@ -8,13 +8,6 @@ ENV_FILE = Path(__file__).resolve().parent / ".env"
 if ENV_FILE.is_file():
     load_dotenv(ENV_FILE)
 
-REQUIRED_VARIABLES = (
-    "VIPPS_CLIENT_ID",
-    "VIPPS_CLIENT_SECRET",
-    "VIPPS_OCP_APIM_SUBSCRIPTION_KEY",
-    "VIPPS_MSN",
-)
-
 VIPPS_BASE_URL = os.getenv("VIPPS_BASE_URL", "https://apitest.vipps.no").rstrip("/")
 VIPPS_CLIENT_ID = os.getenv("VIPPS_CLIENT_ID")
 VIPPS_CLIENT_SECRET = os.getenv("VIPPS_CLIENT_SECRET")
