@@ -82,8 +82,8 @@ public class SystemEmailTemplateServiceTests
         await db.SaveChangesAsync();
 
         var email = new Mock<IEmailService>();
-        string subject = null;
-        string html = null;
+        string? subject = null;
+        string? html = null;
         email.Setup(value => value.SendEmailAsync("member@example.com", It.IsAny<string>(), It.IsAny<string>()))
             .Callback<string, string, string>((_, currentSubject, currentHtml) =>
             {
@@ -107,6 +107,7 @@ public class SystemEmailTemplateServiceTests
                 "https://example.com/account");
 
         Assert.Equal($"Kontingent - {expectedProvider}", subject);
+        Assert.NotNull(html);
         Assert.Contains("150,00 kr.", html);
         if (recurring)
         {

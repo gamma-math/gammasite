@@ -71,7 +71,9 @@ public class ContentServiceTests
         }, "admin");
 
         Assert.Equal(20, item.MaxParticipants);
-        Assert.Equal(20, (await db.ContentItems.FindAsync(item.Id)).MaxParticipants);
+        var persistedItem = await db.ContentItems.FindAsync(item.Id);
+        Assert.NotNull(persistedItem);
+        Assert.Equal(20, persistedItem!.MaxParticipants);
     }
 
     [Fact]
@@ -111,7 +113,9 @@ public class ContentServiceTests
         }));
 
         Assert.Equal("Der angivne maks. antal deltagere er lavere end det nuværende antal deltagere og arrangører.", exception.Message);
-        Assert.Null((await db.ContentItems.FindAsync(item.Id)).MaxParticipants);
+        var persistedItem = await db.ContentItems.FindAsync(item.Id);
+        Assert.NotNull(persistedItem);
+        Assert.Null(persistedItem!.MaxParticipants);
     }
 
     [Fact]

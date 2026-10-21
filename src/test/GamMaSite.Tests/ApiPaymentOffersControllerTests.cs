@@ -25,7 +25,8 @@ public sealed class ApiPaymentOffersControllerTests
         await using var db = CreateDatabase();
         var offer = await SeedOfferAsync(db);
         var access = new Mock<IAccessControlService>();
-        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId.Value))
+        var contentItemId = Assert.IsType<int>(offer.ContentItemId);
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), contentItemId))
             .ReturnsAsync(false);
 
         var stripe = new Mock<IStripeService>();
@@ -44,7 +45,8 @@ public sealed class ApiPaymentOffersControllerTests
         await using var db = CreateDatabase();
         var offer = await SeedOfferAsync(db);
         var access = new Mock<IAccessControlService>();
-        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), offer.ContentItemId.Value))
+        var contentItemId = Assert.IsType<int>(offer.ContentItemId);
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), contentItemId))
             .ReturnsAsync(true);
 
         var stripe = new Mock<IStripeService>();
@@ -149,7 +151,7 @@ public sealed class ApiPaymentOffersControllerTests
         });
 
         var response = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("10,00", response.Value.ToString());
+        Assert.Contains("10,00", response.Value?.ToString());
         Assert.Empty(await db.PaymentOffers.ToListAsync());
     }
 
@@ -341,7 +343,7 @@ public sealed class ApiPaymentOffersControllerTests
         });
 
         var response = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("10,00", response.Value.ToString());
+        Assert.Contains("10,00", response.Value?.ToString());
         Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
     }
 
@@ -615,7 +617,7 @@ public sealed class ApiPaymentOffersControllerTests
         };
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetProductByExactNameAsync("Kontingent")).ReturnsAsync(product);
-        stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null);
+        stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null!);
         stripe.Setup(value => value.CreateOneTimePriceAsync(
                 product.Id,
                 15000,
@@ -651,7 +653,7 @@ public sealed class ApiPaymentOffersControllerTests
 
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
-        Assert.Contains("cs_membership", result.Value.ToString());
+        Assert.Contains("cs_membership", result.Value?.ToString());
         var savedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal(product.Id, savedOffer.ProviderProductId);
         Assert.Equal(price.Id, savedOffer.ProviderPriceId);
@@ -734,7 +736,7 @@ public sealed class ApiPaymentOffersControllerTests
 
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
-        Assert.Contains("vipps.example/confirm", result.Value.ToString());
+        Assert.Contains("vipps.example/confirm", result.Value?.ToString());
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal("new-agreement", subscription.ProviderSubscriptionId);
         Assert.Equal(PaymentSubscriptionStatuses.Pending, subscription.Status);
@@ -794,7 +796,7 @@ public sealed class ApiPaymentOffersControllerTests
 
         var result = Assert.IsType<OkObjectResult>(await controller.GetSuccessContext("cs_membership"));
 
-        Assert.Contains("MEMBERSHIP", result.Value.ToString());
+        Assert.Contains("MEMBERSHIP", result.Value?.ToString());
         var user = await db.Users.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
     }

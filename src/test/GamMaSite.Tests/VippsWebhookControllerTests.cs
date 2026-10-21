@@ -157,14 +157,15 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
-        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        var nextChargeAt = Assert.IsType<DateTime>(subscription.NextChargeAt);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), nextChargeAt);
         mobilePay.Verify(service => service.CreateRecurringChargeAsync(
             "agr_test",
             It.Is<string>(value => value.StartsWith("gamma-agrtest-20270201")),
             15000,
             "DKK",
             "Kontingent",
-            subscription.NextChargeAt.Value,
+            nextChargeAt,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -234,14 +235,15 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
-        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        var nextChargeAt = Assert.IsType<DateTime>(subscription.NextChargeAt);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), nextChargeAt);
         mobilePay.Verify(service => service.CreateRecurringChargeAsync(
             "agr_activated",
             It.Is<string>(value => value.StartsWith("gamma-agractivated-20270201")),
             15000,
             "DKK",
             "Kontingent",
-            subscription.NextChargeAt.Value,
+            nextChargeAt,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -295,9 +297,9 @@ public sealed class VippsWebhookControllerTests
     private static VippsWebhookController CreateController(
         string payload,
         string? webhookSecret = WebhookSecret,
-        ApplicationDbContext db = null,
-        IMobilePayService mobilePayService = null,
-        IMobilePayEventReferenceService referenceService = null)
+        ApplicationDbContext? db = null,
+        IMobilePayService? mobilePayService = null,
+        IMobilePayEventReferenceService? referenceService = null)
     {
         var configurationValues = new Dictionary<string, string?>();
         if (webhookSecret != null)
