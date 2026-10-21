@@ -65,7 +65,12 @@ legacy-cleanup-notes.txt
 node_modules/
 
 # Local Python development scripts and virtual environments
-scripts/
+scripts/*
+!scripts/vipps/
+!scripts/vipps/**
+scripts/vipps/.env
+scripts/vipps/.venv/
+scripts/vipps/__pycache__/
 
 # Local, user-uploaded content images. Keep the root directory for local setup.
 /src/backend/gammasite-media/*

@@ -52,6 +52,7 @@ h2 { margin:0 0 10px; font-size:clamp(1.22rem,2.1vw,1.55rem); }
 h3 { margin:0 0 5px; font-size:1rem; }
 .content h1,
 .content h2 { display:none; }
+.content .webhook-section-title { display:block; margin:0 0 10px; font-size:clamp(1.22rem,2.1vw,1.55rem); }
 .eyebrow { margin:0 0 7px; color:var(--action-blue); font-size:.69rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .lead { max-width:730px; margin:14px 0 0; color:var(--muted); font-size:1rem; }
 .section { max-width:850px; margin-top:28px; padding-top:28px; border-top:1px solid var(--line); }
