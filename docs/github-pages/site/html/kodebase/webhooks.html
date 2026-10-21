@@ -45,7 +45,7 @@
         <ol class="steps">
           <li>Deploy den relevante version til Simply via GitHub Actions. Kontroll&eacute;r, at test eller produktion har korrekt HTTPS og dom&aelig;ne.</li>
           <li>&Aring;bn den relevante Stripe-konto, og g&aring; til <strong>Developers &rarr; Webhooks</strong>.</li>
-          <li>V&aelig;lg <strong>Add endpoint</strong>, inds&aelig;t den offentlige URL ovenfor, og v&aelig;lg kun de events, som applikationen h&aring;ndterer: <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code> og <code>invoice.paid</code>.</li>
+          <li>V&aelig;lg <strong>Add endpoint</strong>, inds&aelig;t den offentlige URL ovenfor, og v&aelig;lg kun de events, som applikationen h&aring;ndterer: <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code> og <code>invoice.payment_action_required</code>.</li>
           <li>Gem endpointets signing secret som <code>STRIPE_WEBHOOK_SECRET</code> i det samme GitHub Environment, som deploymentet bruger. Secret m&aring; ikke skrives i repositoryet.</li>
           <li>Send en test event fra Stripe, og kontroll&eacute;r HTTP 2xx, applikationslog og at den forventede betaling eller betalingsaftale opdateres.</li>
         </ol>
