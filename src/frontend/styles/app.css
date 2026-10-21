@@ -3451,19 +3451,24 @@ img {
 
   .account-subscriptions-table th:nth-child(2),
   .account-subscriptions-table td:nth-child(2) {
-    width: 24%;
+    width: 28%;
     text-align: left;
   }
 
   .account-subscriptions-table th:nth-child(3),
   .account-subscriptions-table td:nth-child(3) {
-    width: 31%;
+    width: 38%;
     text-align: left;
   }
 
   .account-subscriptions-table th:nth-child(4),
   .account-subscriptions-table td:nth-child(4) {
-    width: 29%;
+    display: none;
+  }
+
+  .account-subscriptions-table th:nth-child(5),
+  .account-subscriptions-table td:nth-child(5) {
+    width: 34%;
     text-align: left;
   }
 

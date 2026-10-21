@@ -369,7 +369,7 @@ function PaymentSubscriptionsPanel() {
                 <th className="account-subscription-expander-header" aria-label="Detaljer" />
                 <th>Udbyder</th>
                 <th>Produkt</th>
-                <th>Pris</th>
+                <th className="account-subscription-mobile-hidden">Pris</th>
                 <th>Status</th>
                 <th className="account-subscription-mobile-hidden">Senest betalt</th>
                 <th className="account-subscription-mobile-hidden">Næste opkrævning</th>
@@ -398,7 +398,7 @@ function PaymentSubscriptionsPanel() {
                       </td>
                       <td>{subscription.provider || "—"}</td>
                       <td>{subscription.productName || "—"}</td>
-                      <td>{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</td>
                       <td>{subscription.status || "—"}</td>
                       <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.lastPaidAt)}</td>
                       <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.nextChargeAt)}</td>
