@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -152,7 +153,16 @@ public sealed class VippsWebhookControllerTests
 
         var result = await controller.Receive(default);
 
+        var duplicateController = CreateController(
+            "{\"eventType\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            db: db,
+            mobilePayService: mobilePay.Object,
+            referenceService: referenceService,
+            webhookId: "test-webhook");
+        var duplicateResult = await duplicateController.Receive(default);
+
         Assert.IsType<OkResult>(result);
+        Assert.IsType<OkResult>(duplicateResult);
         var user = await db.Users.SingleAsync(item => item.Id == "user-recurring-test");
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
@@ -260,6 +270,18 @@ public sealed class VippsWebhookControllerTests
     }
 
     [Fact]
+    public async Task ReceiveRejectsStaleSignature()
+    {
+        const string payload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";
+        var staleDate = DateTimeOffset.UtcNow.AddMinutes(-6).ToString("R", CultureInfo.InvariantCulture);
+        var controller = CreateController(payload, signedDate: staleDate);
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
     public async Task ReceiveRejectsBodyThatWasChangedAfterSigning()
     {
         const string signedPayload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";
@@ -299,7 +321,9 @@ public sealed class VippsWebhookControllerTests
         string? webhookSecret = WebhookSecret,
         ApplicationDbContext? db = null,
         IMobilePayService? mobilePayService = null,
-        IMobilePayEventReferenceService? referenceService = null)
+        IMobilePayEventReferenceService? referenceService = null,
+        string? signedDate = null,
+        string webhookId = "test-webhook")
     {
         var configurationValues = new Dictionary<string, string?>();
         if (webhookSecret != null)
@@ -324,7 +348,7 @@ public sealed class VippsWebhookControllerTests
         httpContext.Request.Host = new HostString("example.test");
         httpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(payload));
 
-        var date = "Thu, 15 Oct 2026 12:00:00 GMT";
+        var date = signedDate ?? DateTimeOffset.UtcNow.ToString("R", CultureInfo.InvariantCulture);
         var contentHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
         var signedString = $"POST\n/api/payments/vipps/webhook\n{date};example.test;{contentHash}";
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(WebhookSecret));
@@ -332,6 +356,7 @@ public sealed class VippsWebhookControllerTests
 
         httpContext.Request.Headers["x-ms-date"] = date;
         httpContext.Request.Headers["x-ms-content-sha256"] = contentHash;
+        httpContext.Request.Headers["Webhook-Id"] = webhookId;
         httpContext.Request.Headers["Authorization"] = $"HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature={signature}";
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 

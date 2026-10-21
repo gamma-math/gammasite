@@ -58,6 +58,19 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Kontrollér at mailen indeholder brugerens navn og email, produkt, beløb, betalingssystem og dato.
 - [x] Kontrollér at gentagne betalinger også viser betalingsfrekvens og link til kontoen.
 - [x] Send samme webhook mere end én gang, og kontrollér at status og email ikke behandles dobbelt.
-- [ ] Kontrollér at login, events, nyheder, admin-sider og medlemsadgang stadig fungerer.
-- [ ] Kør automatiske tests:
+- [x] Kontrollér at login, events, nyheder, admin-sider og medlemsadgang stadig fungerer.
+- [x] Kør automatiske tests:
   `dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj`
+
+
+
+# FIXES
+
+
+## MINOR FIXES
+
+- [x] UI for abbonnement siden.
+- [ ] I det hele taget skal menuerne kunne droppes down og up for mobiloplevelsen.
+- [ ] Siden man lander på når man trykker betalt og når man har Betalt - Der skal man under menuen på mobilen.
+- [ ] Placering for knapperne når man har trykket deltager skal der kigges på.
+- [ ] Status markør for betalt længere op ud over med knapperne.

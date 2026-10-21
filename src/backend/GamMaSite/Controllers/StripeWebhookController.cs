@@ -70,32 +70,38 @@ namespace GamMaSite.Controllers
                 return BadRequest();
             }
 
+            var webhookId = stripeEvent.Id;
+            var webhookAt = stripeEvent.Created.ToUniversalTime();
             switch (stripeEvent.Type)
             {
                 case "checkout.session.completed":
                 case "checkout.session.async_payment_succeeded":
-                    await HandleCheckoutCompletedAsync(stripeEvent.Data.Object as Session, cancellationToken);
+                    await HandleCheckoutCompletedAsync(stripeEvent.Data.Object as Session, webhookId, webhookAt, cancellationToken);
                     break;
                 case "customer.subscription.created":
                 case "customer.subscription.updated":
-                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken);
+                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
                     break;
                 case "customer.subscription.deleted":
-                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken);
+                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
                     break;
                 case "invoice.paid":
-                    await HandleInvoicePaidAsync(stripeEvent.Data.Object as Invoice, cancellationToken);
+                    await HandleInvoicePaidAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
                     break;
                 case "invoice.payment_failed":
                 case "invoice.payment_action_required":
-                    await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken);
+                    await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
                     break;
             }
 
             return Ok();
         }
 
-        private async Task HandleCheckoutCompletedAsync(Session session, CancellationToken cancellationToken)
+        private async Task HandleCheckoutCompletedAsync(
+            Session session,
+            string webhookId,
+            DateTime webhookAt,
+            CancellationToken cancellationToken)
         {
             if (session == null)
             {
@@ -104,7 +110,7 @@ namespace GamMaSite.Controllers
 
             if (int.TryParse(MetadataValue(session.Metadata, "PaymentOfferId"), out var paymentOfferId))
             {
-                await HandlePaymentOfferAsync(session, paymentOfferId, cancellationToken);
+                await HandlePaymentOfferAsync(session, paymentOfferId, webhookId, webhookAt, cancellationToken);
                 return;
             }
 
@@ -175,12 +181,16 @@ namespace GamMaSite.Controllers
             await HandleSubscriptionAsync(
                 subscription,
                 new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed),
-                cancellationToken);
+                cancellationToken,
+                webhookId,
+                webhookAt);
         }
 
         private async Task HandlePaymentOfferAsync(
             Session session,
             int paymentOfferId,
+            string webhookId,
+            DateTime webhookAt,
             CancellationToken cancellationToken)
         {
             var offer = await _db.PaymentOffers
@@ -196,7 +206,7 @@ namespace GamMaSite.Controllers
             if (string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
             {
-                await HandleMembershipOfferPaymentAsync(session, offer, cancellationToken);
+                await HandleMembershipOfferPaymentAsync(session, offer, webhookId, webhookAt, cancellationToken);
                 return;
             }
 
@@ -210,6 +220,8 @@ namespace GamMaSite.Controllers
         private async Task HandleMembershipOfferPaymentAsync(
             Session session,
             PaymentOffer offer,
+            string webhookId,
+            DateTime webhookAt,
             CancellationToken cancellationToken)
         {
             var userId = session.ClientReferenceId ?? MetadataValue(session.Metadata, "GamMaUserId");
@@ -263,7 +275,9 @@ namespace GamMaSite.Controllers
                     userId,
                     paymentConfirmed ? session.Created.ToUniversalTime() : null,
                     paymentConfirmed),
-                cancellationToken);
+                cancellationToken,
+                webhookId,
+                webhookAt);
         }
 
         private async Task MarkMembershipAsPaidAsync(string userId, DateTime paidAt, CancellationToken cancellationToken)
@@ -358,7 +372,9 @@ namespace GamMaSite.Controllers
         private async Task HandleSubscriptionAsync(
             Subscription subscription,
             SubscriptionContext context,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string webhookId = null,
+            DateTime? webhookAt = null)
         {
             if (subscription == null || string.IsNullOrWhiteSpace(subscription.Id))
             {
@@ -398,6 +414,16 @@ namespace GamMaSite.Controllers
             if (record == null && string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("Stripe subscription {SubscriptionId} could not be mapped to a GamMa user.", subscription.Id);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(webhookId) &&
+                string.Equals(record?.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
+            {
+                _logger.LogInformation(
+                    "Ignoring already processed Stripe webhook {WebhookId} for subscription {SubscriptionId}.",
+                    webhookId,
+                    subscription.Id);
                 return;
             }
 
@@ -493,6 +519,11 @@ namespace GamMaSite.Controllers
                 target.NextChargeAt = subscriptionItem?.CurrentPeriodEnd;
                 target.LastPaidAt = context?.LastPaidAt ?? target.LastPaidAt;
                 target.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
+                if (!string.IsNullOrWhiteSpace(webhookId))
+                {
+                    target.LastProcessedWebhookId = webhookId;
+                    target.LastProcessedWebhookAt = webhookAt ?? DateTime.UtcNow;
+                }
                 target.Updated = DateTime.UtcNow;
             }
         }
@@ -505,7 +536,11 @@ namespace GamMaSite.Controllers
                  message.Contains("UX_PaymentSubscriptions_ProviderSubscriptionId", StringComparison.OrdinalIgnoreCase));
         }
 
-        private async Task HandleInvoicePaidAsync(Invoice invoice, CancellationToken cancellationToken)
+        private async Task HandleInvoicePaidAsync(
+            Invoice invoice,
+            CancellationToken cancellationToken,
+            string webhookId,
+            DateTime webhookAt)
         {
             var subscriptionId = invoice?.Parent?.SubscriptionDetails?.SubscriptionId;
             if (string.IsNullOrWhiteSpace(subscriptionId))
@@ -519,11 +554,17 @@ namespace GamMaSite.Controllers
                 await HandleSubscriptionAsync(
                     subscription,
                     new SubscriptionContext(null, invoice.Created.ToUniversalTime(), true),
-                    cancellationToken);
+                    cancellationToken,
+                    webhookId,
+                    webhookAt);
             }
         }
 
-        private async Task HandleInvoicePaymentFailedAsync(Invoice invoice, CancellationToken cancellationToken)
+        private async Task HandleInvoicePaymentFailedAsync(
+            Invoice invoice,
+            CancellationToken cancellationToken,
+            string webhookId,
+            DateTime webhookAt)
         {
             var subscriptionId = invoice?.Parent?.SubscriptionDetails?.SubscriptionId;
             if (string.IsNullOrWhiteSpace(subscriptionId))
@@ -534,7 +575,7 @@ namespace GamMaSite.Controllers
             var subscription = await _stripeService.GetSubscriptionAsync(subscriptionId);
             if (subscription != null)
             {
-                await HandleSubscriptionAsync(subscription, null, cancellationToken);
+                await HandleSubscriptionAsync(subscription, null, cancellationToken, webhookId, webhookAt);
                 return;
             }
 
@@ -545,7 +586,14 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            if (string.Equals(record.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
             record.Status = "past_due";
+            record.LastProcessedWebhookId = webhookId;
+            record.LastProcessedWebhookAt = webhookAt;
             record.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
         }

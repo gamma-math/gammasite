@@ -28,6 +28,13 @@ LocalEnvironment.Load();
 /* Create WebApplicationBuilder */
 var builder = WebApplication.CreateBuilder(args);
 
+var publicBaseUrl = builder.Configuration["PublicBaseUrl"]?.TrimEnd('/');
+if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
+    (publicBaseUri.Scheme != Uri.UriSchemeHttps && publicBaseUri.Scheme != Uri.UriSchemeHttp))
+{
+    throw new InvalidOperationException("PublicBaseUrl skal være en fuld HTTP(S)-URL.");
+}
+
 
 /* ConfigureServices: Use this section to add services to the container. */
 // For more: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/startup?view=aspnetcore-8.0
@@ -87,7 +94,13 @@ StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
 {
     var baseUrl = builder.Configuration["MobilePay:BaseUrl"];
-    client.BaseAddress = new Uri((string.IsNullOrWhiteSpace(baseUrl) ? "https://apitest.vipps.no" : baseUrl).TrimEnd('/') + "/");
+    if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var mobilePayBaseUri) ||
+        (mobilePayBaseUri.Scheme != Uri.UriSchemeHttps && mobilePayBaseUri.Scheme != Uri.UriSchemeHttp))
+    {
+        throw new InvalidOperationException("MobilePay:BaseUrl skal være en fuld HTTP(S)-URL.");
+    }
+
+    client.BaseAddress = new Uri(mobilePayBaseUri.ToString().TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(20);
 });
 builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();

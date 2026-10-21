@@ -9,13 +9,16 @@
     "test": "node --test ../test/frontend/*.test.js",
     "preview": "vite preview --host 127.0.0.1"
   },
+  "overrides": {
+    "source-map-js": "^1.2.2"
+  },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.2",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2",
-    "vite": "^7.1.4",
+    "vite": "^7.3.7",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   }
 }

@@ -148,7 +148,10 @@ namespace GamMaSite.Data
             {
                 entity.ToTable("PaymentOffers");
                 entity.HasKey(m => m.Id);
-                entity.HasIndex(m => new { m.Scope, m.ContentItemId, m.Provider, m.OfferType })
+                entity.Property(m => m.ContentItemScopeKey)
+                    .HasColumnName("ContentItemScopeKey")
+                    .HasComputedColumnSql("COALESCE(`ContentItemId`, 0)", stored: true);
+                entity.HasIndex(m => new { m.Scope, m.ContentItemScopeKey, m.Provider, m.OfferType })
                     .IsUnique()
                     .HasDatabaseName("UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType");
                 entity.HasIndex(m => m.ContentItemId).HasDatabaseName("IX_PaymentOffers_ContentItemId");
@@ -240,6 +243,7 @@ namespace GamMaSite.Data
                 entity.Property(m => m.ProviderProductId).HasMaxLength(128);
                 entity.Property(m => m.ProviderPriceId).HasMaxLength(128);
                 entity.Property(m => m.Status).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.LastProcessedWebhookId).HasMaxLength(256);
                 entity.Property(m => m.CancelAtPeriodEnd).HasDefaultValue(false);
                 entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");

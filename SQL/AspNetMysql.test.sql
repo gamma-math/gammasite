@@ -242,6 +242,7 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
 CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ContentItemId` int DEFAULT NULL,
+  `ContentItemScopeKey` int GENERATED ALWAYS AS (coalesce(`ContentItemId`,0)) STORED,
   `Scope` varchar(32) NOT NULL DEFAULT 'EVENT',
   `Provider` varchar(32) NOT NULL,
   `OfferType` varchar(32) NOT NULL,
@@ -260,7 +261,7 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   UNIQUE KEY `UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType`
-    (`Scope`, `ContentItemId`, `Provider`, `OfferType`),
+    (`Scope`, `ContentItemScopeKey`, `Provider`, `OfferType`),
   KEY `IX_PaymentOffers_ContentItemId` (`ContentItemId`),
   KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
   CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
@@ -289,6 +290,8 @@ CREATE TABLE IF NOT EXISTS `PaymentSubscriptions` (
   `NextChargeAt` datetime DEFAULT NULL,
   `LastPaidAt` datetime DEFAULT NULL,
   `CancelAtPeriodEnd` tinyint NOT NULL DEFAULT '0',
+  `LastProcessedWebhookId` varchar(256) DEFAULT NULL,
+  `LastProcessedWebhookAt` datetime DEFAULT NULL,
   `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),

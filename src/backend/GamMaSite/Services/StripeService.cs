@@ -13,7 +13,7 @@ namespace GamMaSite.Services
      */
     public interface IStripeService
     {
-        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null);
+        string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null);
 
         bool IsPaymentComplete(Session session);
 
@@ -51,9 +51,9 @@ namespace GamMaSite.Services
      */
     public class StripeService : IStripeService
     {
-        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null)
+        public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null)
         {
-            Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata);
+            Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata, idempotencyKey);
 
             return session.Id;
         }
@@ -364,7 +364,7 @@ namespace GamMaSite.Services
             return session;
         }
 
-        private Session GetCreateSession(string priceId, string productId, string productName, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null)
+        private Session GetCreateSession(string priceId, string productId, string productName, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null)
         {
             var sessionMetadata = new Dictionary<string, string>
             {
@@ -420,7 +420,11 @@ namespace GamMaSite.Services
                 }
             }
 
-            return new SessionService().Create(options);
+            var requestOptions = string.IsNullOrWhiteSpace(idempotencyKey)
+                ? null
+                : new RequestOptions { IdempotencyKey = idempotencyKey };
+
+            return new SessionService().Create(options, requestOptions);
         }
 
     }

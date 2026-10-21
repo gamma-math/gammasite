@@ -88,6 +88,14 @@ async function uploadRequest(path, file) {
   return payload;
 }
 
+function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 /**
  * Current-user API used for authentication state and roles.
  */
@@ -153,7 +161,10 @@ export const paymentOffersApi = {
   get: (id) => request("/api/payment-offers/" + id),
   successContext: (session) => request(`/api/payment-offers/success-context?session=${encodeURIComponent(session)}`),
   mobilePayContext: (reference) => request(`/api/payment-offers/mobilepay-context?reference=${encodeURIComponent(reference)}`),
-  checkout: (id) => request("/api/payment-offers/" + id + "/checkout", { method: "POST" }),
+  checkout: (id) => request("/api/payment-offers/" + id + "/checkout", {
+    method: "POST",
+    headers: { "Idempotency-Key": createIdempotencyKey() }
+  }),
   remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
 };
 

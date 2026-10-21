@@ -633,7 +633,8 @@ public sealed class ApiPaymentOffersControllerTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 "payment",
-                It.IsAny<System.Collections.Generic.IDictionary<string, string>>()))
+                It.IsAny<System.Collections.Generic.IDictionary<string, string>>(),
+                It.IsAny<string>()))
             .Returns("cs_membership");
 
         var controller = new ApiPaymentOffersController(
@@ -713,7 +714,7 @@ public sealed class ApiPaymentOffersControllerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MobilePayAgreement("new-agreement", "https://vipps.example/confirm", "CREATED", "charge-1"));
         var reference = new Mock<IMobilePayEventReferenceService>();
-        reference.Setup(value => value.CreateMembership("user-1", offer.Id)).Returns("membership-reference");
+        reference.Setup(value => value.CreateMembership("user-1", offer.Id, It.IsAny<string>())).Returns("membership-reference");
 
         var controller = new ApiPaymentOffersController(
             db,

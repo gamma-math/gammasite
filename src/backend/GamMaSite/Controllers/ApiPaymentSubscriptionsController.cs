@@ -121,9 +121,9 @@ namespace GamMaSite.Controllers
                 {
                     await _mobilePayService.StopAgreementAsync(providerSubscriptionId, cancellationToken);
                 }
-                catch (System.InvalidOperationException exception)
+                catch (System.InvalidOperationException)
                 {
-                    return BadRequest(exception.Message);
+                    return StatusCode(502, "Aftalen kunne ikke annulleres hos betalingsudbyderen.");
                 }
 
                 subscription.Status = PaymentSubscriptionStatuses.Canceled;
@@ -150,7 +150,8 @@ namespace GamMaSite.Controllers
         {
             if (_mobilePayService == null ||
                 !string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
-                !IsOpenStatus(subscription.Status))
+                !IsOpenStatus(subscription.Status) ||
+                subscription.ProviderSubscriptionId?.StartsWith("pending:", StringComparison.Ordinal) == true)
             {
                 return false;
             }

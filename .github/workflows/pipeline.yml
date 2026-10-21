@@ -133,6 +133,8 @@ jobs:
           FinanceRead.CONNECTION_STRING: ${{ secrets.FINANCEREAD__CONNECTION_STRING }}
           FinanceWrite.CONNECTION_STRING: ${{ secrets.FINANCEWRITE__CONNECTION_STRING }}
           ContentMediaRootPath: ${{ vars.CONTENT_MEDIA_ROOT_PATH }}
+          PublicBaseUrl: https://${{ vars.SITE_DOMAIN }}
+          AllowedHosts: ${{ vars.SITE_DOMAIN }}
       - name: Restore frontend packages
         working-directory: src/frontend
         run: npm ci

@@ -8,11 +8,11 @@ namespace GamMaSite.Services;
 
 public interface IMobilePayEventReferenceService
 {
-    string Create(int registrationId, int offerId);
+    string Create(int registrationId, int offerId, string attemptKey = null);
 
     bool TryParse(string reference, out int registrationId, out int offerId);
 
-    string CreateMembership(string userId, int offerId);
+    string CreateMembership(string userId, int offerId, string attemptKey = null);
 
     bool TryParseMembership(string reference, out string userId, out int offerId);
 }
@@ -26,9 +26,9 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
         _configuration = configuration;
     }
 
-    public string Create(int registrationId, int offerId)
+    public string Create(int registrationId, int offerId, string attemptKey = null)
     {
-        var nonce = Guid.NewGuid().ToString("N")[..12];
+        var nonce = CreateNonce($"event:{registrationId}:{offerId}:{attemptKey ?? Guid.NewGuid().ToString("N")}", 12);
         var payload = $"{registrationId}:{offerId}:{nonce}";
         return $"gamma-e{registrationId}-o{offerId}-n{nonce}-{CreateSignature(payload)}";
     }
@@ -60,7 +60,7 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
             Encoding.ASCII.GetBytes(suppliedSignature));
     }
 
-    public string CreateMembership(string userId, int offerId)
+    public string CreateMembership(string userId, int offerId, string attemptKey = null)
     {
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -68,7 +68,7 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
         }
 
         var encodedUserId = Encode(userId);
-        var nonce = Guid.NewGuid().ToString("N")[..6];
+        var nonce = CreateNonce($"membership:{userId}:{offerId}:{attemptKey ?? Guid.NewGuid().ToString("N")}", 6);
         var payload = $"{userId}:{offerId}:{nonce}";
         return $"gm{encodedUserId}-o{offerId}-n{nonce}-{CreateSignature(payload)[..16]}";
     }
@@ -140,5 +140,11 @@ public sealed class MobilePayEventReferenceService : IMobilePayEventReferenceSer
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
         return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)))[..24].ToLowerInvariant();
+    }
+
+    private static string CreateNonce(string value, int length)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hash).ToLowerInvariant()[..length];
     }
 }

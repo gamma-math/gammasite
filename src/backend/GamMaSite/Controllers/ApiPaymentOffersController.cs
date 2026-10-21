@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Data;
@@ -10,6 +12,7 @@ using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Controllers
 {
@@ -25,19 +28,22 @@ namespace GamMaSite.Controllers
         private readonly IMobilePayService _mobilePayService;
         private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
         private readonly IAccessControlService _accessControl;
+        private readonly IConfiguration _configuration;
 
         public ApiPaymentOffersController(
             ApplicationDbContext db,
             IStripeService stripeService,
             IAccessControlService accessControl,
             IMobilePayService mobilePayService = null,
-            IMobilePayEventReferenceService mobilePayReferenceService = null)
+            IMobilePayEventReferenceService mobilePayReferenceService = null,
+            IConfiguration configuration = null)
         {
             _db = db;
             _stripeService = stripeService;
             _mobilePayService = mobilePayService;
             _mobilePayReferenceService = mobilePayReferenceService;
             _accessControl = accessControl;
+            _configuration = configuration;
         }
 
         [HttpGet("event/{contentItemId:int}")]
@@ -216,9 +222,9 @@ namespace GamMaSite.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = ex.Message });
+                return StatusCode(502, new { error = "Betalingstilbuddet kunne ikke opdateres hos betalingsudbyderen." });
             }
         }
 
@@ -473,9 +479,9 @@ namespace GamMaSite.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = ex.Message });
+                return StatusCode(502, new { error = "Betalingstilbuddet kunne ikke slettes hos betalingsudbyderen." });
             }
         }
 
@@ -538,9 +544,10 @@ namespace GamMaSite.Controllers
                     return Conflict("Betalingstilbuddet stemmer ikke længere overens med MobilePay.");
                 }
 
-                var reference = _mobilePayReferenceService.Create(registration.Id, offer.Id);
+                var attemptKey = GetPaymentAttemptKey(userId, offer);
+                var reference = _mobilePayReferenceService.Create(registration.Id, offer.Id, attemptKey);
                 var mobilePayEventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
-                var returnUrl = $"{Request.Scheme}://{Request.Host}{mobilePayEventPath}/success?reference={Uri.EscapeDataString(reference)}";
+                var returnUrl = PublicUrl($"{mobilePayEventPath}/success?reference={Uri.EscapeDataString(reference)}");
                 try
                 {
                     var payment = await _mobilePayService.CreateOneTimePaymentAsync(
@@ -552,9 +559,9 @@ namespace GamMaSite.Controllers
                         cancellationToken);
                     return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
                 }
-                catch (InvalidOperationException exception)
+                catch (InvalidOperationException)
                 {
-                    return StatusCode(502, new { error = exception.Message });
+                    return StatusCode(502, new { error = "MobilePay-betalingen kunne ikke startes." });
                 }
             }
 
@@ -578,8 +585,8 @@ namespace GamMaSite.Controllers
 
             var sessionParameter = "?session={CHECKOUT_SESSION_ID}";
             var eventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
-            var successUrl = $"{Request.Scheme}://{Request.Host}{eventPath}/success{sessionParameter}";
-            var cancelUrl = $"{Request.Scheme}://{Request.Host}{eventPath}/{offer.Id}";
+            var successUrl = PublicUrl($"{eventPath}/success{sessionParameter}");
+            var cancelUrl = PublicUrl($"{eventPath}/{offer.Id}");
             var sessionId = _stripeService.StartPayment(
                 product,
                 price,
@@ -592,7 +599,8 @@ namespace GamMaSite.Controllers
                     ["PaymentOfferId"] = offer.Id.ToString(),
                     ["ContentItemId"] = offer.ContentItemId.ToString(),
                     ["GamMaUserId"] = userId
-                });
+                },
+                GetStripeIdempotencyKey(userId, offer));
 
             return Ok(new { id = sessionId });
         }
@@ -662,9 +670,9 @@ namespace GamMaSite.Controllers
                     offerId
                 });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "MobilePay-betalingen kunne ikke kontrolleres." });
             }
         }
 
@@ -783,8 +791,8 @@ namespace GamMaSite.Controllers
                 }
 
                 var sessionParameter = "?session={CHECKOUT_SESSION_ID}";
-                var successUrl = $"{Request.Scheme}://{Request.Host}/react/pay/success{sessionParameter}";
-                var cancelUrl = $"{Request.Scheme}://{Request.Host}/react/pay/cancel";
+                var successUrl = PublicUrl($"/react/pay/success{sessionParameter}");
+                var cancelUrl = PublicUrl("/react/pay/cancel");
                 var mode = string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase)
                     ? "subscription"
                     : "payment";
@@ -800,21 +808,22 @@ namespace GamMaSite.Controllers
                         ["PaymentOfferId"] = offer.Id.ToString(),
                         ["Scope"] = PaymentOfferScopes.Membership,
                         ["GamMaUserId"] = userId
-                    });
+                    },
+                    GetStripeIdempotencyKey(userId, offer));
 
                 return Ok(new { provider = PaymentOfferProviders.Stripe, id = sessionId });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "Stripe-betalingen kunne ikke startes." });
             }
             catch (ArgumentException exception)
             {
                 return BadRequest(exception.Message);
             }
-            catch (Stripe.StripeException exception)
+            catch (Stripe.StripeException)
             {
-                return StatusCode(502, new { error = $"Stripe kunne ikke starte betalingen: {exception.Message}" });
+                return StatusCode(502, new { error = "Stripe-betalingen kunne ikke startes." });
             }
         }
 
@@ -835,8 +844,9 @@ namespace GamMaSite.Controllers
                 return BadRequest("Dette MobilePay-medlemskab kan ikke gennemføre betaling endnu.");
             }
 
-            var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id);
-            var returnUrl = $"{Request.Scheme}://{Request.Host}/react/pay/success?reference={Uri.EscapeDataString(reference)}";
+            var attemptKey = GetPaymentAttemptKey(userId, offer);
+            var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id, attemptKey);
+            var returnUrl = PublicUrl($"/react/pay/success?reference={Uri.EscapeDataString(reference)}");
             try
             {
                 var payment = await _mobilePayService.CreateOneTimePaymentAsync(
@@ -848,9 +858,9 @@ namespace GamMaSite.Controllers
                     cancellationToken);
                 return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "MobilePay-medlemsbetalingen kunne ikke startes." });
             }
         }
 
@@ -886,6 +896,7 @@ namespace GamMaSite.Controllers
                      subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
             if (openSubscription != null &&
                 string.Equals(openSubscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                !IsPendingMobilePayAgreement(openSubscription) &&
                 await RefreshMobilePaySubscriptionAsync(openSubscription, cancellationToken))
             {
                 await _db.SaveChangesAsync(cancellationToken);
@@ -898,7 +909,10 @@ namespace GamMaSite.Controllers
                  subscription.Status == PaymentSubscriptionStatuses.Trialing ||
                  subscription.Status == PaymentSubscriptionStatuses.PastDue ||
                  subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
-            if (hasPaidMembership || hasOpenSubscription)
+            var canResumePendingMobilePayAgreement = openSubscription != null &&
+                IsPendingMobilePayAgreement(openSubscription) &&
+                openSubscription.PaymentOfferId == offer.Id;
+            if (hasPaidMembership || (hasOpenSubscription && !canResumePendingMobilePayAgreement))
             {
                 return Conflict("Du har allerede et aktivt eller afventende medlemskab.");
             }
@@ -912,12 +926,50 @@ namespace GamMaSite.Controllers
                 return BadRequest("MobilePay-medlemskabet har et ugyldigt betalingsinterval.");
             }
 
-            var merchantAgreementUrl = $"{Request.Scheme}://{Request.Host}/react/account/manage/subscriptions";
+            var attemptKey = GetPaymentAttemptKey(userId, offer);
+            var merchantAgreementUrl = PublicUrl("/react/account/manage/subscriptions");
             try
             {
-                var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id);
+                var now = DateTime.UtcNow;
+                var subscription = await _db.PaymentSubscriptions
+                    .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+                var reference = canResumePendingMobilePayAgreement
+                    ? GetPendingMobilePayReference(subscription.ProviderSubscriptionId)
+                    : _mobilePayReferenceService.CreateMembership(userId, offer.Id, attemptKey);
+                if (string.IsNullOrWhiteSpace(reference))
+                {
+                    return Conflict("Det afventende MobilePay-medlemskab kunne ikke genoptages.");
+                }
+
+                if (subscription == null)
+                {
+                    subscription = new PaymentSubscription
+                    {
+                        UserId = userId,
+                        Created = now
+                    };
+                    _db.PaymentSubscriptions.Add(subscription);
+                }
+
+                // Reserve the user's unique subscription row before calling MobilePay.
+                // This prevents concurrent requests from creating multiple agreements.
+                subscription.Provider = PaymentOfferProviders.MobilePay;
+                subscription.PaymentOfferId = offer.Id;
+                subscription.ProviderSubscriptionId = PendingMobilePaySubscriptionId(reference);
+                subscription.ProductName = offer.ProductName;
+                subscription.ProviderProductId = offer.Id.ToString();
+                subscription.ProviderPriceId = null;
+                subscription.Status = PaymentSubscriptionStatuses.Pending;
+                subscription.CurrentPeriodStart = null;
+                subscription.CurrentPeriodEnd = null;
+                subscription.NextChargeAt = null;
+                subscription.LastPaidAt = null;
+                subscription.CancelAtPeriodEnd = false;
+                subscription.Updated = now;
+                await _db.SaveChangesAsync(cancellationToken);
+
                 var merchantRedirectUrl =
-                    $"{Request.Scheme}://{Request.Host}/react/pay/success?reference={Uri.EscapeDataString(reference)}";
+                    PublicUrl($"/react/pay/success?reference={Uri.EscapeDataString(reference)}");
                 var agreement = await _mobilePayService.CreateRecurringAgreementAsync(
                     reference,
                     member.PhoneNumber,
@@ -931,32 +983,7 @@ namespace GamMaSite.Controllers
                     merchantAgreementUrl,
                     cancellationToken);
 
-                var now = DateTime.UtcNow;
-                var subscription = await _db.PaymentSubscriptions
-                    .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
-                if (subscription == null)
-                {
-                    subscription = new PaymentSubscription
-                    {
-                        UserId = userId,
-                        Created = now
-                    };
-                    _db.PaymentSubscriptions.Add(subscription);
-                }
-
-                // PaymentSubscriptions stores the current subscription only. Reuse a
-                // closed record when a member starts a new agreement; UserId is unique.
-                subscription.Provider = PaymentOfferProviders.MobilePay;
-                subscription.PaymentOfferId = offer.Id;
                 subscription.ProviderSubscriptionId = agreement.AgreementId;
-                subscription.ProductName = offer.ProductName;
-                subscription.ProviderProductId = offer.Id.ToString();
-                subscription.Status = PaymentSubscriptionStatuses.Pending;
-                subscription.CurrentPeriodStart = null;
-                subscription.CurrentPeriodEnd = null;
-                subscription.NextChargeAt = null;
-                subscription.LastPaidAt = null;
-                subscription.CancelAtPeriodEnd = false;
                 subscription.Updated = now;
                 await _db.SaveChangesAsync(cancellationToken);
 
@@ -966,9 +993,9 @@ namespace GamMaSite.Controllers
                     url = agreement.RedirectUrl
                 });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "MobilePay kunne ikke starte betalingen." });
             }
             catch (DbUpdateException)
             {
@@ -1023,9 +1050,9 @@ namespace GamMaSite.Controllers
                     status = isCancelled ? "CANCELLED" : "PENDING"
                 });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "MobilePay-betalingen kunne ikke kontrolleres." });
             }
         }
 
@@ -1073,9 +1100,9 @@ namespace GamMaSite.Controllers
 
                 return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
             }
-            catch (InvalidOperationException exception)
+            catch (InvalidOperationException)
             {
-                return StatusCode(502, new { error = exception.Message });
+                return StatusCode(502, new { error = "MobilePay-aftalen kunne ikke kontrolleres." });
             }
         }
 
@@ -1384,6 +1411,65 @@ namespace GamMaSite.Controllers
             }
 
             return value.Trim();
+        }
+
+        private string GetPaymentAttemptKey(string userId, PaymentOffer offer)
+        {
+            var supplied = Request.Headers["Idempotency-Key"].FirstOrDefault();
+            return string.IsNullOrWhiteSpace(supplied)
+                ? $"server:{offer.Provider}:{offer.OfferType}:{userId}:{offer.Id}"
+                : supplied.Trim();
+        }
+
+        private string GetStripeIdempotencyKey(string userId, PaymentOffer offer)
+        {
+            var value = $"stripe:{offer.OfferType}:{offer.Id}:{userId}:{GetPaymentAttemptKey(userId, offer)}";
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+        }
+
+        private string PublicUrl(string path)
+        {
+            var configuredBaseUrl = _configuration?["PublicBaseUrl"]?.TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(configuredBaseUrl))
+            {
+                // Unit tests instantiate this controller directly without the host configuration.
+                // The running application is required to provide PublicBaseUrl at startup.
+                if (_configuration == null)
+                {
+                    return $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{path.TrimStart('/')}";
+                }
+
+                throw new InvalidOperationException("PublicBaseUrl er ikke konfigureret.");
+            }
+
+            return $"{configuredBaseUrl}/{path.TrimStart('/')}";
+        }
+
+        private static bool IsPendingMobilePayAgreement(PaymentSubscription subscription)
+        {
+            return subscription != null &&
+                string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                subscription.Status == PaymentSubscriptionStatuses.Pending &&
+                subscription.ProviderSubscriptionId?.StartsWith("pending:", StringComparison.Ordinal) == true;
+        }
+
+        private static string PendingMobilePaySubscriptionId(string reference)
+        {
+            var value = $"pending:{reference}";
+            if (value.Length > 128)
+            {
+                throw new InvalidOperationException("MobilePay-referencen er for lang.");
+            }
+
+            return value;
+        }
+
+        private static string GetPendingMobilePayReference(string providerSubscriptionId)
+        {
+            const string prefix = "pending:";
+            return providerSubscriptionId?.StartsWith(prefix, StringComparison.Ordinal) == true
+                ? providerSubscriptionId[prefix.Length..]
+                : null;
         }
 
         private static string MetadataValue(System.Collections.Generic.IDictionary<string, string> metadata, string key)

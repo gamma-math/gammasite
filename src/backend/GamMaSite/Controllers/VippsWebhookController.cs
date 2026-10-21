@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -23,6 +24,7 @@ namespace GamMaSite.Controllers;
 public sealed class VippsWebhookController : ControllerBase
 {
     private const string SignaturePrefix = "HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature=";
+    private static readonly TimeSpan SignatureTolerance = TimeSpan.FromMinutes(5);
 
     private readonly IConfiguration _configuration;
     private readonly ILogger<VippsWebhookController> _logger;
@@ -85,7 +87,13 @@ public sealed class VippsWebhookController : ControllerBase
             var reference = ReadString(root, "reference") ?? "unknown";
             var agreementId = ReadString(root, "agreementId");
             var chargeId = ReadString(root, "chargeId");
-            var webhookId = Request.Headers["Webhook-Id"].FirstOrDefault() ?? "unknown";
+            var webhookId = Request.Headers["Webhook-Id"].FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(webhookId))
+            {
+                _logger.LogWarning("Vipps webhook did not contain a Webhook-Id header.");
+                return BadRequest();
+            }
 
             _logger.LogInformation(
                 "Received Vipps webhook {Name} for payment {Reference}, agreement {AgreementId}, charge {ChargeId} from webhook {WebhookId}.",
@@ -95,21 +103,30 @@ public sealed class VippsWebhookController : ControllerBase
                 chargeId,
                 webhookId);
 
-            if (_db != null && _mobilePayService != null && _referenceService != null)
+            try
             {
-                if (name.StartsWith("recurring.", StringComparison.OrdinalIgnoreCase))
+                if (_db != null && _mobilePayService != null && _referenceService != null)
                 {
-                    await HandleRecurringPaymentAsync(
-                        name,
-                        agreementId,
-                        chargeId,
-                        ReadDateTime(root, "occurred") ?? DateTime.UtcNow,
-                        cancellationToken);
+                    if (name.StartsWith("recurring.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await HandleRecurringPaymentAsync(
+                            name,
+                            agreementId,
+                            chargeId,
+                            webhookId,
+                            ReadDateTime(root, "occurred") ?? DateTime.UtcNow,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await HandlePaymentAsync(name, reference, cancellationToken);
+                    }
                 }
-                else
-                {
-                    await HandlePaymentAsync(name, reference, cancellationToken);
-                }
+            }
+            catch (InvalidOperationException exception)
+            {
+                _logger.LogError(exception, "Vipps webhook processing failed for {WebhookId}.", webhookId);
+                return StatusCode(502, new { error = "MobilePay-webhooken kunne ikke behandles endnu." });
             }
         }
 
@@ -250,6 +267,7 @@ public sealed class VippsWebhookController : ControllerBase
         string eventType,
         string agreementId,
         string chargeId,
+        string webhookId,
         DateTime occurred,
         CancellationToken cancellationToken)
     {
@@ -265,6 +283,15 @@ public sealed class VippsWebhookController : ControllerBase
         if (subscription == null)
         {
             _logger.LogWarning("Could not resolve MobilePay agreement {AgreementId}.", agreementId);
+            return;
+        }
+
+        if (string.Equals(subscription.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
+        {
+            _logger.LogInformation(
+                "Ignoring already processed Vipps webhook {WebhookId} for agreement {AgreementId}.",
+                webhookId,
+                agreementId);
             return;
         }
 
@@ -304,6 +331,8 @@ public sealed class VippsWebhookController : ControllerBase
             }
 
             await ScheduleNextChargeAsync(subscription, activatedOffer, agreementId, cancellationToken);
+            MarkWebhookProcessed(subscription, webhookId, occurred);
+            await _db.SaveChangesAsync(cancellationToken);
             return;
         }
 
@@ -311,6 +340,7 @@ public sealed class VippsWebhookController : ControllerBase
         {
             subscription.Status = PaymentSubscriptionStatuses.Canceled;
             subscription.Updated = DateTime.UtcNow;
+            MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -320,6 +350,7 @@ public sealed class VippsWebhookController : ControllerBase
         {
             subscription.Status = PaymentSubscriptionStatuses.Expired;
             subscription.Updated = DateTime.UtcNow;
+            MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -329,6 +360,7 @@ public sealed class VippsWebhookController : ControllerBase
         {
             subscription.Status = PaymentSubscriptionStatuses.PastDue;
             subscription.Updated = DateTime.UtcNow;
+            MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -382,6 +414,8 @@ public sealed class VippsWebhookController : ControllerBase
         }
 
         await ScheduleNextChargeAsync(subscription, offer, agreementId, cancellationToken);
+        MarkWebhookProcessed(subscription, webhookId, occurred);
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task ScheduleNextChargeAsync(
@@ -411,10 +445,21 @@ public sealed class VippsWebhookController : ControllerBase
         {
             _logger.LogError(
                 exception,
-                "MobilePay agreement {AgreementId} was paid, but the next charge {ChargeId} could not be created.",
+                "MobilePay agreement {AgreementId} was paid, but the next charge {ChargeId} could not be created. The webhook will be retried.",
                 agreementId,
                 nextChargeId);
+            throw;
         }
+    }
+
+    private static void MarkWebhookProcessed(
+        PaymentSubscription subscription,
+        string webhookId,
+        DateTime occurred)
+    {
+        subscription.LastProcessedWebhookId = webhookId;
+        subscription.LastProcessedWebhookAt = occurred;
+        subscription.Updated = DateTime.UtcNow;
     }
 
     private async Task<PaymentOffer> FindRecurringMembershipOfferAsync(
@@ -545,6 +590,16 @@ public sealed class VippsWebhookController : ControllerBase
             string.IsNullOrWhiteSpace(authorization) ||
             string.IsNullOrWhiteSpace(host) ||
             !authorization.StartsWith(SignaturePrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!DateTimeOffset.TryParse(
+                date,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var signedAt) ||
+            (DateTimeOffset.UtcNow - signedAt).Duration() > SignatureTolerance)
         {
             return false;
         }

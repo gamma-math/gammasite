@@ -31,6 +31,10 @@ namespace GamMaSite.Models
 
         public int? ContentItemId { get; set; }
 
+        // Stored as a generated database value so NULL global offers participate
+        // in the unique scope/provider/type constraint.
+        public int ContentItemScopeKey { get; private set; }
+
         public string Scope { get; set; }
 
         public string Provider { get; set; }
