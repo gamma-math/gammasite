@@ -9,7 +9,7 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Start Stripe CLI med forwarding til `/api/payments/stripe/webhook`.
 - [x] Start MobilePay-tunnelen, og kontrollér at `VIPPS_WEBHOOK_URL` peger på den aktuelle tunnel.
 - [x] Kontrollér, at MobilePay-webhooken findes:
-  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --list-webhooks`
+  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/vipps.py --list-webhooks`
 
 ## Produkter og administration
 
@@ -35,13 +35,13 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Gennemfør et medlemskab med MobilePay som engangsbetaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus og `SYSTEM_PAYMENT_CONFIRMATION`.
 - [x] Find betalingen i MobilePay med:
-  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --status <reference>`
+  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/vipps.py --status <reference>`
 - [x] Gennemfør et medlemskab med MobilePay som gentagen betaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus, abonnementssiden og `SYSTEM_PAYMENT_RECURRING`.
 - [x] Kontrollér aftalen i MobilePay med:
-  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --agreement-status agr_sWPvEGT`
+  `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/vipps.py --agreement-status agr_sWPvEGT`
 - [x] Opsig aftalen fra hjemmesiden, og kontrollér status med `--agreement-status`.
-- [x] Kontrollér MobilePay-aftalens charges med `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/test_connection.py --list-charges <agreement-id>`.
+- [x] Kontrollér MobilePay-aftalens charges med `scripts/vipps/.venv/Scripts/python.exe scripts/vipps/vipps.py --list-charges <agreement-id>`.
 - [ ] Kontrollér at næste MobilePay-charge oprettes automatisk til 1. februar det følgende år, og at en ny charge oprettes efter næste gennemførte betaling.
 - [x] Test afbrudt betaling, og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.
 

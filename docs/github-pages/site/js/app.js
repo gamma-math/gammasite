@@ -5,6 +5,7 @@ const links = [
   ["Forside", "index.html", "home"],
   ["QA-vejledninger", "qa/index.html", "qa"],
   ["Events og nyheder", "qa/events-news.html", "qa.events"],
+  ["Priser", "qa/priser.html", "qa.prices"],
   ["Tilmeldinger", "qa/tilmeldinger.html", "qa.registrations"],
   ["Beskeder", "qa/beskeder.html", "qa.messages"],
   ["Beskedskabeloner", "qa/skabeloner.html", "qa.templates"],
@@ -20,6 +21,7 @@ const links = [
   ["Systemoversigt", "systemer/index.html", "systems"],
   ["Lokal opsætning", "kodebase/lokal-opsætning.html", "code.setup"],
   ["Deploy Hjemmesiden", "kodebase/pipeline.html", "code.pipeline"],
+  ["Webhooks", "kodebase/webhooks.html", "code.webhooks"],
   ["GitHub Pages", "kodebase/github-pages.html", "code.pages"],
   ["Kodestruktur", "kodebase/struktur.html", "code.structure"],
   [".github/", "kodebase/mappe-github.html", "code.github"],
@@ -33,9 +35,9 @@ const links = [
 ];
 
 const groups = [
-  ["QA-vejledninger", ["qa", "qa.events", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
+  ["QA-vejledninger", ["qa", "qa.events", "qa.prices", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
   ["Finans", ["finance", "finance.postings", "finance.groups", "finance.export", "finance.import", "finance.budgets"]],
-  ["Teknik", ["systems", "code.setup", "code.pipeline", "code.pages", "code.incident"]],
+  ["Teknik", ["systems", "code.setup", "code.pipeline", "code.webhooks", "code.pages", "code.incident"]],
   ["Kodestruktur", ["code.structure", "code.github", "code.vscode", "code.docs", "code.sql", "code.backend", "code.frontend", "code.backend-tests", "code.frontend-tests"]]
 ];
 
