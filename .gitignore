@@ -69,8 +69,18 @@ scripts/*
 !scripts/vipps/
 !scripts/vipps/**
 scripts/vipps/.env
-scripts/vipps/.venv/
-scripts/vipps/__pycache__/
+
+# Python-generated files
+**/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
 
 # Local, user-uploaded content images. Keep the root directory for local setup.
 /src/backend/gammasite-media/*

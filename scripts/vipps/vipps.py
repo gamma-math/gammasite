@@ -39,6 +39,18 @@ WEBHOOK_EVENTS = [
 ]
 
 
+def validate_api_config() -> None:
+    configured = {
+        "VIPPS_CLIENT_ID": VIPPS_CLIENT_ID,
+        "VIPPS_CLIENT_SECRET": VIPPS_CLIENT_SECRET,
+        "VIPPS_OCP_APIM_SUBSCRIPTION_KEY": VIPPS_SUBSCRIPTION_KEY,
+        "VIPPS_MSN": VIPPS_MSN,
+    }
+    missing = [name for name, value in configured.items() if not value]
+    if missing:
+        raise SystemExit(f"Missing {', '.join(missing)} in scripts/vipps/.env")
+
+
 def required_value(argument: str | None, configured: str | None, name: str) -> str:
     value = argument or configured
     if not value:
@@ -57,6 +69,7 @@ def webhook_headers() -> dict:
 
 
 def get_access_token() -> str:
+    validate_api_config()
     response = requests.post(
         f"{VIPPS_BASE_URL}/accesstoken/get",
         headers={
