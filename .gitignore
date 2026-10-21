@@ -64,12 +64,6 @@ legacy-cleanup-notes.txt
 # Frontend dependencies
 node_modules/
 
-# Local Python development scripts and virtual environments
-scripts/*
-!scripts/vipps/
-!scripts/vipps/**
-scripts/vipps/.env
-
 # Python-generated files
 **/.venv/
 **/__pycache__/
