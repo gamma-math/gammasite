@@ -72,26 +72,34 @@ namespace GamMaSite.Controllers
 
             var webhookId = stripeEvent.Id;
             var webhookAt = stripeEvent.Created.ToUniversalTime();
-            switch (stripeEvent.Type)
+            try
             {
-                case "checkout.session.completed":
-                case "checkout.session.async_payment_succeeded":
-                    await HandleCheckoutCompletedAsync(stripeEvent.Data.Object as Session, webhookId, webhookAt, cancellationToken);
-                    break;
-                case "customer.subscription.created":
-                case "customer.subscription.updated":
-                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
-                    break;
-                case "customer.subscription.deleted":
-                    await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
-                    break;
-                case "invoice.paid":
-                    await HandleInvoicePaidAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
-                    break;
-                case "invoice.payment_failed":
-                case "invoice.payment_action_required":
-                    await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
-                    break;
+                switch (stripeEvent.Type)
+                {
+                    case "checkout.session.completed":
+                    case "checkout.session.async_payment_succeeded":
+                        await HandleCheckoutCompletedAsync(stripeEvent.Data.Object as Session, webhookId, webhookAt, cancellationToken);
+                        break;
+                    case "customer.subscription.created":
+                    case "customer.subscription.updated":
+                        await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
+                        break;
+                    case "customer.subscription.deleted":
+                        await HandleSubscriptionAsync(stripeEvent.Data.Object as Subscription, null, cancellationToken, webhookId, webhookAt);
+                        break;
+                    case "invoice.paid":
+                        await HandleInvoicePaidAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
+                        break;
+                    case "invoice.payment_failed":
+                    case "invoice.payment_action_required":
+                        await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
+                        break;
+                }
+            }
+            catch (InvalidOperationException exception)
+            {
+                _logger.LogError(exception, "Stripe webhook processing failed for {WebhookId}.", webhookId);
+                return StatusCode(502, new { error = "Stripe-webhooken kunne ikke behandles endnu." });
             }
 
             return Ok();
@@ -105,7 +113,7 @@ namespace GamMaSite.Controllers
         {
             if (session == null)
             {
-                return;
+                throw new InvalidOperationException("Stripe checkout-sessionen kunne ikke læses.");
             }
 
             if (int.TryParse(MetadataValue(session.Metadata, "PaymentOfferId"), out var paymentOfferId))
@@ -124,14 +132,14 @@ namespace GamMaSite.Controllers
             var membershipOffer = await FindMembershipOfferAsync(session.Metadata, cancellationToken);
             if (membershipOffer == null)
             {
-                return;
+                throw new InvalidOperationException($"Stripe checkout session {session.Id} kunne ikke knyttes til et medlemskab.");
             }
 
             var userId = session.ClientReferenceId ?? MetadataValue(session.Metadata, "GamMaUserId");
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("Stripe checkout session {SessionId} could not be mapped to a GamMa user.", session.Id);
-                return;
+                throw new InvalidOperationException($"Stripe checkout session {session.Id} kunne ikke knyttes til en bruger.");
             }
 
             if (string.Equals(session.Mode, "payment", StringComparison.OrdinalIgnoreCase))
@@ -153,14 +161,14 @@ namespace GamMaSite.Controllers
             if (!string.Equals(session.Mode, "subscription", StringComparison.OrdinalIgnoreCase) ||
                 string.IsNullOrWhiteSpace(session.SubscriptionId))
             {
-                return;
+                throw new InvalidOperationException($"Stripe checkout session {session.Id} mangler et abonnement.");
             }
 
             var subscription = await _stripeService.GetSubscriptionAsync(session.SubscriptionId);
             if (subscription == null)
             {
                 _logger.LogWarning("Stripe subscription {SubscriptionId} could not be loaded for checkout session {SessionId}.", session.SubscriptionId, session.Id);
-                return;
+                throw new InvalidOperationException($"Stripe-abonnementet {session.SubscriptionId} kunne ikke indlæses.");
             }
 
             var initialPaymentAt = string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)
@@ -225,7 +233,7 @@ namespace GamMaSite.Controllers
                 }
 
                 _logger.LogWarning("Stripe payment session {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
-                return;
+                throw new InvalidOperationException($"Stripe-session {session.Id} refererer til et ukendt payment offer.");
             }
 
             if (string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
@@ -239,7 +247,10 @@ namespace GamMaSite.Controllers
                 offer.ContentItemId.HasValue)
             {
                 await HandleEventPaymentAsync(session, paymentOfferId, cancellationToken);
+                return;
             }
+
+            throw new InvalidOperationException($"Stripe-session {session.Id} har en ukendt payment offer-scope.");
         }
 
         private async Task HandleMembershipOfferPaymentAsync(
@@ -253,7 +264,7 @@ namespace GamMaSite.Controllers
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("Stripe membership payment {SessionId} could not be mapped to a GamMa user.", session.Id);
-                return;
+                throw new InvalidOperationException($"Stripe membership payment {session.Id} kunne ikke knyttes til en bruger.");
             }
 
             var paymentConfirmed = string.Equals(session.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase) ||
@@ -276,14 +287,14 @@ namespace GamMaSite.Controllers
             if (!string.Equals(session.Mode, "subscription", StringComparison.OrdinalIgnoreCase) ||
                 string.IsNullOrWhiteSpace(session.SubscriptionId))
             {
-                return;
+                throw new InvalidOperationException($"Stripe membership checkout session {session.Id} mangler et abonnement.");
             }
 
             var subscription = await _stripeService.GetSubscriptionAsync(session.SubscriptionId);
             if (subscription == null)
             {
                 _logger.LogWarning("Stripe subscription {SubscriptionId} could not be loaded for membership checkout session {SessionId}.", session.SubscriptionId, session.Id);
-                return;
+                throw new InvalidOperationException($"Stripe-abonnementet {session.SubscriptionId} kunne ikke indlæses.");
             }
 
             await HandleSubscriptionAsync(
@@ -303,7 +314,14 @@ namespace GamMaSite.Controllers
             if (user == null)
             {
                 _logger.LogWarning("Stripe payment could not be mapped to GamMa user {UserId}.", userId);
-                return;
+                throw new InvalidOperationException($"Stripe-betalingen kunne ikke knyttes til bruger {userId}.");
+            }
+
+            _db.Entry(user).State = EntityState.Detached;
+            user = await PaymentWebhookTransaction.LockUserAsync(_db, userId, cancellationToken);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"Stripe-betalingen kunne ikke låse bruger {userId}.");
             }
 
             user.MarkAsPayed();
@@ -348,7 +366,7 @@ namespace GamMaSite.Controllers
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("Event payment {SessionId} could not be mapped to a GamMa user.", session.Id);
-                return;
+                throw new InvalidOperationException($"Stripe event-betalingen {session.Id} kunne ikke knyttes til en bruger.");
             }
 
             var offer = await _db.PaymentOffers
@@ -365,7 +383,7 @@ namespace GamMaSite.Controllers
             if (!contentItemId.HasValue)
             {
                 _logger.LogWarning("Event payment {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
-                return;
+                throw new InvalidOperationException($"Stripe event-betalingen {session.Id} refererer til et ukendt event.");
             }
 
             var eventItem = await _db.ContentItems
@@ -374,7 +392,7 @@ namespace GamMaSite.Controllers
             if (eventItem == null)
             {
                 _logger.LogWarning("Event payment {SessionId} references unknown event {ContentItemId}.", session.Id, contentItemId);
-                return;
+                throw new InvalidOperationException($"Stripe eventet {contentItemId} kunne ikke findes.");
             }
 
             var registration = await _db.EventRegistrations
@@ -384,7 +402,7 @@ namespace GamMaSite.Controllers
                     && !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
             {
                 _logger.LogWarning("Event payment {SessionId} has no attendee or organizer registration for user {UserId}.", session.Id, userId);
-                return;
+                throw new InvalidOperationException($"Stripe event-betalingen {session.Id} har ingen gyldig tilmelding.");
             }
 
             await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
@@ -394,7 +412,7 @@ namespace GamMaSite.Controllers
                 (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
                     && !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
             {
-                return;
+                throw new InvalidOperationException($"Stripe event-betalingen {session.Id} kunne ikke låse tilmeldingen.");
             }
 
             if (registration.Registered)
@@ -405,6 +423,11 @@ namespace GamMaSite.Controllers
             registration.Registered = true;
             registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
             if (offer != null)
             {
                 await SendPaymentEmailAsync(
@@ -413,10 +436,6 @@ namespace GamMaSite.Controllers
                     session.Created.ToUniversalTime(),
                     recurring: false,
                     cancellationToken: cancellationToken);
-            }
-            if (transaction != null)
-            {
-                await transaction.CommitAsync(cancellationToken);
             }
         }
 
@@ -442,6 +461,12 @@ namespace GamMaSite.Controllers
             }
 
             await _db.SaveChangesAsync(cancellationToken);
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
             if (!wasAlreadyPaid)
             {
                 await SendPaymentEmailAsync(
@@ -450,11 +475,6 @@ namespace GamMaSite.Controllers
                     paidAt,
                     recurring: false,
                     cancellationToken: cancellationToken);
-            }
-
-            if (transaction != null)
-            {
-                await transaction.CommitAsync(cancellationToken);
             }
         }
 
@@ -467,7 +487,7 @@ namespace GamMaSite.Controllers
         {
             if (subscription == null || string.IsNullOrWhiteSpace(subscription.Id))
             {
-                return;
+                throw new InvalidOperationException("Stripe-abonnementet kunne ikke læses.");
             }
 
             PaymentOffer paymentOffer = null;
@@ -517,7 +537,7 @@ namespace GamMaSite.Controllers
             if (record == null && string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("Stripe subscription {SubscriptionId} could not be mapped to a GamMa user.", subscription.Id);
-                return;
+                throw new InvalidOperationException($"Stripe-abonnementet {subscription.Id} kunne ikke knyttes til en bruger.");
             }
 
             var subscriptionItem = subscription.Items?.Data?.FirstOrDefault();
@@ -551,7 +571,9 @@ namespace GamMaSite.Controllers
             // Different provider events can share the same second. Only an
             // strictly older event is out of order; the row lock above makes
             // the check and state write atomic for concurrent deliveries.
-            if (record?.LastProcessedWebhookAt.HasValue == true &&
+            var isPaymentConfirmation = context?.LastPaidAt.HasValue == true;
+            if (!isPaymentConfirmation &&
+                record?.LastProcessedWebhookAt.HasValue == true &&
                 webhookAt.HasValue &&
                 webhookAt.Value < record.LastProcessedWebhookAt.Value)
             {
@@ -619,7 +641,8 @@ namespace GamMaSite.Controllers
                     return;
                 }
 
-                if (record.LastProcessedWebhookAt.HasValue &&
+                if (!isPaymentConfirmation &&
+                    record.LastProcessedWebhookAt.HasValue &&
                     webhookAt.HasValue &&
                     webhookAt.Value < record.LastProcessedWebhookAt.Value)
                 {
@@ -632,11 +655,6 @@ namespace GamMaSite.Controllers
                 await _db.SaveChangesAsync(cancellationToken);
             }
 
-            if (transaction != null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
-
             if (context?.MarkUserAsPaid == true && !string.IsNullOrWhiteSpace(record.UserId))
             {
                 await MarkMembershipAsPaidAsync(
@@ -644,15 +662,23 @@ namespace GamMaSite.Controllers
                     paymentDate,
                     cancellationToken);
 
-                if (shouldSendPaymentEmail)
-                {
-                    await SendPaymentEmailAsync(
-                        record.UserId,
-                        paymentOffer ?? membershipOffer,
-                        paymentDate,
-                        recurring: true,
-                        cancellationToken: cancellationToken);
-                }
+            }
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            if (context?.MarkUserAsPaid == true &&
+                !string.IsNullOrWhiteSpace(record.UserId) &&
+                shouldSendPaymentEmail)
+            {
+                await SendPaymentEmailAsync(
+                    record.UserId,
+                    paymentOffer ?? membershipOffer,
+                    paymentDate,
+                    recurring: true,
+                    cancellationToken: cancellationToken);
             }
 
             void ApplySubscriptionState(PaymentSubscription target)
@@ -670,12 +696,24 @@ namespace GamMaSite.Controllers
                 target.NextChargeAt = string.Equals(subscription.Status, "canceled", StringComparison.OrdinalIgnoreCase)
                     ? null
                     : subscriptionItem?.CurrentPeriodEnd;
-                target.LastPaidAt = context?.LastPaidAt ?? target.LastPaidAt;
+                if (context?.LastPaidAt.HasValue == true &&
+                    (!target.LastPaidAt.HasValue || context.LastPaidAt.Value > target.LastPaidAt.Value))
+                {
+                    target.LastPaidAt = context.LastPaidAt.Value;
+                }
                 target.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
                 if (!string.IsNullOrWhiteSpace(webhookId))
                 {
-                    target.LastProcessedWebhookId = webhookId;
-                    target.LastProcessedWebhookAt = webhookAt ?? DateTime.UtcNow;
+                    var processedAt = webhookAt ?? DateTime.UtcNow;
+                    if (!target.LastProcessedWebhookAt.HasValue || processedAt > target.LastProcessedWebhookAt.Value)
+                    {
+                        target.LastProcessedWebhookId = webhookId;
+                        target.LastProcessedWebhookAt = processedAt;
+                    }
+                    else if (processedAt == target.LastProcessedWebhookAt.Value)
+                    {
+                        target.LastProcessedWebhookId = webhookId;
+                    }
                 }
                 target.Updated = DateTime.UtcNow;
             }
@@ -695,22 +733,29 @@ namespace GamMaSite.Controllers
             string webhookId,
             DateTime webhookAt)
         {
+            if (invoice == null)
+            {
+                throw new InvalidOperationException("Stripe invoice.paid-webhooken kunne ikke læses.");
+            }
+
             var subscriptionId = invoice?.Parent?.SubscriptionDetails?.SubscriptionId;
             if (string.IsNullOrWhiteSpace(subscriptionId))
             {
-                return;
+                throw new InvalidOperationException("Stripe invoice.paid-webhooken mangler et subscription ID.");
             }
 
             var subscription = await _stripeService.GetSubscriptionAsync(subscriptionId);
-            if (subscription != null)
+            if (subscription == null)
             {
-                await HandleSubscriptionAsync(
-                    subscription,
-                    new SubscriptionContext(null, invoice.Created.ToUniversalTime(), true),
-                    cancellationToken,
-                    webhookId,
-                    webhookAt);
+                throw new InvalidOperationException($"Stripe-abonnementet {subscriptionId} fra invoice.paid kunne ikke indlæses.");
             }
+
+            await HandleSubscriptionAsync(
+                subscription,
+                new SubscriptionContext(null, invoice.Created.ToUniversalTime(), true),
+                cancellationToken,
+                webhookId,
+                webhookAt);
         }
 
         private async Task HandleInvoicePaymentFailedAsync(
@@ -719,10 +764,15 @@ namespace GamMaSite.Controllers
             string webhookId,
             DateTime webhookAt)
         {
+            if (invoice == null)
+            {
+                throw new InvalidOperationException("Stripe invoice payment-failed-webhooken kunne ikke læses.");
+            }
+
             var subscriptionId = invoice?.Parent?.SubscriptionDetails?.SubscriptionId;
             if (string.IsNullOrWhiteSpace(subscriptionId))
             {
-                return;
+                throw new InvalidOperationException("Stripe invoice payment-failed-webhooken mangler et subscription ID.");
             }
 
             var subscription = await _stripeService.GetSubscriptionAsync(subscriptionId);
@@ -736,7 +786,7 @@ namespace GamMaSite.Controllers
                 .SingleOrDefaultAsync(item => item.Provider == Provider && item.ProviderSubscriptionId == subscriptionId, cancellationToken);
             if (record == null)
             {
-                return;
+                throw new InvalidOperationException($"Stripe-abonnementet {subscriptionId} fra invoice payment-failed kunne ikke findes.");
             }
 
             await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
@@ -792,27 +842,37 @@ namespace GamMaSite.Controllers
                 return;
             }
 
-            var user = await _db.Users
-                .AsNoTracking()
-                .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-            if (user == null || string.IsNullOrWhiteSpace(user.Email))
+            try
             {
-                _logger.LogWarning("Stripe payment for user {UserId} could not be emailed because the user or email is missing.", userId);
-                return;
-            }
+                var user = await _db.Users
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+                if (user == null || string.IsNullOrWhiteSpace(user.Email))
+                {
+                    _logger.LogWarning("Stripe payment for user {UserId} could not be emailed because the user or email is missing.", userId);
+                    return;
+                }
 
-            await _systemEmailTemplateService.SendPaymentConfirmationAsync(
-                user.Email,
-                user.Navn,
-                offer.ProductName,
-                offer.AmountMinor.GetValueOrDefault(),
-                offer.Currency,
-                PaymentOfferProviders.Stripe,
-                paymentDate,
-                recurring,
-                offer.BillingInterval,
-                offer.BillingIntervalCount,
-                null);
+                await _systemEmailTemplateService.SendPaymentConfirmationAsync(
+                    user.Email,
+                    user.Navn,
+                    offer.ProductName,
+                    offer.AmountMinor.GetValueOrDefault(),
+                    offer.Currency,
+                    PaymentOfferProviders.Stripe,
+                    paymentDate,
+                    recurring,
+                    offer.BillingInterval,
+                    offer.BillingIntervalCount,
+                    null);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Stripe payment for user {UserId} was saved, but the confirmation email could not be sent.",
+                    userId);
+            }
         }
 
         private static string MetadataValue(System.Collections.Generic.IDictionary<string, string> metadata, string key)

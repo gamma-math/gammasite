@@ -259,8 +259,8 @@ app.MapStaticAssets();
 
 app.UseRouting();
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // Redirect legacy public URLs to their React equivalents.

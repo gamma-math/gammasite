@@ -25,18 +25,19 @@ public sealed class VippsWebhookControllerTests
     private const string WebhookSecret = "test-vipps-webhook-secret";
 
     [Fact]
-    public async Task ReceiveAcceptsValidSignature()
+    public async Task ReceiveReturnsRetryableStatusForUnknownPaymentReference()
     {
         const string payload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";
         var controller = CreateController(payload);
 
         var result = await controller.Receive(default);
 
-        Assert.IsType<OkResult>(result);
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(502, status.StatusCode);
     }
 
     [Fact]
-    public async Task ReceiveAcceptsCapturedPaymentPayload()
+    public async Task ReceiveReturnsRetryableStatusForUnknownCapturedPaymentReference()
     {
         const string payload = "{\"msn\":\"2070420\",\"reference\":\"gamma-test-12345678\",\"pspReference\":\"psp-123\",\"name\":\"CAPTURED\",\"amount\":{\"currency\":\"DKK\",\"value\":100},\"success\":true}";
         var controller = CreateController(payload);
@@ -44,7 +45,8 @@ public sealed class VippsWebhookControllerTests
 
         var result = await controller.Receive(default);
 
-        Assert.IsType<OkResult>(result);
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(502, status.StatusCode);
     }
 
     [Fact]

@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Controllers
 {
@@ -31,6 +32,7 @@ namespace GamMaSite.Controllers
         private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
         private readonly IAccessControlService _accessControl;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<ApiPaymentOffersController> _logger;
 
         public ApiPaymentOffersController(
             ApplicationDbContext db,
@@ -38,7 +40,8 @@ namespace GamMaSite.Controllers
             IAccessControlService accessControl,
             IMobilePayService mobilePayService = null,
             IMobilePayEventReferenceService mobilePayReferenceService = null,
-            IConfiguration configuration = null)
+            IConfiguration configuration = null,
+            ILogger<ApiPaymentOffersController> logger = null)
         {
             _db = db;
             _stripeService = stripeService;
@@ -46,6 +49,7 @@ namespace GamMaSite.Controllers
             _mobilePayReferenceService = mobilePayReferenceService;
             _accessControl = accessControl;
             _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpGet("event/{contentItemId:int}")]
@@ -487,6 +491,8 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("success-context")]
+        [Authorize]
+        [EnableRateLimiting("payment-checkout")]
         public async Task<IActionResult> GetSuccessContext(string session)
         {
             if (string.IsNullOrWhiteSpace(session))
@@ -1671,10 +1677,12 @@ namespace GamMaSite.Controllers
                             originalOffer.AmountMinor.Value,
                             cancellationToken);
                     }
-                    catch (InvalidOperationException)
+                    catch (InvalidOperationException exception)
                     {
-                        // Preserve the original failure; reconciliation can
-                        // repair a provider that is temporarily unavailable.
+                        _logger?.LogError(
+                            exception,
+                            "Could not restore MobilePay agreement {AgreementId} after payment-offer rollback.",
+                            subscription.ProviderSubscriptionId);
                     }
                 }
             }
@@ -1689,17 +1697,32 @@ namespace GamMaSite.Controllers
                 {
                     try
                     {
-                        await _stripeService.UpdateSubscriptionPriceAsync(
+                        var restored = await _stripeService.UpdateSubscriptionPriceAsync(
                             subscription.ProviderSubscriptionId,
                             originalOffer.ProviderPriceId);
+                        if (!restored)
+                        {
+                            _logger?.LogError(
+                                "Could not restore Stripe subscription {SubscriptionId} after payment-offer rollback.",
+                                subscription.ProviderSubscriptionId);
+                        }
                     }
-                    catch (InvalidOperationException)
+                    catch (InvalidOperationException exception)
                     {
-                        // Preserve the original failure.
+                        _logger?.LogError(
+                            exception,
+                            "Could not restore Stripe subscription {SubscriptionId} after payment-offer rollback.",
+                            subscription.ProviderSubscriptionId);
                     }
                 }
 
-                await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                var deactivated = await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                if (!deactivated)
+                {
+                    _logger?.LogError(
+                        "Could not deactivate Stripe price {PriceId} after payment-offer rollback.",
+                        offer.ProviderPriceId);
+                }
             }
         }
 
