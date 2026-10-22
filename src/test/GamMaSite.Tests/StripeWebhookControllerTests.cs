@@ -238,6 +238,48 @@ public sealed class StripeWebhookControllerTests
         Assert.Single(await db.PaymentSubscriptions.ToListAsync());
     }
 
+    [Fact]
+    public async Task Receive_IgnoresOlderSubscriptionWebhook()
+    {
+        await using var db = CreateDb();
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            ProviderProductId = MembershipProductId,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-order-test",
+            Provider = PaymentOfferProviders.Stripe,
+            ProviderSubscriptionId = "sub_order",
+            Status = "canceled",
+            NextChargeAt = null,
+            LastProcessedWebhookId = "newer-webhook",
+            LastProcessedWebhookAt = new DateTime(2026, 10, 22, 12, 0, 0, DateTimeKind.Utc),
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new Mock<IStripeService>().Object);
+        const string payload = "{\"id\":\"evt_older\",\"object\":\"event\",\"created\":1792668600,\"data\":{\"object\":{\"id\":\"sub_order\",\"object\":\"subscription\",\"status\":\"active\",\"metadata\":{\"Product\":\"prod_membership\"}}},\"livemode\":false,\"type\":\"customer.subscription.updated\"}";
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal("canceled", subscription.Status);
+        Assert.Null(subscription.NextChargeAt);
+        Assert.Equal("newer-webhook", subscription.LastProcessedWebhookId);
+    }
+
     private static StripeWebhookController CreateController(ApplicationDbContext db, IStripeService stripe)
     {
         var configuration = new ConfigurationBuilder()

@@ -171,8 +171,12 @@ export function EventPaymentPage({ offerId, user }) {
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
 
   useEffect(() => {
+    if (!user.isAuthenticated) {
+      return;
+    }
+
     paymentOffersApi.get(offerId).then(setOffer).catch(() => setError("Betalingstilbuddet kunne ikke hentes."));
-  }, [offerId]);
+  }, [offerId, user.isAuthenticated]);
 
   if (!user.isAuthenticated) {
     return (

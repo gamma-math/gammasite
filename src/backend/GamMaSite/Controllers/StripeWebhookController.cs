@@ -428,6 +428,17 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            if (record?.LastProcessedWebhookAt.HasValue == true &&
+                webhookAt.HasValue &&
+                webhookAt.Value <= record.LastProcessedWebhookAt.Value)
+            {
+                _logger.LogInformation(
+                    "Ignoring out-of-order Stripe webhook {WebhookId} for subscription {SubscriptionId}.",
+                    webhookId,
+                    subscription.Id);
+                return;
+            }
+
             var paymentDate = context?.LastPaidAt ?? DateTime.UtcNow;
             var shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
                 (!record?.LastPaidAt.HasValue ?? true || record.LastPaidAt.Value < paymentDate);

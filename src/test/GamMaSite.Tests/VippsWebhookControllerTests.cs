@@ -300,6 +300,42 @@ public sealed class VippsWebhookControllerTests
     }
 
     [Fact]
+    public async Task ReceiveIgnoresOlderRecurringWebhook()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-order-test",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr_order",
+            Status = PaymentSubscriptionStatuses.Active,
+            NextChargeAt = new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            LastProcessedWebhookId = "newer-webhook",
+            LastProcessedWebhookAt = new DateTime(2026, 10, 22, 12, 0, 0, DateTimeKind.Utc),
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            "{\"eventType\":\"recurring.agreement-stopped.v1\",\"agreementId\":\"agr_order\",\"occurred\":\"2026-10-22T11:30:00Z\"}",
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: new Mock<IMobilePayEventReferenceService>().Object,
+            webhookId: "older-webhook");
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        Assert.Equal("newer-webhook", subscription.LastProcessedWebhookId);
+    }
+
+    [Fact]
     public async Task ReceiveRejectsInvalidSignature()
     {
         const string payload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";

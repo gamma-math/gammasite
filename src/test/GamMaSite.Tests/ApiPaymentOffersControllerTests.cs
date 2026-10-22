@@ -19,6 +19,101 @@ namespace GamMaSite.Tests;
 
 public sealed class ApiPaymentOffersControllerTests
 {
+    [Theory]
+    [InlineData(RegistrationTypes.Interested)]
+    [InlineData(RegistrationTypes.Waitlisted)]
+    public async Task CheckoutRejectsEventPaymentForNonParticipants(string registrationType)
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedOfferAsync(db);
+        var eventItem = await db.ContentItems.SingleAsync(item => item.Id == offer.ContentItemId);
+        eventItem.EndDate = DateTime.UtcNow.AddDays(1);
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-event-payment",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = offer.ContentItemId!.Value,
+            UserId = "user-event-payment",
+            RegistrationType = registrationType,
+            Registered = false,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-event-payment")
+                }, "test"))
+            }
+        };
+
+        var result = await controller.Checkout(offer.Id, default);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Theory]
+    [InlineData(UserStatus.BETALT)]
+    [InlineData(UserStatus.STUDERENDE)]
+    public async Task CheckoutRejectsMembershipPaymentForPaidMember(UserStatus status)
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-paid-membership",
+            UserName = "member@example.com",
+            Status = status
+        });
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            new Mock<IMobilePayService>().Object,
+            new Mock<IMobilePayEventReferenceService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-paid-membership")
+                }, "test"))
+            }
+        };
+
+        var result = await controller.Checkout(offer.Id, default);
+
+        Assert.IsType<ConflictObjectResult>(result);
+    }
+
     [Fact]
     public async Task Delete_RejectsUserWithoutEventEditAccess()
     {

@@ -296,6 +296,16 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
+        if (subscription.LastProcessedWebhookAt.HasValue &&
+            occurred <= subscription.LastProcessedWebhookAt.Value)
+        {
+            _logger.LogInformation(
+                "Ignoring out-of-order Vipps webhook {WebhookId} for agreement {AgreementId}.",
+                webhookId,
+                agreementId);
+            return;
+        }
+
         if (eventType.Equals("recurring.agreement-activated.v1", StringComparison.OrdinalIgnoreCase))
         {
             // Our agreements always contain an initial DIRECT_CAPTURE charge.

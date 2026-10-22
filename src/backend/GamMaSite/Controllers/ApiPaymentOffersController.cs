@@ -310,17 +310,31 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("{id:int}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Get(int id)
+        [Authorize]
+        public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
             var offer = await _db.PaymentOffers
                 .Include(item => item.ContentItem)
                 .ThenInclude(item => item.Links)
-                .FirstOrDefaultAsync(item => item.Id == id && item.IsActive);
+                .FirstOrDefaultAsync(item => item.Id == id && item.IsActive, cancellationToken);
 
-            return offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem)
-                ? NotFound()
-                : Ok(offer.ToDto());
+            if (offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
+            {
+                return NotFound();
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var registration = await _db.EventRegistrations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
+            if (registration == null ||
+                registration.Registered ||
+                !IsEventParticipant(registration.RegistrationType))
+            {
+                return NotFound();
+            }
+
+            return Ok(offer.ToDto());
         }
 
         [HttpGet("success-context")]
@@ -501,6 +515,11 @@ namespace GamMaSite.Controllers
 
             if (IsMembershipOffer(offer))
             {
+                if (await HasPaidMembershipAsync(userId, cancellationToken))
+                {
+                    return Conflict("Du har allerede betalt medlemskab.");
+                }
+
                 if (string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
                 {
                     return await CheckoutStripeMembershipAsync(offer, userId, cancellationToken);
@@ -752,16 +771,13 @@ namespace GamMaSite.Controllers
                 return BadRequest("Dette medlemskabstilbud kan ikke gennemføre betaling endnu.");
             }
 
-            var member = await _db.Users.AsNoTracking()
-                .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-            var hasPaidMembership = member?.Status == UserStatus.BETALT || member?.Status == UserStatus.STUDERENDE;
             var hasActiveSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
                 subscription.UserId == userId &&
                 (subscription.Status == PaymentSubscriptionStatuses.Active ||
                  subscription.Status == PaymentSubscriptionStatuses.Trialing ||
                  subscription.Status == PaymentSubscriptionStatuses.PastDue ||
                  subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
-            if (hasPaidMembership || hasActiveSubscription)
+            if (hasActiveSubscription)
             {
                 return Conflict("Du har allerede betalt medlemskab.");
             }
@@ -889,7 +905,6 @@ namespace GamMaSite.Controllers
                 return BadRequest("Der mangler et gyldigt telefonnummer til MobilePay-abonnementet.");
             }
 
-            var hasPaidMembership = member?.Status == UserStatus.BETALT || member?.Status == UserStatus.STUDERENDE;
             var openSubscription = await _db.PaymentSubscriptions
                 .FirstOrDefaultAsync(subscription =>
                     subscription.UserId == userId &&
@@ -916,7 +931,7 @@ namespace GamMaSite.Controllers
             var canResumePendingMobilePayAgreement = openSubscription != null &&
                 IsPendingMobilePayAgreement(openSubscription) &&
                 openSubscription.PaymentOfferId == offer.Id;
-            if (hasPaidMembership || (hasOpenSubscription && !canResumePendingMobilePayAgreement))
+            if (hasOpenSubscription && !canResumePendingMobilePayAgreement)
             {
                 return Conflict("Du har allerede et aktivt eller afventende medlemskab.");
             }
@@ -1461,6 +1476,19 @@ namespace GamMaSite.Controllers
                 .Where(user => user.Id == userId)
                 .Select(user => user.PhoneNumber)
                 .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task<bool> HasPaidMembershipAsync(string userId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return false;
+            }
+
+            return await _db.Users
+                .AsNoTracking()
+                .AnyAsync(user => user.Id == userId &&
+                    (user.Status == UserStatus.BETALT || user.Status == UserStatus.STUDERENDE), cancellationToken);
         }
 
         private static bool IsPendingMobilePayAgreement(PaymentSubscription subscription)
