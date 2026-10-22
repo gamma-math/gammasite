@@ -46,7 +46,7 @@ export function navigate(href) {
 /**
  * Internal link component for React routes with normal anchor fallback behavior.
  */
-export function Link({ href, className, children, ...props }) {
+export function Link({ href, className, children, onClick, ...props }) {
   return (
     <a
       href={href}
@@ -56,6 +56,7 @@ export function Link({ href, className, children, ...props }) {
           event.preventDefault();
           navigate(href);
         }
+        onClick?.(event);
       }}
       {...props}
     >

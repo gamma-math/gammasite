@@ -103,6 +103,18 @@ export function ContentDetailPage({ slug, type, user }) {
     && Boolean(registration)
     && registration.registered === true
     && countsTowardsCapacity(registration);
+  const registrationType = registration?.registrationType ?? registration?.RegistrationType;
+  const eventRegistrationStatus = isEvent && registration
+    ? paymentCompleted
+      ? "Betalt"
+      : registrationType === "WAITLISTED"
+        ? "Venteliste"
+        : registrationType === "INTERESTED"
+          ? "Interesseret"
+          : countsTowardsCapacity(registration) && registration.registered === false
+            ? "Tilmeldt"
+            : ""
+    : "";
   const paymentOfferLinks = (item.paymentOffers ?? item.PaymentOffers ?? [])
     .filter((offer) => offer.isActive !== false && offer.paymentUrl)
     .map((offer) => ({
@@ -112,8 +124,8 @@ export function ContentDetailPage({ slug, type, user }) {
       type: "PAYMENT"
     }));
   const visibleLinks = [...(item.links ?? []), ...paymentOfferLinks].filter((link) => {
-    const isPaymentLink = String(link.type ?? "").toUpperCase() === "PAYMENT";
-    return !isPaymentLink || canPayForEvent || paymentCompleted;
+    const isManagedPaymentLink = isEventPaymentLink(link);
+    return !isManagedPaymentLink || canPayForEvent || paymentCompleted;
   });
 
   async function unregisterCurrentUser() {
@@ -187,52 +199,15 @@ export function ContentDetailPage({ slug, type, user }) {
                 {item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}
                 {item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}
                 {maxParticipants != null && <div><strong>Pladser:</strong> {confirmedParticipants}/{maxParticipants}</div>}
+                {eventRegistrationStatus && <div className="event-registration-status-line"><strong>Status:</strong> {eventRegistrationStatus}</div>}
                 {isCapacityReached && <div className="event-capacity-message">Der er ikke flere ledige pladser. Du kan skrive dig på venteliste.</div>}
-              </div>
-            )}
-            {isEvent && (
-              <div className="menu-detail-bottom-bar">
-                <div className="menu-attendee-preview" aria-hidden="true">
-                  {registrations.filter((eventRegistration) => !isWaitlisted(eventRegistration)).slice(0, 4).map((eventRegistration) => (
-                    <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
-                  ))}
-                </div>
-                <div className="menu-detail-footer-actions">
-                  {registrationOpen && user.isAuthenticated ? (
-                    <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
-                      {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
-                      {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
-                    </button>
-                  ) : registrationOpen ? (
-                    <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
-                      <LogIn size={16} />
-                      {isCapacityReached ? "Venteliste" : "Tilmeld"}
-                    </a>
-                  ) : null}
-                  {canViewRegistrations && (
-                    <Link className="menu-attend-button" href={registrationsPath}>
-                      <Users size={16} />
-                      Tilmeldte
-                    </Link>
-                  )}
-                  {canEditContent && (
-                    <Link className="menu-attend-button" href={editPath}>
-                      <Edit3 size={16} />
-                      Rediger
-                    </Link>
-                  )}
-                  <a className="menu-attend-button" href={calendarHref} download={calendarFileName}>
-                    <CalendarPlus size={16} />
-                    Kalender
-                  </a>
-                </div>
               </div>
             )}
           </div>
           {visibleLinks.length > 0 && (
             <aside className="menu-detail-side" aria-label="Event links">
             {visibleLinks.map((link) => (
-              String(link.type ?? "").toUpperCase() === "PAYMENT" && paymentCompleted ? (
+              isEventPaymentLink(link) && paymentCompleted ? (
                 <div className="menu-detail-side-link menu-detail-side-link-payment menu-detail-side-link-paid" aria-label="Betaling gennemført" key={link.id}>
                   <span>{shortLinkLabel(link.label)}</span>
                   <strong>Betalt</strong>
@@ -250,6 +225,44 @@ export function ContentDetailPage({ slug, type, user }) {
               )
             ))}
             </aside>
+          )}
+          {isEvent && (
+            <div className="menu-detail-bottom-bar">
+              <div className="menu-attendee-preview" aria-hidden="true">
+                {registrations.filter((eventRegistration) => !isWaitlisted(eventRegistration)).slice(0, 4).map((eventRegistration) => (
+                  <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
+                ))}
+              </div>
+              <div className="menu-detail-footer-actions">
+                {registrationOpen && user.isAuthenticated ? (
+                  <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
+                    {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
+                    {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
+                  </button>
+                ) : registrationOpen ? (
+                  <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
+                    <LogIn size={16} />
+                    {isCapacityReached ? "Venteliste" : "Tilmeld"}
+                  </a>
+                ) : null}
+                {canViewRegistrations && (
+                  <Link className="menu-attend-button" href={registrationsPath}>
+                    <Users size={16} />
+                    Tilmeldte
+                  </Link>
+                )}
+                {canEditContent && (
+                  <Link className="menu-attend-button" href={editPath}>
+                    <Edit3 size={16} />
+                    Rediger
+                  </Link>
+                )}
+                <a className="menu-attend-button" href={calendarHref} download={calendarFileName}>
+                  <CalendarPlus size={16} />
+                  Kalender
+                </a>
+              </div>
+            </div>
           )}
         </div>
       </article>
@@ -277,6 +290,11 @@ function shortLinkLabel(label) {
     .replace("-gruppen", "")
     .replace("Linked In", "LinkedIn")
     .trim();
+}
+
+function isEventPaymentLink(link) {
+  return String(link.type ?? "").toUpperCase() === "PAYMENT"
+    && /\/react\/events\/[^/]+\/pay\/\d+$/i.test(link.url ?? "");
 }
 
 function createCalendarContent(item) {

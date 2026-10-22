@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -21,7 +22,8 @@ public interface IMobilePayService
         string currency,
         string description,
         string returnUrl,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string phoneNumber = null);
 
     Task<MobilePayPayment> GetPaymentAsync(string reference, CancellationToken cancellationToken = default);
 
@@ -95,20 +97,28 @@ public sealed class MobilePayService : IMobilePayService
         string currency,
         string description,
         string returnUrl,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string phoneNumber = null)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
         using var request = CreateRequest(HttpMethod.Post, "/epayment/v1/payments", token);
         request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(reference));
-        request.Content = JsonContent.Create(new
+        var payload = new Dictionary<string, object>
         {
-            amount = new { currency = currency.ToUpperInvariant(), value = amountMinor },
-            paymentMethod = new { type = "WALLET" },
-            reference,
-            userFlow = "WEB_REDIRECT",
-            returnUrl,
-            paymentDescription = description
-        });
+            ["amount"] = new { currency = currency.ToUpperInvariant(), value = amountMinor },
+            ["paymentMethod"] = new { type = "WALLET" },
+            ["reference"] = reference,
+            ["userFlow"] = "WEB_REDIRECT",
+            ["returnUrl"] = returnUrl,
+            ["paymentDescription"] = description
+        };
+
+        if (!string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            payload["customer"] = new { phoneNumber };
+        }
+
+        request.Content = JsonContent.Create(payload);
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, "oprette MobilePay-betaling");
@@ -225,7 +235,9 @@ public sealed class MobilePayService : IMobilePayService
             ReadString(root, "agreementId") ?? ReadString(root, "id") ?? agreementId,
             ReadString(root, "vippsConfirmationUrl"),
             ReadString(root, "status"),
-            ReadString(root, "chargeId"));
+            ReadString(root, "chargeId"),
+            ReadDateTime(root, "created"),
+            ReadDateTime(root, "start"));
     }
 
     public async Task UpdateAgreementAmountAsync(

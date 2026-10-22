@@ -802,6 +802,82 @@ public sealed class ApiPaymentOffersControllerTests
         Assert.Equal(UserStatus.BETALT, user.Status);
     }
 
+    [Fact]
+    public async Task MobilePayRecurringContextMarksActiveMembershipAsPaid()
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agreement-1",
+            ProviderProductId = offer.Id.ToString(),
+            ProductName = offer.ProductName,
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agreement-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agreement-1", null, "ACTIVE", "charge-1"));
+        var reference = new Mock<IMobilePayEventReferenceService>();
+        var membershipUserId = "user-1";
+        var membershipOfferId = offer.Id;
+        reference.Setup(value => value.TryParseMembership(
+                "membership-reference",
+                out membershipUserId,
+                out membershipOfferId))
+            .Returns(true);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object,
+            reference.Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-1")
+                }, "test"))
+            }
+        };
+
+        var result = await controller.GetMobilePayContext("membership-reference", default);
+
+        Assert.Contains("SUCCESS", Assert.IsType<OkObjectResult>(result).Value?.ToString());
+        Assert.Equal(UserStatus.BETALT, (await db.Users.SingleAsync()).Status);
+        Assert.Equal(PaymentSubscriptionStatuses.Active, (await db.PaymentSubscriptions.SingleAsync()).Status);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         return new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()

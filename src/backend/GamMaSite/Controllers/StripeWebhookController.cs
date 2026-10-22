@@ -517,7 +517,9 @@ namespace GamMaSite.Controllers
                 target.Status = subscription.Status;
                 target.CurrentPeriodStart = subscriptionItem?.CurrentPeriodStart;
                 target.CurrentPeriodEnd = subscriptionItem?.CurrentPeriodEnd;
-                target.NextChargeAt = subscriptionItem?.CurrentPeriodEnd;
+                target.NextChargeAt = string.Equals(subscription.Status, "canceled", StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : subscriptionItem?.CurrentPeriodEnd;
                 target.LastPaidAt = context?.LastPaidAt ?? target.LastPaidAt;
                 target.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
                 if (!string.IsNullOrWhiteSpace(webhookId))

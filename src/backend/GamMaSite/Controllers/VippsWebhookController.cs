@@ -340,6 +340,7 @@ public sealed class VippsWebhookController : ControllerBase
         if (eventType.Equals("recurring.agreement-stopped.v1", StringComparison.OrdinalIgnoreCase))
         {
             subscription.Status = PaymentSubscriptionStatuses.Canceled;
+            subscription.NextChargeAt = null;
             subscription.Updated = DateTime.UtcNow;
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
@@ -350,6 +351,7 @@ public sealed class VippsWebhookController : ControllerBase
             eventType.Equals("recurring.agreement-rejected.v1", StringComparison.OrdinalIgnoreCase))
         {
             subscription.Status = PaymentSubscriptionStatuses.Expired;
+            subscription.NextChargeAt = null;
             subscription.Updated = DateTime.UtcNow;
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);

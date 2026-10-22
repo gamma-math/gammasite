@@ -55,6 +55,8 @@ namespace GamMaSite.Controllers
                     provider = subscription.Provider,
                     providerSubscriptionId = subscription.ProviderSubscriptionId,
                     paymentOfferId = subscription.PaymentOfferId,
+                    providerProductId = subscription.ProviderProductId,
+                    providerPriceId = subscription.ProviderPriceId,
                     productName = subscription.ProductName ?? offer?.ProductName,
                     amountMinor = offer?.AmountMinor,
                     currency = offer?.Currency,
@@ -64,12 +66,20 @@ namespace GamMaSite.Controllers
                     currentPeriodStart = subscription.CurrentPeriodStart,
                     currentPeriodEnd = subscription.CurrentPeriodEnd,
                     lastPaidAt = subscription.LastPaidAt,
-                    nextChargeAt = subscription.NextChargeAt,
+                    nextChargeAt = IsTerminalStatus(subscription.Status) ? null : subscription.NextChargeAt,
                     cancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
                     created = subscription.Created,
-                    updated = subscription.Updated
+                    updated = subscription.Updated,
+                    lastProcessedWebhookId = subscription.LastProcessedWebhookId,
+                    lastProcessedWebhookAt = subscription.LastProcessedWebhookAt
                 };
             }));
+        }
+
+        private static bool IsTerminalStatus(string status)
+        {
+            return string.Equals(status, PaymentSubscriptionStatuses.Canceled, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(status, PaymentSubscriptionStatuses.Expired, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

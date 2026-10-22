@@ -464,6 +464,9 @@ function SubscriptionCancelButton({ subscription, deletingId, onRequestCancel })
 }
 
 function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
+  const isPaid = profile.status === "BETALT";
+  const isStudentStatusLocked = profile.status === "STUDERENDE" || isPaid;
+
   return (
     <form className="account-form account-manage-form" onSubmit={onSubmit}>
       <Field label="Brugernavn" value={profile.username ?? ""} disabled />
@@ -474,8 +477,11 @@ function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
       <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} />
       <Field label="Brugerstatus" value={profile.status ?? ""} disabled />
       <label className="account-checkbox">
-        <input type="checkbox" checked={Boolean(form.isStudent)} disabled={profile.status === "STUDERENDE"} onChange={(event) => setForm({ ...form, isStudent: event.target.checked })} />
-        <span>Jeg er stadig studerende</span>
+        <input type="checkbox" checked={Boolean(form.isStudent)} disabled={isStudentStatusLocked} onChange={(event) => setForm({ ...form, isStudent: event.target.checked })} />
+        <span>
+          Jeg er stadig studerende
+          {isPaid && <small className="account-checkbox-help">Studerende-status kan ikke ændres, når medlemskabet er betalt.</small>}
+        </span>
       </label>
       <label className="account-checkbox">
         <input type="checkbox" checked={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.checked })} />

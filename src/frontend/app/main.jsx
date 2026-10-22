@@ -51,6 +51,7 @@ import {
 } from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
+import { setMobileMenuCollapsed } from "../utils/mobileMenu.js";
 import { meApi } from "../services/api.js";
 import { AccessContext, adminPermissionForPath, canAccessAdmin, firstAdminPath, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
@@ -161,6 +162,7 @@ function Header({ user, isReadAdmin, adminPath }) {
               <Link
                 className="frontpage-button frontpage-button-secondary"
                 href="/react/events"
+                onClick={() => setMobileMenuCollapsed(false)}
               >
                 <Menu size={16} />
                 Menu
@@ -169,6 +171,7 @@ function Header({ user, isReadAdmin, adminPath }) {
                 <Link
                   className="frontpage-button frontpage-button-secondary"
                   href={adminPath}
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   Admin
                 </Link>
@@ -185,6 +188,7 @@ function Header({ user, isReadAdmin, adminPath }) {
                   className="frontpage-profile-link frontpage-profile-link-default"
                   href="/react/account/manage"
                   aria-label="Profil"
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   <UserCircle size={23} />
                 </Link>

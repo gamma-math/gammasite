@@ -258,6 +258,48 @@ public sealed class VippsWebhookControllerTests
     }
 
     [Fact]
+    public async Task ReceiveClearsNextChargeWhenRecurringAgreementIsStopped()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-stopped-test",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr_stopped",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Active,
+            NextChargeAt = new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MobilePay:WebhookSecret"] = WebhookSecret,
+                ["MobilePay:ReferenceSecret"] = WebhookSecret
+            })
+            .Build();
+        var referenceService = new MobilePayEventReferenceService(configuration);
+        var controller = CreateController(
+            "{\"eventType\":\"recurring.agreement-stopped.v1\",\"agreementId\":\"agr_stopped\",\"occurred\":\"2026-10-22T11:30:00Z\"}",
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: referenceService,
+            webhookId: "stopped-webhook");
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
+        Assert.Null(subscription.NextChargeAt);
+    }
+
+    [Fact]
     public async Task ReceiveRejectsInvalidSignature()
     {
         const string payload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";

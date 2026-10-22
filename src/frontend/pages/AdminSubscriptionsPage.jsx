@@ -168,12 +168,25 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                           <td></td>
                           <td colSpan="7">
                             <dl className="admin-subscription-details">
+                              <div><dt>Internt abonnement-id</dt><dd>{subscription.id}</dd></div>
+                              <div><dt>Bruger-id</dt><dd>{subscription.userId}</dd></div>
+                              <div><dt>Internt tilbuds-id</dt><dd>{subscription.paymentOfferId}</dd></div>
+                              <div><dt>Udbyderens abonnements-id</dt><dd>{subscription.providerSubscriptionId}</dd></div>
+                              <div><dt>Udbyderens produkt-id</dt><dd>{subscription.providerProductId}</dd></div>
+                              <div><dt>Udbyderens pris-id</dt><dd>{subscription.providerPriceId}</dd></div>
                               <div><dt>Produkt</dt><dd>{subscription.productName || "—"}</dd></div>
                               <div><dt>Pris</dt><dd>{formatAmount(subscription.amountMinor, subscription.currency)}</dd></div>
                               <div><dt>Status</dt><dd>{subscription.status || "—"}</dd></div>
                               <div><dt>Senest betalt</dt><dd>{formatDate(subscription.lastPaidAt)}</dd></div>
                               <div><dt>Næste opkrævning</dt><dd>{formatDate(subscription.nextChargeAt)}</dd></div>
+                              <div><dt>Nuværende periode fra</dt><dd>{formatDate(subscription.currentPeriodStart)}</dd></div>
+                              <div><dt>Nuværende periode til</dt><dd>{formatDate(subscription.currentPeriodEnd)}</dd></div>
                               <div><dt>Scope</dt><dd>{scopeLabel(subscription.scope)}</dd></div>
+                              <div><dt>Annulleres ved periodens udløb</dt><dd>{subscription.cancelAtPeriodEnd ? "Ja" : "Nej"}</dd></div>
+                              <div><dt>Oprettet</dt><dd>{formatDate(subscription.created)}</dd></div>
+                              <div><dt>Opdateret</dt><dd>{formatDate(subscription.updated)}</dd></div>
+                              <div><dt>Seneste webhook-id</dt><dd>{subscription.lastProcessedWebhookId}</dd></div>
+                              <div><dt>Seneste webhook-tidspunkt</dt><dd>{formatDate(subscription.lastProcessedWebhookAt)}</dd></div>
                             </dl>
                           </td>
                         </tr>

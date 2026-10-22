@@ -64,6 +64,7 @@ public sealed class ApiPaymentSubscriptionsControllerTests
             ProviderSubscriptionId = "agr-pending",
             ProductName = "Kontingent",
             Status = PaymentSubscriptionStatuses.Pending,
+            NextChargeAt = DateTime.UtcNow.AddMonths(3),
             Created = DateTime.UtcNow,
             Updated = DateTime.UtcNow
         });
@@ -82,7 +83,9 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
         Assert.Equal("canceled", json.RootElement[0].GetProperty("status").GetString());
-        Assert.Equal(PaymentSubscriptionStatuses.Canceled, (await db.PaymentSubscriptions.SingleAsync()).Status);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
+        Assert.Null(subscription.NextChargeAt);
     }
 
     [Fact]
@@ -136,11 +139,64 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
         Assert.Equal(start, subscription.LastPaidAt);
         Assert.Equal(start, subscription.CurrentPeriodStart);
-        Assert.Equal(start.AddYears(1), subscription.NextChargeAt);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
 
         using var responseJson = JsonDocument.Parse(JsonSerializer.Serialize(response.Value));
         Assert.Equal(12500, responseJson.RootElement[0].GetProperty("amountMinor").GetInt64());
         Assert.Equal("DKK", responseJson.RootElement[0].GetProperty("currency").GetString());
+    }
+
+    [Fact]
+    public async Task Get_CorrectsExistingMobilePayAnnualNextChargeDate()
+    {
+        await using var db = CreateDb();
+        var paidAt = new DateTime(2026, 10, 22, 11, 14, 0, DateTimeKind.Utc);
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = paidAt,
+            Updated = paidAt
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-active",
+            ProviderProductId = offer.Id.ToString(),
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Active,
+            CurrentPeriodStart = paidAt,
+            LastPaidAt = paidAt,
+            NextChargeAt = paidAt.AddYears(1),
+            Created = paidAt,
+            Updated = paidAt
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agr-active", It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agr-active", null, "ACTIVE", "charge-1"));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
+
+        await controller.Get(default);
+
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
     }
 
     [Fact]
@@ -149,6 +205,7 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         await using var db = CreateDb();
         var paymentSubscription = Subscription("user-1", "sub-1", "Kontingent");
         paymentSubscription.Provider = "Stripe";
+        paymentSubscription.NextChargeAt = DateTime.UtcNow.AddMonths(3);
         db.PaymentSubscriptions.Add(paymentSubscription);
         await db.SaveChangesAsync();
 
@@ -164,7 +221,9 @@ public sealed class ApiPaymentSubscriptionsControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal("canceled", ok.Value?.GetType().GetProperty("status")?.GetValue(ok.Value));
-        Assert.Equal("canceled", (await db.PaymentSubscriptions.SingleAsync()).Status);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal("canceled", subscription.Status);
+        Assert.Null(subscription.NextChargeAt);
         stripe.Verify(value => value.CancelSubscriptionAsync("sub-1"), Times.Once);
     }
 

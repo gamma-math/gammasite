@@ -12,7 +12,7 @@ import { LoginRequired } from "./MembersPage.jsx";
 export function PaymentPage({ user }) {
   const [membershipOffers, setMembershipOffers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
-  const [paymentType, setPaymentType] = useState("one-time");
+  const [paymentType, setPaymentType] = useState("recurring");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [startingPaymentMethod, setStartingPaymentMethod] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
@@ -107,18 +107,18 @@ export function PaymentPage({ user }) {
           <>
             <p id="payment-type-heading" className="menu-payment-kicker payment-method-kicker">Vælg betalingstype</p>
             <fieldset className="payment-type-options" aria-labelledby="payment-type-heading">
-              <label className={`payment-type-option${paymentType === "one-time" ? " is-selected" : ""}`}>
-                <input type="radio" name="paymentType" value="one-time" checked={paymentType === "one-time"} onChange={() => setPaymentType("one-time")} />
-                <span>
-                  <strong>Betal én gang</strong>
-                  <small>Betal medlemskabet manuelt for den aktuelle periode.</small>
-                </span>
-              </label>
               <label className={`payment-type-option${paymentType === "recurring" ? " is-selected" : ""}`}>
                 <input type="radio" name="paymentType" value="recurring" checked={paymentType === "recurring"} onChange={() => setPaymentType("recurring")} />
                 <span>
                   <strong>Automatisk fornyelse</strong>
                   <small>Medlemskabet fornyes automatisk hvert år.</small>
+                </span>
+              </label>
+              <label className={`payment-type-option${paymentType === "one-time" ? " is-selected" : ""}`}>
+                <input type="radio" name="paymentType" value="one-time" checked={paymentType === "one-time"} onChange={() => setPaymentType("one-time")} />
+                <span>
+                  <strong>Betal én gang</strong>
+                  <small>Betal medlemskabet manuelt for den aktuelle periode.</small>
                 </span>
               </label>
             </fieldset>
