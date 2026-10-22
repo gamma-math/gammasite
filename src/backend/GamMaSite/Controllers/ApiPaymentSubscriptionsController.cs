@@ -9,6 +9,7 @@ using GamMaSite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Controllers
 {
@@ -21,15 +22,18 @@ namespace GamMaSite.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;
         private readonly IMobilePayService _mobilePayService;
+        private readonly ILogger<ApiPaymentSubscriptionsController> _logger;
 
         public ApiPaymentSubscriptionsController(
             ApplicationDbContext db,
             IStripeService stripeService = null,
-            IMobilePayService mobilePayService = null)
+            IMobilePayService mobilePayService = null,
+            ILogger<ApiPaymentSubscriptionsController> logger = null)
         {
             _db = db;
             _stripeService = stripeService;
             _mobilePayService = mobilePayService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -147,7 +151,19 @@ namespace GamMaSite.Controllers
             }
 
             subscription.Updated = System.DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger?.LogError(
+                    exception,
+                    "Provider subscription {ProviderSubscriptionId} was canceled, but the local cancellation state could not be saved for user {UserId}.",
+                    providerSubscriptionId,
+                    userId);
+                return StatusCode(502, "Aftalen blev annulleret hos betalingsudbyderen, men den lokale status kunne ikke gemmes.");
+            }
 
             return Ok(new
             {
@@ -219,6 +235,22 @@ namespace GamMaSite.Controllers
                     {
                         subscription.LastPaidAt = periodStart;
                         changed = true;
+                    }
+
+                    var user = await _db.Users
+                        .SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
+                    if (user != null)
+                    {
+                        var previousStatus = user.Status;
+                        var previousMembershipDate = user.KontingentDato;
+                        user.MarkAsPayed();
+                        if (user.KontingentDato == default || user.KontingentDato < periodStart.Value)
+                        {
+                            user.KontingentDato = periodStart.Value;
+                        }
+
+                        changed |= !string.Equals(previousStatus, user.Status, StringComparison.Ordinal) ||
+                            previousMembershipDate != user.KontingentDato;
                     }
 
                     PaymentOffer offer = null;

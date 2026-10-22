@@ -92,6 +92,12 @@ public sealed class ApiPaymentSubscriptionsControllerTests
     public async Task Get_PopulatesMobilePayPaymentDatesFromActiveAgreement()
     {
         await using var db = CreateDb();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
         var offer = new PaymentOffer
         {
             Scope = PaymentOfferScopes.Membership,
@@ -140,6 +146,9 @@ public sealed class ApiPaymentSubscriptionsControllerTests
         Assert.Equal(start, subscription.LastPaidAt);
         Assert.Equal(start, subscription.CurrentPeriodStart);
         Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), subscription.NextChargeAt);
+        var member = await db.Users.SingleAsync(item => item.Id == "user-1");
+        Assert.Equal(UserStatus.BETALT, member.Status);
+        Assert.Equal(start, member.KontingentDato);
 
         using var responseJson = JsonDocument.Parse(JsonSerializer.Serialize(response.Value));
         Assert.Equal(12500, responseJson.RootElement[0].GetProperty("amountMinor").GetInt64());
