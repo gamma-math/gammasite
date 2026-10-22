@@ -1,3 +1,5 @@
+import { authHref } from "../utils/authNavigation.js";
+
 export const adminSections = [
   {
     items: [
@@ -47,14 +49,16 @@ export function navigate(href) {
  * Internal link component for React routes with normal anchor fallback behavior.
  */
 export function Link({ href, className, children, onClick, ...props }) {
+  const targetHref = withAuthReturnUrl(href);
+
   return (
     <a
-      href={href}
+      href={targetHref}
       className={className}
       onClick={(event) => {
-        if (href.startsWith("/react")) {
+        if (targetHref.startsWith("/react")) {
           event.preventDefault();
-          navigate(href);
+          navigate(targetHref);
         }
         onClick?.(event);
       }}
@@ -63,4 +67,16 @@ export function Link({ href, className, children, onClick, ...props }) {
       {children}
     </a>
   );
+}
+
+function withAuthReturnUrl(href) {
+  if (href !== "/react/account/login" && href !== "/react/account/register") {
+    return href;
+  }
+
+  const location = window.location;
+  const currentParams = new URLSearchParams(location.search);
+  const existingReturnUrl = currentParams.get("returnUrl") ?? currentParams.get("ReturnUrl");
+  const isAuthPage = location.pathname === "/react/account/login" || location.pathname === "/react/account/register";
+  return authHref(href, isAuthPage && existingReturnUrl ? existingReturnUrl : undefined, location);
 }

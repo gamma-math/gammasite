@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CreditCard, Smartphone } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
+import { loginHref } from "../utils/authNavigation.js";
 import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
 import { LoginRequired } from "./MembersPage.jsx";
@@ -174,13 +175,12 @@ export function EventPaymentPage({ offerId, user }) {
   }, [offerId]);
 
   if (!user.isAuthenticated) {
-    const returnUrl = window.location.pathname + window.location.search;
     return (
       <MenuLayout active="/react/events" isAuthenticated={false}>
         <section className="frontpage-section">
           <h1>Betaling</h1>
           <p className="muted">Du skal være logget ind for at betale.</p>
-          <a className="frontpage-button frontpage-button-primary" href={"/react/account/login?ReturnUrl=" + encodeURIComponent(returnUrl)}>Log ind</a>
+          <Link className="frontpage-button frontpage-button-primary" href={loginHref()}>Log ind</Link>
         </section>
       </MenuLayout>
     );

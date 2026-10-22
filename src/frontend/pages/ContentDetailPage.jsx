@@ -10,6 +10,7 @@ import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
 import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
+import { loginHref } from "../utils/authNavigation.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -240,10 +241,10 @@ export function ContentDetailPage({ slug, type, user }) {
                     {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
                   </button>
                 ) : registrationOpen ? (
-                  <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
+                  <Link className="menu-attend-button menu-attend-button-primary" href={loginHref()}>
                     <LogIn size={16} />
                     {isCapacityReached ? "Venteliste" : "Tilmeld"}
-                  </a>
+                  </Link>
                 ) : null}
                 {canViewRegistrations && (
                   <Link className="menu-attend-button" href={registrationsPath}>

@@ -9,6 +9,7 @@ import { formatDate } from "../utils/format.js";
 import { hasAnyPermission, permissions } from "../utils/access.js";
 import { sortRegistrations } from "../utils/registrationSort.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
+import { loginHref } from "../utils/authNavigation.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
@@ -180,10 +181,10 @@ export function EventRegistrationsPage({ slug, user }) {
             <h1>{item.title}</h1>
             <p className="menu-panel-lead">Log ind for at se tilmeldte.</p>
           </div>
-          <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
+          <Link className="menu-attend-button menu-attend-button-primary" href={loginHref()}>
             <LogIn size={16} />
             Login
-          </a>
+          </Link>
         </div>
       </MenuLayout>
     );
