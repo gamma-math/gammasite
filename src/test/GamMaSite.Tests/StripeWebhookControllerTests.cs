@@ -157,6 +157,45 @@ public sealed class StripeWebhookControllerTests
     }
 
     [Fact]
+    public async Task Receive_MarksEventRegistrationAsPaidWhenOfferWasDeletedAfterCheckout()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-deleted-offer", UserName = "member@example.com", Status = UserStatus.OPRETTET });
+        var eventItem = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Deleted offer event",
+            Slug = "deleted-offer-event",
+            StartDate = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.ContentItems.Add(eventItem);
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItem = eventItem,
+            UserId = "user-deleted-offer",
+            RegistrationType = RegistrationTypes.Organizer,
+            Registered = false,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new Mock<IStripeService>().Object);
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = $"{{\"id\":\"evt_deleted_offer\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"cs_deleted_offer\",\"object\":\"checkout.session\",\"mode\":\"payment\",\"payment_status\":\"paid\",\"client_reference_id\":\"user-deleted-offer\",\"created\":{created},\"metadata\":{{\"PaymentOfferId\":\"987654\",\"ContentItemId\":\"{eventItem.Id}\"}}}}}},\"livemode\":false,\"type\":\"checkout.session.completed\"}}}}";
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        Assert.True((await db.EventRegistrations.SingleAsync()).Registered);
+    }
+
+    [Fact]
     public async Task Receive_UpsertsRecurringMembershipSubscription()
     {
         await using var db = CreateDb();

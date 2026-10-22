@@ -11,7 +11,9 @@ using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Controllers
@@ -151,8 +153,20 @@ namespace GamMaSite.Controllers
                 return BadRequest(new { error = "Produktet mangler." });
             }
 
+            var originalOffer = PaymentOfferSnapshot.Capture(offer);
+            var originalSubscriptions = await _db.PaymentSubscriptions
+                .Where(item => item.PaymentOfferId == offer.Id)
+                .ToListAsync(cancellationToken);
+            var originalSubscriptionState = originalSubscriptions
+                .Select(PaymentSubscriptionSnapshot.Capture)
+                .ToList();
+            var previousProviderPriceId = offer.ProviderPriceId;
+            IDbContextTransaction transaction = null;
+            var providerChangesApplied = false;
+
             try
             {
+                transaction = await BeginOfferTransactionAsync(cancellationToken);
                 var previousAmountMinor = offer.AmountMinor;
                 var previousBillingInterval = offer.BillingInterval;
                 var previousBillingIntervalCount = offer.BillingIntervalCount;
@@ -192,11 +206,20 @@ namespace GamMaSite.Controllers
                     offer.IsActive = request.IsActive.Value;
                 }
 
+                // Persist the new local definition before touching a provider.
+                // The transaction keeps it invisible to other requests until
+                // all provider work has completed successfully.
+                await _db.SaveChangesAsync(cancellationToken);
+
                 if (amountChanged &&
                     string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
                 {
-                    await UpdateMobilePayAgreementAmountsAsync(offer, offer.AmountMinor.Value, cancellationToken);
+                    await UpdateMobilePayAgreementAmountsAsync(
+                        offer,
+                        previousAmountMinor.GetValueOrDefault(),
+                        offer.AmountMinor.Value,
+                        cancellationToken);
                 }
 
                 if (stripeDefinitionChanged &&
@@ -208,28 +231,101 @@ namespace GamMaSite.Controllers
                     }
                     else
                     {
-                        var previousPriceId = offer.ProviderPriceId;
                         await EnsureStripeOfferReferencesAsync(offer);
-                        await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
                     }
                 }
 
+                providerChangesApplied = true;
+
                 offer.Updated = DateTime.UtcNow;
                 await _db.SaveChangesAsync(cancellationToken);
+
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                if (string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+                {
+                    await TryArchiveReplacedStripePriceAsync(offer, previousProviderPriceId, cancellationToken);
+                }
+
                 return Ok(offer.ToDto());
             }
             catch (ArgumentException ex)
             {
+                await RollbackOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalSubscriptionState,
+                    cancellationToken);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException)
             {
+                if (providerChangesApplied)
+                {
+                    await CompensateProviderChangesAsync(
+                        offer,
+                        originalOffer,
+                        originalSubscriptionState,
+                        cancellationToken);
+                }
+
+                if (!providerChangesApplied &&
+                    !string.Equals(offer.ProviderPriceId, originalOffer.ProviderPriceId, StringComparison.Ordinal) &&
+                    string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                await RollbackOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalSubscriptionState,
+                    cancellationToken);
                 return StatusCode(502, new { error = "Betalingstilbuddet kunne ikke opdateres hos betalingsudbyderen." });
+            }
+            catch (DbUpdateException)
+            {
+                if (providerChangesApplied)
+                {
+                    await CompensateProviderChangesAsync(
+                        offer,
+                        originalOffer,
+                        originalSubscriptionState,
+                        cancellationToken);
+                }
+
+                if (!providerChangesApplied &&
+                    !string.Equals(offer.ProviderPriceId, originalOffer.ProviderPriceId, StringComparison.Ordinal) &&
+                    string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                await RollbackOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalSubscriptionState,
+                    cancellationToken);
+                return StatusCode(409, new { error = "Betalingstilbuddet kunne ikke gemmes." });
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
             }
         }
 
         private async Task UpdateMobilePayAgreementAmountsAsync(
             PaymentOffer offer,
+            long previousAmountMinor,
             long amountMinor,
             CancellationToken cancellationToken)
         {
@@ -254,12 +350,37 @@ namespace GamMaSite.Controllers
                 throw new InvalidOperationException("MobilePay-tjenesten er ikke konfigureret.");
             }
 
-            foreach (var subscription in subscriptions)
+            var updatedSubscriptions = new System.Collections.Generic.List<PaymentSubscription>();
+            try
             {
-                await _mobilePayService.UpdateAgreementAmountAsync(
-                    subscription.ProviderSubscriptionId,
-                    amountMinor,
-                    cancellationToken);
+                foreach (var subscription in subscriptions)
+                {
+                    await _mobilePayService.UpdateAgreementAmountAsync(
+                        subscription.ProviderSubscriptionId,
+                        amountMinor,
+                        cancellationToken);
+                    updatedSubscriptions.Add(subscription);
+                }
+            }
+            catch
+            {
+                foreach (var subscription in updatedSubscriptions)
+                {
+                    try
+                    {
+                        await _mobilePayService.UpdateAgreementAmountAsync(
+                            subscription.ProviderSubscriptionId,
+                            previousAmountMinor,
+                            cancellationToken);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // The original failure is the actionable response. A
+                        // later reconciliation can repair an unavailable provider.
+                    }
+                }
+
+                throw;
             }
         }
 
@@ -286,27 +407,55 @@ namespace GamMaSite.Controllers
                      subscription.Status == PaymentSubscriptionStatuses.Incomplete))
                 .ToListAsync(cancellationToken);
 
-            foreach (var subscription in subscriptions)
+            var updatedSubscriptions = new System.Collections.Generic.List<PaymentSubscription>();
+            try
             {
-                if (string.Equals(subscription.ProviderPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
+                foreach (var subscription in subscriptions)
                 {
-                    continue;
-                }
+                    if (string.Equals(subscription.ProviderPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
 
-                if (!await _stripeService.UpdateSubscriptionPriceAsync(
-                        subscription.ProviderSubscriptionId,
-                        offer.ProviderPriceId))
-                {
-                    throw new InvalidOperationException(
-                        $"Stripe-abonnementet {subscription.ProviderSubscriptionId} kunne ikke opdateres.");
-                }
+                    if (!await _stripeService.UpdateSubscriptionPriceAsync(
+                            subscription.ProviderSubscriptionId,
+                            offer.ProviderPriceId))
+                    {
+                        throw new InvalidOperationException(
+                            $"Stripe-abonnementet {subscription.ProviderSubscriptionId} kunne ikke opdateres.");
+                    }
 
-                subscription.ProviderPriceId = offer.ProviderPriceId;
-                subscription.ProviderProductId = offer.ProviderProductId;
-                subscription.Updated = DateTime.UtcNow;
+                    subscription.ProviderPriceId = offer.ProviderPriceId;
+                    subscription.ProviderProductId = offer.ProviderProductId;
+                    subscription.Updated = DateTime.UtcNow;
+                    updatedSubscriptions.Add(subscription);
+                }
             }
+            catch
+            {
+                foreach (var subscription in updatedSubscriptions)
+                {
+                    try
+                    {
+                        await _stripeService.UpdateSubscriptionPriceAsync(
+                            subscription.ProviderSubscriptionId,
+                            previousPriceId);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Keep the original provider failure as the response.
+                    }
 
-            await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
+                    subscription.ProviderPriceId = previousPriceId;
+                }
+
+                if (!string.Equals(previousPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                throw;
+            }
         }
 
         [HttpGet("{id:int}")]
@@ -359,8 +508,9 @@ namespace GamMaSite.Controllers
             var providerProductId = MetadataValue(stripeSession.Metadata, "Product");
             var productName = MetadataValue(stripeSession.Metadata, "ProductName");
             PaymentOffer offer = null;
+            var parsedOfferId = 0;
 
-            if (int.TryParse(paymentOfferId, out var parsedOfferId))
+            if (int.TryParse(paymentOfferId, out parsedOfferId))
             {
                 offer = await _db.PaymentOffers
                     .Include(item => item.ContentItem)
@@ -375,6 +525,27 @@ namespace GamMaSite.Controllers
                         (string.IsNullOrWhiteSpace(productName) || item.ProductName == productName))
                     .OrderByDescending(item => item.Updated)
                     .FirstOrDefaultAsync();
+            }
+
+            if (offer == null &&
+                int.TryParse(MetadataValue(stripeSession.Metadata, "ContentItemId"), out var contentItemId))
+            {
+                var deletedOfferEvent = await _db.ContentItems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Id == contentItemId && item.Type == ContentTypes.Event);
+                if (deletedOfferEvent != null && !string.IsNullOrWhiteSpace(deletedOfferEvent.Slug))
+                {
+                    var registration = await _db.EventRegistrations
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+                    return Ok(new
+                    {
+                        type = "EVENT",
+                        status = registration?.Registered == true ? "CONFIRMED" : "PENDING",
+                        eventSlug = deletedOfferEvent.Slug,
+                        offerId = parsedOfferId
+                    });
+                }
             }
 
             if (offer != null &&
@@ -418,7 +589,10 @@ namespace GamMaSite.Controllers
 
         [HttpPost("event/{contentItemId:int}")]
         [Authorize]
-        public async Task<IActionResult> SaveForEvent(int contentItemId, SavePaymentOfferRequest request)
+        public async Task<IActionResult> SaveForEvent(
+            int contentItemId,
+            SavePaymentOfferRequest request,
+            CancellationToken cancellationToken = default)
         {
             if (!await _accessControl.CanEditEventAsync(User, contentItemId))
             {
@@ -440,6 +614,12 @@ namespace GamMaSite.Controllers
                 return BadRequest("Betalingstilbud kan kun oprettes for events.");
             }
 
+            PaymentOffer offer = null;
+            PaymentOfferSnapshot originalOffer = null;
+            var originalLinks = new System.Collections.Generic.List<ContentLink>();
+            IDbContextTransaction transaction = null;
+            var providerChangesApplied = false;
+
             try
             {
                 if (request == null)
@@ -451,8 +631,9 @@ namespace GamMaSite.Controllers
                 var productName = Required(request?.ProductName, "Produktnavn");
                 var linkLabel = Required(request?.LinkLabel, "Link label");
                 var amountMinor = ToMinorUnits(request.Amount);
-                var offer = item.PaymentOffers.FirstOrDefault(current =>
+                offer = item.PaymentOffers.FirstOrDefault(current =>
                     current.Provider == provider && current.OfferType == PaymentOfferTypes.OneTime);
+                originalOffer = offer == null ? null : PaymentOfferSnapshot.Capture(offer);
 
                 if (offer == null)
                 {
@@ -475,11 +656,19 @@ namespace GamMaSite.Controllers
                 offer.IsActive = true;
                 offer.Updated = DateTime.UtcNow;
 
+                originalLinks = item.Links
+                    .Where(link => IsLegacyPaymentLink(link, offer.Id))
+                    .ToList();
+                _db.ContentLinks.RemoveRange(originalLinks);
+
+                // Persist the local definition first. Provider calls happen
+                // only after this state is safely inside the local transaction.
+                transaction = await BeginOfferTransactionAsync(cancellationToken);
+                await _db.SaveChangesAsync(cancellationToken);
+
                 if (provider == PaymentOfferProviders.Stripe)
                 {
-                    var previousPriceId = offer.ProviderPriceId;
                     await EnsureStripeReferencesAsync(offer, item.Title, productName, amountMinor);
-                    await ArchiveReplacedStripePriceAsync(offer, previousPriceId, default);
                 }
                 else
                 {
@@ -489,30 +678,91 @@ namespace GamMaSite.Controllers
                     offer.ProviderPaymentUrl = null;
                 }
 
-                await _db.SaveChangesAsync();
-                var legacyPaymentLinks = item.Links
-                    .Where(link => IsLegacyPaymentLink(link, offer.Id))
-                    .ToList();
-                if (legacyPaymentLinks.Count > 0)
+                providerChangesApplied = true;
+
+                await _db.SaveChangesAsync(cancellationToken);
+                if (transaction != null)
                 {
-                    _db.ContentLinks.RemoveRange(legacyPaymentLinks);
-                    await _db.SaveChangesAsync();
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                if (provider == PaymentOfferProviders.Stripe)
+                {
+                    await TryArchiveReplacedStripePriceAsync(
+                        offer,
+                        originalOffer?.ProviderPriceId,
+                        cancellationToken);
                 }
 
                 return Ok(offer.ToDto(item));
             }
             catch (ArgumentException ex)
             {
+                await RollbackEventOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalLinks,
+                    cancellationToken);
                 return BadRequest(new { error = ex.Message });
             }
             catch (InvalidOperationException)
             {
+                if (providerChangesApplied &&
+                    providerIsStripe(offer) &&
+                    !string.Equals(offer.ProviderPriceId, originalOffer?.ProviderPriceId, StringComparison.Ordinal))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                if (offer != null &&
+                    !providerChangesApplied &&
+                    !string.Equals(offer.ProviderPriceId, originalOffer?.ProviderPriceId, StringComparison.Ordinal) &&
+                    providerIsStripe(offer))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                await RollbackEventOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalLinks,
+                    cancellationToken);
                 return StatusCode(502, new { error = "Betalingstilbuddet kunne ikke slettes hos betalingsudbyderen." });
             }
+            catch (DbUpdateException)
+            {
+                if (providerChangesApplied &&
+                    providerIsStripe(offer) &&
+                    !string.Equals(offer.ProviderPriceId, originalOffer?.ProviderPriceId, StringComparison.Ordinal))
+                {
+                    await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                }
+
+                await RollbackEventOfferChangeAsync(
+                    transaction,
+                    offer,
+                    originalOffer,
+                    originalLinks,
+                    cancellationToken);
+                return StatusCode(409, new { error = "Betalingstilbuddet kunne ikke gemmes." });
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+
+            static bool providerIsStripe(PaymentOffer value) =>
+                string.Equals(value.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase);
         }
 
         [HttpPost("{id:int}/checkout")]
         [Authorize]
+        [EnableRateLimiting("payment-checkout")]
         public async Task<IActionResult> Checkout(int id, CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -739,27 +989,73 @@ namespace GamMaSite.Controllers
                 return Forbid();
             }
 
-            if (offer.Provider == PaymentOfferProviders.Stripe && !string.IsNullOrWhiteSpace(offer.ProviderPriceId))
-            {
-                var priceIsUsedElsewhere = await _db.PaymentOffers
-                    .AnyAsync(item => item.Id != offer.Id && item.ProviderPriceId == offer.ProviderPriceId);
-
-                if (!priceIsUsedElsewhere && !await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId))
-                {
-                    return StatusCode(502, "Stripe-prisen kunne ikke deaktiveres. Betalingstilbuddet er ikke slettet.");
-                }
-            }
-
             var paymentLinks = offer.ContentItem?.Links?
                 .Where(link => string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
                     && IsLegacyPaymentLink(link, offer.Id))
                 .ToList() ?? new();
 
-            _db.ContentLinks.RemoveRange(paymentLinks);
-            _db.PaymentOffers.Remove(offer);
-            await _db.SaveChangesAsync();
+            IDbContextTransaction transaction = null;
+            var providerPriceDeactivated = false;
+            try
+            {
+                transaction = await BeginOfferTransactionAsync(default);
 
-            return NoContent();
+                // Delete locally first. A relational transaction keeps the
+                // deletion invisible until the provider operation succeeds.
+                _db.ContentLinks.RemoveRange(paymentLinks);
+                _db.PaymentOffers.Remove(offer);
+                await _db.SaveChangesAsync();
+
+                if (offer.Provider == PaymentOfferProviders.Stripe && !string.IsNullOrWhiteSpace(offer.ProviderPriceId))
+                {
+                    var priceIsUsedElsewhere = await _db.PaymentOffers
+                        .AnyAsync(item => item.ProviderPriceId == offer.ProviderPriceId);
+
+                    if (!priceIsUsedElsewhere)
+                    {
+                        providerPriceDeactivated = await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+                        if (!providerPriceDeactivated)
+                        {
+                            throw new InvalidOperationException("Stripe-prisen kunne ikke deaktiveres.");
+                        }
+                    }
+                }
+
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync();
+                }
+
+                return NoContent();
+            }
+            catch (InvalidOperationException)
+            {
+                if (providerPriceDeactivated)
+                {
+                    await _stripeService.SetPriceActiveAsync(offer.ProviderPriceId, true);
+                }
+
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync();
+                }
+                else
+                {
+                    _db.ChangeTracker.Clear();
+                    _db.PaymentOffers.Add(offer);
+                    _db.ContentLinks.AddRange(paymentLinks);
+                    await _db.SaveChangesAsync();
+                }
+
+                return StatusCode(502, "Stripe-prisen kunne ikke deaktiveres. Betalingstilbuddet er ikke slettet.");
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
         }
 
         private static bool IsLegacyPaymentLink(ContentLink link, int offerId)
@@ -821,8 +1117,8 @@ namespace GamMaSite.Controllers
 
                 var previousPriceId = offer.ProviderPriceId;
                 await EnsureStripeOfferReferencesAsync(offer);
-                await ArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
                 await _db.SaveChangesAsync(cancellationToken);
+                await TryArchiveReplacedStripePriceAsync(offer, previousPriceId, cancellationToken);
 
                 var product = await _stripeService.GetProductAsync(offer.ProviderProductId);
                 var price = await _stripeService.GetPriceByIdAsync(offer.ProviderPriceId);
@@ -1292,7 +1588,7 @@ namespace GamMaSite.Controllers
             return updatedPrice;
         }
 
-        private async Task ArchiveReplacedStripePriceAsync(
+        private async Task<bool> TryArchiveReplacedStripePriceAsync(
             PaymentOffer offer,
             string previousPriceId,
             CancellationToken cancellationToken)
@@ -1300,19 +1596,257 @@ namespace GamMaSite.Controllers
             if (string.IsNullOrWhiteSpace(previousPriceId) ||
                 string.Equals(previousPriceId, offer.ProviderPriceId, StringComparison.Ordinal))
             {
-                return;
+                return true;
             }
 
             var priceIsUsedByAnotherOffer = await _db.PaymentOffers
                 .AnyAsync(item => item.Id != offer.Id && item.ProviderPriceId == previousPriceId, cancellationToken);
             if (priceIsUsedByAnotherOffer)
             {
+                return true;
+            }
+
+            // Archiving is cleanup, not part of the payment definition. If it
+            // fails, keep both the local and provider definition usable and let
+            // a later administrative run retry the cleanup.
+            return await _stripeService.DeactivatePriceAsync(previousPriceId);
+        }
+
+        private Task<IDbContextTransaction> BeginOfferTransactionAsync(CancellationToken cancellationToken)
+        {
+            return _db.Database.IsRelational()
+                ? _db.Database.BeginTransactionAsync(cancellationToken)
+                : Task.FromResult<IDbContextTransaction>(null);
+        }
+
+        private async Task RollbackOfferChangeAsync(
+            IDbContextTransaction transaction,
+            PaymentOffer offer,
+            PaymentOfferSnapshot originalOffer,
+            System.Collections.Generic.IReadOnlyCollection<PaymentSubscriptionSnapshot> originalSubscriptions,
+            CancellationToken cancellationToken)
+        {
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
                 return;
             }
 
-            if (!await _stripeService.DeactivatePriceAsync(previousPriceId))
+            if (offer != null && originalOffer != null)
             {
-                throw new InvalidOperationException("Den tidligere Stripe-pris kunne ikke arkiveres.");
+                originalOffer.Restore(offer);
+            }
+
+            foreach (var subscription in originalSubscriptions)
+            {
+                subscription.Restore(_db);
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task CompensateProviderChangesAsync(
+            PaymentOffer offer,
+            PaymentOfferSnapshot originalOffer,
+            System.Collections.Generic.IReadOnlyCollection<PaymentSubscriptionSnapshot> originalSubscriptions,
+            CancellationToken cancellationToken)
+        {
+            if (string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                originalOffer.AmountMinor.HasValue &&
+                offer.AmountMinor != originalOffer.AmountMinor)
+            {
+                foreach (var subscription in originalSubscriptions.Where(item =>
+                             string.Equals(item.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                             IsOpenSubscriptionStatus(item.Status)))
+                {
+                    if (_mobilePayService == null)
+                    {
+                        break;
+                    }
+
+                    try
+                    {
+                        await _mobilePayService.UpdateAgreementAmountAsync(
+                            subscription.ProviderSubscriptionId,
+                            originalOffer.AmountMinor.Value,
+                            cancellationToken);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Preserve the original failure; reconciliation can
+                        // repair a provider that is temporarily unavailable.
+                    }
+                }
+            }
+
+            if (string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(offer.ProviderPriceId, originalOffer.ProviderPriceId, StringComparison.Ordinal))
+            {
+                foreach (var subscription in originalSubscriptions.Where(item =>
+                             string.Equals(item.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
+                             IsOpenSubscriptionStatus(item.Status) &&
+                             !string.IsNullOrWhiteSpace(originalOffer.ProviderPriceId)))
+                {
+                    try
+                    {
+                        await _stripeService.UpdateSubscriptionPriceAsync(
+                            subscription.ProviderSubscriptionId,
+                            originalOffer.ProviderPriceId);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Preserve the original failure.
+                    }
+                }
+
+                await _stripeService.DeactivatePriceAsync(offer.ProviderPriceId);
+            }
+        }
+
+        private static bool IsOpenSubscriptionStatus(string status)
+        {
+            return status == PaymentSubscriptionStatuses.Pending ||
+                status == PaymentSubscriptionStatuses.Active ||
+                status == PaymentSubscriptionStatuses.Trialing ||
+                status == PaymentSubscriptionStatuses.PastDue ||
+                status == PaymentSubscriptionStatuses.Incomplete;
+        }
+
+        private async Task RollbackEventOfferChangeAsync(
+            IDbContextTransaction transaction,
+            PaymentOffer offer,
+            PaymentOfferSnapshot originalOffer,
+            System.Collections.Generic.IReadOnlyCollection<ContentLink> originalLinks,
+            CancellationToken cancellationToken)
+        {
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return;
+            }
+
+            _db.ChangeTracker.Clear();
+            if (offer != null && originalOffer != null)
+            {
+                originalOffer.Restore(offer);
+                _db.PaymentOffers.Update(offer);
+            }
+            else if (offer != null)
+            {
+                _db.PaymentOffers.Remove(offer);
+            }
+
+            if (originalLinks != null && originalLinks.Count > 0)
+            {
+                _db.ContentLinks.AddRange(originalLinks);
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private sealed class PaymentOfferSnapshot
+        {
+            public int? ContentItemId { get; init; }
+            public string Scope { get; init; }
+            public string Provider { get; init; }
+            public string OfferType { get; init; }
+            public string LinkLabel { get; init; }
+            public string ProductName { get; init; }
+            public string ProviderProductId { get; init; }
+            public string ProviderPriceId { get; init; }
+            public string ProviderPaymentLinkId { get; init; }
+            public string ProviderPaymentUrl { get; init; }
+            public long? AmountMinor { get; init; }
+            public string Currency { get; init; }
+            public string BillingInterval { get; init; }
+            public int? BillingIntervalCount { get; init; }
+            public bool IsActive { get; init; }
+            public DateTime Created { get; init; }
+            public DateTime Updated { get; init; }
+
+            public static PaymentOfferSnapshot Capture(PaymentOffer offer) => new()
+            {
+                ContentItemId = offer.ContentItemId,
+                Scope = offer.Scope,
+                Provider = offer.Provider,
+                OfferType = offer.OfferType,
+                LinkLabel = offer.LinkLabel,
+                ProductName = offer.ProductName,
+                ProviderProductId = offer.ProviderProductId,
+                ProviderPriceId = offer.ProviderPriceId,
+                ProviderPaymentLinkId = offer.ProviderPaymentLinkId,
+                ProviderPaymentUrl = offer.ProviderPaymentUrl,
+                AmountMinor = offer.AmountMinor,
+                Currency = offer.Currency,
+                BillingInterval = offer.BillingInterval,
+                BillingIntervalCount = offer.BillingIntervalCount,
+                IsActive = offer.IsActive,
+                Created = offer.Created,
+                Updated = offer.Updated
+            };
+
+            public void Restore(PaymentOffer offer)
+            {
+                offer.ContentItemId = ContentItemId;
+                offer.Scope = Scope;
+                offer.Provider = Provider;
+                offer.OfferType = OfferType;
+                offer.LinkLabel = LinkLabel;
+                offer.ProductName = ProductName;
+                offer.ProviderProductId = ProviderProductId;
+                offer.ProviderPriceId = ProviderPriceId;
+                offer.ProviderPaymentLinkId = ProviderPaymentLinkId;
+                offer.ProviderPaymentUrl = ProviderPaymentUrl;
+                offer.AmountMinor = AmountMinor;
+                offer.Currency = Currency;
+                offer.BillingInterval = BillingInterval;
+                offer.BillingIntervalCount = BillingIntervalCount;
+                offer.IsActive = IsActive;
+                offer.Created = Created;
+                offer.Updated = Updated;
+            }
+        }
+
+        private sealed class PaymentSubscriptionSnapshot
+        {
+            private readonly int _id;
+            private readonly string _provider;
+            private readonly string _providerSubscriptionId;
+            private readonly string _providerPriceId;
+            private readonly string _providerProductId;
+            private readonly string _status;
+            private readonly DateTime _updated;
+
+            private PaymentSubscriptionSnapshot(PaymentSubscription source)
+            {
+                _id = source.Id;
+                _provider = source.Provider;
+                _providerSubscriptionId = source.ProviderSubscriptionId;
+                _providerPriceId = source.ProviderPriceId;
+                _providerProductId = source.ProviderProductId;
+                _status = source.Status;
+                _updated = source.Updated;
+            }
+
+            public static PaymentSubscriptionSnapshot Capture(PaymentSubscription source) => new(source);
+
+            public string Provider => _provider;
+            public string ProviderSubscriptionId => _providerSubscriptionId;
+            public string ProviderPriceId => _providerPriceId;
+            public string Status => _status;
+
+            public void Restore(ApplicationDbContext db)
+            {
+                var target = db.PaymentSubscriptions.Local.FirstOrDefault(item => item.Id == _id) ??
+                    db.PaymentSubscriptions.Find(_id);
+                if (target == null)
+                {
+                    return;
+                }
+
+                target.ProviderPriceId = _providerPriceId;
+                target.ProviderProductId = _providerProductId;
+                target.Updated = _updated;
             }
         }
 
@@ -1463,10 +1997,19 @@ namespace GamMaSite.Controllers
 
         private string GetPaymentAttemptKey(string userId, PaymentOffer offer)
         {
-            var supplied = Request.Headers["Idempotency-Key"].FirstOrDefault();
-            return string.IsNullOrWhiteSpace(supplied)
-                ? $"server:{offer.Provider}:{offer.OfferType}:{userId}:{offer.Id}"
-                : supplied.Trim();
+            // The client keeps one key for one logical checkout flow. This makes
+            // retries after a timeout idempotent, while a newly generated key
+            // after a known cancellation starts a genuinely new attempt.
+            var suppliedKey = Request.Headers["Idempotency-Key"].FirstOrDefault()?.Trim();
+            if (!string.IsNullOrWhiteSpace(suppliedKey) && suppliedKey.Length <= 128)
+            {
+                return suppliedKey;
+            }
+
+            // Keep a safe fallback for non-browser/API clients that do not send
+            // an idempotency key. The rate limiter still protects this endpoint.
+            var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / (15 * 60);
+            return $"server:{offer.Provider}:{offer.OfferType}:{userId}:{offer.Id}:{bucket}";
         }
 
         private string GetStripeIdempotencyKey(string userId, PaymentOffer offer)

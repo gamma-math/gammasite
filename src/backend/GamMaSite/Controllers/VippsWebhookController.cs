@@ -169,14 +169,31 @@ public sealed class VippsWebhookController : ControllerBase
 
         var offer = await _db.PaymentOffers
             .FirstOrDefaultAsync(item => item.Id == offerId, cancellationToken);
-        if (offer == null ||
-            !string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) ||
-            offer.ContentItemId.HasValue ||
-            !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase))
+        var canSendPaymentEmail = offer != null;
+        if (offer != null &&
+            (!string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) ||
+             offer.ContentItemId.HasValue ||
+             !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
+             !string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase)))
         {
             _logger.LogWarning("Could not resolve MobilePay membership payment {Reference}.", reference);
             return;
+        }
+
+        if (offer == null)
+        {
+            // A checkout can still complete after an administrator has deleted
+            // the offer row. The signed reference identifies the user, so the
+            // payment must still update membership state; only the optional
+            // confirmation email is skipped because its product data is gone.
+            offer = new PaymentOffer
+            {
+                Scope = PaymentOfferScopes.Membership,
+                Provider = PaymentOfferProviders.MobilePay,
+                OfferType = PaymentOfferTypes.OneTime,
+                ProductName = "Medlemskab",
+                Currency = "DKK"
+            };
         }
 
         var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
@@ -198,7 +215,7 @@ public sealed class VippsWebhookController : ControllerBase
         user.MarkAsPayed();
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (!wasAlreadyPaid)
+        if (!wasAlreadyPaid && canSendPaymentEmail)
         {
             await SendPaymentEmailAsync(
                 userId,
@@ -244,9 +261,16 @@ public sealed class VippsWebhookController : ControllerBase
             .Include(item => item.ContentItem)
             .FirstOrDefaultAsync(item => item.Id == offerId, cancellationToken);
 
-        if (registration == null || offer?.ContentItem?.Type != ContentTypes.Event ||
-            registration.ContentItemId != offer.ContentItemId ||
-            !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase))
+        var eventItem = registration == null
+            ? null
+            : await _db.ContentItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == registration.ContentItemId && item.Type == ContentTypes.Event, cancellationToken);
+        var canSendPaymentEmail = offer != null;
+        if (registration == null || eventItem == null ||
+            (offer != null &&
+                (registration.ContentItemId != offer.ContentItemId ||
+                 !string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase))))
         {
             _logger.LogWarning("Could not resolve MobilePay event payment {Reference}.", reference);
             return;
@@ -270,12 +294,15 @@ public sealed class VippsWebhookController : ControllerBase
         registration.Registered = true;
         registration.Updated = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
-        await SendPaymentEmailAsync(
-            registration.UserId,
-            offer,
-            DateTime.UtcNow,
-            recurring: false,
-            cancellationToken: cancellationToken);
+        if (canSendPaymentEmail)
+        {
+            await SendPaymentEmailAsync(
+                registration.UserId,
+                offer,
+                DateTime.UtcNow,
+                recurring: false,
+                cancellationToken: cancellationToken);
+        }
         if (transaction != null)
         {
             await transaction.CommitAsync(cancellationToken);

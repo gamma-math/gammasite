@@ -1,5 +1,76 @@
 const CSRF_HEADER = "X-CSRF-TOKEN";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+const CHECKOUT_KEY_PREFIX = "gammasite:payment-checkout:";
+const inMemoryCheckoutKeys = new Map();
+
+/**
+ * Creates a key for one logical checkout flow. The key is deliberately kept
+ * in sessionStorage so a network timeout can be retried without creating a
+ * second provider payment, while a new browser session starts cleanly.
+ */
+export function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function checkoutStorage() {
+  try {
+    return globalThis.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function checkoutStorageKey(offerId) {
+  return `${CHECKOUT_KEY_PREFIX}${offerId}`;
+}
+
+function getOrCreateCheckoutKey(offerId) {
+  const storage = checkoutStorage();
+  if (!storage) {
+    const existing = inMemoryCheckoutKeys.get(String(offerId));
+    if (existing) {
+      return existing;
+    }
+
+    const created = createIdempotencyKey();
+    inMemoryCheckoutKeys.set(String(offerId), created);
+    return created;
+  }
+
+  const key = checkoutStorageKey(offerId);
+  const existing = storage.getItem(key);
+  if (existing) {
+    return existing;
+  }
+
+  const created = createIdempotencyKey();
+  storage.setItem(key, created);
+  return created;
+}
+
+function clearCheckoutKey(offerId) {
+  inMemoryCheckoutKeys.delete(String(offerId));
+  checkoutStorage()?.removeItem(checkoutStorageKey(offerId));
+}
+
+function clearAllCheckoutKeys() {
+  inMemoryCheckoutKeys.clear();
+  const storage = checkoutStorage();
+  if (!storage) {
+    return;
+  }
+
+  for (let index = storage.length - 1; index >= 0; index -= 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(CHECKOUT_KEY_PREFIX)) {
+      storage.removeItem(key);
+    }
+  }
+}
 
 /**
  * Reads the antiforgery token emitted by the ASP.NET host page.
@@ -88,14 +159,6 @@ async function uploadRequest(path, file) {
   return payload;
 }
 
-function createIdempotencyKey() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
 /**
  * Current-user API used for authentication state and roles.
  */
@@ -163,8 +226,10 @@ export const paymentOffersApi = {
   mobilePayContext: (reference) => request(`/api/payment-offers/mobilepay-context?reference=${encodeURIComponent(reference)}`),
   checkout: (id) => request("/api/payment-offers/" + id + "/checkout", {
     method: "POST",
-    headers: { "Idempotency-Key": createIdempotencyKey() }
+    headers: { "Idempotency-Key": getOrCreateCheckoutKey(id) }
   }),
+  clearCheckoutAttempt: clearCheckoutKey,
+  clearAllCheckoutAttempts: clearAllCheckoutKeys,
   remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
 };
 

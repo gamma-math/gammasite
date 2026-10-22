@@ -35,6 +35,8 @@ namespace GamMaSite.Services
 
         Task<bool> DeactivatePriceAsync(string id);
 
+        Task<bool> SetPriceActiveAsync(string id, bool active);
+
         Task<Price> GetPriceAsync(string product);
 
         Task<Price> GetPriceByIdAsync(string id);
@@ -200,6 +202,11 @@ namespace GamMaSite.Services
 
         public async Task<bool> DeactivatePriceAsync(string id)
         {
+            return await SetPriceActiveAsync(id, false);
+        }
+
+        public async Task<bool> SetPriceActiveAsync(string id, bool active)
+        {
             if (string.IsNullOrWhiteSpace(id))
             {
                 return true;
@@ -209,7 +216,7 @@ namespace GamMaSite.Services
             {
                 await new PriceService().UpdateAsync(id, new PriceUpdateOptions
                 {
-                    Active = false
+                    Active = active
                 });
                 return true;
             }

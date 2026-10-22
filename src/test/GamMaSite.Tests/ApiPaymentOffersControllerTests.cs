@@ -163,6 +163,27 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task Delete_RestoresOfferWhenStripeDeactivationFails()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedOfferAsync(db);
+        var access = new Mock<IAccessControlService>();
+        var contentItemId = Assert.IsType<int>(offer.ContentItemId);
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), contentItemId))
+            .ReturnsAsync(true);
+
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.DeactivatePriceAsync("price_event"))
+            .ReturnsAsync(false);
+        var controller = new ApiPaymentOffersController(db, stripe.Object, access.Object);
+
+        var result = await controller.Delete(offer.Id);
+
+        Assert.Equal(502, Assert.IsType<ObjectResult>(result).StatusCode);
+        Assert.NotNull(await db.PaymentOffers.FindAsync(offer.Id));
+    }
+
+    [Fact]
     public async Task SaveForEventStoresPaymentOfferLabelWithoutCreatingContentLink()
     {
         await using var db = CreateDatabase();
@@ -540,6 +561,65 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task UpdateForAdminRestoresLocalStateWhenMobilePayUpdateFails()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-failing-provider",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agreement-failing",
+            Status = PaymentSubscriptionStatuses.Active,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "agreement-failing",
+                17500,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("provider unavailable"));
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object);
+
+        var result = await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = offer.LinkLabel,
+            ProductName = offer.ProductName,
+            Amount = 175,
+            BillingInterval = offer.BillingInterval,
+            BillingIntervalCount = offer.BillingIntervalCount
+        });
+
+        Assert.IsType<ObjectResult>(result);
+        Assert.Equal(502, ((ObjectResult)result).StatusCode);
+        Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
+    }
+
+    [Fact]
     public async Task UpdateForAdminCreatesNewStripePriceAndUpdatesOpenSubscriptionsWhenRecurringAmountChanges()
     {
         await using var db = CreateDatabase();
@@ -711,6 +791,7 @@ public sealed class ApiPaymentOffersControllerTests
             Currency = "dkk"
         };
         var stripe = new Mock<IStripeService>();
+        var idempotencyKeys = new System.Collections.Generic.List<string>();
         stripe.Setup(value => value.GetProductByExactNameAsync("Kontingent")).ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceAsync(product.Id)).ReturnsAsync((Stripe.Price)null!);
         stripe.Setup(value => value.CreateOneTimePriceAsync(
@@ -721,6 +802,8 @@ public sealed class ApiPaymentOffersControllerTests
             .ReturnsAsync(price);
         stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
         stripe.Setup(value => value.GetPriceByIdAsync(price.Id)).ReturnsAsync(price);
+        stripe.Setup(value => value.UpdatePriceNicknameAsync(price.Id, "Kontingent - ONE_TIME"))
+            .ReturnsAsync(price);
         stripe.Setup(value => value.StartPayment(
                 product,
                 price,
@@ -730,6 +813,8 @@ public sealed class ApiPaymentOffersControllerTests
                 "payment",
                 It.IsAny<System.Collections.Generic.IDictionary<string, string>>(),
                 It.IsAny<string>()))
+            .Callback<Stripe.Product, Stripe.Price, string, string, string, string, System.Collections.Generic.IDictionary<string, string>, string>(
+                (_, _, _, _, _, _, _, key) => idempotencyKeys.Add(key))
             .Returns("cs_membership");
 
         var controller = new ApiPaymentOffersController(
@@ -747,9 +832,18 @@ public sealed class ApiPaymentOffersControllerTests
             }
         };
 
+        controller.HttpContext.Request.Headers["Idempotency-Key"] = "checkout-flow-1";
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
+        var retryResult = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
+        controller.HttpContext.Request.Headers["Idempotency-Key"] = "checkout-flow-2";
+        var newAttemptResult = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
         Assert.Contains("cs_membership", result.Value?.ToString());
+        Assert.Contains("cs_membership", retryResult.Value?.ToString());
+        Assert.Contains("cs_membership", newAttemptResult.Value?.ToString());
+        Assert.Equal(3, idempotencyKeys.Count);
+        Assert.Equal(idempotencyKeys[0], idempotencyKeys[1]);
+        Assert.NotEqual(idempotencyKeys[0], idempotencyKeys[2]);
         var savedOffer = await db.PaymentOffers.SingleAsync();
         Assert.Equal(product.Id, savedOffer.ProviderProductId);
         Assert.Equal(price.Id, savedOffer.ProviderPriceId);

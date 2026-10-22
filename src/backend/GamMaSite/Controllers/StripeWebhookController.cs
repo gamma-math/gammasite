@@ -187,10 +187,43 @@ namespace GamMaSite.Controllers
         {
             var offer = await _db.PaymentOffers
                 .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
+                .FirstOrDefaultAsync(item => item.Id == paymentOfferId, cancellationToken);
 
             if (offer == null)
             {
+                // The offer may have been deleted after checkout was created.
+                // The signed Stripe session still contains the event/user mapping.
+                if (string.Equals(
+                        MetadataValue(session.Metadata, "Scope"),
+                        PaymentOfferScopes.Membership,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    var fallbackOffer = new PaymentOffer
+                    {
+                        Scope = PaymentOfferScopes.Membership,
+                        Provider = PaymentOfferProviders.Stripe,
+                        OfferType = string.Equals(session.Mode, "subscription", StringComparison.OrdinalIgnoreCase)
+                            ? PaymentOfferTypes.Recurring
+                            : PaymentOfferTypes.OneTime,
+                        ProductName = MetadataValue(session.Metadata, "ProductName") ?? "Medlemskab",
+                        AmountMinor = session.AmountTotal,
+                        Currency = session.Currency ?? "dkk"
+                    };
+                    await HandleMembershipOfferPaymentAsync(
+                        session,
+                        fallbackOffer,
+                        webhookId,
+                        webhookAt,
+                        cancellationToken);
+                    return;
+                }
+
+                if (int.TryParse(MetadataValue(session.Metadata, "ContentItemId"), out _))
+                {
+                    await HandleEventPaymentAsync(session, paymentOfferId, cancellationToken);
+                    return;
+                }
+
                 _logger.LogWarning("Stripe payment session {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
                 return;
             }
@@ -294,8 +327,7 @@ namespace GamMaSite.Controllers
             }
 
             return await _db.PaymentOffers
-                .Where(item => item.IsActive &&
-                    item.Scope == PaymentOfferScopes.Event &&
+                .Where(item => item.Scope == PaymentOfferScopes.Event &&
                     item.Provider == PaymentOfferProviders.Stripe &&
                     item.ProviderProductId == providerProductId &&
                     (string.IsNullOrWhiteSpace(productName) || item.ProductName == productName))
@@ -321,15 +353,32 @@ namespace GamMaSite.Controllers
 
             var offer = await _db.PaymentOffers
                 .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
-            if (offer == null)
+                .FirstOrDefaultAsync(item => item.Id == paymentOfferId, cancellationToken);
+
+            var contentItemId = offer?.ContentItemId;
+            if (!contentItemId.HasValue &&
+                int.TryParse(MetadataValue(session.Metadata, "ContentItemId"), out var metadataContentItemId))
+            {
+                contentItemId = metadataContentItemId;
+            }
+
+            if (!contentItemId.HasValue)
             {
                 _logger.LogWarning("Event payment {SessionId} references unknown payment offer {PaymentOfferId}.", session.Id, paymentOfferId);
                 return;
             }
 
+            var eventItem = await _db.ContentItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == contentItemId.Value && item.Type == ContentTypes.Event, cancellationToken);
+            if (eventItem == null)
+            {
+                _logger.LogWarning("Event payment {SessionId} references unknown event {ContentItemId}.", session.Id, contentItemId);
+                return;
+            }
+
             var registration = await _db.EventRegistrations
-                .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
+                .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId.Value && item.UserId == userId, cancellationToken);
             if (registration == null ||
                 (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
                     && !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
@@ -356,12 +405,15 @@ namespace GamMaSite.Controllers
             registration.Registered = true;
             registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
-            await SendPaymentEmailAsync(
-                userId,
-                offer,
-                session.Created.ToUniversalTime(),
-                recurring: false,
-                cancellationToken: cancellationToken);
+            if (offer != null)
+            {
+                await SendPaymentEmailAsync(
+                    userId,
+                    offer,
+                    session.Created.ToUniversalTime(),
+                    recurring: false,
+                    cancellationToken: cancellationToken);
+            }
             if (transaction != null)
             {
                 await transaction.CommitAsync(cancellationToken);
@@ -423,12 +475,26 @@ namespace GamMaSite.Controllers
             {
                 paymentOffer = await _db.PaymentOffers
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(item => item.Id == paymentOfferId && item.IsActive, cancellationToken);
+                    .FirstOrDefaultAsync(item => item.Id == paymentOfferId, cancellationToken);
             }
 
             var membershipOffer = paymentOffer == null
                 ? await FindMembershipOfferAsync(subscription.Metadata, cancellationToken)
                 : null;
+            if (paymentOffer == null &&
+                string.Equals(
+                    MetadataValue(subscription.Metadata, "Scope"),
+                    PaymentOfferScopes.Membership,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                paymentOffer = new PaymentOffer
+                {
+                    Scope = PaymentOfferScopes.Membership,
+                    Provider = PaymentOfferProviders.Stripe,
+                    OfferType = PaymentOfferTypes.Recurring,
+                    ProductName = MetadataValue(subscription.Metadata, "ProductName") ?? "Medlemskab"
+                };
+            }
             var isMembershipOffer = paymentOffer != null
                 ? string.Equals(paymentOffer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
                   string.Equals(paymentOffer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase)

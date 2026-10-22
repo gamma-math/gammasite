@@ -270,6 +270,15 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   const success = status === "success" || status === "kontingent-success";
 
   useEffect(() => {
+    // The provider has explicitly ended this flow. The next checkout must get
+    // a fresh key; retries while the provider request is unresolved must keep
+    // the existing key instead.
+    if (status === "cancel" || status === "kontingent-success") {
+      paymentOffersApi.clearAllCheckoutAttempts();
+    }
+  }, [status]);
+
+  useEffect(() => {
     if (status !== "success" || !session) {
       setIsLoadingPaymentContext(false);
       return undefined;
@@ -287,6 +296,13 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
         setPaymentContext(context);
         setIsLoadingPaymentContext(false);
+        if (context.status !== "PENDING") {
+          if (context.offerId) {
+            paymentOffersApi.clearCheckoutAttempt(context.offerId);
+          } else {
+            paymentOffersApi.clearAllCheckoutAttempts();
+          }
+        }
         setEventPaymentState(
           context.status === "PENDING"
             ? "pending"
@@ -333,6 +349,11 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
         setPaymentContext(context);
         if (context.status === "SUCCESS" || context.status === "CANCELLED") {
+          if (context.offerId) {
+            paymentOffersApi.clearCheckoutAttempt(context.offerId);
+          } else {
+            paymentOffersApi.clearAllCheckoutAttempts();
+          }
           setEventPaymentState(context.status.toLowerCase());
           return;
         }

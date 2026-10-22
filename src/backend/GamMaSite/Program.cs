@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -195,6 +196,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 8,
                 Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("payment-checkout", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
 });
