@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { CircleMinus, CirclePlus, KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./MembersPage.jsx";
 import { accountApi } from "../services/api.js";
@@ -22,6 +23,7 @@ const manageItems = [
   { href: "/react/account/manage/email", label: "Email" },
   { href: "/react/account/manage/password", label: "Password" },
   { href: "/react/account/manage/two-factor", label: "To-faktor authentication" },
+  { href: "/react/account/manage/subscriptions", label: "Mine betalingsaftaler" },
   { href: "/react/account/manage/finance", label: "Mine transaktioner" },
   { href: "/react/account/manage/personal-data", label: "Privat data" },
   { href: "/react/account/manage/logout", label: "Log ud" }
@@ -205,16 +207,18 @@ export function AccountManagePage({ user, section = "profile" }) {
   }
 
   const isFinanceSection = section === "finance";
+  const isSubscriptionsSection = section === "subscriptions";
 
   return (
     <MenuLayout active={`/react/account/manage${section === "profile" ? "" : `/${section}`}`} title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
-          <h1>{isFinanceSection ? "Mine transaktioner" : "Administrér din bruger"}</h1>
           <p className="menu-panel-lead menu-panel-lead-inline">
             {isFinanceSection
               ? "Se dine egne transaktioner i GamMa."
+              : isSubscriptionsSection
+                ? "Se dine betalingsaftaler hos GamMa."
               : "Skift dine brugerindstillinger og vælg, hvilke oplysninger andre medlemmer kan se."}
           </p>
         </div>
@@ -267,6 +271,7 @@ export function AccountManagePage({ user, section = "profile" }) {
           }} />
         )}
         {section === "two-factor" && <TwoFactorPanel />}
+        {section === "subscriptions" && <PaymentSubscriptionsPanel />}
         {section === "finance" && <FinancePostingsPanel setLastUpdated={setFinanceLastUpdated} />}
         {section === "personal-data" && <PersonalDataPanel />}
         {section === "delete-personal-data" && <DeletePersonalDataPanel />}
@@ -277,7 +282,191 @@ export function AccountManagePage({ user, section = "profile" }) {
   );
 }
 
+function PaymentSubscriptionsPanel() {
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState("");
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState(null);
+  const [expandedSubscriptionIds, setExpandedSubscriptionIds] = useState(new Set());
+
+  useEffect(() => {
+    let active = true;
+    accountApi.subscriptions()
+      .then((result) => {
+        if (active) {
+          setSubscriptions(Array.isArray(result) ? result : []);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const requestCancelSubscription = (subscription) => {
+    if (!subscription.providerSubscriptionId || deletingId) {
+      return;
+    }
+
+    setError("");
+    setSubscriptionToCancel(subscription);
+  };
+
+  const cancelSubscription = async () => {
+    const subscription = subscriptionToCancel;
+    if (!subscription?.providerSubscriptionId || deletingId) {
+      return;
+    }
+
+    setDeletingId(subscription.providerSubscriptionId);
+    try {
+      const result = await accountApi.cancelSubscription(subscription.providerSubscriptionId);
+      setSubscriptions((current) => current.map((item) => item.providerSubscriptionId === subscription.providerSubscriptionId
+        ? { ...item, status: result?.status || "canceled" }
+        : item));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId("");
+      setSubscriptionToCancel(null);
+    }
+  };
+
+  const toggleSubscription = (subscriptionId) => {
+    setExpandedSubscriptionIds((current) => {
+      const next = new Set(current);
+      if (next.has(subscriptionId)) {
+        next.delete(subscriptionId);
+      } else {
+        next.add(subscriptionId);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <section className="account-subscriptions-panel">
+      <h2>Mine betalingsaftaler</h2>
+      {isLoading && <p className="muted">Henter dine betalingsaftaler...</p>}
+      {error && <p className="status-message status-message-error">{error}</p>}
+      {!isLoading && !error && (
+        <div className="account-finance-table-container">
+          <div className="menu-table-wrap account-finance-table-wrap account-subscriptions-scroll-wrap">
+            <table className="menu-member-table account-finance-table account-subscriptions-table">
+            <thead>
+              <tr>
+                <th className="account-subscription-expander-header" aria-label="Detaljer" />
+                <th>Udbyder</th>
+                <th>Produkt</th>
+                <th className="account-subscription-mobile-hidden">Pris</th>
+                <th>Status</th>
+                <th className="account-subscription-mobile-hidden">Senest betalt</th>
+                <th className="account-subscription-mobile-hidden">Næste opkrævning</th>
+                <th className="account-subscription-mobile-hidden">Oprettet</th>
+                <th className="account-subscription-mobile-hidden">Opdateret</th>
+                <th className="account-subscription-mobile-hidden" aria-label="Handlinger" />
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptions.map((subscription, index) => {
+                const subscriptionKey = `${subscription.providerSubscriptionId || subscription.provider}-${subscription.created}-${index}`;
+                const isExpanded = expandedSubscriptionIds.has(subscriptionKey);
+                return (
+                  <Fragment key={subscriptionKey}>
+                    <tr>
+                      <td className="account-subscription-expander-cell">
+                        <button
+                          className="menu-member-expander"
+                          type="button"
+                          aria-label={isExpanded ? "Skjul abonnementsdetaljer" : "Vis abonnementsdetaljer"}
+                          aria-expanded={isExpanded}
+                          onClick={() => toggleSubscription(subscriptionKey)}
+                        >
+                          {isExpanded ? <CircleMinus size={18} /> : <CirclePlus size={18} />}
+                        </button>
+                      </td>
+                      <td>{subscription.provider || "—"}</td>
+                      <td>{subscription.productName || "—"}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</td>
+                      <td>{subscription.status || "—"}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.lastPaidAt)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.nextChargeAt)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.created)}</td>
+                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.updated)}</td>
+                      <td className="account-subscription-mobile-hidden"><SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} /></td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="account-subscription-expanded-row">
+                        <td></td>
+                        <td colSpan="4">
+                          <dl className="account-subscription-details">
+                            <div><dt>Pris</dt><dd>{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</dd></div>
+                            <div><dt>Senest betalt</dt><dd>{formatSubscriptionDate(subscription.lastPaidAt)}</dd></div>
+                            <div><dt>Næste opkrævning</dt><dd>{formatSubscriptionDate(subscription.nextChargeAt)}</dd></div>
+                            <div><dt>Oprettet</dt><dd>{formatSubscriptionDate(subscription.created)}</dd></div>
+                            <div><dt>Opdateret</dt><dd>{formatSubscriptionDate(subscription.updated)}</dd></div>
+                          </dl>
+                          <SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+              {subscriptions.length === 0 && (
+                <tr>
+                  <td colSpan="10">Du har ingen betalingsaftaler endnu.</td>
+                </tr>
+              )}
+            </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {subscriptionToCancel && (
+        <ConfirmationDialog
+          title="Annuller abonnement"
+          message={`Er du sikker på, at du vil annullere abonnementet${subscriptionToCancel.productName ? ` for ${subscriptionToCancel.productName}` : ""}? Aftalen annulleres, og fremtidige opkrævninger stoppes.`}
+          confirmLabel="Ja, annuller abonnement"
+          busyLabel="Annullerer..."
+          onConfirm={cancelSubscription}
+          onCancel={() => !deletingId && setSubscriptionToCancel(null)}
+          isBusy={Boolean(deletingId)}
+        />
+      )}
+    </section>
+  );
+}
+
+function SubscriptionCancelButton({ subscription, deletingId, onRequestCancel }) {
+  return (
+    <button
+      className="account-subscription-delete-button"
+      type="button"
+      disabled={!subscription.providerSubscriptionId || subscription.status === "canceled" || deletingId === subscription.providerSubscriptionId}
+      onClick={() => onRequestCancel(subscription)}
+    >
+      {deletingId === subscription.providerSubscriptionId ? "Annullerer..." : subscription.status === "canceled" ? "Annulleret" : "Annuller"}
+    </button>
+  );
+}
+
 function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
+  const isPaid = profile.status === "BETALT";
+  const isStudentStatusLocked = profile.status === "STUDERENDE" || isPaid;
+
   return (
     <form className="account-form account-manage-form" onSubmit={onSubmit}>
       <Field label="Brugernavn" value={profile.username ?? ""} disabled />
@@ -288,8 +477,11 @@ function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
       <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} />
       <Field label="Brugerstatus" value={profile.status ?? ""} disabled />
       <label className="account-checkbox">
-        <input type="checkbox" checked={Boolean(form.isStudent)} disabled={profile.status === "STUDERENDE"} onChange={(event) => setForm({ ...form, isStudent: event.target.checked })} />
-        <span>Jeg er stadig studerende</span>
+        <input type="checkbox" checked={Boolean(form.isStudent)} disabled={isStudentStatusLocked} onChange={(event) => setForm({ ...form, isStudent: event.target.checked })} />
+        <span>
+          Jeg er stadig studerende
+          {isPaid && <small className="account-checkbox-help">Studerende-status kan ikke ændres, når medlemskabet er betalt.</small>}
+        </span>
       </label>
       <label className="account-checkbox">
         <input type="checkbox" checked={form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.checked })} />
@@ -602,6 +794,44 @@ function formatPostingDate(value) {
     month: "short",
     year: "numeric"
   }).format(date);
+}
+
+function formatSubscriptionDate(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Copenhagen"
+  }).format(date);
+}
+
+function formatSubscriptionAmount(amountMinor, currency) {
+  if (amountMinor === null || amountMinor === undefined || amountMinor === "") {
+    return "—";
+  }
+
+  const amount = Number(amountMinor);
+  if (!Number.isFinite(amount)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("da-DK", {
+    style: "currency",
+    currency: String(currency || "DKK").toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount / 100);
 }
 
 function formatPostingAmount(value) {

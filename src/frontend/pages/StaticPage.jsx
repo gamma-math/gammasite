@@ -3,6 +3,7 @@ import { Link } from "../routes/navigation.jsx";
 
 const statutesUrl = "https://gamma-math.github.io/gammastatic/vedtaegter-gamma.pdf";
 const cvrUrl = "https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768";
+const subscriptionsUrl = "/react/account/manage/subscriptions";
 
 const termsSections = [
   { id: "privatlivspolitik", label: "Privatlivspolitik" },
@@ -103,28 +104,32 @@ function TermsPage() {
         <p>GamMas aktuelle virksomhedsoplysninger, herunder registreret adresse, kan findes via CVR-registret.</p>
 
         <h3>1. Oplysninger om aftalen</h3>
-        <p>Før betaling vises den relevante ydelse, pris, eventuel dato, sted og andre væsentlige oplysninger. Eventuelle særlige vilkår på den konkrete eventside supplerer disse salgsbetingelser og gælder foran disse, hvis de tydeligt angiver andet.</p>
+        <p>Før betaling skal den relevante ydelse, pris, medlemsperiode eller eventuelle dato, sted og andre væsentlige oplysninger fremgå klart. Hvis du vælger automatisk fornyelse, skal det også fremgå, at der er tale om en løbende betalingsaftale, hvilket beløb og betalingsinterval der gælder, og hvordan aftalen opsiges. Eventuelle særlige vilkår på den konkrete eventside supplerer disse salgsbetingelser og gælder foran disse, hvis de tydeligt angiver andet.</p>
         <p>Aftalen indgås på dansk. Når betalingen er gennemført, vises en bekræftelse på hjemmesiden. Du bør gemme bekræftelsen og eventuelle oplysninger om arrangementet.</p>
 
         <h3>2. Medlemskab</h3>
         <p>Et medlemskab giver adgang til de medlemsfordele, som GamMa til enhver tid tilbyder, og gælder for den medlemsperiode, der fremgår af medlemskabsoplysningerne. Medlemskab forudsætter, at du opfylder foreningens medlemskriterier og accepterer de gældende vedtægter og brugerbetingelser.</p>
-        <p>Medlemskabet fornyes ikke automatisk. Der oprettes ikke en løbende betalingsaftale, medmindre du på et senere tidspunkt udtrykkeligt accepterer en sådan aftale.</p>
+        <p>Betaler du én gang, fornyes medlemskabet ikke automatisk. Der oprettes kun en løbende betalingsaftale, hvis du aktivt vælger automatisk fornyelse og udtrykkeligt godkender den hos den valgte betalingsudbyder.</p>
+        <p>Ved automatisk fornyelse fornyes medlemskabet for den periode, der er oplyst ved tilmeldingen. Den nuværende medlemsopsætning er et år ad gangen til 150 kr. pr. år. Beløbet opkræves automatisk via den valgte betalingsmetode ved begyndelsen af den næste medlemsperiode.</p>
+        <p>GamMa kan med mindst én måneds varsel ændre medlemskabsbeløbet, hvis ændringen er besluttet på en generalforsamling. Ved en sådan ændring vil automatiske betalingsaftaler enten blive opsagt, eller det nye beløb blive opkrævet fremover.</p>
+        <p>Du kan til enhver tid opsige den automatiske betalingsaftale på <Link href={subscriptionsUrl}>siden Mine abonnementer</Link>. Du bør altid opsige aftalen på hjemmesiden, da det også opsiger aftalen hos den eksterne betalingsudbyder. Opsigelsen tilbagefører ikke automatisk en allerede betalt periode og ændrer ikke den allerede betalte medlemsadgang eller registreringen af perioden som betalt. Hvis du ønsker tilbagebetaling, gælder reglerne i afsnit 5.</p>
+        <p>At tilbagekalde samtykke til fremtidige betalinger hos banken eller en ekstern betalingsudbyder er ikke det samme som at opsige medlemsaftalen hos GamMa. En tilbagekaldelse ændrer ikke i sig selv reglerne om en allerede gennemført betaling, medlemsperioden eller eventuel tilbagebetaling.</p>
 
         <h3>3. Arrangementer og eventtilmelding</h3>
         <p>En betalt eventtilmelding gælder for det konkrete arrangement, den dato eller periode og eventuelt den deltager, som fremgår af bestillingen. Tilmeldingen er personlig, medmindre eventbeskrivelsen udtrykkeligt giver mulighed for overdragelse.</p>
-        <p>GamMa kan ændre praktiske oplysninger om et arrangement, hvis ændringen ikke væsentligt ændrer arrangementets karakter. Hvis GamMa aflyser arrangementet eller ikke kan levere den købte eventplads, tilbagebetaler GamMa det betalte beløb, medmindre du accepterer et andet tilbud.</p>
+        <p>GamMa kan ændre praktiske oplysninger om et arrangement, hvis ændringen ikke væsentligt ændrer arrangementets karakter. Hvis GamMa aflyser arrangementet eller ikke kan levere den købte eventplads, tilbagebetaler GamMa det betalte beløb.</p>
 
         <h3>4. Pris og betaling</h3>
-        <p>Den pris, der gælder for købet, vises tydeligt før betaling. Betaling gennemføres med de betalingsmetoder, der vises på betalingssiden, herunder MobilePay eller betalingskort, når disse er tilgængelige.</p>
-        <p>Et medlemskab eller en eventtilmelding er først registreret som betalt, når betalingsudbyderen har bekræftet betalingen. Hvis betalingen afvises, annulleres eller ikke gennemføres, er der ikke indgået en betalt aftale.</p>
+        <p>Den pris, medlemsperiode og eventuelle automatiske betalingsaftale, der gælder for købet, skal vises tydeligt før betaling. Ved automatisk fornyelse er den oplyste pris og det oplyste betalingsinterval grundlaget for de kommende opkrævninger, indtil aftalen opsiges eller ændres efter gældende regler.</p>
+        <p>Betaling gennemføres med de betalingsmetoder, der vises på betalingssiden, når disse er tilgængelige. Et medlemskab eller en eventtilmelding er først registreret som betalt, når den eksterne betalingsudbyder har bekræftet betalingen. Hvis betalingen afvises, annulleres eller ikke gennemføres, er der ikke indgået en betalt aftale.</p>
 
         <h3>5. Fortrydelse, afbud og tilbagebetaling</h3>
         <p>For medlemskab købt online er fortrydelsesfristen 14 dage fra aftalens indgåelse, medmindre andet følger af ufravigelig lovgivning. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> inden fristens udløb.</p>
-        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse, medmindre andet er angivet i eventbeskrivelsen. Efter den angivne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
+        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse. Efter den angivne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
         <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud eller navneændring. Tilbagebetaling sker, når afmeldingen er meddelt inden den frist, der er angivet i disse salgsbetingelser eller i eventbeskrivelsen.</p>
 
         <h3>6. Fejl og manglende levering</h3>
-        <p>Hvis du ikke modtager den ydelse, du har betalt for, eller hvis der er en væsentlig fejl ved leveringen, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. GamMa vil vurdere sagen og afhjælpe forholdet, tilbyde ombooking eller tilbagebetale helt eller delvist, hvis det følger af aftalen eller gældende lovgivning.</p>
+        <p>Hvis et arrangement aflyses, ikke gennemføres som beskrevet eller har væsentlige mangler, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. GamMa vurderer sagen og tilbyder ombooking eller hel eller delvis tilbagebetaling, hvis det følger af aftalen eller gældende lovgivning.</p>
 
         <h3>7. Ansvar</h3>
         <p>GamMa er ikke ansvarlig for manglende opfyldelse, der skyldes forhold uden for foreningens rimelige kontrol, herunder myndighedsforhold, strejke, sygdom, brand, naturkatastrofer, tekniske driftsforstyrrelser eller andre force majeure-forhold. Bestemmelsen begrænser ikke rettigheder, som ikke lovligt kan begrænses.</p>
@@ -135,7 +140,7 @@ function TermsPage() {
         <h3>9. Lovvalg og ændringer</h3>
         <p>Salgsbetingelserne er underlagt dansk ret. Ufravigelige regler, der beskytter forbrugere, gælder uanset dette. Salgsbetingelserne gælder i den version, der var tilgængelig på købstidspunktet. Ændringer gælder ikke for allerede indgåede aftaler, medmindre andet følger af lovgivningen.</p>
 
-        <p>Senest opdateret: 13. oktober 2026.</p>
+        <p>Senest opdateret: 20. oktober 2026.</p>
       </InfoSection>
     </InfoLayout>
   );

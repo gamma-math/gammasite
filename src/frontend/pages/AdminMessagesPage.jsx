@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Mail, Search, Send, X } from "lucide-react";
+import { MultiSelectDropdown } from "../components/MultiSelectDropdown.jsx";
 import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { contentApi, emailTemplatesApi, membersApi, messagesApi, registrationsApi, rolesApi } from "../services/api.js";
@@ -452,74 +453,6 @@ export function AdminMessagesPage({ isAdmin }) {
 }
 
 /**
- * Reusable dropdown for multi-select filters in message setup.
- */
-function MultiSelectDropdown({ label, placeholder, items, selectedIds, onChange, showMeta = true, searchable = false }) {
-  const [search, setSearch] = useState("");
-  const selectedItems = (items ?? []).filter((item) => selectedIds.includes(item.id));
-  const filteredItems = (items ?? []).filter((item) => {
-    const term = search.trim().toLowerCase();
-    if (!term) return true;
-    return [item.title, item.summary, item.location]
-      .some((value) => String(value ?? "").toLowerCase().includes(term));
-  });
-  const buttonText = selectedItems.length === 0
-    ? placeholder
-    : selectedItems.length === 1
-      ? selectedItems[0].title
-      : selectedItems.length === 2
-        ? selectedItems.map((item) => item.title).join(", ")
-        : `${selectedItems.slice(0, 2).map((item) => item.title).join(", ")} +${selectedItems.length - 2}`;
-
-  function toggle(id) {
-    if (id === "ALL") {
-      onChange(selectedIds.includes("ALL") ? [] : ["ALL"]);
-      return;
-    }
-
-    const nextIds = selectedIds.includes(id)
-      ? selectedIds.filter((item) => item !== id)
-      : [...selectedIds.filter((item) => item !== "ALL"), id];
-    onChange(nextIds);
-  }
-
-  return (
-    <details className={`admin-multi-select ${selectedItems.length > 0 ? "has-selection" : ""}`}>
-      <summary>
-        <span>{label}</span>
-        <strong>{buttonText}</strong>
-      </summary>
-      <div className="admin-multi-select-menu">
-        {searchable && (
-          <label className="admin-multi-select-search">
-            <span>Søg</span>
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Søg i ${label.toLowerCase()}`} />
-          </label>
-        )}
-        {filteredItems.length === 0 && <p className="muted">Ingen elementer fundet.</p>}
-        {filteredItems.map((item) => (
-          <label className="profile-checkbox admin-message-content-option" key={item.id}>
-            <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} />
-            <span>{item.title}</span>
-            {showMeta && <small>{formatDate(item.startDate ?? item.publishedAt)}</small>}
-          </label>
-        ))}
-      </div>
-      {selectedItems.length > 0 && (
-        <div className="admin-multi-select-chips" aria-label={`${label} valgt`}>
-          {selectedItems.map((item) => (
-            <button type="button" key={item.id} onClick={() => toggle(item.id)}>
-              {item.title}
-              <span aria-hidden="true">x</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </details>
-  );
-}
-
-/**
  * Loads recipient names/emails for the current local preview selections.
  */
 async function resolveRecipientDetails({ recipientGroups, recipientRoles, recipientEventIds, recipientMemberIds }) {
@@ -590,11 +523,14 @@ function renderLocalContentBlock(item, design) {
   const pathType = isEvent ? "events" : "news";
   const url = `${window.location.origin}/react/${pathType}/${item.slug}`;
   const links = item.links ?? item.Links ?? [];
+  const paymentOffers = (item.paymentOffers ?? item.PaymentOffers ?? [])
+    .filter((offer) => offer.isActive !== false && offer.id != null);
   const ctaText = isEvent ? "Tilmeld dig" : "Læs mere";
   const linkItems = links
     .filter((link) => link.url || link.Url)
     .map(renderLocalRelatedLinkButton)
-    .join("");
+    .join("")
+    + (isEvent ? paymentOffers.map((offer) => renderLocalPaymentOfferButton(item, offer)).join("") : "");
   const eventMeta = isEvent
     ? `
   ${item.location ? `<p style="margin:0 0 6px;"><strong>Sted:</strong> ${escapeHtml(item.location)}</p>` : ""}
@@ -621,6 +557,12 @@ function renderLocalRelatedLinkButton(link) {
   const borderColor = isPayment ? "#4353f4" : "#c9d8ea";
 
   return `<a href="${escapeHtml(linkUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:${backgroundColor};color:${textColor};border:1px solid ${borderColor};text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
+}
+
+function renderLocalPaymentOfferButton(item, offer) {
+  const offerUrl = `${window.location.origin}/react/events/${encodeURIComponent(item.slug)}/pay/${offer.id}`;
+  const label = offer.linkLabel ?? offer.LinkLabel ?? "Betalingslink";
+  return `<a href="${escapeHtml(offerUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:#4353f4;color:#ffffff;border:1px solid #4353f4;text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
 }
 
 function messageStatusClass(message) {

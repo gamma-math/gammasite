@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Controllers
 {
@@ -22,11 +24,15 @@ namespace GamMaSite.Controllers
     {
         private readonly UserManager<SiteUser> _userManager;
         private readonly IAccessControlService _accessControl;
+        private readonly ApplicationDbContext _db;
+        private readonly IConfiguration _configuration;
 
-        public ApiMembersController(UserManager<SiteUser> userManager, IAccessControlService accessControl)
+        public ApiMembersController(UserManager<SiteUser> userManager, IAccessControlService accessControl, ApplicationDbContext db, IConfiguration configuration = null)
         {
             _userManager = userManager;
             _accessControl = accessControl;
+            _db = db;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -42,7 +48,7 @@ namespace GamMaSite.Controllers
         }
 
         [HttpGet("admin")]
-        [Authorize(Policy = PermissionPolicies.MemberData)]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
         public async Task<IActionResult> GetAdminMembers()
         {
             var members = await _userManager.Users
@@ -50,7 +56,69 @@ namespace GamMaSite.Controllers
                 .OrderBy(user => user.Navn)
                 .ToListAsync();
 
-            return Ok(members.Select(user => ToMemberDto(user, true)));
+            var activeSubscriptionUserIds = await _db.PaymentSubscriptions
+                .AsNoTracking()
+                .Where(subscription => subscription.Status == PaymentSubscriptionStatuses.Active ||
+                    subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                    subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                    subscription.Status == PaymentSubscriptionStatuses.Incomplete)
+                .Select(subscription => subscription.UserId)
+                .ToHashSetAsync();
+
+            return Ok(members.Select(user => ToMemberDto(user, true, activeSubscriptionUserIds.Contains(user.Id))));
+        }
+
+        [HttpGet("{id}/subscriptions")]
+        [Authorize(Policy = PermissionPolicies.RolesEdit)]
+        public async Task<IActionResult> GetUserSubscriptions(string id)
+        {
+            var member = await _userManager.Users
+                .AsNoTracking()
+                .Where(user => user.Id == id)
+                .Select(user => new { user.Navn, user.Email })
+                .SingleOrDefaultAsync();
+            if (member == null)
+            {
+                return NotFound();
+            }
+
+            var subscriptions = await _db.PaymentSubscriptions
+                .AsNoTracking()
+                .Where(subscription => subscription.UserId == id &&
+                    (subscription.Status == PaymentSubscriptionStatuses.Active ||
+                        subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                        subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                        subscription.Status == PaymentSubscriptionStatuses.Incomplete))
+                .OrderByDescending(subscription => subscription.Created)
+                .Select(subscription => new AdminSubscriptionDto
+                {
+                    ProviderSubscriptionId = subscription.ProviderSubscriptionId,
+                    Provider = subscription.Provider,
+                    ProductName = subscription.ProductName,
+                    ProviderProductId = subscription.ProviderProductId,
+                    ProviderPriceId = subscription.ProviderPriceId,
+                    Status = subscription.Status,
+                    CurrentPeriodStart = subscription.CurrentPeriodStart,
+                    CurrentPeriodEnd = subscription.CurrentPeriodEnd,
+                    NextChargeAt = subscription.NextChargeAt,
+                    LastPaidAt = subscription.LastPaidAt,
+                    CancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
+                    Created = subscription.Created,
+                    Updated = subscription.Updated
+                })
+                .ToListAsync();
+
+            foreach (var subscription in subscriptions)
+            {
+                subscription.ProviderDashboardUrl = BuildProviderDashboardUrl(subscription.Provider, subscription.ProviderSubscriptionId);
+            }
+
+            return Ok(new AdminMemberSubscriptionsDto
+            {
+                MemberName = member.Navn,
+                MemberEmail = member.Email,
+                Subscriptions = subscriptions
+            });
         }
 
         [HttpGet("finance")]
@@ -122,6 +190,11 @@ namespace GamMaSite.Controllers
 
             var users = await _userManager.Users
                 .Where(user => user.KontingentDato >= request.From && user.KontingentDato <= request.To)
+                .Where(user => !request.ExcludeActiveSubscriptions || !_db.PaymentSubscriptions.Any(subscription =>
+                    subscription.UserId == user.Id && (subscription.Status == PaymentSubscriptionStatuses.Active ||
+                        subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                        subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                        subscription.Status == PaymentSubscriptionStatuses.Incomplete)))
                 .ToListAsync();
 
             var updated = 0;
@@ -143,7 +216,7 @@ namespace GamMaSite.Controllers
             return Ok(new MassUpdateMemberStatusResult { Updated = updated });
         }
 
-        private static MemberDto ToMemberDto(SiteUser user, bool includePrivate)
+        private static MemberDto ToMemberDto(SiteUser user, bool includePrivate, bool? hasActiveSubscription = null)
         {
             return new MemberDto
             {
@@ -156,8 +229,27 @@ namespace GamMaSite.Controllers
                 Status = user.Status.ToString(),
                 IsVisible = user.Visibility.IsVisible(),
                 MembershipPaidAt = user.KontingentDato,
-                CreatedAt = user.OprettetDato
+                CreatedAt = user.OprettetDato,
+                HasActiveSubscription = hasActiveSubscription
             };
+        }
+
+        private string BuildProviderDashboardUrl(string provider, string providerSubscriptionId)
+        {
+            if (!string.Equals(provider, "Stripe", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(providerSubscriptionId))
+            {
+                return null;
+            }
+
+            var accountId = _configuration?["StripeConfig:AccountId"]?.Trim();
+            var environment = _configuration?["StripeConfig:Environment"]?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(accountId) || (environment != "test" && environment != "live"))
+            {
+                return null;
+            }
+
+            return $"https://dashboard.stripe.com/{Uri.EscapeDataString(accountId)}/{environment}/subscriptions/{Uri.EscapeDataString(providerSubscriptionId)}";
         }
     }
 }

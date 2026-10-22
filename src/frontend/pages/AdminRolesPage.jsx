@@ -352,6 +352,7 @@ function permissionLabel(code) {
   return {
     "content.edit": "Events og nyheder",
     "registrations.edit": "Tilmeldinger",
+    "payments.edit.all": "Betalinger",
     "finance.view.all": "Se alle finanser",
     "finance.edit.all": "Rediger alle finanser",
     "messages.edit": "Beskeder",
@@ -363,6 +364,7 @@ function permissionLabel(code) {
 const PERMISSION_ORDER = [
   "content.edit",
   "registrations.edit",
+  "payments.edit.all",
   "messages.edit",
   "email_templates.edit",
   "roles.edit",

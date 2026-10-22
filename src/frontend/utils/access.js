@@ -7,13 +7,16 @@ export const permissions = {
   messagesEdit: "messages.edit",
   rolesEdit: "roles.edit",
   financeViewAll: "finance.view.all",
-  financeEditAll: "finance.edit.all"
+  financeEditAll: "finance.edit.all",
+  paymentsEditAll: "payments.edit.all"
 };
 
 export const AccessContext = createContext({ permissions: [] });
 
 const adminDestinations = [
   { path: "/react/admin/events", permission: permissions.contentEdit },
+  { path: "/react/admin/products", permission: permissions.paymentsEditAll },
+  { path: "/react/admin/subscriptions", permission: permissions.paymentsEditAll },
   { path: "/react/admin/messages", permission: permissions.messagesEdit },
   { path: "/react/admin/templates", permission: permissions.emailTemplatesEdit },
   { path: "/react/admin/users", permission: permissions.rolesEdit },
@@ -53,13 +56,19 @@ export function adminPermissionForPath(path) {
   if (path === "/react/admin/news" || path.startsWith("/react/admin/news/")) {
     return permissions.contentEdit;
   }
+  if (path === "/react/admin/products" || path.startsWith("/react/admin/products/")) {
+    return permissions.paymentsEditAll;
+  }
+  if (path === "/react/admin/subscriptions" || path.startsWith("/react/admin/subscriptions/")) {
+    return permissions.paymentsEditAll;
+  }
   if (path === "/react/admin/messages") {
     return permissions.messagesEdit;
   }
   if (path === "/react/admin/templates" || path.startsWith("/react/admin/templates/")) {
     return permissions.emailTemplatesEdit;
   }
-  if (path === "/react/admin/users" || path === "/react/admin/roles" || path.startsWith("/react/admin/roles/")) {
+  if (path === "/react/admin/users" || path.startsWith("/react/admin/users/") || path === "/react/admin/roles" || path.startsWith("/react/admin/roles/")) {
     return permissions.rolesEdit;
   }
   if (path === "/react/admin/finance/postings/edit") {

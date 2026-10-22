@@ -405,4 +405,98 @@ GamMas bestyrelse',
   1,
   '2026-09-03 12:00:00',
   '2026-09-03 12:00:00'
+),
+(
+  'System - Betalingsbekræftelse',
+  'Tak for din betaling af {{ProductName}} hos GamMa',
+  'Din betaling af {{ProductName}} er gennemført',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Din betaling af {{ProductName}} er gennemf&oslash;rt</div>
+<div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <p style="margin:0 0 20px;">Tak for din betaling af <strong>{{ProductName}}</strong> hos GamMa.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #d9e7f5;background-color:#f8fbfe;">
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaler</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Email</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{Email}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaling for</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Bel&oslash;b</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-size:18px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingssystem</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentProvider}}</td></tr>
+      <tr><td style="padding:11px 13px;color:#5c7085;">Betalingsdato</td><td style="padding:11px 13px;text-align:right;">{{PaymentDate}}</td></tr>
+    </table>
+    <p style="margin:20px 0 0;">Med venlig hilsen<br><strong>GamMa</strong></p>
+  </div>
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
+
+Tak for din betaling af {{ProductName}} hos GamMa.
+
+Betaler: {{Name}}
+Email: {{Email}}
+Betaling for: {{ProductName}}
+Beloeb: {{Amount}}
+Betalingssystem: {{PaymentProvider}}
+Betalingsdato: {{PaymentDate}}
+
+Gem gerne denne mail som dokumentation for din betaling.
+
+Med venlig hilsen
+GamMa',
+  'SYSTEM_PAYMENT_CONFIRMATION',
+  1,
+  '2026-10-20 12:00:00',
+  '2026-10-20 12:00:00'
+),
+(
+  'System - Bekræft automatisk betaling',
+  'Tak for din betaling af {{ProductName}} hos GamMa',
+  'Din betaling af {{ProductName}} er gennemført; fremtidige betalinger trækkes automatisk',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;overflow:hidden;opacity:0;">Din betaling af {{ProductName}} er gennemf&oslash;rt; fremtidige betalinger tr&aelig;kkes automatisk</div>
+<div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <p style="margin:0 0 20px;">Tak for din betaling af <strong>{{ProductName}}</strong> hos GamMa. Din betaling er gennemført, og fremtidige betalinger vil blive trukket automatisk.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #d9e7f5;background-color:#f8fbfe;">
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaler</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Email</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{Email}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaling for</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Bel&oslash;b</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-size:18px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingssystem</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentProvider}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingsdato</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentDate}}</td></tr>
+      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingsfrekvens</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{BillingPeriod}}</td></tr>
+      <tr><td style="padding:11px 13px;color:#5c7085;">Aftaletype</td><td style="padding:11px 13px;text-align:right;">Automatisk betaling</td></tr>
+    </table>
+    <p style="margin:20px 0 0;color:#4f6475;">Din betaling for <strong>{{ProductName}}</strong> vil fremover blive trukket automatisk, indtil aftalen opsiges.</p>
+    <p style="margin:20px 0 0;">Du kan altid se status og opsige din betalingsaftale på <strong><a href="https://gam-ma.dk/react/account/manage/subscriptions" style="color:#2485c7;">din konto</a></strong>.</p>
+    <p style="margin:20px 0 0;">Med venlig hilsen<br><strong>GamMa</strong></p>
+  </div>
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
+
+Tak for din betaling af {{ProductName}} hos GamMa. Din betaling er gennemført, og fremtidige betalinger vil blive trukket automatisk.
+
+Betaler: {{Name}}
+Email: {{Email}}
+Betaling for: {{ProductName}}
+Beloeb: {{Amount}}
+Betalingssystem: {{PaymentProvider}}
+Betalingsdato: {{PaymentDate}}
+Betalingsfrekvens: {{BillingPeriod}}
+Aftaletype: Automatisk betaling
+
+Din betaling for {{ProductName}} vil fremover blive trukket automatisk, indtil aftalen opsiges. Du kan altid se status og opsige din betalingsaftale på din konto: https://gam-ma.dk/react/account/manage/subscriptions
+
+Med venlig hilsen
+GamMa',
+  'SYSTEM_PAYMENT_RECURRING',
+  1,
+  '2026-10-20 12:00:00',
+  '2026-10-20 12:00:00'
 );

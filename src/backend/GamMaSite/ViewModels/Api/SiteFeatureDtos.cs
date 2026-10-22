@@ -47,25 +47,6 @@ namespace GamMaSite.ViewModels.Api
         public IReadOnlyList<LibraryItemDto> Items { get; set; }
     }
 
-    public class PaymentProductDto
-    {
-        public string Id { get; set; }
-
-        public string Name { get; set; }
-
-        public string Description { get; set; }
-
-        public long? UnitAmount { get; set; }
-
-        public string Currency { get; set; }
-
-        public string Additional { get; set; }
-
-        public string Conditions { get; set; }
-
-        public string ConditionsName { get; set; }
-    }
-
     public class PaymentConfigDto
     {
         public string PublicApiKey { get; set; }

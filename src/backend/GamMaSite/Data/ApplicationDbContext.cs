@@ -26,6 +26,10 @@ namespace GamMaSite.Data
 
         public DbSet<RolePermission> RolePermissions { get; set; }
 
+        public DbSet<PaymentSubscription> PaymentSubscriptions { get; set; }
+
+        public DbSet<PaymentOffer> PaymentOffers { get; set; }
+
         public ApplicationDbContext() : base()
         {
         }
@@ -140,6 +144,41 @@ namespace GamMaSite.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            builder.Entity<PaymentOffer>(entity =>
+            {
+                entity.ToTable("PaymentOffers");
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.ContentItemScopeKey)
+                    .HasColumnName("ContentItemScopeKey")
+                    .HasComputedColumnSql("COALESCE(`ContentItemId`, 0)", stored: true);
+                entity.HasIndex(m => new { m.Scope, m.ContentItemScopeKey, m.Provider, m.OfferType })
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType");
+                entity.HasIndex(m => m.ContentItemId).HasDatabaseName("IX_PaymentOffers_ContentItemId");
+                entity.HasIndex(m => new { m.Provider, m.ProviderPriceId })
+                    .HasDatabaseName("IX_PaymentOffers_ProviderPriceId");
+
+                entity.Property(m => m.Scope).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.OfferType).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.LinkLabel).HasMaxLength(128);
+                entity.Property(m => m.ProductName).HasMaxLength(256).IsRequired();
+                entity.Property(m => m.ProviderProductId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPriceId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPaymentLinkId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPaymentUrl).HasColumnType("text");
+                entity.Property(m => m.Currency).HasMaxLength(3);
+                entity.Property(m => m.BillingInterval).HasMaxLength(32);
+                entity.Property(m => m.IsActive).HasDefaultValue(true);
+                entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(m => m.ContentItem)
+                    .WithMany(m => m.PaymentOffers)
+                    .HasForeignKey(m => m.ContentItemId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             builder.Entity<EventRegistration>(entity =>
             {
                 entity.HasKey(m => m.Id);
@@ -182,6 +221,42 @@ namespace GamMaSite.Data
                 entity.Property(m => m.IsActive).HasDefaultValue(true);
                 entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            builder.Entity<PaymentSubscription>(entity =>
+            {
+                entity.ToTable("PaymentSubscriptions");
+                entity.HasKey(m => m.Id);
+                entity.HasIndex(m => m.UserId)
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentSubscriptions_UserId");
+                entity.HasIndex(m => new { m.Provider, m.ProviderSubscriptionId })
+                    .IsUnique()
+                    .HasDatabaseName("UX_PaymentSubscriptions_ProviderSubscriptionId");
+                entity.HasIndex(m => m.Status).HasDatabaseName("IX_PaymentSubscriptions_Status");
+                entity.HasIndex(m => m.ProviderPriceId).HasDatabaseName("IX_PaymentSubscriptions_ProviderPriceId");
+
+                entity.Property(m => m.UserId).HasMaxLength(128).IsRequired();
+                entity.Property(m => m.Provider).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.ProviderSubscriptionId).HasMaxLength(128).IsRequired();
+                entity.Property(m => m.ProductName).HasMaxLength(256);
+                entity.Property(m => m.ProviderProductId).HasMaxLength(128);
+                entity.Property(m => m.ProviderPriceId).HasMaxLength(128);
+                entity.Property(m => m.Status).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.LastProcessedWebhookId).HasMaxLength(256);
+                entity.Property(m => m.CancelAtPeriodEnd).HasDefaultValue(false);
+                entity.Property(m => m.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(m => m.Updated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne<SiteUser>()
+                    .WithMany()
+                    .HasForeignKey(m => m.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.PaymentOffer)
+                    .WithMany()
+                    .HasForeignKey(m => m.PaymentOfferId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

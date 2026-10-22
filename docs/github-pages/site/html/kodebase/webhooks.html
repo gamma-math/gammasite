@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Webhooks &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.webhooks">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Teknik &middot; Webhooks</p>
+      <h1>Betalingswebhooks</h1>
+      <p class="lead">GamMa modtager statusopdateringer fra Stripe og MobilePay p&aring; to offentlige HTTPS-endpoints. Webhooks m&aring; ikke pege p&aring; localhost eller en lokal tunnel i test- eller produktionsmilj&oslash;et.</p>
+
+      <section class="section">
+        <h2 class="webhook-section-title">Endpoints</h2>
+        <table class="table">
+          <thead><tr><th>Udbyder</th><th>Test</th><th>Produktion</th></tr></thead>
+          <tbody>
+            <tr><td>Stripe</td><td><code>https://test.gam-ma.dk/api/payments/stripe/webhook</code></td><td><code>https://gam-ma.dk/api/payments/stripe/webhook</code></td></tr>
+            <tr><td>MobilePay</td><td><code>https://test.gam-ma.dk/api/payments/vipps/webhook</code></td><td><code>https://gam-ma.dk/api/payments/vipps/webhook</code></td></tr>
+          </tbody>
+        </table>
+        <p class="muted">Hvis dom&aelig;net &aelig;ndres, skal URL'en opdateres hos den relevante betalingsudbyder og kontrolleres efter deployment.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="webhook-section-title">Simply og den offentlige webserver</h2>
+        <p>Simply er v&aelig;rten for webserveren. Der oprettes ikke en separat webhook inde i Simply; webhooken oprettes hos Stripe eller MobilePay og kalder den URL, som den deployede GamMaSite-applikation eksponerer.</p>
+        <ol class="steps">
+          <li>Kontroll&eacute;r at test- eller produktionsdom&aelig;net peger p&aring; det rigtige Simply-site, og at HTTPS-certifikatet er aktivt.</li>
+          <li>Deploy den aktuelle version via GitHub Actions med det korrekte environment: <code>TEST</code> eller <code>PROD</code>.</li>
+          <li>Kontroll&eacute;r at pipeline-konfigurationen indeholder webhook-secretet og de relevante betalingscredentials for samme environment.</li>
+          <li>Brug endpointet fra tabellen ovenfor, n&aring;r webhooken oprettes hos betalingsudbyderen.</li>
+          <li>Kontroll&eacute;r efter oprettelsen serverlog og betalingsudbyderens delivery-log for en HTTP 2xx-respons.</li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <h2 class="webhook-section-title">Stripe</h2>
+        <p>Stripe-webhooken behandler gennemf&oslash;rte Checkout-betalinger, abonnementer og fakturabetalinger. Den opdaterer blandt andet eventbetalinger, medlemsstatus og betalingsaftaler.</p>
+        <ol class="steps">
+          <li>Deploy den relevante version til Simply via GitHub Actions. Kontroll&eacute;r, at test eller produktion har korrekt HTTPS og dom&aelig;ne.</li>
+          <li>&Aring;bn den relevante Stripe-konto, og g&aring; til <strong>Developers &rarr; Webhooks</strong>.</li>
+          <li>V&aelig;lg <strong>Add endpoint</strong>.</li>
+          <li>Udfyld endpointet s&aring;ledes:
+            <ul class="webhook-details">
+              <li><strong>Destination name:</strong> <code>GamMa Test Webhook</code></li>
+              <li><strong>Endpoint URL:</strong> <code>https://test.gam-ma.dk/api/payments/stripe/webhook</code> for test eller den tilsvarende produktions-URL.</li>
+              <li><strong>Description:</strong> <code>Stripe webhook for GamMa test environment</code></li>
+              <li><strong>Scope:</strong> <code>Your account</code></li>
+              <li><strong>Payload style:</strong> <code>Snapshot</code></li>
+              <li><strong>API version:</strong> <code>2026-09-30.endive</code></li>
+              <li><strong>Events:</strong> <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code> og <code>invoice.payment_action_required</code>.</li>
+            </ul>
+          </li>
+          <li>Gem endpointets signing secret som <code>STRIPE_WEBHOOK_SECRET</code> i det samme GitHub Environment, som deploymentet bruger. Secret m&aring; ikke skrives i repositoryet.</li>
+          <li>Send en test event fra Stripe, og kontroll&eacute;r HTTP 2xx, applikationslog og at den forventede betaling eller betalingsaftale opdateres.</li>
+        </ol>
+        <p>Stripe beskriver dashboard- og API-oprettelse af webhook endpoints i <a href="https://docs.stripe.com/api/webhook_endpoints" target="_blank" rel="noreferrer">Stripe Webhook Endpoints</a>.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="webhook-section-title">MobilePay</h2>
+        <p>MobilePay-webhooken modtager ePayment- og Recurring-h&aelig;ndelser p&aring; samme endpoint. Det er is&aelig;r vigtigt at registrere b&aring;de aftaleh&aelig;ndelser og charge-h&aelig;ndelser for gentagne betalinger.</p>
+        <ol class="steps">
+          <li>Deploy til Simply, og kontroll&eacute;r at den offentlige MobilePay-URL svarer over HTTPS. Simply hoster endpointet; selve webhook-registreringen oprettes hos MobilePay.</li>
+          <li>V&aelig;lg test- eller produktionsmilj&oslash;et hos MobilePay, og brug credentials fra det samme milj&oslash;. Testcredentials m&aring; ikke bruges i produktion.</li>
+          <li>Install&eacute;r scriptets afh&aelig;ngigheder fra <code>src/scripts/vipps/requirements.txt</code>. K&oslash;rselsfilen er <code>src/scripts/vipps/vipps.py</code>, og den komplette ops&aelig;tning st&aring;r i <code>src/scripts/vipps/README.md</code>.</li>
+          <li>Se eksisterende webhooks med <code>--list-webhooks</code>, og not&eacute;r ID'et p&aring; den webhook, der skal udskiftes.</li>
+          <li>Opret en ny webhook med <code>--rotate-webhook &lt;gammelt-webhook-id&gt; &lt;offentlig-url&gt;</code>. Scriptet opretter den nye webhook og verificerer URL'en, men sletter ikke den gamle endnu.</li>
+          <li>Gem webhook-hemmeligheden i GitHub Environment som <code>VIPPS_WEBHOOK_SECRET</code>. Pipelinen skriver den til <code>MobilePay:WebhookSecret</code>; secretet m&aring; ikke committes.</li>
+          <li>Deploy den nye secret, gennemf&oslash;r en testbetaling, og kontroll&eacute;r HTTP 2xx samt at betalingen eller betalingsaftalen opdateres.</li>
+          <li>Slet f&oslash;rst den gamle webhook med <code>--delete-webhook &lt;gammelt-webhook-id&gt;</code>, n&aring;r den nye er verificeret.</li>
+        </ol>
+        <p>Ved en f&oslash;rste oprettelse uden en gammel webhook kan <code>--register-webhook</code> bruges. Scriptet viser secretet ved oprettelsen, s&aring; det skal gemmes med det samme i det korrekte GitHub Environment.</p>
+        <p>MobilePay beskriver oprettelse og eventtyper i <a href="https://developer.vippsmobilepay.com/docs/APIs/webhooks-api/" target="_blank" rel="noreferrer">Webhooks API-guiden</a> og <a href="https://developer.vippsmobilepay.com/docs/APIs/webhooks-api/events/" target="_blank" rel="noreferrer">eventoversigten</a>.</p>
+      </section>
+
+      <div class="callout callout--warning"><p>Efter en ændring skal webhooken testes i det miljø, hvor den er registreret. En lokal Stripe CLI-forward eller Cloudflare-tunnel tester kun lokal udvikling og må ikke bruges som permanent URL.</p></div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

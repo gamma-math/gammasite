@@ -276,7 +276,12 @@ namespace GamMaSite.Services
 
         private static IQueryable<ContentItem> IncludeLinks(IQueryable<ContentItem> query)
         {
-            return query.Include(item => item.Links.OrderBy(link => link.SortOrder));
+            return query
+                .Include(item => item.Links.OrderBy(link => link.SortOrder))
+                .Include(item => item.PaymentOffers
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id));
         }
 
         private static int? ValidateMaxParticipants(int? maxParticipants)
@@ -328,6 +333,11 @@ namespace GamMaSite.Services
         private static string SecureUrl(string value)
         {
             var url = Required(value, nameof(value));
+            if (url.StartsWith("/react/", StringComparison.Ordinal))
+            {
+                return url;
+            }
+
             if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != Uri.UriSchemeHttps)
             {
                 throw new ArgumentException("Content links must use an absolute HTTPS URL");

@@ -196,6 +196,11 @@ namespace GamMaSite.Controllers
                 return Unauthorized();
             }
 
+            if (request.IsStudent && user.Status == UserStatus.BETALT)
+            {
+                return BadRequest(new { error = "Et betalt medlemskab kan ikke ændres til studerende." });
+            }
+
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
             if (request.PhoneNumber != phoneNumber)
             {

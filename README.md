@@ -29,6 +29,8 @@ Only tracked project folders/files are listed here:
 |-- src/
 |   |-- backend/GamMaSite/         ASP.NET Core application and deployed web assets.
 |   |-- frontend/                  React/Vite source application.
+|   |-- scripts/
+|   |   `-- vipps/                  MobilePay/Vipps CLI, Docker setup, and pytest tests.
 |   `-- test/GamMaSite.Tests/      Backend unit tests for APIs, services, Identity, and Finance validation.
 |-- GamMaSite.sln                  Solution file for the backend project.
 |-- global.json                    .NET SDK version pin.

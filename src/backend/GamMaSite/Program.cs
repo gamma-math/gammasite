@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -28,6 +29,13 @@ LocalEnvironment.Load();
 /* Create WebApplicationBuilder */
 var builder = WebApplication.CreateBuilder(args);
 
+var publicBaseUrl = builder.Configuration["PublicBaseUrl"]?.TrimEnd('/');
+if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
+    (publicBaseUri.Scheme != Uri.UriSchemeHttps && publicBaseUri.Scheme != Uri.UriSchemeHttp))
+{
+    throw new InvalidOperationException("PublicBaseUrl skal være en fuld HTTP(S)-URL.");
+}
+
 
 /* ConfigureServices: Use this section to add services to the container. */
 // For more: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/startup?view=aspnetcore-8.0
@@ -35,7 +43,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add the database connection
 var mysqlConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var serverVersion = new MySqlServerVersion(new Version(8, 0));
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySql(mysqlConn, serverVersion));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(
+        mysqlConn,
+        serverVersion,
+        mySqlOptions => mySqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+    )
+);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add HSTS
@@ -77,6 +91,22 @@ builder.Services.AddTransient<IEmailSender, EmailService>(EmailInstance);
 builder.Services.AddScoped<IStripeService, StripeService>(i => new StripeService());
 StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
+// Add MobilePay/Vipps ePayment integration.
+builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
+{
+    var baseUrl = builder.Configuration["MobilePay:BaseUrl"];
+    if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var mobilePayBaseUri) ||
+        (mobilePayBaseUri.Scheme != Uri.UriSchemeHttps && mobilePayBaseUri.Scheme != Uri.UriSchemeHttp))
+    {
+        throw new InvalidOperationException("MobilePay:BaseUrl skal være en fuld HTTP(S)-URL.");
+    }
+
+    client.BaseAddress = new Uri(mobilePayBaseUri.ToString().TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();
+builder.Services.AddScoped<MobilePaySubscriptionReconciliationService>();
+
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IContentMediaService, ContentMediaService>();
@@ -104,6 +134,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(PermissionPolicies.RolesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.FinanceViewAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
     options.AddPolicy(PermissionPolicies.FinanceEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.PaymentsEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.PaymentsEditAll)));
 });
 
 // Add Github
@@ -168,6 +199,28 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy("payment-checkout", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("payment-provider-read", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -218,9 +271,26 @@ app.MapStaticAssets();
 
 app.UseRouting();
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+// Redirect legacy public URLs to their React equivalents.
+app.MapGet("/events", (HttpContext context) => Results.Redirect($"/react/events{context.Request.QueryString}"));
+app.MapGet("/events/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/events/{path}{context.Request.QueryString}"));
+app.MapGet("/news", (HttpContext context) => Results.Redirect($"/react/news{context.Request.QueryString}"));
+app.MapGet("/news/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/news/{path}{context.Request.QueryString}"));
+app.MapGet("/pay", (HttpContext context) => Results.Redirect($"/react/pay{context.Request.QueryString}"));
+app.MapGet("/pay/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/pay/{path}{context.Request.QueryString}"));
+app.MapGet("/members", (HttpContext context) => Results.Redirect($"/react/members{context.Request.QueryString}"));
+app.MapGet("/calendar", (HttpContext context) => Results.Redirect($"/react/calendar{context.Request.QueryString}"));
+app.MapGet("/library", (HttpContext context) => Results.Redirect($"/react/library{context.Request.QueryString}"));
+app.MapGet("/betingelser", (HttpContext context) => Results.Redirect($"/react/betingelser{context.Request.QueryString}"));
+app.MapGet("/cookies", (HttpContext context) => Results.Redirect($"/react/cookies{context.Request.QueryString}"));
+app.MapGet("/om", (HttpContext context) => Results.Redirect($"/react/om{context.Request.QueryString}"));
+app.MapGet("/account/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/account/{path}{context.Request.QueryString}"));
+app.MapGet("/admin", (HttpContext context) => Results.Redirect($"/react/admin{context.Request.QueryString}"));
+app.MapGet("/admin/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/admin/{path}{context.Request.QueryString}"));
 
 // Controller routes and Razor pages
 app.MapControllers();

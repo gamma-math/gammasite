@@ -1,0 +1,90 @@
+services:
+  connection:
+    build: .
+    env_file: .env
+    command: ["--check"]
+    profiles: ["manual"]
+
+  payment:
+    build: .
+    env_file: .env
+    command: ["--payment"]
+    profiles: ["manual"]
+
+  payment-status:
+    build: .
+    env_file: .env
+    command: ["--status"]
+    profiles: ["manual"]
+
+  payment-capture:
+    build: .
+    env_file: .env
+    command: ["--capture"]
+    profiles: ["manual"]
+
+  create-agreement:
+    build: .
+    env_file: .env
+    command: ["--create-agreement"]
+    profiles: ["manual"]
+
+  agreement-status:
+    build: .
+    env_file: .env
+    command: ["--agreement-status"]
+    profiles: ["manual"]
+
+  agreements:
+    build: .
+    env_file: .env
+    command: ["--list-agreements"]
+    profiles: ["manual"]
+
+  agreement-accept:
+    build: .
+    env_file: .env
+    command: ["--accept-agreement"]
+    profiles: ["manual"]
+
+  agreement-stop:
+    build: .
+    env_file: .env
+    command: ["--stop-agreement"]
+    profiles: ["manual"]
+
+  charge-status:
+    build: .
+    env_file: .env
+    command: ["--charge-status"]
+    profiles: ["manual"]
+
+  charges:
+    build: .
+    env_file: .env
+    command: ["--list-charges"]
+    profiles: ["manual"]
+
+  register-webhook:
+    build: .
+    env_file: .env
+    command: ["--register-webhook"]
+    profiles: ["manual"]
+
+  rotate-webhook:
+    build: .
+    env_file: .env
+    command: ["--rotate-webhook"]
+    profiles: ["manual"]
+
+  webhooks:
+    build: .
+    env_file: .env
+    command: ["--list-webhooks"]
+    profiles: ["manual"]
+
+  delete-webhook:
+    build: .
+    env_file: .env
+    command: ["--delete-webhook"]
+    profiles: ["manual"]

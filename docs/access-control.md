@@ -8,6 +8,7 @@ Adgangsstyringen kombinerer almindelig login-adgang, permissions og arrangørsta
 - `*.edit` giver adgang til at se og redigere hele området, inklusive oprettelse og sletning hvor det giver mening.
 - Backend er den endelige adgangskontrol. Frontend skjuler kun funktioner, som brugeren ikke kan bruge.
 - `ADMIN` beholder sine nuværende administrative muligheder. De fire permissions `content.edit`, `registrations.edit`, `messages.edit` og `roles.edit` kan ikke fjernes fra ADMIN.
+- Betalingsadministration er en separat permission og er ikke automatisk en del af `ADMIN`.
 - En arrangør kan redigere event og tilmeldinger for egne events uden en almindelig admin-permission.
 
 ## Sider og adgang
@@ -45,6 +46,9 @@ En bruger kan altid administrere sin egen tilmelding efter de almindelige eventr
 | `/react/admin/news` | Se og administrere nyheder | `content.edit` |
 | `/react/admin/news/new` | Opret nyhed | `content.edit` |
 | `/react/admin/news/{id}/edit` | Rediger nyhed | `content.edit` |
+| `/react/admin/products` | Se og redigere globale betalingsprodukter | `payments.edit.all` |
+| `/react/admin/products/{id}/edit` | Rediger globalt betalingsprodukt | `payments.edit.all` |
+| `/react/admin/subscriptions` | Se og administrere betalingsaftaler | `payments.edit.all` |
 | `/react/admin/users` | Administrer medlemmer | `roles.edit` |
 | `/react/admin/messages` | Vælg modtagere og send beskeder | `messages.edit` |
 | `/react/admin/templates` | Administrer beskedskabeloner | `email_templates.edit` |
@@ -71,6 +75,7 @@ En bruger kan altid administrere sin egen tilmelding efter de almindelige eventr
 | `roles.edit` | Administrere medlemmer, roller og permissions |
 | `finance.view.all` | Se og eksportere alle finanser uden redigering |
 | `finance.edit.all` | Se, oprette og redigere alle finansielle data |
+| `payments.edit.all` | Se og administrere alle betalingsprodukter og betalingsaftaler |
 
 `finance.edit.all` giver også adgang til finansområdets redigeringssider. Kontrol af, hvilke konkrete finansfelter der kan ændres, sker i finansfunktionaliteten.
 
@@ -82,4 +87,5 @@ En bruger kan altid administrere sin egen tilmelding efter de almindelige eventr
 | Kommunikationsansvarlig | `messages.edit`, `email_templates.edit` |
 | Revisor | `finance.view.all` |
 | Kasserer | `finance.edit.all` |
+| Betalingsansvarlig | `payments.edit.all` |
 | Administrator | Alle permissions |

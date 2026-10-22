@@ -20,9 +20,10 @@ Foelgende scripts indsaetter testdata:
 4. `07_AspNetUserTokens.sql`
 5. `13_ContentItems.sql`
 6. `14_ContentLinks.sql`
-7. `15_EventRegistrations.sql`
-8. `16_EmailTemplates.sql`
-9. `18_AccessControlPermissions.sql` (permissions, role-permissions og role claims)
+7. `17_PaymentOffers.sql`
+8. `15_EventRegistrations.sql`
+9. `16_EmailTemplates.sql`
+10. `18_AccessControlPermissions.sql` (permissions, role-permissions og role claims)
 
 Foelgende scripts rydder kun tabellerne og efterlader dem tomme:
 
@@ -56,9 +57,10 @@ Hvis du vil koere scripts enkeltvist, brug denne rekkefolge:
 12. `12___EFMigrationsHistory.sql`
 13. `13_ContentItems.sql`
 14. `14_ContentLinks.sql`
-15. `15_EventRegistrations.sql`
-16. `16_EmailTemplates.sql`
-17. `18_AccessControlPermissions.sql`
+15. `17_PaymentOffers.sql`
+16. `15_EventRegistrations.sql`
+17. `16_EmailTemplates.sql`
+18. `18_AccessControlPermissions.sql`
 
 Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sql`.
 
@@ -70,13 +72,14 @@ Hvis du vil have de vigtigste testdata ind hurtigt, kan du koere `00_seed_all.sq
 4. `AspNetUserTokens`
 5. `ContentItems`
 6. `ContentLinks`
-7. `EventRegistrations`
-8. `EmailTemplates`
-9. `Permissions`
-10. `RolePermissions`
-11. `AspNetRoleClaims`
+7. `PaymentOffers`
+8. `EventRegistrations`
+9. `EmailTemplates`
+10. `Permissions`
+11. `RolePermissions`
+12. `AspNetRoleClaims`
 
-De nye content-tabeller kan ogsaa seedes separat med `13_ContentItems.sql` til `16_EmailTemplates.sql`, saa de kan koeres ovenpaa en eksisterende lokal Identity-database uden at overskrive brugere og roller.
+De nye content- og betalingstabeller kan ogsaa seedes separat med `13_ContentItems.sql`, `14_ContentLinks.sql`, `17_PaymentOffers.sql`, `15_EventRegistrations.sql` og `16_EmailTemplates.sql`, saa de kan koeres ovenpaa en eksisterende lokal Identity-database uden at overskrive brugere og roller.
 
 ## Bemaerkninger
 

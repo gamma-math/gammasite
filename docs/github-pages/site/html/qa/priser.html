@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Priser &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="qa.prices">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">QA &middot; Priser</p>
+      <h1>&AElig;ndr en pris</h1>
+      <p class="lead">Kr&aelig;ver: <code>payments.edit.all</code>. Brug vejledningen, n&aring;r et betalingsprodukt skal have et nyt bel&oslash;b eller en ny betalingsfrekvens.</p>
+      <ol class="steps">
+        <li>&Aring;bn <strong>Admin</strong>, og v&aelig;lg <strong>Produkter</strong>.</li>
+        <li>Find produktet, og v&aelig;lg <strong>Redig&eacute;r</strong>. Kontroll&eacute;r f&oslash;rst scope, udbyder og betalingstype.</li>
+        <li>&AElig;ndr bel&oslash;bet og eventuelt betalingsintervallet. Bel&oslash;bet skal v&aelig;re mindst 10,00 kr.</li>
+        <li>V&aelig;lg <strong>Gem</strong>, og kontroll&eacute;r at produktet viser den nye pris.</li>
+        <li>Kontroll&eacute;r Stripe, hvis produktet bruger Stripe: en ny pris skal v&aelig;re aktiv, den tidligere pris skal v&aelig;re arkiveret, og prisbeskrivelsen skal identificere produkt og betalingstype.</li>
+        <li>Kontroll&eacute;r MobilePay, hvis produktet er en gentagen betaling: eksisterende aktive betalingsaftaler skal have det nye bel&oslash;b.</li>
+        <li>Gennemf&oslash;r en testbetaling med produktet, og kontroll&eacute;r bel&oslash;b, kvitteringsmail og eventuel n&aelig;ste opkr&aelig;vning.</li>
+      </ol>
+      <div class="callout callout--warning"><p>&AElig;ndr ikke udbyder, betalingstype eller produktnavn som en del af en almindelig pris&aelig;ndring. Opret i stedet et nyt produkt, hvis selve betalingsproduktet skal skifte.</p></div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

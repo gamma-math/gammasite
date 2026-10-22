@@ -1,5 +1,6 @@
 import { adminSections, Link } from "../routes/navigation.jsx";
 import { CircleArrowLeft } from "lucide-react";
+import { SidebarNav } from "../components/SidebarNav.jsx";
 import { hasPermission, useAccessUser } from "../utils/access.js";
 
 const financeSections = [
@@ -97,36 +98,21 @@ export function AdminLayout({
   return (
     <main className="menu-shell">
       <section className="menu-workspace">
-        <aside className="menu-sidebar">
-          <h2 className="menu-sidebar-title">
-            {isFinanceAdmin ? "Finans Admin" : "Admin"}
-          </h2>
-          <nav className="menu-side-nav" aria-label="Admin sektioner">
-            {sections.map((section, index) => (
-              <div
-                className="menu-nav-section"
-                key={section.label ?? `section-${index}`}
-              >
-                {section.label && (
-                  <p className="menu-nav-section-title">{section.label}</p>
-                )}
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      className={`menu-side-link ${activePath === item.href ? "is-active" : ""}`}
-                      href={item.href}
-                      key={item.href}
-                    >
-                      {Icon && <Icon size={20} strokeWidth={2.2} aria-hidden="true" />}
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-        </aside>
+        <SidebarNav
+          title={isFinanceAdmin ? "Finans Admin" : "Admin"}
+          sections={sections}
+          active={activePath}
+          ariaLabel="Admin sektioner"
+          renderLink={(item, className, _isActive, onNavigate) => {
+            const Icon = item.icon;
+            return (
+              <Link className={className} href={item.href} key={item.href} onClick={onNavigate}>
+                {Icon && <Icon size={20} strokeWidth={2.2} aria-hidden="true" />}
+                {item.label}
+              </Link>
+            );
+          }}
+        />
         <section className={`menu-content ${contentClassName}`.trim()}>
           {children}
         </section>

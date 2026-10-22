@@ -5,6 +5,7 @@ DELETE FROM `AspNetUserRoles`;
 INSERT INTO `AspNetUserRoles` (`UserId`, `RoleId`) VALUES
 ('user-admin-test', 'role-admin'),
 ('user-admin-test', 'role-finance'),
+('user-admin-test', 'role-payments'),
 ('user-member-test', 'role-test'),
 ('user-fake-001', 'role-admin'),
 ('user-fake-002', 'role-test'),

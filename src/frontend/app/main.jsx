@@ -24,7 +24,7 @@ import {
   FinanceAdminPostingDetailPage,
   FinanceAdminPostingsPage,
 } from "../pages/AdminFinancePage.jsx";
-import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
+import { AdminMemberSubscriptionsPage, AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
 import {
   AdminRolesEditorPage,
@@ -34,6 +34,9 @@ import {
   AdminTemplateEditorPage,
   AdminTemplatesPage,
 } from "../pages/AdminTemplatesPage.jsx";
+import { AdminProductsPage } from "../pages/AdminProductsPage.jsx";
+import { AdminProductEditorPage } from "../pages/AdminProductsPage.jsx";
+import { AdminSubscriptionsPage } from "../pages/AdminSubscriptionsPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -42,13 +45,13 @@ import { FrontPage } from "../pages/FrontPage.jsx";
 import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
 import {
-  GenericPaymentPage,
+  EventPaymentPage,
   PaymentPage,
   PaymentStatusPage,
-  ProductPaymentPage,
 } from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
+import { setMobileMenuCollapsed } from "../utils/mobileMenu.js";
 import { meApi } from "../services/api.js";
 import { AccessContext, adminPermissionForPath, canAccessAdmin, firstAdminPath, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
@@ -127,7 +130,8 @@ function App() {
     messagesEdit: hasPermission(user, permissions.messagesEdit),
     rolesEdit: hasPermission(user, permissions.rolesEdit),
     financeView: hasAnyPermission(user, [permissions.financeViewAll, permissions.financeEditAll]),
-    financeEdit: hasPermission(user, permissions.financeEditAll)
+    financeEdit: hasPermission(user, permissions.financeEditAll),
+    paymentsEditAll: hasPermission(user, permissions.paymentsEditAll)
   };
 
   return (
@@ -158,6 +162,7 @@ function Header({ user, isReadAdmin, adminPath }) {
               <Link
                 className="frontpage-button frontpage-button-secondary"
                 href="/react/events"
+                onClick={() => setMobileMenuCollapsed(false)}
               >
                 <Menu size={16} />
                 Menu
@@ -166,6 +171,7 @@ function Header({ user, isReadAdmin, adminPath }) {
                 <Link
                   className="frontpage-button frontpage-button-secondary"
                   href={adminPath}
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   Admin
                 </Link>
@@ -182,6 +188,7 @@ function Header({ user, isReadAdmin, adminPath }) {
                   className="frontpage-profile-link frontpage-profile-link-default"
                   href="/react/account/manage"
                   aria-label="Profil"
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   <UserCircle size={23} />
                 </Link>
@@ -257,11 +264,9 @@ function renderRoute(route, user, isAdmin, access) {
   if (path === "/react/finance") {
     return <FinancePage user={user} />;
   }
-  if (path === "/react/pay/generic" || path === "/Pay/Generisk") {
-    return <GenericPaymentPage user={user} />;
-  }
   if (path === "/react/pay/success" || path === "/Pay/Success") {
-    return <PaymentStatusPage status="success" user={user} />;
+    const query = new URLSearchParams(route.search);
+    return <PaymentStatusPage status="success" session={query.get("session")} reference={query.get("reference")} user={user} />;
   }
   if (path === "/react/pay/kontingent-success") {
     return <PaymentStatusPage status="kontingent-success" user={user} />;
@@ -269,23 +274,13 @@ function renderRoute(route, user, isAdmin, access) {
   if (path === "/react/pay/cancel" || path === "/Pay/Cancel") {
     return <PaymentStatusPage status="cancel" user={user} />;
   }
-  const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
-  if (oldProductMatch && oldProductMatch[1]) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(oldProductMatch[1])}
-        user={user}
-      />
-    );
+  const eventPaymentSuccessMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/success$/);
+  if (eventPaymentSuccessMatch) {
+    return <PaymentStatusPage status="event-success" eventSlug={decodeURIComponent(eventPaymentSuccessMatch[1])} reference={new URLSearchParams(route.search).get("reference")} user={user} />;
   }
-  const productMatch = path.match(/^\/react\/pay\/products\/([^/]+)$/);
-  if (productMatch) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(productMatch[1])}
-        user={user}
-      />
-    );
+  const eventPaymentMatch = path.match(/^\/react\/events\/([^/]+)\/pay\/(\d+)$/);
+  if (eventPaymentMatch) {
+    return <EventPaymentPage offerId={Number(eventPaymentMatch[2])} user={user} />;
   }
   if (path === "/react/om") {
     return <StaticPage page="about" />;
@@ -319,6 +314,9 @@ function renderRoute(route, user, isAdmin, access) {
   }
   if (path === "/react/account/manage/two-factor") {
     return <AccountManagePage user={user} section="two-factor" />;
+  }
+  if (path === "/react/account/manage/subscriptions") {
+    return <AccountManagePage user={user} section="subscriptions" />;
   }
   if (path === "/react/account/manage/finance") {
     return <AccountManagePage user={user} section="finance" />;
@@ -359,6 +357,23 @@ function renderRoute(route, user, isAdmin, access) {
   }
   if (path === "/react/admin/news") {
     return <AdminContentPage type="NEWS" isAdmin={access.contentEdit} />;
+  }
+  const adminProductEditorMatch = path.match(
+    /^\/react\/admin\/products\/(\d+)\/edit$/,
+  );
+  if (adminProductEditorMatch) {
+    return (
+      <AdminProductEditorPage
+        isAdmin={access.paymentsEditAll}
+        offerId={Number(adminProductEditorMatch[1])}
+      />
+    );
+  }
+  if (path === "/react/admin/products") {
+    return <AdminProductsPage isAdmin={access.paymentsEditAll} />;
+  }
+  if (path === "/react/admin/subscriptions") {
+    return <AdminSubscriptionsPage isAdmin={access.paymentsEditAll} />;
   }
   if (path === "/react/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;
@@ -446,6 +461,12 @@ function renderRoute(route, user, isAdmin, access) {
     return (
       <AdminTemplateEditorPage isAdmin={access.emailTemplatesEdit} templateId={templateId} />
     );
+  }
+  if (
+    /^\/react\/admin\/users\/[^/]+\/subscriptions$/.test(path)
+  ) {
+    const memberId = decodeURIComponent(path.split("/")[4]);
+    return <AdminMemberSubscriptionsPage isAdmin={access.rolesEdit} memberId={memberId} />;
   }
   if (
     path === "/react/admin/users" ||
