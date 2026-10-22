@@ -142,19 +142,11 @@ namespace GamMaSite.Controllers
                     return;
                 }
 
-                var member = await _db.Users.AsNoTracking()
-                    .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-                var wasAlreadyPaid = member?.Status == UserStatus.BETALT;
-                await MarkMembershipAsPaidAsync(userId, session.Created.ToUniversalTime(), cancellationToken);
-                if (!wasAlreadyPaid)
-                {
-                    await SendPaymentEmailAsync(
-                        userId,
-                        membershipOffer,
-                        session.Created.ToUniversalTime(),
-                        recurring: false,
-                        cancellationToken: cancellationToken);
-                }
+                await HandleOneTimeMembershipPaymentAsync(
+                    userId,
+                    membershipOffer,
+                    session.Created.ToUniversalTime(),
+                    cancellationToken);
                 return;
             }
 
@@ -238,19 +230,11 @@ namespace GamMaSite.Controllers
             {
                 if (paymentConfirmed)
                 {
-                    var member = await _db.Users.AsNoTracking()
-                        .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-                    var wasAlreadyPaid = member?.Status == UserStatus.BETALT;
-                    await MarkMembershipAsPaidAsync(userId, session.Created.ToUniversalTime(), cancellationToken);
-                    if (!wasAlreadyPaid)
-                    {
-                        await SendPaymentEmailAsync(
-                            userId,
-                            offer,
-                            session.Created.ToUniversalTime(),
-                            recurring: false,
-                            cancellationToken: cancellationToken);
-                    }
+                    await HandleOneTimeMembershipPaymentAsync(
+                        userId,
+                        offer,
+                        session.Created.ToUniversalTime(),
+                        cancellationToken);
                 }
 
                 return;
@@ -354,19 +338,71 @@ namespace GamMaSite.Controllers
                 return;
             }
 
-            var wasRegistered = registration.Registered;
+            await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+            _db.Entry(registration).State = EntityState.Detached;
+            registration = await PaymentWebhookTransaction.LockRegistrationAsync(_db, registration.Id, cancellationToken);
+            if (registration == null ||
+                (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            if (registration.Registered)
+            {
+                return;
+            }
+
             registration.Registered = true;
             registration.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
+            await SendPaymentEmailAsync(
+                userId,
+                offer,
+                session.Created.ToUniversalTime(),
+                recurring: false,
+                cancellationToken: cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+        }
 
-            if (!wasRegistered)
+        private async Task HandleOneTimeMembershipPaymentAsync(
+            string userId,
+            PaymentOffer offer,
+            DateTime paidAt,
+            CancellationToken cancellationToken)
+        {
+            await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+            var member = await PaymentWebhookTransaction.LockUserAsync(_db, userId, cancellationToken);
+            if (member == null)
+            {
+                _logger.LogWarning("Stripe payment could not be mapped to GamMa user {UserId}.", userId);
+                return;
+            }
+
+            var wasAlreadyPaid = member.Status == UserStatus.BETALT;
+            member.MarkAsPayed();
+            if (member.KontingentDato == default || member.KontingentDato < paidAt)
+            {
+                member.KontingentDato = paidAt;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            if (!wasAlreadyPaid)
             {
                 await SendPaymentEmailAsync(
                     userId,
                     offer,
-                    session.Created.ToUniversalTime(),
+                    paidAt,
                     recurring: false,
                     cancellationToken: cancellationToken);
+            }
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
             }
         }
 
@@ -418,6 +454,24 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            var subscriptionItem = subscription.Items?.Data?.FirstOrDefault();
+            var price = subscriptionItem?.Price;
+            var productId = price?.ProductId;
+            var productName = MetadataValue(subscription.Metadata, "ProductName");
+            if (!string.IsNullOrWhiteSpace(productId))
+            {
+                var product = await _stripeService.GetProductAsync(productId);
+                productName = product?.Name ?? productName;
+            }
+
+            await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+            if (record != null)
+            {
+                var recordId = record.Id;
+                _db.Entry(record).State = EntityState.Detached;
+                record = await PaymentWebhookTransaction.LockSubscriptionAsync(_db, recordId, cancellationToken);
+            }
+
             if (!string.IsNullOrWhiteSpace(webhookId) &&
                 string.Equals(record?.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
             {
@@ -428,9 +482,12 @@ namespace GamMaSite.Controllers
                 return;
             }
 
+            // Different provider events can share the same second. Only an
+            // strictly older event is out of order; the row lock above makes
+            // the check and state write atomic for concurrent deliveries.
             if (record?.LastProcessedWebhookAt.HasValue == true &&
                 webhookAt.HasValue &&
-                webhookAt.Value <= record.LastProcessedWebhookAt.Value)
+                webhookAt.Value < record.LastProcessedWebhookAt.Value)
             {
                 _logger.LogInformation(
                     "Ignoring out-of-order Stripe webhook {WebhookId} for subscription {SubscriptionId}.",
@@ -442,16 +499,6 @@ namespace GamMaSite.Controllers
             var paymentDate = context?.LastPaidAt ?? DateTime.UtcNow;
             var shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
                 (!record?.LastPaidAt.HasValue ?? true || record.LastPaidAt.Value < paymentDate);
-
-            var subscriptionItem = subscription.Items?.Data?.FirstOrDefault();
-            var price = subscriptionItem?.Price;
-            var productId = price?.ProductId;
-            var productName = MetadataValue(subscription.Metadata, "ProductName");
-            if (!string.IsNullOrWhiteSpace(productId))
-            {
-                var product = await _stripeService.GetProductAsync(productId);
-                productName = product?.Name ?? productName;
-            }
 
             if (record == null)
             {
@@ -492,10 +539,36 @@ namespace GamMaSite.Controllers
                     throw;
                 }
 
+                var recordId = record.Id;
+                _db.Entry(record).State = EntityState.Detached;
+                record = await PaymentWebhookTransaction.LockSubscriptionAsync(_db, recordId, cancellationToken);
+                if (record == null)
+                {
+                    throw;
+                }
+
+                if (!string.IsNullOrWhiteSpace(webhookId) &&
+                    string.Equals(record.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                if (record.LastProcessedWebhookAt.HasValue &&
+                    webhookAt.HasValue &&
+                    webhookAt.Value < record.LastProcessedWebhookAt.Value)
+                {
+                    return;
+                }
+
                 shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
                     (!record.LastPaidAt.HasValue || record.LastPaidAt.Value < paymentDate);
                 ApplySubscriptionState(record);
                 await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
             }
 
             if (context?.MarkUserAsPaid == true && !string.IsNullOrWhiteSpace(record.UserId))
@@ -600,7 +673,14 @@ namespace GamMaSite.Controllers
                 return;
             }
 
-            if (string.Equals(record.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
+            await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+            var recordId = record.Id;
+            _db.Entry(record).State = EntityState.Detached;
+            record = await PaymentWebhookTransaction.LockSubscriptionAsync(_db, recordId, cancellationToken);
+            if (record == null ||
+                string.Equals(record.LastProcessedWebhookId, webhookId, StringComparison.Ordinal) ||
+                (record.LastProcessedWebhookAt.HasValue &&
+                    webhookAt < record.LastProcessedWebhookAt.Value))
             {
                 return;
             }
@@ -610,6 +690,10 @@ namespace GamMaSite.Controllers
             record.LastProcessedWebhookAt = webhookAt;
             record.Updated = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
 
         private async Task<PaymentOffer> FindMembershipOfferAsync(

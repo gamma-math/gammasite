@@ -186,6 +186,14 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
+        await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+        _db.Entry(user).State = EntityState.Detached;
+        user = await PaymentWebhookTransaction.LockUserAsync(_db, userId, cancellationToken);
+        if (user == null)
+        {
+            return;
+        }
+
         var wasAlreadyPaid = user.Status == UserStatus.BETALT;
         user.MarkAsPayed();
         await _db.SaveChangesAsync(cancellationToken);
@@ -198,6 +206,11 @@ public sealed class VippsWebhookController : ControllerBase
                 DateTime.UtcNow,
                 recurring: false,
                 cancellationToken: cancellationToken);
+        }
+
+        if (transaction != null)
+        {
+            await transaction.CommitAsync(cancellationToken);
         }
     }
 
@@ -239,28 +252,33 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
-        if (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase))
+        await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+        _db.Entry(registration).State = EntityState.Detached;
+        registration = await PaymentWebhookTransaction.LockRegistrationAsync(_db, registration.Id, cancellationToken);
+        if (registration == null ||
+            (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
 
-        var wasRegistered = registration.Registered;
-        if (!wasRegistered)
+        if (registration.Registered)
         {
-            registration.Registered = true;
-            registration.Updated = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
+            return;
         }
 
-        if (!wasRegistered)
+        registration.Registered = true;
+        registration.Updated = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        await SendPaymentEmailAsync(
+            registration.UserId,
+            offer,
+            DateTime.UtcNow,
+            recurring: false,
+            cancellationToken: cancellationToken);
+        if (transaction != null)
         {
-            await SendPaymentEmailAsync(
-                registration.UserId,
-                offer,
-                DateTime.UtcNow,
-                recurring: false,
-                cancellationToken: cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
     }
 
@@ -287,6 +305,15 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
+        await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+        var subscriptionId = subscription.Id;
+        _db.Entry(subscription).State = EntityState.Detached;
+        subscription = await PaymentWebhookTransaction.LockSubscriptionAsync(_db, subscriptionId, cancellationToken);
+        if (subscription == null)
+        {
+            return;
+        }
+
         if (string.Equals(subscription.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
         {
             _logger.LogInformation(
@@ -297,7 +324,7 @@ public sealed class VippsWebhookController : ControllerBase
         }
 
         if (subscription.LastProcessedWebhookAt.HasValue &&
-            occurred <= subscription.LastProcessedWebhookAt.Value)
+            occurred < subscription.LastProcessedWebhookAt.Value)
         {
             _logger.LogInformation(
                 "Ignoring out-of-order Vipps webhook {WebhookId} for agreement {AgreementId}.",
@@ -344,6 +371,10 @@ public sealed class VippsWebhookController : ControllerBase
             await ScheduleNextChargeAsync(subscription, activatedOffer, agreementId, cancellationToken);
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return;
         }
 
@@ -354,6 +385,10 @@ public sealed class VippsWebhookController : ControllerBase
             subscription.Updated = DateTime.UtcNow;
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return;
         }
 
@@ -365,6 +400,10 @@ public sealed class VippsWebhookController : ControllerBase
             subscription.Updated = DateTime.UtcNow;
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return;
         }
 
@@ -375,6 +414,10 @@ public sealed class VippsWebhookController : ControllerBase
             subscription.Updated = DateTime.UtcNow;
             MarkWebhookProcessed(subscription, webhookId, occurred);
             await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return;
         }
 
@@ -423,12 +466,22 @@ public sealed class VippsWebhookController : ControllerBase
         if (offer == null || !subscription.NextChargeAt.HasValue)
         {
             _logger.LogWarning("MobilePay agreement {AgreementId} was paid, but its payment offer could not be resolved.", agreementId);
+            MarkWebhookProcessed(subscription, webhookId, occurred);
+            await _db.SaveChangesAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return;
         }
 
         await ScheduleNextChargeAsync(subscription, offer, agreementId, cancellationToken);
         MarkWebhookProcessed(subscription, webhookId, occurred);
         await _db.SaveChangesAsync(cancellationToken);
+        if (transaction != null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
     }
 
     private async Task ScheduleNextChargeAsync(

@@ -382,26 +382,38 @@ namespace GamMaSite.Controllers
                 string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(stripeSession.Mode, "payment", StringComparison.OrdinalIgnoreCase))
             {
-                await MarkMembershipPaidAsync(userId, HttpContext.RequestAborted);
+                var membershipIsConfirmed = await _db.Users
+                    .AsNoTracking()
+                    .AnyAsync(item => item.Id == userId && item.Status == UserStatus.BETALT, HttpContext.RequestAborted);
+                return Ok(new
+                {
+                    type = "MEMBERSHIP",
+                    status = membershipIsConfirmed ? "CONFIRMED" : "PENDING"
+                });
             }
 
             if (offer?.ContentItem?.Type != ContentTypes.Event || string.IsNullOrWhiteSpace(offer.ContentItem.Slug))
             {
-                return Ok(new { type = "MEMBERSHIP" });
+                var membershipIsConfirmed = await _db.Users
+                    .AsNoTracking()
+                    .AnyAsync(item => item.Id == userId && item.Status == UserStatus.BETALT, HttpContext.RequestAborted);
+                return Ok(new
+                {
+                    type = "MEMBERSHIP",
+                    status = membershipIsConfirmed ? "CONFIRMED" : "PENDING"
+                });
             }
 
             var registration = await _db.EventRegistrations
+                .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId);
-            if (registration != null &&
-                IsEventParticipant(registration.RegistrationType) &&
-                !registration.Registered)
+            return Ok(new
             {
-                registration.Registered = true;
-                registration.Updated = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-            }
-
-            return Ok(new { type = "EVENT", eventSlug = offer.ContentItem.Slug });
+                type = "EVENT",
+                status = registration?.Registered == true ? "CONFIRMED" : "PENDING",
+                eventSlug = offer.ContentItem.Slug,
+                offerId = offer.Id
+            });
         }
 
         [HttpPost("event/{contentItemId:int}")]
@@ -518,6 +530,13 @@ namespace GamMaSite.Controllers
                 if (await HasPaidMembershipAsync(userId, cancellationToken))
                 {
                     return Conflict("Du har allerede betalt medlemskab.");
+                }
+
+                if (string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase) &&
+                    await HasOpenMembershipSubscriptionAsync(userId, cancellationToken))
+                {
+                    return Conflict("Du har allerede et aktivt eller afventende medlemskab.");
                 }
 
                 if (string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
@@ -668,10 +687,14 @@ namespace GamMaSite.Controllers
             try
             {
                 var payment = await _mobilePayService.GetPaymentAsync(reference, cancellationToken);
+                if (registration.Registered)
+                {
+                    return Ok(new { type = "EVENT", status = "SUCCESS", eventSlug = offer.ContentItem.Slug, offerId });
+                }
+
                 if (payment.CapturedAmountMinor >= offer.AmountMinor.GetValueOrDefault())
                 {
-                    await MarkRegistrationPaidAsync(registration, cancellationToken);
-                    return Ok(new { type = "EVENT", status = "SUCCESS", eventSlug = offer.ContentItem.Slug, offerId });
+                    return Ok(new { type = "EVENT", status = "PENDING", eventSlug = offer.ContentItem.Slug, offerId });
                 }
 
                 if (string.Equals(payment.State, "AUTHORIZED", StringComparison.OrdinalIgnoreCase))
@@ -1049,11 +1072,18 @@ namespace GamMaSite.Controllers
 
             try
             {
+                var membershipIsConfirmed = await _db.Users
+                    .AsNoTracking()
+                    .AnyAsync(item => item.Id == userId && item.Status == UserStatus.BETALT, cancellationToken);
+                if (membershipIsConfirmed)
+                {
+                    return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
+                }
+
                 var payment = await _mobilePayService.GetPaymentAsync(reference, cancellationToken);
                 if (payment.CapturedAmountMinor >= offer.AmountMinor.GetValueOrDefault())
                 {
-                    await MarkMembershipPaidAsync(userId, cancellationToken);
-                    return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
+                    return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
                 }
 
                 if (string.Equals(payment.State, "AUTHORIZED", StringComparison.OrdinalIgnoreCase))
@@ -1101,24 +1131,18 @@ namespace GamMaSite.Controllers
                 var status = agreement.Status?.ToUpperInvariant();
                 if (status == "ACTIVE")
                 {
-                    subscription.Status = PaymentSubscriptionStatuses.Active;
-                    subscription.Updated = DateTime.UtcNow;
-
-                    var member = await _db.Users
-                        .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-                    member?.MarkAsPayed();
-
-                    await _db.SaveChangesAsync(cancellationToken);
-                    return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
+                    return Ok(new
+                    {
+                        type = "MEMBERSHIP",
+                        status = string.Equals(subscription.Status, PaymentSubscriptionStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
+                            subscription.LastPaidAt.HasValue
+                            ? "SUCCESS"
+                            : "PENDING"
+                    });
                 }
 
                 if (status == "STOPPED" || status == "EXPIRED" || status == "REJECTED")
                 {
-                    subscription.Status = status == "EXPIRED"
-                        ? PaymentSubscriptionStatuses.Expired
-                        : PaymentSubscriptionStatuses.Canceled;
-                    subscription.Updated = DateTime.UtcNow;
-                    await _db.SaveChangesAsync(cancellationToken);
                     return Ok(new { type = "MEMBERSHIP", status = "CANCELLED" });
                 }
 
@@ -1491,6 +1515,19 @@ namespace GamMaSite.Controllers
                     (user.Status == UserStatus.BETALT || user.Status == UserStatus.STUDERENDE), cancellationToken);
         }
 
+        private Task<bool> HasOpenMembershipSubscriptionAsync(
+            string userId,
+            CancellationToken cancellationToken)
+        {
+            return _db.PaymentSubscriptions.AnyAsync(subscription =>
+                subscription.UserId == userId &&
+                (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                 subscription.Status == PaymentSubscriptionStatuses.Active ||
+                 subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                 subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                 subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
+        }
+
         private static bool IsPendingMobilePayAgreement(PaymentSubscription subscription)
         {
             return subscription != null &&
@@ -1523,33 +1560,10 @@ namespace GamMaSite.Controllers
             return metadata != null && metadata.TryGetValue(key, out var value) ? value : null;
         }
 
-        private async Task MarkRegistrationPaidAsync(EventRegistration registration, CancellationToken cancellationToken)
-        {
-            if (IsEventParticipant(registration.RegistrationType) &&
-                !registration.Registered)
-            {
-                registration.Registered = true;
-                registration.Updated = DateTime.UtcNow;
-                await _db.SaveChangesAsync(cancellationToken);
-            }
-        }
-
         private static bool IsEventParticipant(string registrationType)
         {
             return string.Equals(registrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(registrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private async Task MarkMembershipPaidAsync(string userId, CancellationToken cancellationToken)
-        {
-            var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
-            if (user == null)
-            {
-                return;
-            }
-
-            user.MarkAsPayed();
-            await _db.SaveChangesAsync(cancellationToken);
         }
 
         private static bool IsCancelledPaymentState(string state)

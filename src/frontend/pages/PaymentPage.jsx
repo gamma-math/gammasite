@@ -276,21 +276,43 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
     }
 
     let active = true;
-    paymentOffersApi.successContext(session)
-      .then((context) => {
-        if (active) {
-          setPaymentContext(context);
+    let attempts = 0;
+    let timer;
+    const checkPayment = async () => {
+      try {
+        const context = await paymentOffersApi.successContext(session);
+        if (!active) {
+          return;
         }
-      })
-      .catch(() => undefined)
-      .finally(() => {
+
+        setPaymentContext(context);
+        setIsLoadingPaymentContext(false);
+        setEventPaymentState(
+          context.status === "PENDING"
+            ? "pending"
+            : context.status === "CANCELLED"
+              ? "cancelled"
+              : "success"
+        );
+
+        attempts += 1;
+        if (context.status === "PENDING" && attempts < 20) {
+          timer = window.setTimeout(checkPayment, 1500);
+        }
+      } catch {
         if (active) {
           setIsLoadingPaymentContext(false);
         }
-      });
+      }
+    };
+
+    checkPayment();
 
     return () => {
       active = false;
+      if (timer) {
+        window.clearTimeout(timer);
+      }
     };
   }, [status, session]);
 

@@ -839,7 +839,7 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
-    public async Task SuccessContextMarksCompletedStripeMembershipPaymentAsPaid()
+    public async Task SuccessContextDoesNotMarkCompletedStripeMembershipPaymentAsPaid()
     {
         await using var db = CreateDatabase();
         db.Users.Add(new SiteUser
@@ -893,12 +893,13 @@ public sealed class ApiPaymentOffersControllerTests
         var result = Assert.IsType<OkObjectResult>(await controller.GetSuccessContext("cs_membership"));
 
         Assert.Contains("MEMBERSHIP", result.Value?.ToString());
+        Assert.Contains("PENDING", result.Value?.ToString());
         var user = await db.Users.SingleAsync();
-        Assert.Equal(UserStatus.BETALT, user.Status);
+        Assert.Equal(UserStatus.OPRETTET, user.Status);
     }
 
     [Fact]
-    public async Task MobilePayRecurringContextMarksActiveMembershipAsPaid()
+    public async Task MobilePayRecurringContextWaitsForWebhookConfirmation()
     {
         await using var db = CreateDatabase();
         db.Users.Add(new SiteUser
@@ -968,9 +969,9 @@ public sealed class ApiPaymentOffersControllerTests
 
         var result = await controller.GetMobilePayContext("membership-reference", default);
 
-        Assert.Contains("SUCCESS", Assert.IsType<OkObjectResult>(result).Value?.ToString());
-        Assert.Equal(UserStatus.BETALT, (await db.Users.SingleAsync()).Status);
-        Assert.Equal(PaymentSubscriptionStatuses.Active, (await db.PaymentSubscriptions.SingleAsync()).Status);
+        Assert.Contains("PENDING", Assert.IsType<OkObjectResult>(result).Value?.ToString());
+        Assert.Equal(UserStatus.OPRETTET, (await db.Users.SingleAsync()).Status);
+        Assert.Equal(PaymentSubscriptionStatuses.Pending, (await db.PaymentSubscriptions.SingleAsync()).Status);
     }
 
     private static ApplicationDbContext CreateDatabase()
