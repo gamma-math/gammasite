@@ -29,6 +29,7 @@ namespace GamMaSite.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;
         private readonly IMobilePayService _mobilePayService;
+        private readonly MobilePaySubscriptionReconciliationService _mobilePayReconciliation;
         private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
         private readonly IAccessControlService _accessControl;
         private readonly IConfiguration _configuration;
@@ -41,11 +42,14 @@ namespace GamMaSite.Controllers
             IMobilePayService mobilePayService = null,
             IMobilePayEventReferenceService mobilePayReferenceService = null,
             IConfiguration configuration = null,
-            ILogger<ApiPaymentOffersController> logger = null)
+            ILogger<ApiPaymentOffersController> logger = null,
+            MobilePaySubscriptionReconciliationService mobilePayReconciliation = null)
         {
             _db = db;
             _stripeService = stripeService;
             _mobilePayService = mobilePayService;
+            _mobilePayReconciliation = mobilePayReconciliation ??
+                new MobilePaySubscriptionReconciliationService(db, mobilePayService);
             _mobilePayReferenceService = mobilePayReferenceService;
             _accessControl = accessControl;
             _configuration = configuration;
@@ -903,6 +907,7 @@ namespace GamMaSite.Controllers
 
         [HttpGet("mobilepay-context")]
         [Authorize]
+        [EnableRateLimiting("payment-provider-read")]
         public async Task<IActionResult> GetMobilePayContext(string reference, CancellationToken cancellationToken)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -1240,10 +1245,11 @@ namespace GamMaSite.Controllers
                      subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
             if (openSubscription != null &&
                 string.Equals(openSubscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
-                !IsPendingMobilePayAgreement(openSubscription) &&
-                await RefreshMobilePaySubscriptionAsync(openSubscription, cancellationToken))
+                !IsPendingMobilePayAgreement(openSubscription))
             {
-                await _db.SaveChangesAsync(cancellationToken);
+                openSubscription = await _mobilePayReconciliation.ReconcileAsync(
+                    openSubscription,
+                    cancellationToken);
             }
 
             var hasOpenSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
@@ -1425,35 +1431,23 @@ namespace GamMaSite.Controllers
                 return NotFound();
             }
 
-            try
-            {
-                var agreement = await _mobilePayService.GetAgreementAsync(
-                    subscription.ProviderSubscriptionId,
-                    cancellationToken);
-                var status = agreement.Status?.ToUpperInvariant();
-                if (status == "ACTIVE")
-                {
-                    return Ok(new
-                    {
-                        type = "MEMBERSHIP",
-                        status = string.Equals(subscription.Status, PaymentSubscriptionStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
-                            subscription.LastPaidAt.HasValue
-                            ? "SUCCESS"
-                            : "PENDING"
-                    });
-                }
+            subscription = await _mobilePayReconciliation.ReconcileAsync(
+                subscription,
+                cancellationToken);
 
-                if (status == "STOPPED" || status == "EXPIRED" || status == "REJECTED")
-                {
-                    return Ok(new { type = "MEMBERSHIP", status = "CANCELLED" });
-                }
-
-                return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
-            }
-            catch (InvalidOperationException)
+            if (string.Equals(subscription.Status, PaymentSubscriptionStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
+                subscription.LastPaidAt.HasValue)
             {
-                return StatusCode(502, new { error = "MobilePay-aftalen kunne ikke kontrolleres." });
+                return Ok(new { type = "MEMBERSHIP", status = "SUCCESS" });
             }
+
+            if (string.Equals(subscription.Status, PaymentSubscriptionStatuses.Canceled, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(subscription.Status, PaymentSubscriptionStatuses.Expired, StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new { type = "MEMBERSHIP", status = "CANCELLED" });
+            }
+
+            return Ok(new { type = "MEMBERSHIP", status = "PENDING" });
         }
 
         private async Task EnsureStripeReferencesAsync(
@@ -1934,46 +1928,6 @@ namespace GamMaSite.Controllers
         private static bool IsSupportedMobilePayInterval(string interval)
         {
             return interval == "DAY" || interval == "WEEK" || interval == "MONTH" || interval == "YEAR";
-        }
-
-        private async Task<bool> RefreshMobilePaySubscriptionAsync(
-            PaymentSubscription subscription,
-            CancellationToken cancellationToken)
-        {
-            if (_mobilePayService == null)
-            {
-                return false;
-            }
-
-            MobilePayAgreement agreement;
-            try
-            {
-                agreement = await _mobilePayService.GetAgreementAsync(
-                    subscription.ProviderSubscriptionId,
-                    cancellationToken);
-            }
-            catch (InvalidOperationException)
-            {
-                return false;
-            }
-
-            var providerStatus = agreement.Status?.Trim().ToUpperInvariant();
-            var status = providerStatus switch
-            {
-                "ACTIVE" => PaymentSubscriptionStatuses.Active,
-                "STOPPED" => PaymentSubscriptionStatuses.Canceled,
-                "EXPIRED" or "REJECTED" => PaymentSubscriptionStatuses.Expired,
-                _ => null
-            };
-
-            if (status == null || string.Equals(subscription.Status, status, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            subscription.Status = status;
-            subscription.Updated = DateTime.UtcNow;
-            return true;
         }
 
         private static string NormalizeProvider(string value)

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GamMaSite.Controllers
 {
@@ -22,21 +23,26 @@ namespace GamMaSite.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;
         private readonly IMobilePayService _mobilePayService;
+        private readonly MobilePaySubscriptionReconciliationService _mobilePayReconciliation;
         private readonly ILogger<ApiPaymentSubscriptionsController> _logger;
 
         public ApiPaymentSubscriptionsController(
             ApplicationDbContext db,
             IStripeService stripeService = null,
             IMobilePayService mobilePayService = null,
-            ILogger<ApiPaymentSubscriptionsController> logger = null)
+            ILogger<ApiPaymentSubscriptionsController> logger = null,
+            MobilePaySubscriptionReconciliationService mobilePayReconciliation = null)
         {
             _db = db;
             _stripeService = stripeService;
             _mobilePayService = mobilePayService;
             _logger = logger;
+            _mobilePayReconciliation = mobilePayReconciliation ??
+                new MobilePaySubscriptionReconciliationService(db, mobilePayService);
         }
 
         [HttpGet]
+        [EnableRateLimiting("payment-provider-read")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -51,8 +57,9 @@ namespace GamMaSite.Controllers
                 .ToListAsync(cancellationToken);
 
             var changed = false;
-            foreach (var subscription in subscriptions)
+            for (var index = 0; index < subscriptions.Count; index++)
             {
+                var subscription = subscriptions[index];
                 if (IsTerminalStatus(subscription.Status) && subscription.NextChargeAt.HasValue)
                 {
                     subscription.NextChargeAt = null;
@@ -60,7 +67,9 @@ namespace GamMaSite.Controllers
                     changed = true;
                 }
 
-                changed |= await RefreshMobilePaySubscriptionAsync(subscription, cancellationToken);
+                subscriptions[index] = await _mobilePayReconciliation.ReconcileAsync(
+                    subscription,
+                    cancellationToken);
             }
 
             if (changed)
@@ -170,150 +179,6 @@ namespace GamMaSite.Controllers
                 status = subscription.Status,
                 canceled = true
             });
-        }
-
-        private async Task<bool> RefreshMobilePaySubscriptionAsync(
-            PaymentSubscription subscription,
-            CancellationToken cancellationToken)
-        {
-            if (_mobilePayService == null ||
-                !string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
-                !IsOpenStatus(subscription.Status) ||
-                subscription.ProviderSubscriptionId?.StartsWith("pending:", StringComparison.Ordinal) == true)
-            {
-                return false;
-            }
-
-            MobilePayAgreement agreement;
-            try
-            {
-                agreement = await _mobilePayService.GetAgreementAsync(
-                    subscription.ProviderSubscriptionId,
-                    cancellationToken);
-            }
-            catch (InvalidOperationException)
-            {
-                return false;
-            }
-
-            var providerStatus = agreement.Status?.Trim().ToUpperInvariant();
-            var status = providerStatus switch
-            {
-                "ACTIVE" => PaymentSubscriptionStatuses.Active,
-                "STOPPED" => PaymentSubscriptionStatuses.Canceled,
-                "EXPIRED" or "REJECTED" => PaymentSubscriptionStatuses.Expired,
-                _ => null
-            };
-
-            var changed = false;
-            if (status != null && !string.Equals(subscription.Status, status, StringComparison.OrdinalIgnoreCase))
-            {
-                subscription.Status = status;
-                changed = true;
-            }
-
-            if ((status == PaymentSubscriptionStatuses.Canceled ||
-                    status == PaymentSubscriptionStatuses.Expired) &&
-                subscription.NextChargeAt.HasValue)
-            {
-                subscription.NextChargeAt = null;
-                changed = true;
-            }
-
-            if (status == PaymentSubscriptionStatuses.Active)
-            {
-                var periodStart = subscription.CurrentPeriodStart ?? agreement.StartAt ?? agreement.CreatedAt;
-                if (periodStart.HasValue)
-                {
-                    if (!subscription.CurrentPeriodStart.HasValue)
-                    {
-                        subscription.CurrentPeriodStart = periodStart;
-                        changed = true;
-                    }
-
-                    if (!subscription.LastPaidAt.HasValue)
-                    {
-                        subscription.LastPaidAt = periodStart;
-                        changed = true;
-                    }
-
-                    var user = await _db.Users
-                        .SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
-                    if (user != null)
-                    {
-                        var previousStatus = user.Status;
-                        var previousMembershipDate = user.KontingentDato;
-                        user.MarkAsPayed();
-                        if (user.KontingentDato == default || user.KontingentDato < periodStart.Value)
-                        {
-                            user.KontingentDato = periodStart.Value;
-                        }
-
-                        changed |= !string.Equals(previousStatus, user.Status, StringComparison.Ordinal) ||
-                            previousMembershipDate != user.KontingentDato;
-                    }
-
-                    PaymentOffer offer = null;
-                    if (int.TryParse(subscription.ProviderProductId, out var offerId))
-                    {
-                        offer = await _db.PaymentOffers
-                            .FirstOrDefaultAsync(item => item.Id == offerId, cancellationToken);
-                    }
-
-                    if (offer != null)
-                    {
-                        var nextChargeAt = GetNextChargeDate(periodStart.Value, offer);
-                        if (subscription.NextChargeAt != nextChargeAt)
-                        {
-                            subscription.NextChargeAt = nextChargeAt;
-                            changed = true;
-                        }
-                    }
-                }
-            }
-
-            if (changed)
-            {
-                subscription.Updated = DateTime.UtcNow;
-            }
-
-            return changed;
-        }
-
-        private static DateTime GetNextChargeDate(DateTime paidAt, PaymentOffer offer)
-        {
-            var interval = string.IsNullOrWhiteSpace(offer.BillingInterval)
-                ? "YEAR"
-                : offer.BillingInterval.Trim().ToUpperInvariant();
-            var count = offer.BillingIntervalCount.GetValueOrDefault(1);
-            if (interval == "YEAR")
-            {
-                return new DateTime(
-                    paidAt.Year + Math.Max(count, 1),
-                    2,
-                    1,
-                    0,
-                    0,
-                    0,
-                    DateTimeKind.Utc);
-            }
-
-            return interval switch
-            {
-                "DAY" => paidAt.AddDays(count),
-                "WEEK" => paidAt.AddDays(count * 7),
-                "MONTH" => paidAt.AddMonths(count),
-                _ => paidAt.AddYears(count)
-            };
-        }
-
-        private static bool IsOpenStatus(string status)
-        {
-            return status == PaymentSubscriptionStatuses.Pending ||
-                status == PaymentSubscriptionStatuses.Active ||
-                status == PaymentSubscriptionStatuses.Trialing ||
-                status == PaymentSubscriptionStatuses.PastDue ||
-                status == PaymentSubscriptionStatuses.Incomplete;
         }
 
         private static bool IsTerminalStatus(string status)

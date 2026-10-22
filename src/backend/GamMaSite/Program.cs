@@ -105,6 +105,7 @@ builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
     client.Timeout = TimeSpan.FromSeconds(20);
 });
 builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();
+builder.Services.AddScoped<MobilePaySubscriptionReconciliationService>();
 
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
@@ -206,6 +207,17 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("payment-provider-read", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));

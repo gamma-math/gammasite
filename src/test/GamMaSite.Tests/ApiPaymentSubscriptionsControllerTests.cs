@@ -209,6 +209,47 @@ public sealed class ApiPaymentSubscriptionsControllerTests
     }
 
     [Fact]
+    public async Task Get_DoesNotReviveSubscriptionCanceledAfterProviderRead()
+    {
+        await using var db = CreateDb();
+        var start = new DateTime(2026, 10, 19, 8, 34, 0, DateTimeKind.Utc);
+        var subscription = new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-race",
+            Status = PaymentSubscriptionStatuses.Pending,
+            NextChargeAt = start.AddYears(1),
+            Created = start,
+            Updated = start
+        };
+        db.PaymentSubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agr-race", It.IsAny<System.Threading.CancellationToken>()))
+            .Returns(async () =>
+            {
+                subscription.Status = PaymentSubscriptionStatuses.Canceled;
+                subscription.NextChargeAt = null;
+                await db.SaveChangesAsync();
+                return new MobilePayAgreement("agr-race", null, "ACTIVE", "charge-1", start, start);
+            });
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.Get(default));
+
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, json.RootElement[0].GetProperty("status").GetString());
+        var current = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, current.Status);
+        Assert.Null(current.NextChargeAt);
+    }
+
+    [Fact]
     public async Task Delete_CancelsCurrentUsersStripeSubscription()
     {
         await using var db = CreateDb();
