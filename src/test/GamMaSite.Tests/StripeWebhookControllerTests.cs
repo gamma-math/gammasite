@@ -103,8 +103,10 @@ public sealed class StripeWebhookControllerTests
         Assert.NotEqual(default, user.KontingentDato);
     }
 
-    [Fact]
-    public async Task Receive_MarksEventRegistrationAsPaid()
+    [Theory]
+    [InlineData(RegistrationTypes.Attendee)]
+    [InlineData(RegistrationTypes.Organizer)]
+    public async Task Receive_MarksEventRegistrationAsPaid(string registrationType)
     {
         await using var db = CreateDb();
         db.Users.Add(new SiteUser { Id = "user-1", UserName = "member@example.com", Status = UserStatus.OPRETTET });
@@ -135,7 +137,7 @@ public sealed class StripeWebhookControllerTests
         {
             ContentItem = eventItem,
             UserId = "user-1",
-            RegistrationType = RegistrationTypes.Attendee,
+            RegistrationType = registrationType,
             Registered = false,
             Created = DateTime.UtcNow,
             Updated = DateTime.UtcNow

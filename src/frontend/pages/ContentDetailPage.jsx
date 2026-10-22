@@ -9,7 +9,7 @@ import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
-import { confirmedRegistrationCount, isWaitlisted } from "../utils/registrationCapacity.js";
+import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -97,12 +97,12 @@ export function ContentDetailPage({ slug, type, user }) {
     && user.isAuthenticated
     && Boolean(registration)
     && registration.registered === false
-    && !isWaitlisted(registration);
+    && countsTowardsCapacity(registration);
   const paymentCompleted = isEvent
     && user.isAuthenticated
     && Boolean(registration)
     && registration.registered === true
-    && !isWaitlisted(registration);
+    && countsTowardsCapacity(registration);
   const paymentOfferLinks = (item.paymentOffers ?? item.PaymentOffers ?? [])
     .filter((offer) => offer.isActive !== false && offer.paymentUrl)
     .map((offer) => ({

@@ -266,7 +266,7 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
   CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
     FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
-    ON DELETE CASCADE ON UPDATE NO ACTION
+    ON DELETE RESTRICT ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------

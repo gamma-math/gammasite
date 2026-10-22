@@ -379,7 +379,7 @@ namespace GamMaSite.Controllers
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId);
             if (registration != null &&
-                string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
+                IsEventParticipant(registration.RegistrationType) &&
                 !registration.Registered)
             {
                 registration.Registered = true;
@@ -526,7 +526,7 @@ namespace GamMaSite.Controllers
 
             if (registration == null ||
                 registration.Registered ||
-                !string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase))
+                !IsEventParticipant(registration.RegistrationType))
             {
                 return Forbid();
             }
@@ -1479,13 +1479,19 @@ namespace GamMaSite.Controllers
 
         private async Task MarkRegistrationPaidAsync(EventRegistration registration, CancellationToken cancellationToken)
         {
-            if (string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
+            if (IsEventParticipant(registration.RegistrationType) &&
                 !registration.Registered)
             {
                 registration.Registered = true;
                 registration.Updated = DateTime.UtcNow;
                 await _db.SaveChangesAsync(cancellationToken);
             }
+        }
+
+        private static bool IsEventParticipant(string registrationType)
+        {
+            return string.Equals(registrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(registrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task MarkMembershipPaidAsync(string userId, CancellationToken cancellationToken)

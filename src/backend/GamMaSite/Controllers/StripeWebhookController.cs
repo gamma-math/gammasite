@@ -347,9 +347,10 @@ namespace GamMaSite.Controllers
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
             if (registration == null ||
-                !string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase))
+                (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase)))
             {
-                _logger.LogWarning("Event payment {SessionId} has no attendee registration for user {UserId}.", session.Id, userId);
+                _logger.LogWarning("Event payment {SessionId} has no attendee or organizer registration for user {UserId}.", session.Id, userId);
                 return;
             }
 

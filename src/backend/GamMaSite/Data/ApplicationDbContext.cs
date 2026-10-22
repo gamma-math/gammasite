@@ -176,7 +176,7 @@ namespace GamMaSite.Data
                 entity.HasOne(m => m.ContentItem)
                     .WithMany(m => m.PaymentOffers)
                     .HasForeignKey(m => m.ContentItemId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             builder.Entity<EventRegistration>(entity =>

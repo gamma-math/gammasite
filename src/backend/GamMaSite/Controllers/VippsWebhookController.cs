@@ -239,7 +239,8 @@ public sealed class VippsWebhookController : ControllerBase
             return;
         }
 
-        if (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(registration.RegistrationType, RegistrationTypes.Attendee, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(registration.RegistrationType, RegistrationTypes.Organizer, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
