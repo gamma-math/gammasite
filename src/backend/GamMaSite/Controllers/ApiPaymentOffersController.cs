@@ -1053,7 +1053,12 @@ namespace GamMaSite.Controllers
                 else
                 {
                     _db.ChangeTracker.Clear();
+                    offer.ContentItem = null;
                     _db.PaymentOffers.Add(offer);
+                    foreach (var paymentLink in paymentLinks)
+                    {
+                        paymentLink.ContentItem = null;
+                    }
                     _db.ContentLinks.AddRange(paymentLinks);
                     await _db.SaveChangesAsync();
                 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
@@ -186,7 +187,31 @@ public sealed class StripeWebhookControllerTests
 
         var controller = CreateController(db, new Mock<IStripeService>().Object);
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var payload = $"{{\"id\":\"evt_deleted_offer\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"cs_deleted_offer\",\"object\":\"checkout.session\",\"mode\":\"payment\",\"payment_status\":\"paid\",\"client_reference_id\":\"user-deleted-offer\",\"created\":{created},\"metadata\":{{\"PaymentOfferId\":\"987654\",\"ContentItemId\":\"{eventItem.Id}\"}}}}}},\"livemode\":false,\"type\":\"checkout.session.completed\"}}}}";
+        var payload = JsonSerializer.Serialize(new
+        {
+            id = "evt_deleted_offer",
+            @object = "event",
+            created,
+            data = new
+            {
+                @object = new
+                {
+                    id = "cs_deleted_offer",
+                    @object = "checkout.session",
+                    mode = "payment",
+                    payment_status = "paid",
+                    client_reference_id = "user-deleted-offer",
+                    created,
+                    metadata = new Dictionary<string, string>
+                    {
+                        ["PaymentOfferId"] = "987654",
+                        ["ContentItemId"] = eventItem.Id.ToString()
+                    }
+                }
+            },
+            livemode = false,
+            type = "checkout.session.completed"
+        });
         SetRequest(controller, payload, Sign(payload));
 
         var result = await controller.Receive(default);
@@ -259,7 +284,7 @@ public sealed class StripeWebhookControllerTests
         Assert.IsType<OkResult>(result);
         var record = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal("user-1", record.UserId);
-        Assert.Equal("Stripe", record.Provider);
+        Assert.Equal(PaymentOfferProviders.Stripe, record.Provider);
         Assert.Equal("sub_test", record.ProviderSubscriptionId);
         Assert.Equal("Kontingent", record.ProductName);
         Assert.Equal("price_recurring", record.ProviderPriceId);

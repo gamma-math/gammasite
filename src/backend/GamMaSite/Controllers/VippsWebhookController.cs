@@ -340,6 +340,8 @@ public sealed class VippsWebhookController : ControllerBase
             throw new InvalidOperationException($"MobilePay-aftalen {agreementId} kunne ikke låses.");
         }
 
+        _db.PaymentSubscriptions.Update(subscription);
+
         if (string.Equals(subscription.LastProcessedWebhookId, webhookId, StringComparison.Ordinal))
         {
             _logger.LogInformation(
@@ -373,13 +375,14 @@ public sealed class VippsWebhookController : ControllerBase
             subscription.NextChargeAt = activatedOffer == null ? null : GetNextChargeDate(occurred, activatedOffer);
             subscription.Updated = DateTime.UtcNow;
 
-            var activatedUser = await _db.Users.SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
+            var activatedUser = await _db.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
             if (activatedUser == null)
             {
                 throw new InvalidOperationException($"MobilePay-aftalen {agreementId} kunne ikke knyttes til bruger {subscription.UserId}.");
             }
 
-            _db.Entry(activatedUser).State = EntityState.Detached;
             activatedUser = await PaymentWebhookTransaction.LockUserAsync(_db, subscription.UserId, cancellationToken);
             if (activatedUser == null)
             {
@@ -479,13 +482,14 @@ public sealed class VippsWebhookController : ControllerBase
         subscription.NextChargeAt = offer == null ? null : GetNextChargeDate(occurred, offer);
         subscription.Updated = DateTime.UtcNow;
 
-        var user = await _db.Users.SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
+        var user = await _db.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == subscription.UserId, cancellationToken);
         if (user == null)
         {
             throw new InvalidOperationException($"MobilePay-aftalen {agreementId} kunne ikke knyttes til bruger {subscription.UserId}.");
         }
 
-        _db.Entry(user).State = EntityState.Detached;
         user = await PaymentWebhookTransaction.LockUserAsync(_db, subscription.UserId, cancellationToken);
         if (user == null)
         {
@@ -499,7 +503,6 @@ public sealed class VippsWebhookController : ControllerBase
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-
         if (offer == null || !subscription.NextChargeAt.HasValue)
         {
             _logger.LogWarning("MobilePay agreement {AgreementId} was paid, but its payment offer could not be resolved.", agreementId);

@@ -1034,7 +1034,7 @@ public sealed class ApiPaymentOffersControllerTests
 
         var mobilePay = new Mock<IMobilePayService>();
         mobilePay.Setup(value => value.GetAgreementAsync("agreement-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MobilePayAgreement("agreement-1", null, "ACTIVE", "charge-1"));
+            .ReturnsAsync(new MobilePayAgreement("agreement-1", null, "CREATED", "charge-1"));
         var reference = new Mock<IMobilePayEventReferenceService>();
         var membershipUserId = "user-1";
         var membershipOfferId = offer.Id;

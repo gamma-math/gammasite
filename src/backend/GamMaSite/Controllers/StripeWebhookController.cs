@@ -21,7 +21,7 @@ namespace GamMaSite.Controllers
     [Route("api/payments/stripe")]
     public sealed class StripeWebhookController : ControllerBase
     {
-        private const string Provider = "Stripe";
+        private const string Provider = PaymentOfferProviders.Stripe;
 
         private readonly ApplicationDbContext _db;
         private readonly IStripeService _stripeService;

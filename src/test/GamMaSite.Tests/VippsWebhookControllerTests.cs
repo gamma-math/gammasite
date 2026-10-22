@@ -28,7 +28,14 @@ public sealed class VippsWebhookControllerTests
     public async Task ReceiveReturnsRetryableStatusForUnknownPaymentReference()
     {
         const string payload = "{\"name\":\"AUTHORIZED\",\"reference\":\"gamma-test-12345678\"}";
-        var controller = CreateController(payload);
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        var controller = CreateController(
+            payload,
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: new Mock<IMobilePayEventReferenceService>().Object);
 
         var result = await controller.Receive(default);
 
@@ -40,7 +47,14 @@ public sealed class VippsWebhookControllerTests
     public async Task ReceiveReturnsRetryableStatusForUnknownCapturedPaymentReference()
     {
         const string payload = "{\"msn\":\"2070420\",\"reference\":\"gamma-test-12345678\",\"pspReference\":\"psp-123\",\"name\":\"CAPTURED\",\"amount\":{\"currency\":\"DKK\",\"value\":100},\"success\":true}";
-        var controller = CreateController(payload);
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        var controller = CreateController(
+            payload,
+            db: db,
+            mobilePayService: new Mock<IMobilePayService>().Object,
+            referenceService: new Mock<IMobilePayEventReferenceService>().Object);
         controller.Request.Headers["Webhook-Id"] = "webhook-123";
 
         var result = await controller.Receive(default);
@@ -148,7 +162,7 @@ public sealed class VippsWebhookControllerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         var controller = CreateController(
-            "{\"eventType\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            "{\"name\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
             db: db,
             mobilePayService: mobilePay.Object,
             referenceService: referenceService);
@@ -156,7 +170,7 @@ public sealed class VippsWebhookControllerTests
         var result = await controller.Receive(default);
 
         var duplicateController = CreateController(
-            "{\"eventType\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            "{\"name\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
             db: db,
             mobilePayService: mobilePay.Object,
             referenceService: referenceService,
@@ -165,6 +179,7 @@ public sealed class VippsWebhookControllerTests
 
         Assert.IsType<OkResult>(result);
         Assert.IsType<OkResult>(duplicateResult);
+        db.ChangeTracker.Clear();
         var user = await db.Users.SingleAsync(item => item.Id == "user-recurring-test");
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
@@ -235,7 +250,7 @@ public sealed class VippsWebhookControllerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         var controller = CreateController(
-            "{\"eventType\":\"recurring.agreement-activated.v1\",\"agreementId\":\"agr_activated\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
+            "{\"name\":\"recurring.agreement-activated.v1\",\"agreementId\":\"agr_activated\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
             db: db,
             mobilePayService: mobilePay.Object,
             referenceService: referenceService);
@@ -243,6 +258,7 @@ public sealed class VippsWebhookControllerTests
         var result = await controller.Receive(default);
 
         Assert.IsType<OkResult>(result);
+        db.ChangeTracker.Clear();
         var user = await db.Users.SingleAsync(item => item.Id == "user-activated-test");
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
@@ -322,7 +338,7 @@ public sealed class VippsWebhookControllerTests
         await db.SaveChangesAsync();
 
         var controller = CreateController(
-            "{\"eventType\":\"recurring.agreement-stopped.v1\",\"agreementId\":\"agr_order\",\"occurred\":\"2026-10-22T11:30:00Z\"}",
+            "{\"name\":\"recurring.agreement-stopped.v1\",\"agreementId\":\"agr_order\",\"occurred\":\"2026-10-22T11:30:00Z\"}",
             db: db,
             mobilePayService: new Mock<IMobilePayService>().Object,
             referenceService: new Mock<IMobilePayEventReferenceService>().Object,
