@@ -545,13 +545,13 @@ namespace GamMaSite.Controllers
                     .FirstOrDefaultAsync(item => item.Id == contentItemId && item.Type == ContentTypes.Event);
                 if (deletedOfferEvent != null && !string.IsNullOrWhiteSpace(deletedOfferEvent.Slug))
                 {
-                    var registration = await _db.EventRegistrations
+                    var deletedOfferRegistration = await _db.EventRegistrations
                         .AsNoTracking()
                         .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
                     return Ok(new
                     {
                         type = "EVENT",
-                        status = registration?.Registered == true ? "CONFIRMED" : "PENDING",
+                        status = deletedOfferRegistration?.Registered == true ? "CONFIRMED" : "PENDING",
                         eventSlug = deletedOfferEvent.Slug,
                         offerId = parsedOfferId
                     });

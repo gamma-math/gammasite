@@ -140,7 +140,7 @@ public sealed class MobilePaySubscriptionReconciliationService
                             user.KontingentDato = periodStart.Value;
                         }
 
-                        changed |= !string.Equals(previousStatus, user.Status, StringComparison.Ordinal) ||
+                        changed |= previousStatus != user.Status ||
                             previousMembershipDate != user.KontingentDato;
                     }
                 }
