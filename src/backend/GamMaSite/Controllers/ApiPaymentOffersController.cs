@@ -846,7 +846,6 @@ namespace GamMaSite.Controllers
                 var reference = _mobilePayReferenceService.Create(registration.Id, offer.Id, attemptKey);
                 var mobilePayEventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
                 var returnUrl = PublicUrl($"{mobilePayEventPath}/success?reference={Uri.EscapeDataString(reference)}");
-                var phoneNumber = await GetUserPhoneNumberAsync(userId, cancellationToken);
                 try
                 {
                     var payment = await _mobilePayService.CreateOneTimePaymentAsync(
@@ -855,8 +854,7 @@ namespace GamMaSite.Controllers
                         offer.Currency,
                         offer.ProductName,
                         returnUrl,
-                        cancellationToken,
-                        phoneNumber);
+                        cancellationToken);
                     return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
                 }
                 catch (InvalidOperationException)
@@ -1200,7 +1198,6 @@ namespace GamMaSite.Controllers
             var attemptKey = GetPaymentAttemptKey(userId, offer);
             var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id, attemptKey);
             var returnUrl = PublicUrl($"/react/pay/success?reference={Uri.EscapeDataString(reference)}");
-            var phoneNumber = await GetUserPhoneNumberAsync(userId, cancellationToken);
             try
             {
                 var payment = await _mobilePayService.CreateOneTimePaymentAsync(
@@ -1209,8 +1206,7 @@ namespace GamMaSite.Controllers
                     offer.Currency,
                     offer.ProductName,
                     returnUrl,
-                    cancellationToken,
-                    phoneNumber);
+                    cancellationToken);
                 return Ok(new { provider = PaymentOfferProviders.MobilePay, url = payment.RedirectUrl });
             }
             catch (InvalidOperationException)

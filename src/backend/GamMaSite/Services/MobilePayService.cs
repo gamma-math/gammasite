@@ -22,8 +22,7 @@ public interface IMobilePayService
         string currency,
         string description,
         string returnUrl,
-        CancellationToken cancellationToken = default,
-        string phoneNumber = null);
+        CancellationToken cancellationToken = default);
 
     Task<MobilePayPayment> GetPaymentAsync(string reference, CancellationToken cancellationToken = default);
 
@@ -97,8 +96,7 @@ public sealed class MobilePayService : IMobilePayService
         string currency,
         string description,
         string returnUrl,
-        CancellationToken cancellationToken = default,
-        string phoneNumber = null)
+        CancellationToken cancellationToken = default)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
         using var request = CreateRequest(HttpMethod.Post, "/epayment/v1/payments", token);
@@ -112,11 +110,6 @@ public sealed class MobilePayService : IMobilePayService
             ["returnUrl"] = returnUrl,
             ["paymentDescription"] = description
         };
-
-        if (!string.IsNullOrWhiteSpace(phoneNumber))
-        {
-            payload["customer"] = new { phoneNumber };
-        }
 
         request.Content = JsonContent.Create(payload);
 
