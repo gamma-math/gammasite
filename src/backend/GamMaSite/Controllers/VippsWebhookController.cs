@@ -363,6 +363,26 @@ public sealed class VippsWebhookController : ControllerBase
 
         if (eventType.Equals("recurring.agreement-activated.v1", StringComparison.OrdinalIgnoreCase))
         {
+            // A late activation event must not resurrect an agreement that was
+            // already canceled or expired locally after the user abandoned
+            // the checkout. The provider event is acknowledged so it is not
+            // retried forever, but it must not change membership state.
+            if (IsTerminalStatus(subscription.Status))
+            {
+                _logger.LogWarning(
+                    "Ignoring late MobilePay activation for terminal agreement {AgreementId} with local status {Status}.",
+                    agreementId,
+                    subscription.Status);
+                MarkWebhookProcessed(subscription, webhookId, occurred);
+                await _db.SaveChangesAsync(cancellationToken);
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                return;
+            }
+
             // Our agreements always contain an initial DIRECT_CAPTURE charge.
             // MobilePay only activates such an agreement after that initial
             // payment has succeeded, so this event is sufficient to mark the
@@ -627,6 +647,12 @@ public sealed class VippsWebhookController : ControllerBase
             string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTerminalStatus(string status)
+    {
+        return string.Equals(status, PaymentSubscriptionStatuses.Canceled, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(status, PaymentSubscriptionStatuses.Expired, StringComparison.OrdinalIgnoreCase);
     }
 
     private static DateTime GetNextChargeDate(DateTime paidAt, PaymentOffer offer)

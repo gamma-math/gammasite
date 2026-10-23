@@ -157,6 +157,14 @@ namespace GamMaSite.Controllers
                             canceled = true
                         });
                     }
+
+                    // A pending agreement must not be marked canceled locally
+                    // unless MobilePay confirmed that it was stopped (or was
+                    // already terminal). Falling through would retry the same
+                    // provider operation after a failed attempt and could
+                    // leave the API claiming success while the row is still
+                    // pending.
+                    return StatusCode(502, "Aftalen kunne ikke annulleres hos betalingsudbyderen endnu.");
                 }
 
                 try

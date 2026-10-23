@@ -89,7 +89,7 @@ public sealed class ApiPaymentSubscriptionsControllerTests
     }
 
     [Fact]
-    public async Task Delete_ReleasesCreatedMobilePayAgreementWithoutProviderStopConflict()
+    public async Task Delete_StopsCreatedMobilePayAgreementBeforeReleasingLocalPendingState()
     {
         await using var db = CreateDb();
         db.PaymentSubscriptions.Add(new PaymentSubscription
@@ -116,8 +116,42 @@ public sealed class ApiPaymentSubscriptionsControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(PaymentSubscriptionStatuses.Canceled, ok.Value?.GetType().GetProperty("status")?.GetValue(ok.Value));
-        mobilePay.Verify(value => value.StopAgreementAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
+        mobilePay.Verify(value => value.StopAgreementAsync("agr-created", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
         Assert.Equal(PaymentSubscriptionStatuses.Canceled, (await db.PaymentSubscriptions.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Delete_KeepsPendingStateWhenMobilePayCannotStopAgreement()
+    {
+        await using var db = CreateDb();
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-created",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agr-created", It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agr-created", null, "CREATED", null));
+        mobilePay.Setup(value => value.StopAgreementAsync("agr-created", It.IsAny<System.Threading.CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("MobilePay returned 409."));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.NameIdentifier, "user-1") },
+            "Test"));
+        var controller = CreateController(db, user, new Mock<IStripeService>().Object, mobilePay.Object);
+
+        var result = await controller.Delete("agr-created", default);
+
+        var error = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(502, error.StatusCode);
+        mobilePay.Verify(value => value.StopAgreementAsync("agr-created", It.IsAny<System.Threading.CancellationToken>()), Times.Once);
+        Assert.Equal(PaymentSubscriptionStatuses.Pending, (await db.PaymentSubscriptions.SingleAsync()).Status);
     }
 
     [Fact]

@@ -276,6 +276,57 @@ public sealed class VippsWebhookControllerTests
     }
 
     [Fact]
+    public async Task ReceiveIgnoresLateActivationForTerminalMobilePayAgreement()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-late-activation-test",
+            UserName = "late-activation@gamma.test",
+            Status = UserStatus.OPRETTET
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-late-activation-test",
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agr-late",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Canceled,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        var controller = CreateController(
+            "{\"name\":\"recurring.agreement-activated.v1\",\"agreementId\":\"agr-late\",\"occurred\":\"2026-10-23T08:00:00Z\"}",
+            db: db,
+            mobilePayService: mobilePay.Object,
+            referenceService: new Mock<IMobilePayEventReferenceService>().Object,
+            webhookId: "late-activation-webhook");
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        db.ChangeTracker.Clear();
+        var user = await db.Users.SingleAsync(item => item.Id == "user-late-activation-test");
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(UserStatus.OPRETTET, user.Status);
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
+        Assert.Equal("late-activation-webhook", subscription.LastProcessedWebhookId);
+        mobilePay.Verify(service => service.CreateRecurringChargeAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<long>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<DateTime>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ReceiveClearsNextChargeWhenRecurringAgreementIsStopped()
     {
         await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
