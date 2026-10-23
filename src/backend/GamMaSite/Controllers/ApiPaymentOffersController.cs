@@ -161,6 +161,11 @@ namespace GamMaSite.Controllers
                 return BadRequest(new { error = "Produktet mangler." });
             }
 
+            if (request.IsActive == false && IsMembershipScope(offer))
+            {
+                return BadRequest(new { error = "Medlemskabsprodukter kan ikke deaktiveres." });
+            }
+
             var originalOffer = PaymentOfferSnapshot.Capture(offer);
             var originalSubscriptions = await _db.PaymentSubscriptions
                 .Where(item => item.PaymentOfferId == offer.Id)
@@ -993,6 +998,11 @@ namespace GamMaSite.Controllers
                 return NotFound();
             }
 
+            if (IsMembershipScope(offer))
+            {
+                return BadRequest("Medlemskabsprodukter kan ikke slettes.");
+            }
+
             if (!IsEventOffer(offer) || !await _accessControl.CanEditEventAsync(User, offer.ContentItemId.Value))
             {
                 return Forbid();
@@ -1091,6 +1101,12 @@ namespace GamMaSite.Controllers
             return offer != null &&
                 string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase) &&
                 !offer.ContentItemId.HasValue;
+        }
+
+        private static bool IsMembershipScope(PaymentOffer offer)
+        {
+            return offer != null &&
+                string.Equals(offer.Scope, PaymentOfferScopes.Membership, StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<IActionResult> CheckoutStripeMembershipAsync(

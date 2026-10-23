@@ -21,6 +21,10 @@ const offerTypeLabels = {
 
 const MINIMUM_PAYMENT_AMOUNT = 10;
 
+function isMembershipScope(scope) {
+  return String(scope ?? "").toUpperCase() === "MEMBERSHIP";
+}
+
 function formatAmount(amountMinor, currency) {
   if (amountMinor == null) {
     return "—";
@@ -183,7 +187,7 @@ function toProductDraft(offer) {
     amount: offer.amountMinor == null ? "" : (offer.amountMinor / 100).toFixed(2),
     billingInterval: offer.billingInterval ?? "",
     billingIntervalCount: offer.billingIntervalCount ?? 1,
-    isActive: offer.isActive !== false,
+    isActive: isMembershipScope(offer.scope) || offer.isActive !== false,
   };
 }
 
@@ -226,6 +230,7 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
     setError("");
 
     try {
+      const isMembershipOffer = isMembershipScope(offer.scope);
       const amount = draft.amount === "" ? null : Number(draft.amount);
       if (amount == null || !Number.isFinite(amount) || amount < MINIMUM_PAYMENT_AMOUNT) {
         setError("Prisen skal være mindst 10,00 kr.");
@@ -238,7 +243,7 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
         amount,
         billingInterval: draft.billingInterval || null,
         billingIntervalCount: draft.billingIntervalCount === "" ? null : Number(draft.billingIntervalCount),
-        isActive: draft.isActive,
+        isActive: isMembershipOffer || draft.isActive,
       });
       setOffer(saved);
       setDraft(toProductDraft(saved));
@@ -331,9 +336,17 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
           {offer.eventTitle && <p className="muted">Event: {offer.eventTitle}</p>}
 
           <label className="profile-checkbox">
-            <input type="checkbox" checked={draft.isActive} onChange={(event) => update("isActive", event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={isMembershipScope(offer.scope) || draft.isActive}
+              disabled={isMembershipScope(offer.scope)}
+              onChange={(event) => update("isActive", event.target.checked)}
+            />
             Aktiv
           </label>
+          {isMembershipScope(offer.scope) && (
+            <p className="muted">Medlemskabsprodukter kan ikke deaktiveres eller slettes.</p>
+          )}
 
           <div className="menu-editor-actions">
             <button className="profile-button" type="submit" disabled={isSaving}>
