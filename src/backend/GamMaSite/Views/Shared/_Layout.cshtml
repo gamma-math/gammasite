@@ -41,7 +41,7 @@
                 <img src="~/lib/logo_blue.png" alt="GamMa-logo" />
             </a>
             <nav class="legacy-topbar-actions" aria-label="Navigation">
-                <a class="legacy-header-button" href="/react/events">
+                <a class="legacy-header-button" href="/events">
                     <span aria-hidden="true">☰</span>
                     Menu
                 </a>
@@ -54,11 +54,11 @@
                     PermissionCodes.FinanceViewAll,
                     PermissionCodes.FinanceEditAll))
                 {
-                    <a class="legacy-header-button" href="/react/admin/events">Admin</a>
+                    <a class="legacy-header-button" href="/admin/events">Admin</a>
                 }
                 @if (SignInManager.IsSignedIn(User))
                 {
-                    <a class="legacy-profile-link" href="/react/account/manage" aria-label="Profil">
+                    <a class="legacy-profile-link" href="/account/manage" aria-label="Profil">
                         <svg aria-hidden="true" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="10"></circle>
                             <circle cx="12" cy="10" r="3"></circle>
@@ -68,8 +68,8 @@
                 }
                 else
                 {
-                    <a class="legacy-header-button" href="/react/account/login">Login</a>
-                    <a class="legacy-header-button legacy-header-button-primary" href="/react/account/register">Bliv medlem</a>
+                    <a class="legacy-header-button" href="/account/login">Login</a>
+                    <a class="legacy-header-button legacy-header-button-primary" href="/account/register">Bliv medlem</a>
                 }
             </nav>
         </div>

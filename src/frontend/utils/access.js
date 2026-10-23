@@ -14,13 +14,13 @@ export const permissions = {
 export const AccessContext = createContext({ permissions: [] });
 
 const adminDestinations = [
-  { path: "/react/admin/events", permission: permissions.contentEdit },
-  { path: "/react/admin/products", permission: permissions.paymentsEditAll },
-  { path: "/react/admin/subscriptions", permission: permissions.paymentsEditAll },
-  { path: "/react/admin/messages", permission: permissions.messagesEdit },
-  { path: "/react/admin/templates", permission: permissions.emailTemplatesEdit },
-  { path: "/react/admin/users", permission: permissions.rolesEdit },
-  { path: "/react/admin/finance", permission: permissions.financeViewAll }
+  { path: "/admin/events", permission: permissions.contentEdit },
+  { path: "/admin/products", permission: permissions.paymentsEditAll },
+  { path: "/admin/subscriptions", permission: permissions.paymentsEditAll },
+  { path: "/admin/messages", permission: permissions.messagesEdit },
+  { path: "/admin/templates", permission: permissions.emailTemplatesEdit },
+  { path: "/admin/users", permission: permissions.rolesEdit },
+  { path: "/admin/finance", permission: permissions.financeViewAll }
 ];
 
 export function useAccessUser() {
@@ -46,38 +46,38 @@ export function firstAdminPath(user) {
     return null;
   }
 
-  return adminDestinations.find((destination) => hasPermission(user, destination.permission))?.path ?? "/react/events";
+  return adminDestinations.find((destination) => hasPermission(user, destination.permission))?.path ?? "/events";
 }
 
 export function adminPermissionForPath(path) {
-  if (path === "/react/admin/events" || path === "/react/admin/events/new") {
+  if (path === "/admin/events" || path === "/admin/events/new") {
     return permissions.contentEdit;
   }
-  if (path === "/react/admin/news" || path.startsWith("/react/admin/news/")) {
+  if (path === "/admin/news" || path.startsWith("/admin/news/")) {
     return permissions.contentEdit;
   }
-  if (path === "/react/admin/products" || path.startsWith("/react/admin/products/")) {
+  if (path === "/admin/products" || path.startsWith("/admin/products/")) {
     return permissions.paymentsEditAll;
   }
-  if (path === "/react/admin/subscriptions" || path.startsWith("/react/admin/subscriptions/")) {
+  if (path === "/admin/subscriptions" || path.startsWith("/admin/subscriptions/")) {
     return permissions.paymentsEditAll;
   }
-  if (path === "/react/admin/messages") {
+  if (path === "/admin/messages") {
     return permissions.messagesEdit;
   }
-  if (path === "/react/admin/templates" || path.startsWith("/react/admin/templates/")) {
+  if (path === "/admin/templates" || path.startsWith("/admin/templates/")) {
     return permissions.emailTemplatesEdit;
   }
-  if (path === "/react/admin/users" || path.startsWith("/react/admin/users/") || path === "/react/admin/roles" || path.startsWith("/react/admin/roles/")) {
+  if (path === "/admin/users" || path.startsWith("/admin/users/") || path === "/admin/roles" || path.startsWith("/admin/roles/")) {
     return permissions.rolesEdit;
   }
-  if (path === "/react/admin/finance/postings/edit") {
+  if (path === "/admin/finance/postings/edit") {
     return permissions.financeEditAll;
   }
-  if (path === "/react/admin/finance" || path === "/react/admin/finance/postings" || path.startsWith("/react/admin/finance/postings/")) {
+  if (path === "/admin/finance" || path === "/admin/finance/postings" || path.startsWith("/admin/finance/postings/")) {
     return permissions.financeViewAll;
   }
-  if (path.startsWith("/react/admin/finance/")) {
+  if (path.startsWith("/admin/finance/")) {
     return permissions.financeEditAll;
   }
   return null;

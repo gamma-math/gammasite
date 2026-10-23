@@ -75,19 +75,19 @@ export function ContentDetailPage({ slug, type, user }) {
   }, [item]);
 
   if (error) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
   }
 
   const canEditContent = hasPermission(user, permissions.contentEdit) || Boolean(eventAccess?.canEditEvent);
   const canViewRegistrations = user.isAuthenticated;
   const isEvent = item.type === "EVENT";
   const hasImage = Boolean(item.pictureUrl);
-  const registrationsPath = `/react/events/${item.slug}/registrations`;
-  const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
+  const registrationsPath = `/events/${item.slug}/registrations`;
+  const editPath = `/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
   const registrationOpen = isRegistrationOpen(item);
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
@@ -174,7 +174,7 @@ export function ContentDetailPage({ slug, type, user }) {
   }
 
   return (
-    <MenuLayout active={item.type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
+    <MenuLayout active={item.type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
       <article className="menu-detail-card">
         <div className="menu-detail-hero">
           <div>
@@ -217,8 +217,8 @@ export function ContentDetailPage({ slug, type, user }) {
                 <a
                   className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`}
                   href={link.url}
-                  target={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/react/") ? undefined : "_blank"}
-                  rel={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/react/") ? undefined : "noreferrer"}
+                  target={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/") ? undefined : "_blank"}
+                  rel={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/") ? undefined : "noreferrer"}
                   key={link.id}
                 >
                   <span>{shortLinkLabel(link.label)}</span>
@@ -295,7 +295,7 @@ function shortLinkLabel(label) {
 
 function isEventPaymentLink(link) {
   return String(link.type ?? "").toUpperCase() === "PAYMENT"
-    && /\/react\/events\/[^/]+\/pay\/\d+$/i.test(link.url ?? "");
+    && /\/(?:react\/)?events\/[^/]+\/pay\/\d+$/i.test(link.url ?? "");
 }
 
 function createCalendarContent(item) {

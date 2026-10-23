@@ -33,7 +33,7 @@ export function MembersPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/members" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/members" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Medlemmer</p>

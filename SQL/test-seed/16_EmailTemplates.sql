@@ -1,4 +1,4 @@
-﻿SET NAMES utf8mb4;
+SET NAMES utf8mb4;
 
 DELETE FROM `EmailTemplates`;
 
@@ -473,7 +473,7 @@ GamMa',
       <tr><td style="padding:11px 13px;color:#5c7085;">Aftaletype</td><td style="padding:11px 13px;text-align:right;">Automatisk betaling</td></tr>
     </table>
     <p style="margin:20px 0 0;color:#4f6475;">Din betaling for <strong>{{ProductName}}</strong> vil fremover blive trukket automatisk, indtil aftalen opsiges.</p>
-    <p style="margin:20px 0 0;">Du kan altid se status og opsige din betalingsaftale på <strong><a href="https://gam-ma.dk/react/account/manage/subscriptions" style="color:#2485c7;">din konto</a></strong>.</p>
+    <p style="margin:20px 0 0;">Du kan altid se status og opsige din betalingsaftale på <strong><a href="https://gam-ma.dk/account/manage/subscriptions" style="color:#2485c7;">din konto</a></strong>.</p>
     <p style="margin:20px 0 0;">Med venlig hilsen<br><strong>GamMa</strong></p>
   </div>
   <div style="height:16px;"></div>
@@ -491,7 +491,7 @@ Betalingsdato: {{PaymentDate}}
 Betalingsfrekvens: {{BillingPeriod}}
 Aftaletype: Automatisk betaling
 
-Din betaling for {{ProductName}} vil fremover blive trukket automatisk, indtil aftalen opsiges. Du kan altid se status og opsige din betalingsaftale på din konto: https://gam-ma.dk/react/account/manage/subscriptions
+Din betaling for {{ProductName}} vil fremover blive trukket automatisk, indtil aftalen opsiges. Du kan altid se status og opsige din betalingsaftale på din konto: https://gam-ma.dk/account/manage/subscriptions
 
 Med venlig hilsen
 GamMa',

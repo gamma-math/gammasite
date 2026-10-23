@@ -38,13 +38,13 @@ export function AdminContentPage({ type, isAdmin }) {
   }, [items, sort]);
 
   return (
-    <AdminLayout active={`/react/admin/${type === "EVENT" ? "events" : "news"}`} canWrite={isAdmin}>
+    <AdminLayout active={`/admin/${type === "EVENT" ? "events" : "news"}`} canWrite={isAdmin}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">{type === "EVENT" ? "Begivenheder" : "Nyheder"}</p>
         </div>
         {isAdmin && (
-          <Link className="menu-create-button" href={`/react/admin/${type === "EVENT" ? "events" : "news"}/new`}>
+          <Link className="menu-create-button" href={`/admin/${type === "EVENT" ? "events" : "news"}/new`}>
             <Plus size={16} />
             Opret ny
           </Link>
@@ -71,7 +71,7 @@ export function AdminContentPage({ type, isAdmin }) {
                   <td>{isShownOnFrontPage(item) ? "Ja" : "Nej"}</td>
                   <td>{formatDate(item.startDate ?? item.publishedAt)}</td>
                   <td className="table-actions">
-                    {isAdmin && <Link className="admin-table-button" href={`/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`}>Rediger</Link>}
+                    {isAdmin && <Link className="admin-table-button" href={`/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`}>Rediger</Link>}
                     <Link className="admin-table-button" href={detailPath(item)}><Eye size={14} /> Se</Link>
                   </td>
                 </tr>
@@ -100,7 +100,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [paymentOffers, setPaymentOffers] = useState([]);
   const [paymentOfferDrafts, setPaymentOfferDrafts] = useState([]);
   const [linksEditorVersion, setLinksEditorVersion] = useState(0);
-  const basePath = `/react/admin/${type === "EVENT" ? "events" : "news"}`;
+  const basePath = `/admin/${type === "EVENT" ? "events" : "news"}`;
   const label = type === "EVENT" ? "Begivenheder" : "Nyheder";
 
   useEffect(() => {

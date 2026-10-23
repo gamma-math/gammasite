@@ -368,7 +368,7 @@ namespace GamMaSite.Controllers
                 ["NewsBlocks"] = newsBlocks,
                 ["EventTitle"] = events.FirstOrDefault()?.Title ?? string.Empty,
                 ["EventStartDate"] = FormatDate(events.FirstOrDefault()?.StartDate),
-                ["EventRegisterUrl"] = events.FirstOrDefault() == null ? string.Empty : $"{publicBaseUrl}/react/events/{events.First().Slug}",
+                ["EventRegisterUrl"] = events.FirstOrDefault() == null ? string.Empty : $"{publicBaseUrl}/events/{events.First().Slug}",
                 ["ProfileUrl"] = $"{publicBaseUrl}/Identity/Account/Manage"
             };
         }
@@ -383,7 +383,7 @@ namespace GamMaSite.Controllers
             var isEvent = item.Type == ContentTypes.Event;
             var accentColor = isEvent ? blockDesign.EventColor : blockDesign.NewsColor;
             var urlType = isEvent ? "events" : "news";
-            var url = $"{publicBaseUrl}/react/{urlType}/{item.Slug}";
+            var url = $"{publicBaseUrl}/{urlType}/{item.Slug}";
             var links = item.Links?
                 .OrderBy(link => link.SortOrder)
                 .Where(link => !IsManagedPaymentLink(link))
@@ -432,7 +432,7 @@ namespace GamMaSite.Controllers
 
         private static string RenderPaymentOfferButton(ContentItem item, PaymentOffer offer, string publicBaseUrl)
         {
-            var url = $"{publicBaseUrl}/react/events/{Uri.EscapeDataString(item.Slug)}/pay/{offer.Id}";
+            var url = $"{publicBaseUrl}/events/{Uri.EscapeDataString(item.Slug)}/pay/{offer.Id}";
             var legacyLabel = item.Links?
                 .FirstOrDefault(link => IsManagedPaymentLink(link)
                     && link.Url?.EndsWith($"/pay/{offer.Id}", StringComparison.OrdinalIgnoreCase) == true)?
@@ -446,14 +446,14 @@ namespace GamMaSite.Controllers
         private static bool IsManagedPaymentLink(ContentLink link)
         {
             return string.Equals(link.Type, "PAYMENT", StringComparison.OrdinalIgnoreCase)
-                && Regex.IsMatch(link.Url ?? string.Empty, @"/react/events/[^/]+/pay/\d+$", RegexOptions.IgnoreCase);
+                && Regex.IsMatch(link.Url ?? string.Empty, @"/(?:react/)?events/[^/]+/pay/\d+$", RegexOptions.IgnoreCase);
         }
 
         private static string RenderContentBlock(ContentItem item)
         {
             var date = item.Type == ContentTypes.Event ? item.StartDate : item.PublishedAt;
             var urlType = item.Type == ContentTypes.Event ? "events" : "news";
-            var url = $"/react/{urlType}/{item.Slug}";
+            var url = $"/{urlType}/{item.Slug}";
             var primaryLink = item.Links?
                 .OrderBy(link => link.SortOrder)
                 .FirstOrDefault(link => !string.IsNullOrWhiteSpace(link.Url))?.Url ?? url;

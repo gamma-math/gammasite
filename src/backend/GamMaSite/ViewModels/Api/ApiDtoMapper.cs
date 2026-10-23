@@ -51,7 +51,7 @@ namespace GamMaSite.ViewModels.Api
                 && Uri.TryCreate(link.Url, UriKind.RelativeOrAbsolute, out var uri)
                 && System.Text.RegularExpressions.Regex.IsMatch(
                     uri.IsAbsoluteUri ? uri.AbsolutePath : link.Url,
-                    @"/react/events/[^/]+/pay/\d+$",
+                    @"/(?:react/)?events/[^/]+/pay/\d+$",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
 
@@ -72,7 +72,7 @@ namespace GamMaSite.ViewModels.Api
             var owner = contentItem ?? offer.ContentItem;
             var paymentUrl = owner?.Slug == null
                 ? null
-                : $"/react/events/{Uri.EscapeDataString(owner.Slug)}/pay/{offer.Id}";
+                : $"/events/{Uri.EscapeDataString(owner.Slug)}/pay/{offer.Id}";
             var legacyLabel = owner?.Links?
                 .FirstOrDefault(link => IsManagedPaymentLink(link) && link.Url?.EndsWith($"/pay/{offer.Id}", StringComparison.OrdinalIgnoreCase) == true)?
                 .Label;

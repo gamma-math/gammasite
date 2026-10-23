@@ -144,7 +144,7 @@ namespace GamMaSite.Controllers
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user != null)
             {
-                var callbackUrl = await BuildEmailConfirmationUrl(user, "/react");
+                var callbackUrl = await BuildEmailConfirmationUrl(user, "/");
                 await _systemEmailTemplateService.SendEmailConfirmationAsync(request.Email, user.Navn, callbackUrl);
             }
 
@@ -183,7 +183,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            return Ok(new { redirectUrl = "/react" });
+            return Ok(new { redirectUrl = "/" });
         }
 
         [HttpPut("profile")]
@@ -281,7 +281,7 @@ namespace GamMaSite.Controllers
             }
 
             var email = await _userManager.GetEmailAsync(user);
-            var callbackUrl = await BuildEmailConfirmationUrl(user, "/react/account/manage/email");
+            var callbackUrl = await BuildEmailConfirmationUrl(user, "/account/manage/email");
             await _systemEmailTemplateService.SendEmailConfirmationAsync(email, user.Navn, callbackUrl);
 
             return Ok(new { message = "Bekræftelsesmail afsendt. Tjek venligst din mail." });
@@ -366,7 +366,7 @@ namespace GamMaSite.Controllers
             }
 
             await _signInManager.SignOutAsync();
-            return Ok(new { redirectUrl = "/react" });
+            return Ok(new { redirectUrl = "/" });
         }
 
         private async Task<string> BuildEmailConfirmationUrl(SiteUser user, string returnUrl)
@@ -385,30 +385,30 @@ namespace GamMaSite.Controllers
         {
             if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith("/") || returnUrl.StartsWith("//"))
             {
-                return "/react";
+                return "/";
             }
 
             if (returnUrl.StartsWith("/Identity/Account/Login", StringComparison.OrdinalIgnoreCase)
                 || returnUrl.StartsWith("/Identity/Account/Register", StringComparison.OrdinalIgnoreCase)
-                || returnUrl.StartsWith("/react/account/login", StringComparison.OrdinalIgnoreCase)
-                || returnUrl.StartsWith("/react/account/register", StringComparison.OrdinalIgnoreCase))
+                || returnUrl.StartsWith("/account/login", StringComparison.OrdinalIgnoreCase)
+                || returnUrl.StartsWith("/account/register", StringComparison.OrdinalIgnoreCase))
             {
-                return "/react";
+                return "/";
             }
 
             if (returnUrl.StartsWith("/Identity/Account/Manage/Email", StringComparison.OrdinalIgnoreCase))
             {
-                return "/react/account/manage/email";
+                return "/account/manage/email";
             }
 
             if (returnUrl.StartsWith("/Identity/Account/Manage/ChangePassword", StringComparison.OrdinalIgnoreCase))
             {
-                return "/react/account/manage/password";
+                return "/account/manage/password";
             }
 
             if (returnUrl.StartsWith("/Identity/Account/Manage", StringComparison.OrdinalIgnoreCase))
             {
-                return "/react/account/manage";
+                return "/account/manage";
             }
 
             return returnUrl;

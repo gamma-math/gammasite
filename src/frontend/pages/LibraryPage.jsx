@@ -23,7 +23,7 @@ export function LibraryPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/bibliotek" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/bibliotek" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Bibliotek</p>
@@ -40,14 +40,14 @@ export function LibraryPage({ user }) {
                 <td>
                   {item.type === "file" || item.type === "blob"
                     ? <a href={`/library?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</a>
-                    : <Link href={`/react/bibliotek?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</Link>}
+                    : <Link href={`/bibliotek?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</Link>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {listing?.hasParent && <Link className="frontpage-button frontpage-button-secondary page-top-gap" href={`/react/bibliotek?path=${encodeURIComponent(listing.parent)}`}>Tilbage</Link>}
+      {listing?.hasParent && <Link className="frontpage-button frontpage-button-secondary page-top-gap" href={`/bibliotek?path=${encodeURIComponent(listing.parent)}`}>Tilbage</Link>}
     </MenuLayout>
   );
 }

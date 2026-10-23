@@ -165,16 +165,16 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   if (error && !item) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="muted">Henter tilmeldte...</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="muted">Henter tilmeldte...</p></MenuLayout>;
   }
 
   if (!user.isAuthenticated) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
         <div className="menu-panel-header">
           <div>
             <p className="menu-section-title">Begivenheder</p>
@@ -191,7 +191,7 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   if (!canViewRegistrations) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
   }
 
   const sortedRegistrations = sortRegistrations(registrations);
@@ -207,7 +207,7 @@ export function EventRegistrationsPage({ slug, user }) {
     .slice(0, 8);
 
   return (
-    <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Begivenheder</p>
@@ -220,7 +220,7 @@ export function EventRegistrationsPage({ slug, user }) {
             </p>
           )}
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href={`/react/events/${item.slug}`}>
+        <Link className="frontpage-button frontpage-button-secondary" href={`/events/${item.slug}`}>
           Begivenheden
         </Link>
       </div>

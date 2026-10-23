@@ -19,14 +19,14 @@ const initialRegister = {
 };
 
 const manageItems = [
-  { href: "/react/account/manage", label: "Profil" },
-  { href: "/react/account/manage/email", label: "Email" },
-  { href: "/react/account/manage/password", label: "Password" },
-  { href: "/react/account/manage/two-factor", label: "To-faktor authentication" },
-  { href: "/react/account/manage/subscriptions", label: "Mine betalingsaftaler" },
-  { href: "/react/account/manage/finance", label: "Mine transaktioner" },
-  { href: "/react/account/manage/personal-data", label: "Privat data" },
-  { href: "/react/account/manage/logout", label: "Log ud" }
+  { href: "/account/manage", label: "Profil" },
+  { href: "/account/manage/email", label: "Email" },
+  { href: "/account/manage/password", label: "Password" },
+  { href: "/account/manage/two-factor", label: "To-faktor authentication" },
+  { href: "/account/manage/subscriptions", label: "Mine betalingsaftaler" },
+  { href: "/account/manage/finance", label: "Mine transaktioner" },
+  { href: "/account/manage/personal-data", label: "Privat data" },
+  { href: "/account/manage/logout", label: "Log ud" }
 ];
 
 /**
@@ -44,12 +44,12 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       const result = await accountApi.login({ ...form, returnUrl });
-      window.location.href = result.redirectUrl || "/react";
+      window.location.href = result.redirectUrl || "/";
     } catch (err) {
       if (err.status === 405) {
         try {
           await legacyIdentityLogin(form, returnUrl);
-          window.location.href = returnUrl || "/react";
+          window.location.href = returnUrl || "/";
           return;
         } catch (legacyError) {
           setError(legacyError.message);
@@ -74,11 +74,11 @@ export function LoginPage() {
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Logger ind..." : "Log ind"}</button>
         <Status error={error} />
         <div className="account-links">
-          <Link href="/react/account/forgot-password">Glemt dit password?</Link>
-          <Link href="/react/account/register">Tilmeld dig som ny bruger</Link>
-          <Link href="/react/account/resend-email-confirmation">Gensend email-bekræftelse</Link>
+          <Link href="/account/forgot-password">Glemt dit password?</Link>
+          <Link href="/account/register">Tilmeld dig som ny bruger</Link>
+          <Link href="/account/resend-email-confirmation">Gensend email-bekræftelse</Link>
         </div>
-        <p className="account-consent">Ved login accepteres <Link href="/react/cookies">Cookie</Link>-politik.</p>
+        <p className="account-consent">Ved login accepteres <Link href="/cookies">Cookie</Link>-politik.</p>
       </form>
     </AuthCard>
   );
@@ -127,7 +127,7 @@ export function RegisterPage() {
         <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Opretter..." : "Tilmeld"}</button>
         <Status message={message} error={error} />
-        <p className="account-consent"><Link href="/react/betingelser">Brugerbetingelser</Link> og <Link href="/react/cookies">Cookie</Link>-politik accepteres ved tilmelding.</p>
+        <p className="account-consent"><Link href="/betingelser">Brugerbetingelser</Link> og <Link href="/cookies">Cookie</Link>-politik accepteres ved tilmelding.</p>
       </form>
     </AuthCard>
   );
@@ -210,7 +210,7 @@ export function AccountManagePage({ user, section = "profile" }) {
   const isSubscriptionsSection = section === "subscriptions";
 
   return (
-    <MenuLayout active={`/react/account/manage${section === "profile" ? "" : `/${section}`}`} title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
+    <MenuLayout active={`/account/manage${section === "profile" ? "" : `/${section}`}`} title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Min konto</p>
@@ -742,7 +742,7 @@ function PersonalDataPanel() {
       <p className="account-help-text">Din profil indeholder de oplysninger, du har givet til GamMa. Du kan hente dine data eller gå videre til sletning af kontoen.</p>
       <div className="account-action-row">
         <a className="frontpage-button frontpage-button-primary" href="/api/account/personal-data">Hent data</a>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/account/manage/delete-personal-data">Slet bruger</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/account/manage/delete-personal-data">Slet bruger</Link>
       </div>
     </div>
   );
@@ -765,7 +765,7 @@ function DeletePersonalDataPanel() {
     setIsSubmitting(true);
     try {
       const result = await accountApi.deleteAccount(password);
-      window.location.href = result?.redirectUrl || "/react";
+      window.location.href = result?.redirectUrl || "/";
     } catch (err) {
       setError(err.message);
     } finally {
@@ -801,7 +801,7 @@ function LogoutPanel() {
     setIsSubmitting(true);
     try {
       const result = await accountApi.logout();
-      window.location.href = result?.redirectUrl || "/react";
+      window.location.href = result?.redirectUrl || "/";
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1001,7 +1001,7 @@ function AccountRequired() {
       <section className="page-shell frontpage-section">
         <h1>Profil</h1>
         <p className="muted">Du skal være logget ind for at administrere din bruger.</p>
-        <Link className="frontpage-button frontpage-button-primary" href="/react/account/login">Login</Link>
+        <Link className="frontpage-button frontpage-button-primary" href="/account/login">Login</Link>
       </section>
     </main>
   );
@@ -1022,11 +1022,11 @@ async function runSubmit(setMessage, setError, setIsSubmitting, action) {
 
 function getReturnUrl() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("returnUrl") ?? params.get("ReturnUrl") ?? "/react";
+  return params.get("returnUrl") ?? params.get("ReturnUrl") ?? "/";
 }
 
 async function legacyIdentityLogin(form, returnUrl) {
-  const loginUrl = `/Identity/Account/Login?ReturnUrl=${encodeURIComponent(returnUrl || "/react")}`;
+  const loginUrl = `/Identity/Account/Login?ReturnUrl=${encodeURIComponent(returnUrl || "/")}`;
   const pageResponse = await fetch(loginUrl, { credentials: "same-origin" });
   const html = await pageResponse.text();
   const token = new DOMParser()

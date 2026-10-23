@@ -1,15 +1,15 @@
 import { SidebarNav } from "../components/SidebarNav.jsx";
 
 const userItems = [
-  { href: "/react/events", label: "Begivenheder" },
-  { href: "/react/news", label: "Nyheder" }
+  { href: "/events", label: "Begivenheder" },
+  { href: "/news", label: "Nyheder" }
 ];
 
 const memberAreaItems = [
-  { href: "/react/members", label: "Medlemmer", requiresAuth: true },
-  { href: "/react/pay", label: "Betal medlemskab", requiresAuth: true },
-  { href: "/react/bibliotek", label: "Bibliotek", requiresAuth: true },
-  { href: "/react/finance", label: "Finans", requiresAuth: true }
+  { href: "/members", label: "Medlemmer", requiresAuth: true },
+  { href: "/pay", label: "Betal medlemskab", requiresAuth: true },
+  { href: "/bibliotek", label: "Bibliotek", requiresAuth: true },
+  { href: "/finance", label: "Finans", requiresAuth: true }
 ];
 
 /**

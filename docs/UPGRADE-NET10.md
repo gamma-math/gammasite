@@ -198,7 +198,7 @@ dotnet --info
 - [ ] Home page loads (`/`)
 - [ ] Login and registration work (tests EF Core 9 + Pomelo MySQL on .NET 10)
 - [ ] Calendar page loads (`/Calendar`) — tests Ical.Net 5.x
-- [ ] Membership payment page loads (`/react/pay`) — tests Stripe and PaymentOffers
+- [ ] Membership payment page loads (`/pay`) — tests Stripe and PaymentOffers
 - [ ] Admin: Users and Roles pages work
 - [ ] Static assets load correctly (CSS, JS) — tests `MapStaticAssets`
 

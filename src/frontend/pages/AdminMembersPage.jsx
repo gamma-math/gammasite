@@ -64,11 +64,11 @@ export function AdminMembersPage({ isAdmin }) {
   }, [search, pageSize, sort.key, sort.direction]);
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/users" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere medlemmer.</p></AdminLayout>;
+    return <AdminLayout active="/admin/users" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere medlemmer.</p></AdminLayout>;
   }
 
   return (
-    <AdminLayout active="/react/admin/users" canWrite={true}>
+    <AdminLayout active="/admin/users" canWrite={true}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Medlemmer</p>
@@ -140,7 +140,7 @@ export function AdminMembersPage({ isAdmin }) {
                           {member.hasActiveSubscription && (
                             <div>
                               <dt>Abonnement</dt>
-                              <dd><Link className="admin-subscription-link" href={`/react/admin/users/${encodeURIComponent(member.id)}/subscriptions`}>Se aktivt abonnement</Link></dd>
+                              <dd><Link className="admin-subscription-link" href={`/admin/users/${encodeURIComponent(member.id)}/subscriptions`}>Se aktivt abonnement</Link></dd>
                             </div>
                           )}
                         </dl>
@@ -180,18 +180,18 @@ export function AdminMemberSubscriptionsPage({ isAdmin, memberId }) {
   }, [isAdmin, memberId]);
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/users" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere medlemmer.</p></AdminLayout>;
+    return <AdminLayout active="/admin/users" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere medlemmer.</p></AdminLayout>;
   }
 
   return (
-    <AdminLayout active="/react/admin/users" canWrite={true}>
+    <AdminLayout active="/admin/users" canWrite={true}>
       <div className="admin-subscription-detail-header">
         <div>
           <p className="menu-section-title">Medlemmer</p>
           <h1>Aktivt abonnement</h1>
           {data?.memberName && <p className="menu-panel-lead">{data.memberName}{data.memberEmail ? ` · ${data.memberEmail}` : ""}</p>}
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/users">Tilbage til medlemmer</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/admin/users">Tilbage til medlemmer</Link>
       </div>
       {error && <p className="status-message status-message-warning">{error}</p>}
       {!data && !error && <p className="muted">Henter abonnement...</p>}

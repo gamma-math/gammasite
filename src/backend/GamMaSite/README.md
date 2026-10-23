@@ -32,8 +32,8 @@ GamMaSite/
 
 ## Active Runtime Responsibilities
 
-* Host the React app and map `/react/*` routes to the React shell.
-* Redirect selected old MVC/Identity URLs to React routes.
+* Host the React app on canonical public routes without a `/react` prefix.
+* Permanently redirect legacy `/react/*` URLs and selected old MVC/Identity URLs to the canonical routes.
 * Provide authenticated JSON APIs for React.
 * Manage users, roles, account state, and security through ASP.NET Core Identity.
 * Persist content, links, registrations, templates, and user data through EF Core/MySQL.

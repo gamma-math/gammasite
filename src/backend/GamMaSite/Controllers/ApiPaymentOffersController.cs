@@ -844,7 +844,7 @@ namespace GamMaSite.Controllers
 
                 var attemptKey = GetPaymentAttemptKey(userId, offer);
                 var reference = _mobilePayReferenceService.Create(registration.Id, offer.Id, attemptKey);
-                var mobilePayEventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
+                var mobilePayEventPath = $"/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
                 var returnUrl = PublicUrl($"{mobilePayEventPath}/success?reference={Uri.EscapeDataString(reference)}");
                 try
                 {
@@ -882,7 +882,7 @@ namespace GamMaSite.Controllers
             }
 
             var sessionParameter = "?session={CHECKOUT_SESSION_ID}";
-            var eventPath = $"/react/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
+            var eventPath = $"/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
             var successUrl = PublicUrl($"{eventPath}/success{sessionParameter}");
             var cancelUrl = PublicUrl($"{eventPath}/{offer.Id}");
             var sessionId = _stripeService.StartPayment(
@@ -1142,8 +1142,8 @@ namespace GamMaSite.Controllers
                 }
 
                 var sessionParameter = "?session={CHECKOUT_SESSION_ID}";
-                var successUrl = PublicUrl($"/react/pay/success{sessionParameter}");
-                var cancelUrl = PublicUrl("/react/pay/cancel");
+                var successUrl = PublicUrl($"/pay/success{sessionParameter}");
+                var cancelUrl = PublicUrl("/pay/cancel");
                 var mode = string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase)
                     ? "subscription"
                     : "payment";
@@ -1197,7 +1197,7 @@ namespace GamMaSite.Controllers
 
             var attemptKey = GetPaymentAttemptKey(userId, offer);
             var reference = _mobilePayReferenceService.CreateMembership(userId, offer.Id, attemptKey);
-            var returnUrl = PublicUrl($"/react/pay/success?reference={Uri.EscapeDataString(reference)}");
+            var returnUrl = PublicUrl($"/pay/success?reference={Uri.EscapeDataString(reference)}");
             try
             {
                 var payment = await _mobilePayService.CreateOneTimePaymentAsync(
@@ -1278,7 +1278,7 @@ namespace GamMaSite.Controllers
             }
 
             var attemptKey = GetPaymentAttemptKey(userId, offer);
-            var merchantAgreementUrl = PublicUrl("/react/account/manage/subscriptions");
+            var merchantAgreementUrl = PublicUrl("/account/manage/subscriptions");
             try
             {
                 var now = DateTime.UtcNow;
@@ -1320,7 +1320,7 @@ namespace GamMaSite.Controllers
                 await _db.SaveChangesAsync(cancellationToken);
 
                 var merchantRedirectUrl =
-                    PublicUrl($"/react/pay/success?reference={Uri.EscapeDataString(reference)}");
+                    PublicUrl($"/pay/success?reference={Uri.EscapeDataString(reference)}");
                 var agreement = await _mobilePayService.CreateRecurringAgreementAsync(
                     reference,
                     member.PhoneNumber,
