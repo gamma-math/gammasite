@@ -4,6 +4,7 @@ import { isLocalContentImage, isSupportedContentImage, MAX_CONTENT_IMAGE_SIZE } 
 
 test("accepts PNG and JPEG names up to 2 MiB", () => {
   assert.equal(isSupportedContentImage({ name: "photo.PNG", size: MAX_CONTENT_IMAGE_SIZE }), true);
+  assert.equal(isSupportedContentImage({ name: "photo.jpg", size: MAX_CONTENT_IMAGE_SIZE }), true);
   assert.equal(isSupportedContentImage({ name: "photo.jpeg", size: MAX_CONTENT_IMAGE_SIZE }), true);
 });
 
