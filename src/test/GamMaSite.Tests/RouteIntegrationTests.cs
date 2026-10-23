@@ -57,6 +57,10 @@ public sealed class RouteTestApplicationFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Production");
         builder.UseTestServer();
+        // CI substitutes deployment values into appsettings.json before tests
+        // run. UseSetting applies test values early enough for Program.cs and
+        // keeps the test host independent of the deployment environment.
+        builder.UseSetting("AllowedHosts", "*");
         builder.UseSetting("PublicBaseUrl", "https://localhost:5001");
         builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=127.0.0.1;Port=3306;Database=gammasite_route_tests;User Id=test;Password=test;");
         builder.UseSetting("MobilePay:BaseUrl", "https://example.com");
