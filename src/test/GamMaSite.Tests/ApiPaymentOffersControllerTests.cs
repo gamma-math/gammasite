@@ -1102,6 +1102,92 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task CheckoutStopsPendingMobilePayAgreementBeforeOneTimeMembershipPayment()
+    {
+        await using var db = CreateDatabase();
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-1",
+            UserName = "member@example.com",
+            PhoneNumber = "+4512345678",
+            Status = UserStatus.OPRETTET
+        });
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agreement-pending",
+            ProductName = "Kontingent",
+            Status = PaymentSubscriptionStatuses.Pending,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.GetAgreementAsync("agreement-pending", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MobilePayAgreement("agreement-pending", null, "CREATED", null));
+        mobilePay.Setup(value => value.CreateOneTimePaymentAsync(
+                "membership-reference",
+                15000,
+                "DKK",
+                "Kontingent",
+                "https://localhost:5001/pay/success?reference=membership-reference",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MobilePayPayment(
+                "membership-reference",
+                "https://mobilepay.example/pay",
+                "CREATED",
+                15000,
+                0,
+                "DKK"));
+        var reference = new Mock<IMobilePayEventReferenceService>();
+        reference.Setup(value => value.CreateMembership("user-1", offer.Id, It.IsAny<string>()))
+            .Returns("membership-reference");
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object,
+            reference.Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-1")
+                }, "test"))
+            }
+        };
+        controller.HttpContext.Request.Scheme = "https";
+        controller.HttpContext.Request.Host = new HostString("localhost:5001");
+
+        var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
+
+        Assert.Contains("mobilepay.example/pay", result.Value?.ToString());
+        mobilePay.Verify(value => value.StopAgreementAsync("agreement-pending", It.IsAny<CancellationToken>()), Times.Never);
+        var subscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
+    }
+
+    [Fact]
     public async Task SuccessContextDoesNotMarkCompletedStripeMembershipPaymentAsPaid()
     {
         await using var db = CreateDatabase();

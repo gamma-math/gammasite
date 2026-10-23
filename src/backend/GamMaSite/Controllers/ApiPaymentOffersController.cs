@@ -793,6 +793,13 @@ namespace GamMaSite.Controllers
                     string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase) &&
                     await HasOpenMembershipSubscriptionAsync(userId, cancellationToken))
                 {
+                    await AbandonPendingMobilePayMembershipsAsync(userId, cancellationToken);
+                }
+
+                if (string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(offer.OfferType, PaymentOfferTypes.OneTime, StringComparison.OrdinalIgnoreCase) &&
+                    await HasOpenMembershipSubscriptionAsync(userId, cancellationToken))
+                {
                     return Conflict("Du har allerede et aktivt eller afventende medlemskab.");
                 }
 
@@ -1266,6 +1273,22 @@ namespace GamMaSite.Controllers
                 openSubscription = await _mobilePayReconciliation.ReconcileAsync(
                     openSubscription,
                     cancellationToken);
+
+                if (string.Equals(openSubscription.Status, PaymentSubscriptionStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _mobilePayReconciliation.TryAbandonPendingAsync(
+                        openSubscription,
+                        cancellationToken);
+                    openSubscription = await _db.PaymentSubscriptions
+                        .FirstOrDefaultAsync(subscription =>
+                            subscription.UserId == userId &&
+                            (subscription.Status == PaymentSubscriptionStatuses.Pending ||
+                             subscription.Status == PaymentSubscriptionStatuses.Active ||
+                             subscription.Status == PaymentSubscriptionStatuses.Trialing ||
+                             subscription.Status == PaymentSubscriptionStatuses.PastDue ||
+                             subscription.Status == PaymentSubscriptionStatuses.Incomplete),
+                            cancellationToken);
+                }
             }
 
             var hasOpenSubscription = await _db.PaymentSubscriptions.AnyAsync(subscription =>
@@ -2062,6 +2085,30 @@ namespace GamMaSite.Controllers
                  subscription.Status == PaymentSubscriptionStatuses.Trialing ||
                  subscription.Status == PaymentSubscriptionStatuses.PastDue ||
                  subscription.Status == PaymentSubscriptionStatuses.Incomplete), cancellationToken);
+        }
+
+        private async Task AbandonPendingMobilePayMembershipsAsync(
+            string userId,
+            CancellationToken cancellationToken)
+        {
+            if (_mobilePayReconciliation == null)
+            {
+                return;
+            }
+
+            var pendingSubscriptions = await _db.PaymentSubscriptions
+                .Where(subscription =>
+                    subscription.UserId == userId &&
+                    subscription.Provider == PaymentOfferProviders.MobilePay &&
+                    subscription.Status == PaymentSubscriptionStatuses.Pending)
+                .ToListAsync(cancellationToken);
+
+            foreach (var subscription in pendingSubscriptions)
+            {
+                await _mobilePayReconciliation.TryAbandonPendingAsync(
+                    subscription,
+                    cancellationToken);
+            }
         }
 
         private static bool IsPendingMobilePayAgreement(PaymentSubscription subscription)

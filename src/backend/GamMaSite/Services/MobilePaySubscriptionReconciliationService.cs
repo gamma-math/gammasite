@@ -181,6 +181,95 @@ public sealed class MobilePaySubscriptionReconciliationService
         return current;
     }
 
+    /// <summary>
+    /// Closes a pending MobilePay agreement when the user explicitly starts a
+    /// new membership checkout. A browser being closed does not produce a
+    /// reliable callback, so the old pending agreement must be cleaned up at
+    /// the next checkout attempt instead.
+    /// </summary>
+    public async Task<bool> TryAbandonPendingAsync(
+        PaymentSubscription subscription,
+        CancellationToken cancellationToken)
+    {
+        if (subscription == null ||
+            !string.Equals(subscription.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(subscription.Status, PaymentSubscriptionStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        _db.Entry(subscription).State = EntityState.Detached;
+
+        var providerSubscriptionId = subscription.ProviderSubscriptionId;
+        if (string.IsNullOrWhiteSpace(providerSubscriptionId))
+        {
+            return await MarkTerminalAsync(subscription.Id, PaymentSubscriptionStatuses.Expired, cancellationToken);
+        }
+
+        if (providerSubscriptionId.StartsWith("pending:", StringComparison.Ordinal))
+        {
+            // The provider call never returned an agreement ID, so there is
+            // no external agreement to stop.
+            return await MarkTerminalAsync(subscription.Id, PaymentSubscriptionStatuses.Expired, cancellationToken);
+        }
+
+        if (_mobilePayService == null)
+        {
+            return false;
+        }
+
+        MobilePayAgreement agreement;
+        try
+        {
+            agreement = await _mobilePayService.GetAgreementAsync(
+                providerSubscriptionId,
+                cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+
+        var providerStatus = agreement.Status?.Trim().ToUpperInvariant();
+        if (providerStatus == "ACTIVE")
+        {
+            return false;
+        }
+
+        if (providerStatus == "CREATED" || providerStatus == "PENDING")
+        {
+            // MobilePay has not activated the agreement yet. In this state
+            // stopping it may itself return 409, but it cannot create future
+            // recurring charges. The local pending reservation can therefore
+            // safely be released for a new checkout attempt.
+            return await MarkTerminalAsync(
+                subscription.Id,
+                PaymentSubscriptionStatuses.Canceled,
+                cancellationToken);
+        }
+
+        if (providerStatus != "STOPPED" &&
+            providerStatus != "EXPIRED" &&
+            providerStatus != "REJECTED")
+        {
+            try
+            {
+                await _mobilePayService.StopAgreementAsync(
+                    providerSubscriptionId,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
+        var localStatus = providerStatus == "EXPIRED" || providerStatus == "REJECTED"
+            ? PaymentSubscriptionStatuses.Expired
+            : PaymentSubscriptionStatuses.Canceled;
+        return await MarkTerminalAsync(subscription.Id, localStatus, cancellationToken);
+    }
+
     private static async Task CommitAsync(
         Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction,
         CancellationToken cancellationToken)
@@ -189,6 +278,36 @@ public sealed class MobilePaySubscriptionReconciliationService
         {
             await transaction.CommitAsync(cancellationToken);
         }
+    }
+
+    private async Task<bool> MarkTerminalAsync(
+        int subscriptionId,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
+        var current = await PaymentWebhookTransaction.LockSubscriptionAsync(
+            _db,
+            subscriptionId,
+            cancellationToken);
+
+        if (current == null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(current.Status, PaymentSubscriptionStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            await CommitAsync(transaction, cancellationToken);
+            return IsTerminalStatus(current.Status);
+        }
+
+        current.Status = status;
+        current.NextChargeAt = null;
+        current.Updated = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        await CommitAsync(transaction, cancellationToken);
+        return true;
     }
 
     private static DateTime GetNextChargeDate(DateTime paidAt, PaymentOffer offer)
