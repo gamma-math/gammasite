@@ -89,6 +89,86 @@ public class ContentServiceTests
     }
 
     [Fact]
+    public async Task DeleteAsync_RemovesEventRelationsAndArchivesStripeDefinitions()
+    {
+        await using var db = CreateDb();
+        var item = Item("delete-event", DateTime.UtcNow);
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        db.ContentLinks.Add(new ContentLink
+        {
+            ContentItemId = item.Id,
+            Label = "Facebook",
+            Url = "https://example.com/event",
+            Type = "LINK"
+        });
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = item.Id,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee
+        });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            ContentItemId = item.Id,
+            Scope = PaymentOfferScopes.Event,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Event ticket",
+            ProviderProductId = "prod_event",
+            ProviderPriceId = "price_event"
+        });
+        await db.SaveChangesAsync();
+
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(service => service.DeactivatePriceAsync("price_event")).ReturnsAsync(true);
+        stripe.Setup(service => service.DeactivateProductAsync("prod_event")).ReturnsAsync(true);
+
+        var deleted = await new ContentService(db, stripeService: stripe.Object).DeleteAsync(item.Id);
+
+        Assert.True(deleted);
+        Assert.Null(await db.ContentItems.FindAsync(item.Id));
+        Assert.Empty(await db.ContentLinks.Where(link => link.ContentItemId == item.Id).ToListAsync());
+        Assert.Empty(await db.EventRegistrations.Where(registration => registration.ContentItemId == item.Id).ToListAsync());
+        Assert.Empty(await db.PaymentOffers.Where(offer => offer.ContentItemId == item.Id).ToListAsync());
+        stripe.Verify(service => service.DeactivatePriceAsync("price_event"), Times.Once);
+        stripe.Verify(service => service.DeactivateProductAsync("prod_event"), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RestoresLocalContentWhenStripeArchivingFails()
+    {
+        await using var db = CreateDb();
+        var item = Item("delete-event-failed", DateTime.UtcNow);
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            ContentItemId = item.Id,
+            Scope = PaymentOfferScopes.Event,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Event ticket",
+            ProviderProductId = "prod_event_failed",
+            ProviderPriceId = "price_event_failed"
+        });
+        await db.SaveChangesAsync();
+
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(service => service.DeactivatePriceAsync("price_event_failed")).ReturnsAsync(true);
+        stripe.Setup(service => service.DeactivateProductAsync("prod_event_failed")).ReturnsAsync(false);
+        stripe.Setup(service => service.SetPriceActiveAsync("price_event_failed", true)).ReturnsAsync(true);
+
+        await Assert.ThrowsAsync<ContentDeletionException>(() =>
+            new ContentService(db, stripeService: stripe.Object).DeleteAsync(item.Id));
+
+        Assert.NotNull(await db.ContentItems.FindAsync(item.Id));
+        Assert.Single(await db.PaymentOffers.Where(offer => offer.ContentItemId == item.Id).ToListAsync());
+        stripe.Verify(service => service.SetPriceActiveAsync("price_event_failed", true), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateAsync_RejectsCapacityBelowExistingParticipants()
     {
         await using var db = CreateDb();

@@ -27,6 +27,10 @@ namespace GamMaSite.Services
 
         Task<Product> CreateProductAsync(string name, string description);
 
+        Task<bool> DeactivateProductAsync(string id);
+
+        Task<bool> SetProductActiveAsync(string id, bool active);
+
         Task<Price> CreateOneTimePriceAsync(string productId, long amountMinor, string currency, string nickname = null);
 
         Task<Price> CreateRecurringPriceAsync(string productId, long amountMinor, string currency, string interval, int intervalCount, string nickname = null);
@@ -126,6 +130,36 @@ namespace GamMaSite.Services
             catch (StripeException)
             {
                 return null;
+            }
+        }
+
+        public Task<bool> DeactivateProductAsync(string id)
+        {
+            return SetProductActiveAsync(id, false);
+        }
+
+        public async Task<bool> SetProductActiveAsync(string id, bool active)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return true;
+            }
+
+            try
+            {
+                await new ProductService().UpdateAsync(id, new ProductUpdateOptions
+                {
+                    Active = active
+                });
+                return true;
+            }
+            catch (StripeException exception) when (string.Equals(exception.StripeError?.Code, "resource_missing", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            catch (StripeException)
+            {
+                return false;
             }
         }
 
