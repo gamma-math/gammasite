@@ -86,7 +86,7 @@ export function PaymentPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/pay" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/pay" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Betal medlemskab</p>
@@ -159,7 +159,7 @@ export function PaymentPage({ user }) {
         {checkoutError && <p className="status-message status-message-error">{checkoutError}</p>}
       </article>
       <p className="payment-terms-note">
-        Betalinger gennemføres i henhold til vores <Link href="/react/betingelser#salgsbetingelser">salgsbetingelser</Link>.
+        Betalinger gennemføres i henhold til vores <Link href="/betingelser#salgsbetingelser">salgsbetingelser</Link>.
       </p>
     </MenuLayout>
   );
@@ -180,7 +180,7 @@ export function EventPaymentPage({ offerId, user }) {
 
   if (!user.isAuthenticated) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={false}>
+      <MenuLayout active="/events" isAuthenticated={false}>
         <section className="frontpage-section">
           <h1>Betaling</h1>
           <p className="muted">Du skal være logget ind for at betale.</p>
@@ -192,7 +192,7 @@ export function EventPaymentPage({ offerId, user }) {
 
   if (!offer && !error) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
         <div className="menu-loading-card">
           <span className="menu-loading-dot" aria-hidden="true" />
           <p>Henter betaling...</p>
@@ -203,7 +203,7 @@ export function EventPaymentPage({ offerId, user }) {
 
   if (error) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
         <p className="status-message status-message-error">{error}</p>
       </MenuLayout>
     );
@@ -236,7 +236,7 @@ export function EventPaymentPage({ offerId, user }) {
   const providerReady = ["STRIPE", "MOBILEPAY"].includes(offer.provider);
 
   return (
-    <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
+    <MenuLayout active="/events" isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
       <article className="menu-payment-card menu-payment-product-card">
         <div className="menu-payment-product-hero">
           <p className="menu-section-title">Betaling for event</p>
@@ -384,7 +384,7 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   const resolvedEventSlug = eventSlug || paymentContext?.eventSlug;
   if (status === "success" && session && isLoadingPaymentContext) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <p className="muted">Bekræfter betaling...</p>
       </MenuLayout>
     );
@@ -392,7 +392,7 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "success" && reference && eventPaymentState === "loading") {
     return (
-      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <p className="muted">Bekræfter betaling...</p>
       </MenuLayout>
     );
@@ -400,7 +400,7 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "event-success" && resolvedEventSlug && reference && eventPaymentState === "loading") {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <p className="muted">Bekræfter betaling...</p>
       </MenuLayout>
     );
@@ -408,12 +408,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if ((status === "event-success" || paymentContext?.type === "EVENT") && resolvedEventSlug && eventPaymentState !== "cancelled" && eventPaymentState !== "error") {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
           <h1>{eventPaymentState === "pending" ? "Betaling modtages" : "Betaling gennemført"}</h1>
           <p className="muted">{eventPaymentState === "pending" ? "Betalingen er modtaget og bliver bekræftet. Du kan genindlæse siden om lidt." : "Din betaling til arrangementet er gennemført."}</p>
-          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}`}>
+          <Link className="frontpage-button frontpage-button-primary" href={`/events/${encodeURIComponent(resolvedEventSlug)}`}>
             Til begivenheden
           </Link>
         </section>
@@ -423,12 +423,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "success" && paymentContext?.type === "MEMBERSHIP" && eventPaymentState !== "cancelled" && eventPaymentState !== "error") {
     return (
-      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
           <h1>{eventPaymentState === "pending" ? "Betaling modtages" : "Betaling gennemført"}</h1>
           <p className="muted">{eventPaymentState === "pending" ? "Betalingen er modtaget og bliver bekræftet. Du kan genindlæse siden om lidt." : "Dit medlemskab er nu registreret som betalt."}</p>
-          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
+          <Link className="frontpage-button frontpage-button-primary" href="/pay">
             Til betaling
           </Link>
         </section>
@@ -438,12 +438,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "success" && reference && paymentContext?.type === "MEMBERSHIP") {
     return (
-      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
           <h1>Betaling ikke gennemført</h1>
           <p className="muted">Betalingen blev ikke gennemført.</p>
-          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
+          <Link className="frontpage-button frontpage-button-primary" href="/pay">
             Tilbage til betaling
           </Link>
         </section>
@@ -453,12 +453,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "event-success" && resolvedEventSlug) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
           <h1>{eventPaymentState === "cancelled" ? "Betaling ikke gennemført" : "Betaling kunne ikke bekræftes"}</h1>
           <p className="muted">{eventPaymentError || "Betalingen blev ikke gennemført."}</p>
-          <Link className="frontpage-button frontpage-button-primary" href={`/react/events/${encodeURIComponent(resolvedEventSlug)}${paymentContext?.offerId ? `/pay/${paymentContext.offerId}` : ""}`}>
+          <Link className="frontpage-button frontpage-button-primary" href={`/events/${encodeURIComponent(resolvedEventSlug)}${paymentContext?.offerId ? `/pay/${paymentContext.offerId}` : ""}`}>
             Tilbage til betaling
           </Link>
         </section>
@@ -468,12 +468,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
 
   if (status === "cancel") {
     return (
-      <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
         <section className="menu-payment-event-success">
           <p className="menu-payment-kicker">Betaling</p>
           <h1>Betaling ikke gennemført</h1>
           <p className="muted">Betalingen blev ikke gennemført.</p>
-          <Link className="frontpage-button frontpage-button-primary" href="/react/pay">
+          <Link className="frontpage-button frontpage-button-primary" href="/pay">
             Tilbage til betaling
           </Link>
         </section>
@@ -482,12 +482,12 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   }
 
   return (
-    <MenuLayout active="/react/pay" isAuthenticated={user?.isAuthenticated}>
+    <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated}>
       <article className="menu-payment-card menu-payment-status-card">
         <p className="menu-payment-kicker">Betaling</p>
         <h1>{success ? "Køb gennemført" : "Køb annulleret"}</h1>
         <p className="muted">{status === "kontingent-success" ? "Du har nu købt et kontingent." : success ? "Dit køb blev gennemført." : "Dit køb blev annulleret."}</p>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/pay">Til oversigten</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/pay">Til oversigten</Link>
       </article>
     </MenuLayout>
   );

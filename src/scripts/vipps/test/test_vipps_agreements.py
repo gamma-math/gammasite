@@ -13,11 +13,11 @@ def test_create_agreement_sends_recurring_configuration(monkeypatch):
     monkeypatch.setattr(vipps.requests, "post", post)
     monkeypatch.setattr(vipps, "api_headers", lambda **kwargs: {"Authorization": "Bearer token"})
     monkeypatch.setattr(vipps, "VIPPS_PHONE_NUMBER", "+4512345678")
-    monkeypatch.setattr(vipps, "VIPPS_RETURN_URL", "https://localhost:5001/react/pay")
+    monkeypatch.setattr(vipps, "VIPPS_RETURN_URL", "https://localhost:5001/pay")
     monkeypatch.setattr(
         vipps,
         "VIPPS_MERCHANT_AGREEMENT_URL",
-        "https://localhost:5001/react/account/manage/subscriptions",
+        "https://localhost:5001/account/manage/subscriptions",
     )
 
     agreement = vipps.create_agreement()

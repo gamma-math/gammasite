@@ -28,7 +28,7 @@ frontend/
 
 The app uses a small custom router in `app/main.jsx` and `routes/navigation.jsx`.
 
-* Internal `/react/*` links update browser history without a full reload.
+* Internal canonical links update browser history without a full reload.
 * Selected legacy URLs are also mapped to React pages by the backend and frontend router.
 * The backend remains responsible for direct requests, authentication cookies, CSRF tokens, and API authorization.
 

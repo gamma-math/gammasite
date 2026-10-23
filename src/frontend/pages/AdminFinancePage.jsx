@@ -728,7 +728,7 @@ function AccountTable({ overview, year }) {
                       <td>
                         <Link
                           className="finance-admin-table-link"
-                          href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(sub.rows.map((row) => row.accountId).filter(Boolean).join(","))}`}
+                          href={`/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(sub.rows.map((row) => row.accountId).filter(Boolean).join(","))}`}
                         >
                           Se posteringer
                         </Link>
@@ -753,7 +753,7 @@ function AccountTable({ overview, year }) {
                           <td>
                             <Link
                               className="finance-admin-table-link"
-                              href={`/react/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(row.accountId)}`}
+                              href={`/admin/finance/postings?year=${year}&accountId=${encodeURIComponent(row.accountId)}`}
                             >
                               Se posteringer
                             </Link>
@@ -892,7 +892,7 @@ function SourceTable({ title, rows, year }) {
                 <td>
                   <Link
                     className="finance-admin-table-link"
-                    href={`/react/admin/finance/postings?year=${year}&${r.sourceType === "Bank" ? "bankKey" : "mobilePayKey"}=${r.sourceId}`}
+                    href={`/admin/finance/postings?year=${year}&${r.sourceType === "Bank" ? "bankKey" : "mobilePayKey"}=${r.sourceId}`}
                   >
                     Se posteringer
                   </Link>
@@ -983,7 +983,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
                   <td>
                     <Link
                       className="finance-admin-table-link"
-                      href={`/react/admin/finance/postings?year=${year}&search=${encodeURIComponent(name)}`}
+                      href={`/admin/finance/postings?year=${year}&search=${encodeURIComponent(name)}`}
                     >
                       Se posteringer
                     </Link>
@@ -1003,7 +1003,7 @@ function GroupTable({ rows, year, isCurrentYear, previousYear }) {
                       <td>
                         <Link
                           className="finance-admin-table-link"
-                          href={`/react/admin/finance/postings?year=${year}&search=${encodeURIComponent(row.context)}`}
+                          href={`/admin/finance/postings?year=${year}&search=${encodeURIComponent(row.context)}`}
                         >
                           Se posteringer
                         </Link>
@@ -1425,7 +1425,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
           <button
             className="menu-create-button"
             type="button"
-            onClick={() => navigate("/react/admin/finance/postings/new")}
+            onClick={() => navigate("/admin/finance/postings/new")}
           >
             + Manuel postering
           </button>
@@ -1683,7 +1683,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
                         type="button"
                         onClick={() =>
                           navigate(
-                            `/react/admin/finance/postings/${encodeURIComponent(p.id)}`,
+                            `/admin/finance/postings/${encodeURIComponent(p.id)}`,
                           )
                         }
                       >
@@ -1893,7 +1893,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
               <thead><tr>{[["ID", "id"], ["Dato", "date"], ["Posteringsdato", "postingDate"], ["Tekst", "text"], ["Beløb", "amount"], ["Bruger", "userId"], ["Konto", "account"], ["Posteringsgruppe", "postingGroup"], ["Bilag", "document"], ["Kilde", "sourceType"], ["Status", "status"]].map(([label, key]) => <SortableHeader key={key} label={label} sortKey={key} sort={sort} setSort={setSort} />)}</tr></thead>
               <tbody>
                 {visibleItems.map((posting) => (
-                  <tr className="finance-admin-clickable-row" key={posting.id} onClick={() => navigate(`/react/admin/finance/postings/${encodeURIComponent(posting.id)}`)} onKeyDown={(event) => event.key === "Enter" && navigate(`/react/admin/finance/postings/${encodeURIComponent(posting.id)}`)} role="link" tabIndex="0">
+                  <tr className="finance-admin-clickable-row" key={posting.id} onClick={() => navigate(`/admin/finance/postings/${encodeURIComponent(posting.id)}`)} onKeyDown={(event) => event.key === "Enter" && navigate(`/admin/finance/postings/${encodeURIComponent(posting.id)}`)} role="link" tabIndex="0">
                     <td>{posting.id}</td><td>{posting.date}</td><td>{posting.postingDate}</td><td>{posting.text}</td><td className={cls(posting.amount)}>{money(posting.amount)}</td><td>{posting.userId ? userLabel(posting.userId) : "—"}</td><td>{posting.account || "—"}</td><td>{posting.postingGroup || "—"}</td><td>{posting.document ? "Ja" : "—"}</td><td>{posting.sourceType}</td><td>{posting.status}</td>
                   </tr>
                 ))}
@@ -2257,7 +2257,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
         <button
           className="menu-create-button"
           type="button"
-          onClick={() => navigate("/react/admin/finance/budgets/new")}
+          onClick={() => navigate("/admin/finance/budgets/new")}
         >
           + Ny post
         </button>
@@ -2546,7 +2546,7 @@ export function FinanceAdminBudgetDetailPage({ isAdmin, id }) {
       };
       if (isNew) await financeApi.createAdminBudget(payload);
       else await financeApi.updateAdminBudget(id, payload);
-      navigate("/react/admin/finance/budgets");
+      navigate("/admin/finance/budgets");
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -2558,7 +2558,7 @@ export function FinanceAdminBudgetDetailPage({ isAdmin, id }) {
     if (isNew || !window.confirm(`Slet budgetposten ${id}?`)) return;
     try {
       await financeApi.deleteAdminBudget(id);
-      navigate("/react/admin/finance/budgets");
+      navigate("/admin/finance/budgets");
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -2588,7 +2588,7 @@ export function FinanceAdminBudgetDetailPage({ isAdmin, id }) {
         </div>
         <Link
           className="finance-live-profile-link"
-          href="/react/admin/finance/budgets"
+          href="/admin/finance/budgets"
         >
           Tilbage til budgetter
         </Link>
@@ -2803,7 +2803,7 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
         <button
           className="menu-create-button"
           type="button"
-          onClick={() => navigate("/react/admin/finance/posting-groups/new")}
+          onClick={() => navigate("/admin/finance/posting-groups/new")}
         >
           + Ny post
         </button>
@@ -2945,7 +2945,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
       };
       if (isNew) await financeApi.createAdminPostingGroup(payload);
       else await financeApi.updateAdminPostingGroup(id, payload);
-      navigate("/react/admin/finance/posting-groups");
+      navigate("/admin/finance/posting-groups");
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -2956,7 +2956,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
     if (isNew || !window.confirm(`Slet posteringsgruppen ${id}?`)) return;
     try {
       await financeApi.deleteAdminPostingGroup(id);
-      navigate("/react/admin/finance/posting-groups");
+      navigate("/admin/finance/posting-groups");
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -2984,7 +2984,7 @@ export function FinanceAdminPostingGroupDetailPage({ isAdmin, id }) {
         </div>
         <Link
           className="finance-live-profile-link"
-          href="/react/admin/finance/posting-groups"
+          href="/admin/finance/posting-groups"
         >
           Tilbage til posteringsgrupper
         </Link>
@@ -3130,7 +3130,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
     try {
       if (isNew) {
         await financeApi.createAdminPosting({ ...form, postingDate });
-        navigate("/react/admin/finance/postings");
+        navigate("/admin/finance/postings");
         return;
       }
       await financeApi.updateAdminPosting(id, { ...form, postingDate });
@@ -3165,7 +3165,7 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
         </div>
         <Link
           className="finance-live-profile-link"
-          href="/react/admin/finance/postings"
+          href="/admin/finance/postings"
         >
           Tilbage til posteringer
         </Link>

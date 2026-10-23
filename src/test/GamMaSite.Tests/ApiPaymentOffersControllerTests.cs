@@ -227,7 +227,7 @@ public sealed class ApiPaymentOffersControllerTests
         var response = Assert.IsType<OkObjectResult>(result);
         var offer = Assert.IsType<PaymentOfferDto>(response.Value);
         Assert.Equal("Køb billet", offer.LinkLabel);
-        Assert.Equal("/react/events/test-event/pay/1", offer.PaymentUrl);
+        Assert.Equal("/events/test-event/pay/1", offer.PaymentUrl);
         Assert.Single(await db.PaymentOffers.Where(value => value.ContentItemId == item.Id).ToListAsync());
         var links = await db.ContentLinks.Where(link => link.ContentItemId == item.Id).ToListAsync();
         var manualLink = Assert.Single(links);
@@ -898,8 +898,8 @@ public sealed class ApiPaymentOffersControllerTests
                 1,
                 "Kontingent",
                 "Automatisk betaling for Kontingent",
-                "https://localhost:5001/react/pay/success?reference=membership-reference",
-                "https://localhost:5001/react/account/manage/subscriptions",
+                "https://localhost:5001/pay/success?reference=membership-reference",
+                "https://localhost:5001/account/manage/subscriptions",
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MobilePayAgreement("new-agreement", "https://vipps.example/confirm", "CREATED", "charge-1"));
         var reference = new Mock<IMobilePayEventReferenceService>();
@@ -1193,7 +1193,7 @@ public sealed class ApiPaymentOffersControllerTests
         item.Links.Add(new ContentLink
         {
             Label = "Betalingslink",
-            Url = $"/react/events/test-event/pay/{offer.Id}",
+                Url = $"/events/test-event/pay/{offer.Id}",
             Type = "PAYMENT",
             Created = DateTime.UtcNow,
             Updated = DateTime.UtcNow

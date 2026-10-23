@@ -101,7 +101,7 @@ membership   Stripe      Membership    15000
 membership   MobilePay   Membership    15000
 ```
 
-`ContentLinks` can point to an internal payment route such as `/react/payment-offers/event-123`. The payment page then loads all active providers for that `OfferKey` and lets the user choose the provider.
+`ContentLinks` can point to an internal payment route such as `/payment-offers/event-123`. The payment page then loads all active providers for that `OfferKey` and lets the user choose the provider.
 
 ### Subscriptions
 

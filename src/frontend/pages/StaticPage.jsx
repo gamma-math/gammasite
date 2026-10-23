@@ -3,7 +3,7 @@ import { Link } from "../routes/navigation.jsx";
 
 const statutesUrl = "https://gamma-math.github.io/gammastatic/vedtaegter-gamma.pdf";
 const cvrUrl = "https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768";
-const subscriptionsUrl = "/react/account/manage/subscriptions";
+const subscriptionsUrl = "/account/manage/subscriptions";
 
 const termsSections = [
   { id: "privatlivspolitik", label: "Privatlivspolitik" },
@@ -71,7 +71,7 @@ function TermsPage() {
         <p>Alumneforeningen GamMa behandler de oplysninger, du giver os, for at kunne administrere medlemskab, login, kommunikation og foreningens aktiviteter.</p>
         <p>Det kan blandt andet være navn, årgang, telefonnummer, e-mailadresse, arbejde og adresse. Oplysningerne bruges kun til foreningsrelaterede formål og deles ikke til kommerciel brug.</p>
         <p>Du kan kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>, hvis du har spørgsmål til dine oplysninger eller ønsker at få dem rettet.</p>
-        <p>Oplysninger om cookies og login findes på <Link href="/react/cookies">cookies-siden</Link>.</p>
+        <p>Oplysninger om cookies og login findes på <Link href="/cookies">cookies-siden</Link>.</p>
       </InfoSection>
 
       <InfoSection id="brugerbetingelser" title="Brugerbetingelser">
@@ -84,7 +84,7 @@ function TermsPage() {
           <li>Arbejde</li>
           <li>Adresse</li>
         </ul>
-        <p>Du kan til enhver tid ændre eller skjule oplysninger via <Link href="/react/account/manage">din profil</Link>. GamMas bestyrelse kan kontakte medlemmer via de kontaktoplysninger, der er registreret på profilen.</p>
+        <p>Du kan til enhver tid ændre eller skjule oplysninger via <Link href="/account/manage">din profil</Link>. GamMas bestyrelse kan kontakte medlemmer via de kontaktoplysninger, der er registreret på profilen.</p>
         <p>GamMa videredistribuerer ikke dine oplysninger til kommerciel brug eller til tredjeparter, der ikke er direkte relateret til <a href="https://www.math.ku.dk/" target="_blank" rel="noreferrer">Institut for Matematiske Fag, Københavns Universitet</a>.</p>
       </InfoSection>
 

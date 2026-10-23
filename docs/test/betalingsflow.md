@@ -13,7 +13,7 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 
 ## Produkter og administration
 
-- [x] Åbn `/react/admin/products`.
+- [x] Åbn `/admin/products`.
 - [x] Kontrollér produkter for medlemskab: Stripe/MobilePay, engangsbetaling/gentagen betaling, beløb og frekvens.
 - [x] Kontrollér at eventbetalinger kan oprettes og redigeres fra eventets administrationsside.
 - [x] Kontrollér at almindelige links af typen `PAYMENT` stadig kan oprettes og vises som links.
@@ -24,7 +24,7 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Gennemfør et medlemskab med kort/Apple Pay som engangsbetaling.
 - [x] Kontrollér succes-siden, at brugeren står som betalt, og at `SYSTEM_PAYMENT_CONFIRMATION` sendes.
 - [x] Gennemfør et medlemskab som gentagen betaling.
-- [x] Kontrollér succes-siden, medlemskabsstatus og abonnementet på `/react/account/manage/subscriptions`.
+- [x] Kontrollér succes-siden, medlemskabsstatus og abonnementet på `/account/manage/subscriptions`.
 - [x] Kontrollér at `SYSTEM_PAYMENT_RECURRING` sendes med produkt, beløb, betalingsfrekvens og kontolink.
 - [x] Opsig abonnementet fra hjemmesiden, og kontrollér at det også er opsagt hos Stripe.
 - [x] Test afbrudt betaling og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.

@@ -17,7 +17,7 @@ namespace GamMaSite.Tests;
 public class ApiAccountControllerTests
 {
     [Fact]
-    public async Task Login_SuccessFallsBackToReactForExternalReturnUrl()
+    public async Task Login_SuccessFallsBackToHomeForExternalReturnUrl()
     {
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);
@@ -32,7 +32,7 @@ public class ApiAccountControllerTests
         });
 
         var response = Assert.IsType<OkObjectResult>(result).Value;
-        Assert.Equal("/react", response?.GetType().GetProperty("redirectUrl")?.GetValue(response));
+        Assert.Equal("/", response?.GetType().GetProperty("redirectUrl")?.GetValue(response));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class ApiAccountControllerTests
     }
 
     [Fact]
-    public async Task Logout_SignsOutAndReturnsReactRedirect()
+    public async Task Logout_SignsOutAndReturnsHomeRedirect()
     {
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);

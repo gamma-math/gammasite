@@ -269,52 +269,72 @@ if (Directory.Exists(contentMediaRoot))
 }
 app.MapStaticAssets();
 
+// Redirect the exact lowercase library URL before ASP.NET's case-insensitive
+// endpoint matching can treat it as the canonical /Library route.
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method)
+        && LegacyRouteRedirects.IsNonCanonicalLibraryPath(context.Request.Path.Value ?? string.Empty))
+    {
+        context.Response.Redirect(
+            LegacyRouteRedirects.BuildLocation("library", context.Request.QueryString.ToString()),
+            permanent: true);
+        return;
+    }
+
+    await next();
+});
+
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 
-// Redirect legacy public URLs to their React equivalents.
-app.MapGet("/events", (HttpContext context) => Results.Redirect($"/react/events{context.Request.QueryString}"));
-app.MapGet("/events/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/events/{path}{context.Request.QueryString}"));
-app.MapGet("/news", (HttpContext context) => Results.Redirect($"/react/news{context.Request.QueryString}"));
-app.MapGet("/news/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/news/{path}{context.Request.QueryString}"));
-app.MapGet("/pay", (HttpContext context) => Results.Redirect($"/react/pay{context.Request.QueryString}"));
-app.MapGet("/pay/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/pay/{path}{context.Request.QueryString}"));
-app.MapGet("/members", (HttpContext context) => Results.Redirect($"/react/members{context.Request.QueryString}"));
-app.MapGet("/calendar", (HttpContext context) => Results.Redirect($"/react/calendar{context.Request.QueryString}"));
-app.MapGet("/library", (HttpContext context) => Results.Redirect($"/react/library{context.Request.QueryString}"));
-app.MapGet("/betingelser", (HttpContext context) => Results.Redirect($"/react/betingelser{context.Request.QueryString}"));
-app.MapGet("/cookies", (HttpContext context) => Results.Redirect($"/react/cookies{context.Request.QueryString}"));
-app.MapGet("/om", (HttpContext context) => Results.Redirect($"/react/om{context.Request.QueryString}"));
-app.MapGet("/account/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/account/{path}{context.Request.QueryString}"));
-app.MapGet("/admin", (HttpContext context) => Results.Redirect($"/react/admin{context.Request.QueryString}"));
-app.MapGet("/admin/{**path}", (string path, HttpContext context) => Results.Redirect($"/react/admin/{path}{context.Request.QueryString}"));
+// Redirect legacy React-prefixed public URLs to their canonical paths.
+app.MapGet("/react", (HttpContext context) => RedirectLegacyReactPath(string.Empty, context));
+app.MapGet("/react/{**path}", (string path, HttpContext context) => RedirectLegacyReactPath(path, context));
+
+// Keep the English /Library route canonical for the React library page.
+app.MapGet("/bibliotek", (HttpContext context) => RedirectLegacyReactPath("bibliotek", context));
+app.MapGet("/referater", (HttpContext context) => RedirectLegacyReactPath("referater", context));
+app.MapGet("/Library/Index", (HttpContext context) => RedirectLegacyReactPath("Library/Index", context));
+app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPath("Library/IndexAsync", context));
 
 // Controller routes and Razor pages
 app.MapControllers();
+app.MapMethods(
+    "/api/{**path}",
+    new[] { HttpMethods.Get, HttpMethods.Head, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete, HttpMethods.Options },
+    () => Results.NotFound());
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
-app.MapFallbackToController("/react/{*path:nonfile}", "Index", "React");
-app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/react/account/login{context.Request.QueryString}"));
-app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/react/account/register{context.Request.QueryString}"));
-app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/react/account/forgot-password"));
-app.MapGet("/Identity/Account/ResendEmailConfirmation", () => Results.Redirect("/react/account/resend-email-confirmation"));
-app.MapGet("/Identity/Account/Manage", () => Results.Redirect("/react/account/manage"));
-app.MapGet("/Identity/Account/Manage/Index", () => Results.Redirect("/react/account/manage"));
-app.MapGet("/Identity/Account/Manage/Email", () => Results.Redirect("/react/account/manage/email"));
-app.MapGet("/Identity/Account/Manage/ChangePassword", () => Results.Redirect("/react/account/manage/password"));
-app.MapGet("/Identity/Account/Manage/TwoFactorAuthentication", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/GenerateRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/ShowRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/PersonalData", () => Results.Redirect("/react/account/manage/personal-data"));
-app.MapGet("/Identity/Account/Manage/DeletePersonalData", () => Results.Redirect("/react/account/manage/delete-personal-data"));
-app.MapGet("/Identity/Account/Logout", () => Results.Redirect("/react/account/manage/logout"));
+app.MapFallbackToController("{*path:nonfile}", "Index", "ReactShell");
+app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/account/login{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/account/register{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/account/forgot-password"));
+app.MapGet("/Identity/Account/ResendEmailConfirmation", () => Results.Redirect("/account/resend-email-confirmation"));
+app.MapGet("/Identity/Account/Manage", () => Results.Redirect("/account/manage"));
+app.MapGet("/Identity/Account/Manage/Index", () => Results.Redirect("/account/manage"));
+app.MapGet("/Identity/Account/Manage/Email", () => Results.Redirect("/account/manage/email"));
+app.MapGet("/Identity/Account/Manage/ChangePassword", () => Results.Redirect("/account/manage/password"));
+app.MapGet("/Identity/Account/Manage/TwoFactorAuthentication", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/GenerateRecoveryCodes", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/ShowRecoveryCodes", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/PersonalData", () => Results.Redirect("/account/manage/personal-data"));
+app.MapGet("/Identity/Account/Manage/DeletePersonalData", () => Results.Redirect("/account/manage/delete-personal-data"));
+app.MapGet("/Identity/Account/Logout", () => Results.Redirect("/account/manage/logout"));
 app.MapRazorPages().WithStaticAssets();
 
 
 /* Run the application */
 app.Run();
+
+static IResult RedirectLegacyReactPath(string path, HttpContext context)
+{
+    return Results.Redirect(
+        LegacyRouteRedirects.BuildLocation(path, context.Request.QueryString.ToString()),
+        permanent: true);
+}
 
 static async Task EnsureContentItemsShowOnFrontPageColumnAsync(IServiceProvider services)
 {
@@ -370,4 +390,8 @@ static async Task ExecuteSchemaCommandAsync(System.Data.Common.DbConnection conn
     await using var command = connection.CreateCommand();
     command.CommandText = sql;
     await command.ExecuteNonQueryAsync();
+}
+
+public partial class Program
+{
 }

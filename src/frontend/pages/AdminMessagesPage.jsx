@@ -234,11 +234,11 @@ export function AdminMessagesPage({ isAdmin }) {
     : recipientPreview?.recipients ?? recipientPreview?.Recipients ?? [];
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/messages" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at sende beskeder.</p></AdminLayout>;
+    return <AdminLayout active="/admin/messages" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at sende beskeder.</p></AdminLayout>;
   }
 
   return (
-    <AdminLayout active="/react/admin/messages" canWrite={true}>
+    <AdminLayout active="/admin/messages" canWrite={true}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Beskeder</p>
@@ -512,7 +512,7 @@ function buildLocalTemplateValues(events, news, selectedEventIds, selectedNewsId
     NewsBlocks: newsBlocks,
     EventTitle: firstEvent?.title ?? "",
     EventStartDate: firstEvent ? formatDate(firstEvent.startDate) : "",
-    EventRegisterUrl: firstEvent ? `${window.location.origin}/react/events/${firstEvent.slug}` : "",
+    EventRegisterUrl: firstEvent ? `${window.location.origin}/events/${firstEvent.slug}` : "",
     ProfileUrl: `${window.location.origin}/Identity/Account/Manage`
   };
 }
@@ -521,7 +521,7 @@ function renderLocalContentBlock(item, design) {
   const isEvent = item.type === "EVENT";
   const accentColor = isEvent ? design.eventColor : design.newsColor;
   const pathType = isEvent ? "events" : "news";
-  const url = `${window.location.origin}/react/${pathType}/${item.slug}`;
+  const url = `${window.location.origin}/${pathType}/${item.slug}`;
   const links = item.links ?? item.Links ?? [];
   const paymentOffers = (item.paymentOffers ?? item.PaymentOffers ?? [])
     .filter((offer) => offer.isActive !== false && offer.id != null);
@@ -560,7 +560,7 @@ function renderLocalRelatedLinkButton(link) {
 }
 
 function renderLocalPaymentOfferButton(item, offer) {
-  const offerUrl = `${window.location.origin}/react/events/${encodeURIComponent(item.slug)}/pay/${offer.id}`;
+  const offerUrl = `${window.location.origin}/events/${encodeURIComponent(item.slug)}/pay/${offer.id}`;
   const label = offer.linkLabel ?? offer.LinkLabel ?? "Betalingslink";
   return `<a href="${escapeHtml(offerUrl)}" target="_blank" style="display:block;margin:0 0 10px;padding:12px 16px;background-color:#4353f4;color:#ffffff;border:1px solid #4353f4;text-align:center;text-decoration:none;border-radius:8px;font-size:0.95rem;font-weight:bold;line-height:1.2;">${escapeHtml(label)}</a>`;
 }

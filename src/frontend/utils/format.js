@@ -41,7 +41,7 @@ export function contentMetaLabel(item) {
  * Returns the canonical React detail URL for an event or news item.
  */
 export function detailPath(item) {
-  return item.type === "EVENT" ? `/react/events/${item.slug}` : `/react/news/${item.slug}`;
+  return item.type === "EVENT" ? `/events/${item.slug}` : `/news/${item.slug}`;
 }
 
 /**

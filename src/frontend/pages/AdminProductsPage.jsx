@@ -90,7 +90,7 @@ export function AdminProductsPage({ isAdmin }) {
   }, [eventFilter, offers, scopeFilter]);
 
   return (
-    <AdminLayout active="/react/admin/products" canWrite={isAdmin}>
+    <AdminLayout active="/admin/products" canWrite={isAdmin}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Produkter</p>
@@ -158,7 +158,7 @@ export function AdminProductsPage({ isAdmin }) {
                     <td>{formatAmount(offer.amountMinor, offer.currency)}</td>
                     <td>{offer.isActive ? "Ja" : "Nej"}</td>
                     <td className="table-actions">
-                      <Link className="admin-table-button" href={`/react/admin/products/${offer.id}/edit`}>Rediger</Link>
+                      <Link className="admin-table-button" href={`/admin/products/${offer.id}/edit`}>Rediger</Link>
                     </td>
                   </tr>
                 ))}
@@ -252,20 +252,20 @@ export function AdminProductEditorPage({ isAdmin, offerId }) {
 
   if (!isAdmin) {
     return (
-      <AdminLayout active="/react/admin/products" canWrite={false}>
+      <AdminLayout active="/admin/products" canWrite={false}>
         <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere produkter.</p>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout active="/react/admin/products" canWrite>
+    <AdminLayout active="/admin/products" canWrite>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Produkter</p>
           <h1>Rediger produkt</h1>
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/products">Tilbage til oversigt</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/admin/products">Tilbage til oversigt</Link>
       </div>
 
       {isLoading && <p className="muted">Henter produkt...</p>}

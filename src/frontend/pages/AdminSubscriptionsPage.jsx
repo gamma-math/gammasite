@@ -90,14 +90,14 @@ export function AdminSubscriptionsPage({ isAdmin }) {
 
   if (!isAdmin) {
     return (
-      <AdminLayout active="/react/admin/subscriptions" canWrite={false}>
+      <AdminLayout active="/admin/subscriptions" canWrite={false}>
         <p className="status-message status-message-warning">Du har ikke rettigheder til at se betalingsaftaler.</p>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout active="/react/admin/subscriptions" canWrite>
+    <AdminLayout active="/admin/subscriptions" canWrite>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Betalingsaftaler</p>

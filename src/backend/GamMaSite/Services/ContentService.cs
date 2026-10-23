@@ -569,7 +569,8 @@ namespace GamMaSite.Services
         private static string SecureUrl(string value)
         {
             var url = Required(value, nameof(value));
-            if (url.StartsWith("/react/", StringComparison.Ordinal))
+            if (url.StartsWith("/", StringComparison.Ordinal)
+                && !url.StartsWith("//", StringComparison.Ordinal))
             {
                 return url;
             }

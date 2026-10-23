@@ -58,7 +58,7 @@ public class RegisterModelTests
         };
         model.ModelState.AddModelError("Input.Email", "Email is required");
 
-        var result = await model.OnPostAsync("/react");
+        var result = await model.OnPostAsync("/");
 
         Assert.IsType<PageResult>(result);
         userManager.Verify(manager => manager.CreateAsync(It.IsAny<SiteUser>(), It.IsAny<string>()), Times.Never);

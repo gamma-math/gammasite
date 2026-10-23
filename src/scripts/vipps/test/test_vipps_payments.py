@@ -11,7 +11,7 @@ def test_create_payment_returns_reference_and_redirect_url(monkeypatch):
     post = Mock(return_value=response)
     monkeypatch.setattr(vipps.requests, "post", post)
     monkeypatch.setattr(vipps, "get_access_token", lambda: "access-token")
-    monkeypatch.setattr(vipps, "VIPPS_RETURN_URL", "https://localhost:5001/react/pay")
+    monkeypatch.setattr(vipps, "VIPPS_RETURN_URL", "https://localhost:5001/pay")
 
     payment = vipps.create_payment()
 
