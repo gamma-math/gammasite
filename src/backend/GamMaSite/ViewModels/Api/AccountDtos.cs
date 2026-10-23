@@ -59,6 +59,7 @@ namespace GamMaSite.ViewModels.Api
 
     public sealed class UpdateProfileRequest
     {
+        [Required(ErrorMessage = "Navn er obligatorisk")]
         public string Navn { get; set; }
 
         public string Adresse { get; set; }
@@ -66,6 +67,7 @@ namespace GamMaSite.ViewModels.Api
         [Range(1849, 2026, ErrorMessage = "Årstallet Årgang skal være mellem {1} og {2}.")]
         public int Aargang { get; set; }
 
+        [Required(ErrorMessage = "Telefonnummer er obligatorisk")]
         [Phone(ErrorMessage = "Telefonnummer er ikke gyldigt")]
         public string PhoneNumber { get; set; }
 

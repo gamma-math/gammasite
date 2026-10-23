@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, ImagePlus, Plus, Save, Trash2, X } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { RichTextEditor as SharedRichTextEditor } from "../components/RichTextEditor.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
@@ -94,6 +95,8 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
   const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [paymentOffers, setPaymentOffers] = useState([]);
   const [paymentOfferDrafts, setPaymentOfferDrafts] = useState([]);
   const [linksEditorVersion, setLinksEditorVersion] = useState(0);
@@ -175,11 +178,19 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
       navigate(basePath);
       return;
     }
+
+    setError("");
+    setMessage("");
+    setIsDeleting(true);
+
     try {
       await contentApi.delete(selected.id);
       navigate(basePath);
     } catch (reason) {
+      setShowDeleteConfirmation(false);
       setError(reason.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -329,11 +340,28 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
             })}
           />
         )}
-        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-secondary" type="button" onClick={() => setShowPreview(true)}><Eye size={16} /> Preview</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>}</div>
+        <div className="menu-editor-actions"><button className="profile-button" type="submit"><Save size={16} /> Gem</button><button className="profile-button profile-button-secondary" type="button" onClick={() => setShowPreview(true)}><Eye size={16} /> Preview</button>{isAdmin && <button className="profile-button profile-button-danger" type="button" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}><Trash2 size={16} /> Slet</button>}</div>
         {message && <p className="status-message status-message-success">{message}</p>}
         {error && <p className="status-message status-message-error">{error}</p>}
       </form>
       {showPreview && <ContentPreview item={selected} type={type} onClose={() => setShowPreview(false)} />}
+      {showDeleteConfirmation && selected.id && (
+        <ConfirmationDialog
+          title={type === "EVENT" ? "Slet event" : "Slet nyhed"}
+          message={(
+            <>
+              Er du sikker på du vil slette {type === "EVENT" ? "eventet" : "nyheden"} <strong>{selected.title}</strong>?
+              <br />
+              Alle relaterede links, betalingsoffers og registreringer slettes også.
+            </>
+          )}
+          confirmLabel={type === "EVENT" ? "Ja, slet eventet" : "Ja, slet nyheden"}
+          busyLabel="Sletter..."
+          onConfirm={remove}
+          onCancel={() => !isDeleting && setShowDeleteConfirmation(false)}
+          isBusy={isDeleting}
+        />
+      )}
     </AdminLayout>
   );
 

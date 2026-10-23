@@ -466,14 +466,57 @@ function SubscriptionCancelButton({ subscription, deletingId, onRequestCancel })
 function ProfileForm({ form, setForm, profile, isSubmitting, onSubmit }) {
   const isPaid = profile.status === "BETALT";
   const isStudentStatusLocked = profile.status === "STUDERENDE" || isPaid;
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateField = (field, value) => {
+    const normalizedValue = String(value ?? "").trim();
+    if ((field === "navn" || field === "phoneNumber") && !normalizedValue) {
+      return field === "navn" ? "Navn må ikke være tomt." : "Telefon må ikke være tom.";
+    }
+
+    if (field === "aargang") {
+      if (!normalizedValue) {
+        return "Årgang må ikke være tom.";
+      }
+
+      const year = Number(normalizedValue);
+      if (!Number.isInteger(year) || year < 1849 || year > 2026) {
+        return "Årgang skal være mellem 1849 og 2026.";
+      }
+    }
+
+    return "";
+  };
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: validateField(field, value) }));
+  };
+
+  const handleSubmit = (event) => {
+    const nextErrors = {
+      navn: validateField("navn", form.navn),
+      aargang: validateField("aargang", form.aargang),
+      phoneNumber: validateField("phoneNumber", form.phoneNumber)
+    };
+    const errors = Object.fromEntries(Object.entries(nextErrors).filter(([, error]) => error));
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      event.preventDefault();
+      return;
+    }
+
+    onSubmit(event);
+  };
 
   return (
-    <form className="account-form account-manage-form" onSubmit={onSubmit}>
+    <form className="account-form account-manage-form" onSubmit={handleSubmit} noValidate>
       <Field label="Brugernavn" value={profile.username ?? ""} disabled />
-      <Field label="Navn" value={form.navn} onChange={(value) => setForm({ ...form, navn: value })} />
+      <Field name="navn" label="Navn" value={form.navn} onChange={(value) => updateField("navn", value)} onBlur={(event) => updateField("navn", event.target.value)} required error={fieldErrors.navn} />
       <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} />
-      <Field label="Årgang" type="number" value={form.aargang} onChange={(value) => setForm({ ...form, aargang: value })} />
-      <Field label="Telefon" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} />
+      <Field name="aargang" label="Årgang" type="number" value={form.aargang} onChange={(value) => updateField("aargang", value)} onBlur={(event) => updateField("aargang", event.target.value)} min="1849" max="2026" required error={fieldErrors.aargang} />
+      <Field name="phoneNumber" label="Telefon" type="tel" value={form.phoneNumber} onChange={(value) => updateField("phoneNumber", value)} onBlur={(event) => updateField("phoneNumber", event.target.value)} required error={fieldErrors.phoneNumber} />
       <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} />
       <Field label="Brugerstatus" value={profile.status ?? ""} disabled />
       <label className="account-checkbox">
@@ -631,11 +674,51 @@ function EmailForm({ profile, email, setEmail, isSubmitting, onSubmit, onSendVer
 }
 
 function PasswordForm({ form, setForm, isSubmitting, onSubmit }) {
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validate = (values) => {
+    const errors = {};
+    const oldPassword = String(values.oldPassword ?? "");
+    const newPassword = String(values.newPassword ?? "");
+    const confirmPassword = String(values.confirmPassword ?? "");
+
+    if (!oldPassword) {
+      errors.oldPassword = "Nuværende password må ikke være tomt.";
+    }
+    if (!newPassword) {
+      errors.newPassword = "Nyt password må ikke være tomt.";
+    }
+    if (!confirmPassword) {
+      errors.confirmPassword = "Bekræft nyt password må ikke være tomt.";
+    } else if (newPassword !== confirmPassword) {
+      errors.confirmPassword = "Nyt password og bekræftelsen matcher ikke.";
+    }
+
+    return errors;
+  };
+
+  const updateField = (field, value) => {
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+    setFieldErrors(validate(nextForm));
+  };
+
+  const handleSubmit = (event) => {
+    const errors = validate(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      event.preventDefault();
+      return;
+    }
+
+    onSubmit(event);
+  };
+
   return (
-    <form className="account-form account-manage-form" onSubmit={onSubmit}>
-      <Field label="Nuværende password" type="password" value={form.oldPassword} onChange={(value) => setForm({ ...form, oldPassword: value })} autoComplete="current-password" required />
-      <Field label="Nyt password" type="password" value={form.newPassword} onChange={(value) => setForm({ ...form, newPassword: value })} autoComplete="new-password" required />
-      <Field label="Bekræft nyt password" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
+    <form className="account-form account-manage-form" onSubmit={handleSubmit} noValidate>
+      <Field name="oldPassword" label="Nuværende password" type="password" value={form.oldPassword} onChange={(value) => updateField("oldPassword", value)} onBlur={(event) => updateField("oldPassword", event.target.value)} autoComplete="current-password" required error={fieldErrors.oldPassword} />
+      <Field name="newPassword" label="Nyt password" type="password" value={form.newPassword} onChange={(value) => updateField("newPassword", value)} onBlur={(event) => updateField("newPassword", event.target.value)} autoComplete="new-password" required error={fieldErrors.newPassword} />
+      <Field name="confirmPassword" label="Bekræft nyt password" type="password" value={form.confirmPassword} onChange={(value) => updateField("confirmPassword", value)} onBlur={(event) => updateField("confirmPassword", event.target.value)} autoComplete="new-password" required error={fieldErrors.confirmPassword} />
       <button className="profile-button" type="submit" disabled={isSubmitting}><KeyRound size={16} /> {isSubmitting ? "Opdaterer..." : "Opdater password"}</button>
     </form>
   );
@@ -891,11 +974,14 @@ function comparePostingValues(left, right, key) {
   return String(left ?? "").localeCompare(String(right ?? ""), "da-DK", { sensitivity: "base" });
 }
 
-function Field({ label, value, onChange, type = "text", disabled = false, ...props }) {
+function Field({ name, label, value, onChange, type = "text", disabled = false, required = false, error = "", ...props }) {
+  const errorId = name ? name + "-error" : undefined;
+
   return (
-    <label className="account-field">
-      <span>{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled} placeholder={label} {...props} />
+    <label className={"account-field" + (error ? " has-error" : "")}>
+      <span>{label}{required && <span aria-hidden="true"> *</span>}</span>
+      <input id={name} name={name} type={type} value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled} required={required} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} placeholder={label} {...props} />
+      {error && <small id={errorId} className="account-field-error">{error}</small>}
     </label>
   );
 }

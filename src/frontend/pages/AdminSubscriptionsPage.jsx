@@ -123,6 +123,12 @@ export function AdminSubscriptionsPage({ isAdmin }) {
 
           <div className="menu-table-wrap admin-subscriptions-list">
             <table className="menu-member-table admin-subscriptions-table">
+              <colgroup>
+                <col className="admin-subscription-expander-column" />
+                <col className="admin-subscription-user-column" />
+                <col className="admin-subscription-provider-column" />
+                <col span="5" className="admin-subscription-mobile-column-hidden" />
+              </colgroup>
               <thead>
                 <tr>
                   <th className="admin-subscription-expander-header" aria-label="Detaljer" />
@@ -165,8 +171,7 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                       </tr>
                       {isExpanded && (
                         <tr className="admin-subscription-detail-row">
-                          <td></td>
-                          <td colSpan="7">
+                          <td colSpan="8" className="admin-subscription-detail-cell">
                             <dl className="admin-subscription-details">
                               <div><dt>Internt abonnement-id</dt><dd>{subscription.id}</dd></div>
                               <div><dt>Bruger-id</dt><dd>{subscription.userId}</dd></div>

@@ -138,6 +138,10 @@ namespace GamMaSite.Controllers
                 var deleted = await _contentService.DeleteAsync(id);
                 return deleted ? NoContent() : NotFound();
             }
+            catch (ContentDeletionException ex)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+            }
             catch (ContentMediaStorageException ex)
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });

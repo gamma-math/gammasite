@@ -1989,7 +1989,7 @@ img {
 }
 
 .admin-subscription-detail-row > td {
-  padding: 12px 14px 18px;
+  padding: 12px 14px 18px 60px;
   background: #f8fbff;
 }
 
@@ -3086,6 +3086,17 @@ img {
   background: #eef4fb;
 }
 
+.account-field.has-error input {
+  border-color: #c9364d;
+  background: #fff7f8;
+}
+
+.account-field-error {
+  color: #8f1f2d;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
 .account-checkbox {
   display: flex;
   align-items: center;
@@ -3675,6 +3686,23 @@ img {
     table-layout: fixed;
   }
 
+  .admin-subscriptions-table .admin-subscription-expander-column {
+    width: 38px;
+  }
+
+  .admin-subscriptions-table .admin-subscription-user-column {
+    width: 55%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-provider-column {
+    width: calc(45% - 38px);
+  }
+
+  .admin-subscriptions-table .admin-subscription-mobile-column-hidden {
+    display: none;
+    width: 0;
+  }
+
   .admin-subscriptions-table th,
   .admin-subscriptions-table td {
     padding: 10px 8px;
@@ -3711,7 +3739,7 @@ img {
   }
 
   .admin-subscription-detail-row > td {
-    padding: 12px 12px 16px;
+    padding: 12px 12px 16px 50px;
     background: #f8fbff;
   }
 
