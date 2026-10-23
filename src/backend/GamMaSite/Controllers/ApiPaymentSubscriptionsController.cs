@@ -141,6 +141,24 @@ namespace GamMaSite.Controllers
                     return Problem("MobilePay-tjenesten er ikke konfigureret.");
                 }
 
+                if (string.Equals(subscription.Status, PaymentSubscriptionStatuses.Pending, StringComparison.OrdinalIgnoreCase))
+                {
+                    var wasAbandoned = await _mobilePayReconciliation.TryAbandonPendingAsync(
+                        subscription,
+                        cancellationToken);
+                    if (wasAbandoned)
+                    {
+                        var updatedSubscription = await _db.PaymentSubscriptions
+                            .AsNoTracking()
+                            .SingleAsync(item => item.Id == subscription.Id, cancellationToken);
+                        return Ok(new
+                        {
+                            status = updatedSubscription.Status,
+                            canceled = true
+                        });
+                    }
+                }
+
                 try
                 {
                     await _mobilePayService.StopAgreementAsync(providerSubscriptionId, cancellationToken);
