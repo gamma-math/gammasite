@@ -55,6 +55,79 @@ public sealed class MobilePayServiceTests
         Assert.Equal(new DateTime(2026, 10, 20, 9, 12, 0, DateTimeKind.Utc), agreement.StartAt);
     }
 
+    [Fact]
+    public async Task GetRecurringChargesAsync_ReadsPendingChargeDetails()
+    {
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            if (request.RequestUri?.AbsolutePath == "/accesstoken/get")
+            {
+                return JsonResponse("{\"access_token\":\"test-token\"}");
+            }
+
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal("/recurring/v3/agreements/agr-1/charges", request.RequestUri?.AbsolutePath);
+            return JsonResponse(
+                "[{\"id\":\"charge-1\",\"agreementId\":\"agr-1\",\"status\":\"PENDING\",\"type\":\"RECURRING\",\"amount\":{\"value\":15000,\"currency\":\"DKK\"},\"description\":\"Kontingent\",\"due\":\"2027-02-01T00:00:00Z\",\"retryDays\":3,\"transactionType\":\"RESERVE_CAPTURE\"}]");
+        });
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://apitest.example/")
+        };
+        var configuration = CreateConfiguration();
+        var service = new MobilePayService(client, configuration, NullLogger<MobilePayService>.Instance);
+
+        var charges = await service.GetRecurringChargesAsync("agr-1");
+
+        var charge = Assert.Single(charges);
+        Assert.Equal("charge-1", charge.Id);
+        Assert.Equal("agr-1", charge.AgreementId);
+        Assert.Equal("PENDING", charge.Status);
+        Assert.Equal("RECURRING", charge.Type);
+        Assert.Equal(15000, charge.AmountMinor);
+        Assert.Equal("DKK", charge.Currency);
+        Assert.Equal("Kontingent", charge.Description);
+        Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), charge.Due);
+        Assert.Equal(3, charge.RetryDays);
+        Assert.Equal("RESERVE_CAPTURE", charge.TransactionType);
+    }
+
+    [Fact]
+    public async Task CancelRecurringChargeAsyncSendsDeleteRequest()
+    {
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            if (request.RequestUri?.AbsolutePath == "/accesstoken/get")
+            {
+                return JsonResponse("{\"access_token\":\"test-token\"}");
+            }
+
+            Assert.Equal(HttpMethod.Delete, request.Method);
+            Assert.Equal("/recurring/v3/agreements/agr-1/charges/charge-1", request.RequestUri?.AbsolutePath);
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        });
+        using var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://apitest.example/")
+        };
+        var service = new MobilePayService(client, CreateConfiguration(), NullLogger<MobilePayService>.Instance);
+
+        await service.CancelRecurringChargeAsync("agr-1", "charge-1");
+    }
+
+    private static IConfiguration CreateConfiguration()
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MobilePay:Msn"] = "test-msn",
+                ["MobilePay:ClientId"] = "test-client",
+                ["MobilePay:ClientSecret"] = "test-secret",
+                ["MobilePay:SubscriptionKey"] = "test-subscription-key"
+            })
+            .Build();
+    }
+
     private static HttpResponseMessage JsonResponse(string json)
     {
         return new HttpResponseMessage(HttpStatusCode.OK)

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -730,6 +731,144 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task UpdateForAdminReschedulesFuturePendingMobilePayChargesWhenRecurringAmountChanges()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-1",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "active-agreement",
+            ProviderProductId = offer.Id.ToString(),
+            Status = PaymentSubscriptionStatuses.Active,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var due = DateTime.UtcNow.AddDays(30);
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "active-agreement",
+                20000,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mobilePay.Setup(value => value.GetRecurringChargesAsync(
+                "active-agreement",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new MobilePayCharge(
+                    "pending-recurring",
+                    "active-agreement",
+                    "PENDING",
+                    "RECURRING",
+                    15000,
+                    "DKK",
+                    "Kontingent",
+                    due),
+                new MobilePayCharge(
+                    "pending-initial",
+                    "active-agreement",
+                    "PENDING",
+                    "INITIAL",
+                    15000,
+                    "DKK",
+                    "Kontingent",
+                    due),
+                new MobilePayCharge(
+                    "past-recurring",
+                    "active-agreement",
+                    "PENDING",
+                    "RECURRING",
+                    15000,
+                    "DKK",
+                    "Kontingent",
+                    DateTime.UtcNow.AddDays(-1)),
+                new MobilePayCharge(
+                    "charged-recurring",
+                    "active-agreement",
+                    "CHARGED",
+                    "RECURRING",
+                    15000,
+                    "DKK",
+                    "Kontingent",
+                    due)
+            });
+        mobilePay.Setup(value => value.CancelRecurringChargeAsync(
+                "active-agreement",
+                "pending-recurring",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mobilePay.Setup(value => value.CreateRecurringChargeAsync(
+                "active-agreement",
+                It.IsAny<string>(),
+                20000,
+                "DKK",
+                "Kontingent 2027",
+                due,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent 2027",
+            Amount = 200,
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true
+        }));
+
+        Assert.IsType<PaymentOfferDto>(result.Value);
+        mobilePay.Verify(value => value.GetRecurringChargesAsync(
+            "active-agreement",
+            It.IsAny<CancellationToken>()), Times.Once);
+        mobilePay.Verify(value => value.CancelRecurringChargeAsync(
+            "active-agreement",
+            "pending-recurring",
+            It.IsAny<CancellationToken>()), Times.Once);
+        mobilePay.Verify(value => value.CancelRecurringChargeAsync(
+            "active-agreement",
+            "pending-initial",
+            It.IsAny<CancellationToken>()), Times.Never);
+        mobilePay.Verify(value => value.CreateRecurringChargeAsync(
+            "active-agreement",
+            It.Is<string>(orderId => orderId != "pending-recurring"),
+            20000,
+            "DKK",
+            "Kontingent 2027",
+            due,
+            It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(20000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
+    }
+
+    [Fact]
     public async Task UpdateForAdminRestoresLocalStateWhenMobilePayUpdateFails()
     {
         await using var db = CreateDatabase();
@@ -785,6 +924,177 @@ public sealed class ApiPaymentOffersControllerTests
 
         Assert.IsType<ObjectResult>(result);
         Assert.Equal(502, ((ObjectResult)result).StatusCode);
+        Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
+    }
+
+    [Fact]
+    public async Task UpdateForAdminRestoresCanceledMobilePayChargeWhenReplacementCreationFails()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedRecurringMobilePayMembershipOfferAsync(db);
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-replacement-failure",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agreement-replacement-failure",
+            Status = PaymentSubscriptionStatuses.Active,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var due = DateTime.UtcNow.AddDays(30);
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "agreement-replacement-failure",
+                20000,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mobilePay.Setup(value => value.GetRecurringChargesAsync(
+                "agreement-replacement-failure",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new MobilePayCharge(
+                    "pending-recurring",
+                    "agreement-replacement-failure",
+                    "PENDING",
+                    "RECURRING",
+                    15000,
+                    "DKK",
+                    "Kontingent",
+                    due)
+            });
+        mobilePay.Setup(value => value.CancelRecurringChargeAsync(
+                "agreement-replacement-failure",
+                "pending-recurring",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mobilePay.Setup(value => value.CreateRecurringChargeAsync(
+                "agreement-replacement-failure",
+                It.IsAny<string>(),
+                20000,
+                "DKK",
+                "Kontingent",
+                due,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<int>(),
+                It.IsAny<string>()))
+            .ThrowsAsync(new InvalidOperationException("replacement failed"));
+        mobilePay.Setup(value => value.CreateRecurringChargeAsync(
+                "agreement-replacement-failure",
+                It.IsAny<string>(),
+                15000,
+                "DKK",
+                "Kontingent",
+                due,
+                It.IsAny<CancellationToken>(),
+                It.IsAny<int>(),
+                It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "agreement-replacement-failure",
+                15000,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object);
+
+        var result = await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = offer.LinkLabel,
+            ProductName = offer.ProductName,
+            Amount = 200,
+            BillingInterval = offer.BillingInterval,
+            BillingIntervalCount = offer.BillingIntervalCount
+        });
+
+        Assert.Equal(502, Assert.IsType<ObjectResult>(result).StatusCode);
+        mobilePay.Verify(value => value.CreateRecurringChargeAsync(
+            "agreement-replacement-failure",
+            It.IsAny<string>(),
+            20000,
+            "DKK",
+            "Kontingent",
+            due,
+            It.IsAny<CancellationToken>(),
+            It.IsAny<int>(),
+            It.IsAny<string>()), Times.Exactly(3));
+        mobilePay.Verify(value => value.CancelRecurringChargeAsync(
+            "agreement-replacement-failure",
+            "pending-recurring",
+            It.IsAny<CancellationToken>()), Times.Once);
+        mobilePay.Verify(value => value.CreateRecurringChargeAsync(
+            "agreement-replacement-failure",
+            It.IsAny<string>(),
+            15000,
+            "DKK",
+            "Kontingent",
+            due,
+            It.IsAny<CancellationToken>(),
+            It.IsAny<int>(),
+            It.IsAny<string>()), Times.Once);
+        Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
+    }
+
+    [Fact]
+    public async Task UpdateForAdminCompensatesMobilePayAfterTransportFailure()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedRecurringMobilePayMembershipOfferAsync(db);
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-transport-failure",
+            PaymentOfferId = offer.Id,
+            Provider = PaymentOfferProviders.MobilePay,
+            ProviderSubscriptionId = "agreement-transport-failure",
+            Status = PaymentSubscriptionStatuses.Active,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var mobilePay = new Mock<IMobilePayService>();
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "agreement-transport-failure",
+                20000,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("network failure"));
+        mobilePay.Setup(value => value.UpdateAgreementAmountAsync(
+                "agreement-transport-failure",
+                15000,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object,
+            mobilePay.Object);
+
+        var result = await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            LinkLabel = offer.LinkLabel,
+            ProductName = offer.ProductName,
+            Amount = 200,
+            BillingInterval = offer.BillingInterval,
+            BillingIntervalCount = offer.BillingIntervalCount
+        });
+
+        Assert.Equal(502, Assert.IsType<ObjectResult>(result).StatusCode);
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "agreement-transport-failure",
+            20000,
+            It.IsAny<CancellationToken>()), Times.Exactly(3));
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "agreement-transport-failure",
+            15000,
+            It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(15000, (await db.PaymentOffers.SingleAsync()).AmountMinor);
     }
 
@@ -1418,6 +1728,28 @@ public sealed class ApiPaymentOffersControllerTests
         return new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
+    }
+
+    private static async Task<PaymentOffer> SeedRecurringMobilePayMembershipOfferAsync(ApplicationDbContext db)
+    {
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.Recurring,
+            LinkLabel = "Betal automatisk",
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+        return offer;
     }
 
     private static async Task<PaymentOffer> SeedOfferAsync(ApplicationDbContext db)

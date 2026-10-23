@@ -49,6 +49,15 @@ public interface IMobilePayService
         long amountMinor,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<MobilePayCharge>> GetRecurringChargesAsync(
+        string agreementId,
+        CancellationToken cancellationToken = default);
+
+    Task CancelRecurringChargeAsync(
+        string agreementId,
+        string chargeId,
+        CancellationToken cancellationToken = default);
+
     Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default);
 
     Task CreateRecurringChargeAsync(
@@ -58,7 +67,9 @@ public interface IMobilePayService
         string currency,
         string description,
         DateTime due,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        int retryDays = 2,
+        string transactionType = "DIRECT_CAPTURE");
 }
 
 public sealed record MobilePayPayment(
@@ -76,6 +87,18 @@ public sealed record MobilePayAgreement(
     string InitialChargeId,
     DateTime? CreatedAt = null,
     DateTime? StartAt = null);
+
+public sealed record MobilePayCharge(
+    string Id,
+    string AgreementId,
+    string Status,
+    string Type,
+    long AmountMinor,
+    string Currency,
+    string Description,
+    DateTime? Due,
+    int RetryDays = 2,
+    string TransactionType = "DIRECT_CAPTURE");
 
 public sealed class MobilePayService : IMobilePayService
 {
@@ -272,6 +295,63 @@ public sealed class MobilePayService : IMobilePayService
         await EnsureSuccessAsync(response, "opdatere beløbet på MobilePay-aftalen");
     }
 
+    public async Task<IReadOnlyList<MobilePayCharge>> GetRecurringChargesAsync(
+        string agreementId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(agreementId))
+        {
+            throw new ArgumentException("MobilePay-aftalen mangler et ID.", nameof(agreementId));
+        }
+
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Get,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}/charges",
+            token);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "hente MobilePay-opkrævninger");
+
+        using var document = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(cancellationToken),
+            cancellationToken: cancellationToken);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("MobilePay returnerede ikke en liste over opkrævninger.");
+        }
+
+        return document.RootElement
+            .EnumerateArray()
+            .Select(ParseCharge)
+            .Where(charge => charge != null)
+            .ToList();
+    }
+
+    public async Task CancelRecurringChargeAsync(
+        string agreementId,
+        string chargeId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(agreementId))
+        {
+            throw new ArgumentException("MobilePay-aftalen mangler et ID.", nameof(agreementId));
+        }
+
+        if (string.IsNullOrWhiteSpace(chargeId))
+        {
+            throw new ArgumentException("MobilePay-opkrævningen mangler et ID.", nameof(chargeId));
+        }
+
+        var token = await GetAccessTokenAsync(cancellationToken);
+        using var request = CreateRequest(
+            HttpMethod.Delete,
+            $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}/charges/{Uri.EscapeDataString(chargeId)}",
+            token);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, "annullere MobilePay-opkrævningen");
+    }
+
     public async Task StopAgreementAsync(string agreementId, CancellationToken cancellationToken = default)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
@@ -293,7 +373,9 @@ public sealed class MobilePayService : IMobilePayService
         string currency,
         string description,
         DateTime due,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int retryDays = 2,
+        string transactionType = "DIRECT_CAPTURE")
     {
         var token = await GetAccessTokenAsync(cancellationToken);
         var idempotencyKey = CreateStableIdempotencyKey(agreementId + ":" + orderId);
@@ -316,11 +398,11 @@ public sealed class MobilePayService : IMobilePayService
         request.Content = JsonContent.Create(new
         {
             amount = amountMinor,
-            transactionType = "DIRECT_CAPTURE",
+            transactionType,
             type = "RECURRING",
             description,
             due = dueDate,
-            retryDays = 2,
+            retryDays,
             orderId
         });
 
@@ -426,6 +508,26 @@ public sealed class MobilePayService : IMobilePayService
         }
 
         return (amount, current.TryGetProperty("currency", out var currency) ? currency.GetString() : null);
+    }
+
+    private static MobilePayCharge ParseCharge(JsonElement root)
+    {
+        var amount = ReadAmount(root, "amount");
+        var retryDays = root.TryGetProperty("retryDays", out var retryDaysElement) &&
+            retryDaysElement.TryGetInt32(out var parsedRetryDays)
+            ? parsedRetryDays
+            : 2;
+        return new MobilePayCharge(
+            ReadString(root, "id"),
+            ReadString(root, "agreementId"),
+            ReadString(root, "status"),
+            ReadString(root, "type"),
+            amount.Value,
+            amount.Currency,
+            ReadString(root, "description"),
+            ReadDateTime(root, "due"),
+            retryDays,
+            ReadString(root, "transactionType") ?? "DIRECT_CAPTURE");
     }
 
     private static string ReadString(JsonElement root, params string[] path)

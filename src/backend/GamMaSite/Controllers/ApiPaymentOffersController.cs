@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -176,6 +177,8 @@ namespace GamMaSite.Controllers
             var previousProviderPriceId = offer.ProviderPriceId;
             IDbContextTransaction transaction = null;
             var providerChangesApplied = false;
+            var mobilePayProviderChangesStarted = false;
+            var rescheduledMobilePayCharges = new System.Collections.Generic.List<MobilePayChargeReplacement>();
 
             try
             {
@@ -228,10 +231,12 @@ namespace GamMaSite.Controllers
                     string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(offer.OfferType, PaymentOfferTypes.Recurring, StringComparison.OrdinalIgnoreCase))
                 {
+                    mobilePayProviderChangesStarted = true;
                     await UpdateMobilePayAgreementAmountsAsync(
                         offer,
                         previousAmountMinor.GetValueOrDefault(),
                         offer.AmountMinor.Value,
+                        rescheduledMobilePayCharges,
                         cancellationToken);
                 }
 
@@ -275,15 +280,15 @@ namespace GamMaSite.Controllers
                     cancellationToken);
                 return BadRequest(new { error = ex.Message });
             }
-            catch (InvalidOperationException)
+            catch (Exception exception) when (IsMobilePayProviderFailure(exception, cancellationToken))
             {
-                if (providerChangesApplied)
+                if (providerChangesApplied || mobilePayProviderChangesStarted)
                 {
-                    await CompensateProviderChangesAsync(
+                    await TryCompensateProviderChangesAsync(
                         offer,
                         originalOffer,
                         originalSubscriptionState,
-                        cancellationToken);
+                        rescheduledMobilePayCharges);
                 }
 
                 if (!providerChangesApplied &&
@@ -303,13 +308,13 @@ namespace GamMaSite.Controllers
             }
             catch (DbUpdateException)
             {
-                if (providerChangesApplied)
+                if (providerChangesApplied || mobilePayProviderChangesStarted)
                 {
-                    await CompensateProviderChangesAsync(
+                    await TryCompensateProviderChangesAsync(
                         offer,
                         originalOffer,
                         originalSubscriptionState,
-                        cancellationToken);
+                        rescheduledMobilePayCharges);
                 }
 
                 if (!providerChangesApplied &&
@@ -340,12 +345,15 @@ namespace GamMaSite.Controllers
             PaymentOffer offer,
             long previousAmountMinor,
             long amountMinor,
+            System.Collections.Generic.ICollection<MobilePayChargeReplacement> rescheduledCharges,
             CancellationToken cancellationToken)
         {
             var subscriptions = await _db.PaymentSubscriptions
                 .Where(subscription =>
                     subscription.Provider == PaymentOfferProviders.MobilePay &&
                     subscription.PaymentOfferId == offer.Id &&
+                    !string.IsNullOrWhiteSpace(subscription.ProviderSubscriptionId) &&
+                    !subscription.ProviderSubscriptionId.StartsWith("pending:", StringComparison.Ordinal) &&
                     (subscription.Status == PaymentSubscriptionStatuses.Pending ||
                      subscription.Status == PaymentSubscriptionStatuses.Active ||
                      subscription.Status == PaymentSubscriptionStatuses.Trialing ||
@@ -368,11 +376,100 @@ namespace GamMaSite.Controllers
             {
                 foreach (var subscription in subscriptions)
                 {
-                    await _mobilePayService.UpdateAgreementAmountAsync(
-                        subscription.ProviderSubscriptionId,
-                        amountMinor,
+                    await ExecuteMobilePayWithRetryAsync(
+                        () => _mobilePayService.UpdateAgreementAmountAsync(
+                            subscription.ProviderSubscriptionId,
+                            amountMinor,
+                            cancellationToken),
                         cancellationToken);
                     updatedSubscriptions.Add(subscription);
+
+                    var charges = await ExecuteMobilePayWithRetryAsync(
+                        () => _mobilePayService.GetRecurringChargesAsync(
+                            subscription.ProviderSubscriptionId,
+                            cancellationToken),
+                        cancellationToken) ?? Array.Empty<MobilePayCharge>();
+
+                    foreach (var charge in charges.Where(IsFuturePendingRecurringCharge))
+                    {
+                        var due = charge.Due.Value;
+                        var description = offer.ProductName;
+                        var replacementChargeId = CreateRescheduledChargeId(
+                            subscription.ProviderSubscriptionId,
+                            charge.Id,
+                            amountMinor,
+                            description,
+                            due,
+                            "replace");
+
+                        await ExecuteMobilePayWithRetryAsync(
+                            () => _mobilePayService.CancelRecurringChargeAsync(
+                                subscription.ProviderSubscriptionId,
+                                charge.Id,
+                                cancellationToken),
+                            cancellationToken);
+
+                        try
+                        {
+                            await ExecuteMobilePayWithRetryAsync(
+                                () => _mobilePayService.CreateRecurringChargeAsync(
+                                    subscription.ProviderSubscriptionId,
+                                    replacementChargeId,
+                                    amountMinor,
+                                    offer.Currency ?? Currency,
+                                    description,
+                                    due,
+                                    cancellationToken,
+                                    charge.RetryDays,
+                                    charge.TransactionType),
+                                cancellationToken);
+                        }
+                        catch
+                        {
+                            try
+                            {
+                                await ExecuteMobilePayWithRetryAsync(
+                                    () => _mobilePayService.CreateRecurringChargeAsync(
+                                        subscription.ProviderSubscriptionId,
+                                        CreateRescheduledChargeId(
+                                            subscription.ProviderSubscriptionId,
+                                            charge.Id,
+                                            charge.AmountMinor,
+                                            charge.Description,
+                                            due,
+                                            "restore"),
+                                        charge.AmountMinor,
+                                        charge.Currency ?? offer.Currency ?? Currency,
+                                        charge.Description ?? offer.ProductName,
+                                        due,
+                                        cancellationToken,
+                                        charge.RetryDays,
+                                        charge.TransactionType),
+                                    cancellationToken);
+                            }
+                            catch (Exception restoreException) when (IsMobilePayProviderFailure(restoreException, cancellationToken))
+                            {
+                                _logger?.LogError(
+                                    restoreException,
+                                    "Could not restore MobilePay charge {ChargeId} after replacement failed for agreement {AgreementId}.",
+                                    charge.Id,
+                                    subscription.ProviderSubscriptionId);
+                            }
+
+                            throw;
+                        }
+
+                        rescheduledCharges.Add(new MobilePayChargeReplacement(
+                            subscription.ProviderSubscriptionId,
+                            charge.Id,
+                            charge.AmountMinor,
+                            charge.Currency ?? offer.Currency ?? Currency,
+                            charge.Description ?? offer.ProductName,
+                            due,
+                            replacementChargeId,
+                            charge.RetryDays,
+                            charge.TransactionType));
+                    }
                 }
             }
             catch
@@ -381,19 +478,77 @@ namespace GamMaSite.Controllers
                 {
                     try
                     {
-                        await _mobilePayService.UpdateAgreementAmountAsync(
-                            subscription.ProviderSubscriptionId,
-                            previousAmountMinor,
+                        await ExecuteMobilePayWithRetryAsync(
+                            () => _mobilePayService.UpdateAgreementAmountAsync(
+                                subscription.ProviderSubscriptionId,
+                                previousAmountMinor,
+                                cancellationToken),
                             cancellationToken);
                     }
-                    catch (InvalidOperationException)
+                    catch (Exception restoreException) when (IsMobilePayProviderFailure(restoreException, cancellationToken))
                     {
                         // The original failure is the actionable response. A
                         // later reconciliation can repair an unavailable provider.
+                        _logger?.LogError(
+                            restoreException,
+                            "Could not restore MobilePay agreement {AgreementId} after charge rescheduling failed.",
+                            subscription.ProviderSubscriptionId);
                     }
                 }
 
                 throw;
+            }
+        }
+
+        private static bool IsFuturePendingRecurringCharge(MobilePayCharge charge)
+        {
+            return charge != null &&
+                string.Equals(charge.Status, "PENDING", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(charge.Type, "RECURRING", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(charge.Id) &&
+                charge.Due.HasValue &&
+                charge.Due.Value > DateTime.UtcNow;
+        }
+
+        private static bool IsMobilePayProviderFailure(Exception exception, CancellationToken cancellationToken)
+        {
+            return exception is InvalidOperationException ||
+                exception is HttpRequestException ||
+                (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested);
+        }
+
+        private async Task ExecuteMobilePayWithRetryAsync(
+            Func<Task> operation,
+            CancellationToken cancellationToken)
+        {
+            await ExecuteMobilePayWithRetryAsync<object>(async () =>
+            {
+                await operation();
+                return null;
+            }, cancellationToken);
+        }
+
+        private async Task<T> ExecuteMobilePayWithRetryAsync<T>(
+            Func<Task<T>> operation,
+            CancellationToken cancellationToken)
+        {
+            const int maxAttempts = 3;
+
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    return await operation();
+                }
+                catch (Exception exception) when (IsMobilePayProviderFailure(exception, cancellationToken) && attempt < maxAttempts)
+                {
+                    _logger?.LogWarning(
+                        exception,
+                        "MobilePay operation failed on attempt {Attempt} of {MaxAttempts}; retrying.",
+                        attempt,
+                        maxAttempts);
+                    await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), cancellationToken);
+                }
             }
         }
 
@@ -1688,6 +1843,7 @@ namespace GamMaSite.Controllers
             PaymentOffer offer,
             PaymentOfferSnapshot originalOffer,
             System.Collections.Generic.IReadOnlyCollection<PaymentSubscriptionSnapshot> originalSubscriptions,
+            System.Collections.Generic.IReadOnlyCollection<MobilePayChargeReplacement> rescheduledCharges,
             CancellationToken cancellationToken)
         {
             if (string.Equals(offer.Provider, PaymentOfferProviders.MobilePay, StringComparison.OrdinalIgnoreCase) &&
@@ -1705,17 +1861,58 @@ namespace GamMaSite.Controllers
 
                     try
                     {
-                        await _mobilePayService.UpdateAgreementAmountAsync(
-                            subscription.ProviderSubscriptionId,
-                            originalOffer.AmountMinor.Value,
+                        await ExecuteMobilePayWithRetryAsync(
+                            () => _mobilePayService.UpdateAgreementAmountAsync(
+                                subscription.ProviderSubscriptionId,
+                                originalOffer.AmountMinor.Value,
+                                cancellationToken),
                             cancellationToken);
                     }
-                    catch (InvalidOperationException exception)
+                    catch (Exception exception)
                     {
                         _logger?.LogError(
                             exception,
                             "Could not restore MobilePay agreement {AgreementId} after payment-offer rollback.",
                             subscription.ProviderSubscriptionId);
+                    }
+                }
+
+                foreach (var charge in rescheduledCharges ?? Array.Empty<MobilePayChargeReplacement>())
+                {
+                    try
+                    {
+                        await ExecuteMobilePayWithRetryAsync(
+                            () => _mobilePayService.CancelRecurringChargeAsync(
+                                charge.AgreementId,
+                                charge.ReplacementChargeId,
+                                cancellationToken),
+                            cancellationToken);
+
+                        await ExecuteMobilePayWithRetryAsync(
+                            () => _mobilePayService.CreateRecurringChargeAsync(
+                                charge.AgreementId,
+                                CreateRescheduledChargeId(
+                                    charge.AgreementId,
+                                    charge.OriginalChargeId,
+                                    charge.OriginalAmountMinor,
+                                    charge.OriginalDescription,
+                                    charge.Due,
+                                    "restore"),
+                                charge.OriginalAmountMinor,
+                                charge.Currency,
+                                charge.OriginalDescription,
+                                charge.Due,
+                                cancellationToken,
+                                charge.RetryDays,
+                                charge.TransactionType),
+                            cancellationToken);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger?.LogError(
+                            exception,
+                            "Could not restore MobilePay charge {ChargeId} after payment-offer rollback.",
+                            charge.OriginalChargeId);
                     }
                 }
             }
@@ -1756,6 +1953,34 @@ namespace GamMaSite.Controllers
                         "Could not deactivate Stripe price {PriceId} after payment-offer rollback.",
                         offer.ProviderPriceId);
                 }
+            }
+        }
+
+        private async Task TryCompensateProviderChangesAsync(
+            PaymentOffer offer,
+            PaymentOfferSnapshot originalOffer,
+            System.Collections.Generic.IReadOnlyCollection<PaymentSubscriptionSnapshot> originalSubscriptions,
+            System.Collections.Generic.IReadOnlyCollection<MobilePayChargeReplacement> rescheduledCharges)
+        {
+            // A request cancellation should not prevent us from repairing a
+            // provider change that already happened. Keep compensation bounded
+            // and independent from the request lifetime.
+            using var recoveryCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                await CompensateProviderChangesAsync(
+                    offer,
+                    originalOffer,
+                    originalSubscriptions,
+                    rescheduledCharges,
+                    recoveryCancellation.Token);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogError(
+                    exception,
+                    "Could not complete provider compensation for payment offer {PaymentOfferId}.",
+                    offer?.Id);
             }
         }
 
@@ -1904,6 +2129,31 @@ namespace GamMaSite.Controllers
                 target.ProviderProductId = _providerProductId;
                 target.Updated = _updated;
             }
+        }
+
+        private sealed record MobilePayChargeReplacement(
+            string AgreementId,
+            string OriginalChargeId,
+            long OriginalAmountMinor,
+            string Currency,
+            string OriginalDescription,
+            DateTime Due,
+            string ReplacementChargeId,
+            int RetryDays,
+            string TransactionType);
+
+        private static string CreateRescheduledChargeId(
+            string agreementId,
+            string originalChargeId,
+            long amountMinor,
+            string description,
+            DateTime due,
+            string purpose)
+        {
+            var material = $"{agreementId}:{originalChargeId}:{amountMinor}:{description}:{due:O}:{purpose}";
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material)))
+                .ToLowerInvariant()[..12];
+            return $"gamma-{due:yyyyMMdd}-{purpose}-{hash}";
         }
 
         private static string GetStripePriceDescription(PaymentOffer offer)
