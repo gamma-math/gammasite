@@ -135,6 +135,73 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task UpdateForAdminRejectsDeactivatingMembershipOffer()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Medlemskab",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = await controller.UpdateForAdmin(offer.Id, new UpdatePaymentOfferRequest
+        {
+            IsActive = false
+        });
+
+        var response = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("ikke deaktiveres", response.Value?.ToString());
+        Assert.True((await db.PaymentOffers.SingleAsync()).IsActive);
+    }
+
+    [Fact]
+    public async Task DeleteRejectsMembershipOffer()
+    {
+        await using var db = CreateDatabase();
+        var offer = new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.MobilePay,
+            OfferType = PaymentOfferTypes.OneTime,
+            ProductName = "Medlemskab",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            IsActive = true,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.PaymentOffers.Add(offer);
+        await db.SaveChangesAsync();
+
+        var stripe = new Mock<IStripeService>();
+        var controller = new ApiPaymentOffersController(
+            db,
+            stripe.Object,
+            new Mock<IAccessControlService>().Object);
+
+        var result = await controller.Delete(offer.Id);
+
+        var response = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("ikke slettes", response.Value?.ToString());
+        Assert.NotNull(await db.PaymentOffers.FindAsync(offer.Id));
+        stripe.Verify(value => value.DeactivatePriceAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Delete_RemovesOfferAndLegacyPaymentLinkButPreservesManualPaymentLink()
     {
         await using var db = CreateDatabase();
@@ -384,7 +451,7 @@ public sealed class ApiPaymentOffersControllerTests
         await using var db = CreateDatabase();
         var offer = new PaymentOffer
         {
-            Scope = PaymentOfferScopes.Membership,
+            Scope = PaymentOfferScopes.Event,
             Provider = PaymentOfferProviders.MobilePay,
             OfferType = PaymentOfferTypes.Recurring,
             LinkLabel = "Gammelt label",
