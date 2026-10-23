@@ -269,6 +269,19 @@ if (Directory.Exists(contentMediaRoot))
 }
 app.MapStaticAssets();
 
+// Redirect the exact lowercase library URL before ASP.NET's case-insensitive
+// endpoint matching can treat it as the canonical /Library route.
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method) && context.Request.Path.Value == "/library")
+    {
+        context.Response.Redirect($"/Library{context.Request.QueryString}", permanent: true);
+        return;
+    }
+
+    await next();
+});
+
 app.UseRouting();
 
 app.UseAuthentication();
@@ -279,10 +292,16 @@ app.UseAuthorization();
 app.MapGet("/react", (HttpContext context) => RedirectLegacyReactPath(string.Empty, context));
 app.MapGet("/react/{**path}", (string path, HttpContext context) => RedirectLegacyReactPath(path, context));
 
+// Keep the English /Library route canonical for the React library page.
+app.MapGet("/bibliotek", (HttpContext context) => RedirectLegacyReactPath("Library", context));
+app.MapGet("/referater", (HttpContext context) => RedirectLegacyReactPath("Library", context));
+app.MapGet("/Library/Index", (HttpContext context) => RedirectLegacyReactPath("Library", context));
+app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPath("Library", context));
+
 // Controller routes and Razor pages
 app.MapControllers();
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
-app.MapFallbackToController("{*path:nonfile}", "Index", "React");
+app.MapFallbackToController("{*path:nonfile}", "Index", "ReactShell");
 app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/account/login{context.Request.QueryString}"));
 app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/account/register{context.Request.QueryString}"));
 app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/account/forgot-password"));
@@ -305,7 +324,12 @@ app.Run();
 
 static IResult RedirectLegacyReactPath(string path, HttpContext context)
 {
-    var target = string.IsNullOrWhiteSpace(path) ? "/" : $"/{path}";
+    var canonicalPath = string.Equals(path, "library", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(path, "bibliotek", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(path, "referater", StringComparison.OrdinalIgnoreCase)
+        ? "Library"
+        : path;
+    var target = string.IsNullOrWhiteSpace(canonicalPath) ? "/" : $"/{canonicalPath}";
     return Results.Redirect($"{target}{context.Request.QueryString}", permanent: true);
 }
 

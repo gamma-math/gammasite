@@ -250,12 +250,7 @@ function renderRoute(route, user, isAdmin, access) {
   if (path === "/calendar" || path === "/Calendar") {
     return <CalendarPage user={user} />;
   }
-  if (
-    path === "/bibliotek" ||
-    path === "/referater" ||
-    path === "/library" ||
-    path === "/Library"
-  ) {
+  if (path === "/Library") {
     return <LibraryPage user={user} search={route.search} />;
   }
   if (path === "/pay" || path === "/Pay" || path === "/Pay/Index") {

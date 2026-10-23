@@ -14,7 +14,7 @@ namespace GamMaSite.Controllers
         [HttpGet("/Home/Betingelser")]
         [HttpGet("/Home/Cookies")]
         [HttpGet("/calendar")]
-        [HttpGet("/library")]
+        [HttpGet("/Library")]
         [HttpGet("/Users")]
         [HttpGet("/Users/Expanded")]
         [HttpGet("/Users/UpdateMass")]

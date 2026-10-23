@@ -8,7 +8,7 @@ const userItems = [
 const memberAreaItems = [
   { href: "/members", label: "Medlemmer", requiresAuth: true },
   { href: "/pay", label: "Betal medlemskab", requiresAuth: true },
-  { href: "/bibliotek", label: "Bibliotek", requiresAuth: true },
+  { href: "/Library", label: "Bibliotek", requiresAuth: true },
   { href: "/finance", label: "Finans", requiresAuth: true }
 ];
 

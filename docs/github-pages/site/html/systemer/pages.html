@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pages · GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="pages">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Teknik · Pages</p>
+      <h1>GamMaSite-sider og URL’er</h1>
+      <p class="lead">Alle navigerbare sider er samlet i én tabel. Dynamiske dele af en URL er skrevet som <code>&lt;slug&gt;</code>, <code>&lt;id&gt;</code> eller <code>&lt;offerId&gt;</code>. Legacy-URL’er er vist sammen med den kanoniske URL.</p>
+
+      <section class="section pages-documentation">
+        <label class="file-search"><span>Søg sider</span><input type="search" data-pages-search-input placeholder="URL, formål eller adgang" autocomplete="off"></label>
+        <div class="file-table-wrap">
+        <table class="table file-table pages-table" data-pages-table>
+          <thead><tr><th>URL</th><th>Område</th><th>Implementering</th><th>Formål</th><th>Adgang</th></tr></thead>
+          <tbody>
+            <tr><td><code>/</code><br><small><code>/react</code>, <code>/Home</code>, <code>/Home/Index</code></small></td><td>Offentlig forside med aktuelle events og nyheder.</td><td>Offentlig</td></tr>
+            <tr><td><code>/events</code><br><small><code>/react/events</code>, <code>/Home/Arrangementer</code></small></td><td>Oversigt over events.</td><td>Offentlig</td></tr>
+            <tr><td><code>/events/&lt;slug&gt;</code><br><small><code>/react/events/&lt;slug&gt;</code></small></td><td>Detaljeside for ét event.</td><td>Offentlig eller logget ind afhængigt af eventets indhold</td></tr>
+            <tr><td><code>/events/&lt;slug&gt;/pay/&lt;offerId&gt;</code><br><small><code>/react/events/&lt;slug&gt;/pay/&lt;offerId&gt;</code></small></td><td>Betalingsside for et eventtilbud.</td><td>Logget ind</td></tr>
+            <tr><td><code>/events/&lt;slug&gt;/pay/success</code><br><small><code>/react/events/&lt;slug&gt;/pay/success</code></small></td><td>Resultat- og bekræftelsesside efter eventbetaling.</td><td>Logget ind</td></tr>
+            <tr><td><code>/events/&lt;slug&gt;/registrations</code><br><small><code>/react/events/&lt;slug&gt;/registrations</code></small></td><td>Visning og administration af eventtilmeldinger.</td><td>Logget ind med relevant adgang</td></tr>
+            <tr><td><code>/news</code><br><small><code>/react/news</code></small></td><td>Oversigt over nyheder.</td><td>Offentlig</td></tr>
+            <tr><td><code>/news/&lt;slug&gt;</code><br><small><code>/react/news/&lt;slug&gt;</code></small></td><td>Detaljeside for én nyhed.</td><td>Offentlig</td></tr>
+            <tr><td><code>/members</code><br><small><code>/react/members</code>, <code>/Users</code></small></td><td>Offentlig medlemsoversigt med synlige oplysninger.</td><td>Offentlig</td></tr>
+            <tr><td><code>/calendar</code><br><small><code>/react/calendar</code>, <code>/Calendar</code></small></td><td>Kalendervisning for kommende events.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Library</code><br><small><code>/library</code>, <code>/bibliotek</code>, <code>/referater</code>, <code>/Library/Index</code>, <code>/Library/IndexAsync</code>, <code>/react/library</code></small></td><td>Bibliotek og dokumentarkiv.</td><td>Logget ind</td></tr>
+            <tr><td><code>/pay</code><br><small><code>/react/pay</code>, <code>/Pay</code>, <code>/Pay/Index</code></small></td><td>Oversigt over medlemskab, kontingent og betalingsmetoder.</td><td>Logget ind</td></tr>
+            <tr><td><code>/pay/success</code><br><small><code>/react/pay/success</code>, <code>/Pay/Success</code></small></td><td>Resultat efter gennemført medlemsbetaling.</td><td>Logget ind</td></tr>
+            <tr><td><code>/pay/kontingent-success</code><br><small><code>/react/pay/kontingent-success</code></small></td><td>Bekræftelse af gennemført kontingentbetaling.</td><td>Logget ind</td></tr>
+            <tr><td><code>/pay/cancel</code><br><small><code>/react/pay/cancel</code>, <code>/Pay/Cancel</code></small></td><td>Resultat når en betaling annulleres eller afbrydes.</td><td>Logget ind</td></tr>
+            <tr><td><code>/finance</code><br><small><code>/react/finance</code></small></td><td>Medlemmets egne finansielle oplysninger.</td><td>Logget ind</td></tr>
+            <tr><td><code>/om</code><br><small><code>/react/om</code></small></td><td>Information om foreningen.</td><td>Offentlig</td></tr>
+            <tr><td><code>/betingelser</code><br><small><code>/react/betingelser</code>, <code>/Home/Betingelser</code></small></td><td>Vilkår, medlemsbetingelser og salgsbetingelser.</td><td>Offentlig</td></tr>
+            <tr><td><code>/cookies</code><br><small><code>/react/cookies</code>, <code>/Home/Cookies</code></small></td><td>Cookie- og privatlivsinformation.</td><td>Offentlig</td></tr>
+            <tr><td><code>/account/login</code></td><td>Log ind.</td><td>Offentlig</td></tr>
+            <tr><td><code>/account/register</code></td><td>Opret konto.</td><td>Offentlig</td></tr>
+            <tr><td><code>/account/forgot-password</code></td><td>Anmod om nulstilling af adgangskode.</td><td>Offentlig</td></tr>
+            <tr><td><code>/account/resend-email-confirmation</code></td><td>Send bekræftelsesmail igen.</td><td>Offentlig</td></tr>
+            <tr><td><code>/account/manage</code></td><td>Redigér profil og se medlemsstatus.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/email</code></td><td>Skift e-mailadresse.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/password</code></td><td>Skift adgangskode.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/two-factor</code></td><td>Administrér totrinsbekræftelse.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/TwoFactorAuthentication</code></td><td>Legacy MFA-oversigt og adgang til opsætning, nulstilling og recovery-koder.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/EnableAuthenticator</code></td><td>Opsæt eller genopsæt en authenticator-app.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/ResetAuthenticator</code></td><td>Nulstil MFA-/authenticator-nøglen. Legacy Identity-side uden sidebar.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/Disable2fa</code></td><td>Deaktivér to-faktor authentication.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/subscriptions</code></td><td>Se og administrér betalingsaftaler.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/finance</code></td><td>Se egne finansielle posteringer.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/personal-data</code></td><td>Download eller se persondata.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/delete-personal-data</code></td><td>Slet persondata og konto.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/logout</code></td><td>Log ud.</td><td>Logget ind</td></tr>
+            <tr><td><code>/admin</code></td><td>Sender brugeren til den første administration, som brugerens rettigheder tillader.</td><td>Admin med relevant rettighed</td></tr>
+            <tr><td><code>/admin/events</code></td><td>Oversigt og administration af events.</td><td>Admin med content-rettighed</td></tr>
+            <tr><td><code>/admin/events/new</code><br><code>/admin/events/&lt;id&gt;/edit</code></td><td>Opret eller redigér event.</td><td>Admin med content-rettighed</td></tr>
+            <tr><td><code>/admin/news</code></td><td>Oversigt og administration af nyheder.</td><td>Admin med content-rettighed</td></tr>
+            <tr><td><code>/admin/news/new</code><br><code>/admin/news/&lt;id&gt;/edit</code></td><td>Opret eller redigér nyhed.</td><td>Admin med content-rettighed</td></tr>
+            <tr><td><code>/admin/products</code><br><code>/admin/products/&lt;id&gt;/edit</code></td><td>Administrér betalingsprodukter og priser.</td><td>Admin med payment-rettighed</td></tr>
+            <tr><td><code>/admin/subscriptions</code></td><td>Se og administrér betalingsaftaler.</td><td>Admin med payment-rettighed</td></tr>
+            <tr><td><code>/admin/finance</code></td><td>Administrativt finansoverblik.</td><td>Admin med finance-rettighed</td></tr>
+            <tr><td><code>/admin/finance/postings</code><br><code>/admin/finance/postings/&lt;id&gt;</code><br><code>/admin/finance/postings/edit</code></td><td>Se, opret og redigér finansposteringer.</td><td>Admin med finance-rettighed</td></tr>
+            <tr><td><code>/admin/finance/chart-of-accounts</code><br><code>/admin/finance/posting-groups</code><br><code>/admin/finance/posting-groups/&lt;id&gt;</code><br><code>/admin/finance/budgets</code><br><code>/admin/finance/budgets/&lt;id&gt;</code></td><td>Administrér kontoplan, posteringsgrupper og budgetter.</td><td>Admin med finance-redigeringsrettighed</td></tr>
+            <tr><td><code>/admin/finance/csv-import</code></td><td>Importér finansdata.</td><td>Admin med finance-redigeringsrettighed</td></tr>
+            <tr><td><code>/admin/messages</code><br><small><code>/Messages</code></small></td><td>Vælg modtagere og send beskeder.</td><td>Admin med messages-rettighed</td></tr>
+            <tr><td><code>/admin/templates</code><br><code>/admin/templates/new</code><br><code>/admin/templates/&lt;id&gt;/edit</code></td><td>Administrér e-mail- og beskedskabeloner.</td><td>Admin med email-template-rettighed</td></tr>
+            <tr><td><code>/admin/users</code><br><small><code>/Users/Expanded</code>, <code>/Users/UpdateMass</code></small></td><td>Administrér medlemmer.</td><td>Admin med roles-rettighed</td></tr>
+            <tr><td><code>/admin/users/&lt;id&gt;/subscriptions</code></td><td>Se betalingsaftaler for et bestemt medlem.</td><td>Admin med roles-rettighed</td></tr>
+            <tr><td><code>/admin/roles</code><br><small><code>/Role</code></small></td><td>Administrér roller og permissions.</td><td>Admin med roles-rettighed</td></tr>
+            <tr><td><code>/admin/roles/new</code><br><small><code>/Role/Create</code></small></td><td>Opret en rolle.</td><td>Admin med roles-rettighed</td></tr>
+            <tr><td><code>/admin/roles/&lt;id&gt;/edit</code><br><small><code>/Role/Update/&lt;id&gt;</code></small></td><td>Redigér en rolle.</td><td>Admin med roles-rettighed</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="file-search-empty" data-pages-search-empty hidden>Ingen sider matcher søgningen.</p>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

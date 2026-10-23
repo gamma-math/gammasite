@@ -11,7 +11,7 @@ React er monteret på de kanoniske URL'er uden `/react`, og de mest brugte gamle
 | Nyhedsdetalje | `/news/{slug}` | - |
 | Medlemmer | `/members` | `/Users` |
 | Kalender | `/calendar` | `/Calendar` |
-| Bibliotek | `/library?path=...` | Bevares på `/Library` for fil-download-kompatibilitet |
+| Bibliotek | `/Library?path=...` | `/library`, `/bibliotek`, `/referater`, `/Library/Index`, `/Library/IndexAsync` og `/react/library` |
 | Betaling, produktliste | `/pay` | `/Pay`, `/Pay/Index` |
 | Betalingsstatus | `/pay/success`, `/pay/cancel` | `/Pay/Success`, `/Pay/Cancel` |
 | Admin events | `/admin/events` | - |
@@ -27,7 +27,6 @@ React er monteret på de kanoniske URL'er uden `/react`, og de mest brugte gamle
 ## Bevidst bevaret i Razor
 
 - ASP.NET Identity login, register, logout, password reset, email confirmation, profil, password, email, 2FA og private data.
-- Fil-downloads fra `/library?path=...`, når bibliotekselementet er en fil/blob.
 - Eksisterende POST-actions, så gamle forms ikke er fjernet før React-flowene er endeligt godkendt.
 
 ## Ikke implementeret
