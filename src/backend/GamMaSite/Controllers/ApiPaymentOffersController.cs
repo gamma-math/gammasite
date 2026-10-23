@@ -485,17 +485,9 @@ namespace GamMaSite.Controllers
                 return NotFound();
             }
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var registration = await _db.EventRegistrations
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
-            if (registration == null ||
-                registration.Registered ||
-                !IsEventParticipant(registration.RegistrationType))
-            {
-                return NotFound();
-            }
-
+            // Loading the payment page must also work for users who followed a
+            // payment link before registering. Checkout itself still enforces
+            // the participant and already-paid guards below.
             return Ok(offer.ToDto());
         }
 
@@ -890,22 +882,29 @@ namespace GamMaSite.Controllers
             var eventPath = $"/events/{Uri.EscapeDataString(offer.ContentItem.Slug)}/pay";
             var successUrl = PublicUrl($"{eventPath}/success{sessionParameter}");
             var cancelUrl = PublicUrl($"{eventPath}/{offer.Id}");
-            var sessionId = _stripeService.StartPayment(
-                product,
-                price,
-                userId,
-                successUrl,
-                cancelUrl,
-                "payment",
-                new System.Collections.Generic.Dictionary<string, string>
-                {
-                    ["PaymentOfferId"] = offer.Id.ToString(),
-                    ["ContentItemId"] = offer.ContentItemId.ToString(),
-                    ["GamMaUserId"] = userId
-                },
-                GetStripeIdempotencyKey(userId, offer));
+            try
+            {
+                var sessionId = _stripeService.StartPayment(
+                    product,
+                    price,
+                    userId,
+                    successUrl,
+                    cancelUrl,
+                    "payment",
+                    new System.Collections.Generic.Dictionary<string, string>
+                    {
+                        ["PaymentOfferId"] = offer.Id.ToString(),
+                        ["ContentItemId"] = offer.ContentItemId.ToString(),
+                        ["GamMaUserId"] = userId
+                    },
+                    GetStripeIdempotencyKey(userId, offer));
 
-            return Ok(new { id = sessionId });
+                return Ok(new { id = sessionId });
+            }
+            catch (Stripe.StripeException)
+            {
+                return StatusCode(502, new { error = "Stripe-betalingen kunne ikke startes." });
+            }
         }
 
         [HttpGet("mobilepay-context")]

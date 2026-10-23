@@ -2,7 +2,6 @@
 using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -389,9 +388,8 @@ namespace GamMaSite.Services
                         Quantity = 1,
                     }
                 ],
-                Metadata = new Dictionary<string, string> 
-                { 
-                    { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
+                Metadata = new Dictionary<string, string>
+                {
                     { "Product", priceData?.Product },
                     { "ProductName", priceData?.ProductData?.Name }
                 },
@@ -409,7 +407,6 @@ namespace GamMaSite.Services
         {
             var sessionMetadata = new Dictionary<string, string>
             {
-                { "SessionCreated", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) },
                 { "Product", productId },
                 { "ProductName", productName }
             };

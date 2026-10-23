@@ -275,7 +275,7 @@ function renderRoute(route, user, isAdmin, access) {
   }
   const eventPaymentMatch = path.match(/^\/events\/([^/]+)\/pay\/(\d+)$/);
   if (eventPaymentMatch) {
-    return <EventPaymentPage offerId={Number(eventPaymentMatch[2])} user={user} />;
+    return <EventPaymentPage eventSlug={decodeURIComponent(eventPaymentMatch[1])} offerId={Number(eventPaymentMatch[2])} user={user} />;
   }
   if (path === "/om") {
     return <StaticPage page="about" />;

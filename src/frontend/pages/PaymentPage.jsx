@@ -3,8 +3,9 @@ import { CreditCard, Smartphone } from "lucide-react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { loginHref } from "../utils/authNavigation.js";
-import { accountApi, paymentOffersApi, paymentsApi } from "../services/api.js";
+import { accountApi, paymentOffersApi, paymentsApi, registrationsApi } from "../services/api.js";
 import { hasPaidMembership } from "../utils/membership.js";
+import { countsTowardsCapacity } from "../utils/registrationCapacity.js";
 import { LoginRequired } from "./MembersPage.jsx";
 
 /**
@@ -165,8 +166,9 @@ export function PaymentPage({ user }) {
   );
 }
 
-export function EventPaymentPage({ offerId, user }) {
+export function EventPaymentPage({ eventSlug, offerId, user }) {
   const [offer, setOffer] = useState(null);
+  const [registration, setRegistration] = useState(undefined);
   const [error, setError] = useState("");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
 
@@ -175,7 +177,36 @@ export function EventPaymentPage({ offerId, user }) {
       return;
     }
 
-    paymentOffersApi.get(offerId).then(setOffer).catch(() => setError("Betalingstilbuddet kunne ikke hentes."));
+    let active = true;
+    setOffer(null);
+    setRegistration(undefined);
+    setError("");
+
+    async function loadPaymentContext() {
+      try {
+        const nextOffer = await paymentOffersApi.get(offerId);
+        if (!active) {
+          return;
+        }
+
+        setOffer(nextOffer);
+        const nextRegistration = nextOffer.contentItemId
+          ? await registrationsApi.mine(nextOffer.contentItemId)
+          : null;
+        if (active) {
+          setRegistration(nextRegistration);
+        }
+      } catch {
+        if (active) {
+          setError("Betalingstilbuddet kunne ikke hentes.");
+        }
+      }
+    }
+
+    loadPaymentContext();
+    return () => {
+      active = false;
+    };
   }, [offerId, user.isAuthenticated]);
 
   if (!user.isAuthenticated) {
@@ -205,6 +236,41 @@ export function EventPaymentPage({ offerId, user }) {
     return (
       <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
         <p className="status-message status-message-error">{error}</p>
+      </MenuLayout>
+    );
+  }
+
+  if (registration === undefined) {
+    return (
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
+        <div className="menu-loading-card">
+          <span className="menu-loading-dot" aria-hidden="true" />
+          <p>Kontrollerer din tilmelding...</p>
+        </div>
+      </MenuLayout>
+    );
+  }
+
+  const resolvedEventSlug = eventSlug || offer.eventSlug;
+  const eventHref = resolvedEventSlug ? `/events/${encodeURIComponent(resolvedEventSlug)}` : "/events";
+  const isRegistered = registration?.registered === true;
+  const canPay = registration && !isRegistered && countsTowardsCapacity(registration);
+
+  if (!canPay) {
+    return (
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling for event</p>
+          <h1>{isRegistered ? "Betaling allerede gennemført" : "Tilmelding kræves"}</h1>
+          <p className="muted">
+            {isRegistered
+              ? "Din betaling til arrangementet er allerede registreret."
+              : "Du skal først tilmelde dig arrangementet, før du kan betale."}
+          </p>
+          <Link className="frontpage-button frontpage-button-primary" href={eventHref}>
+            {isRegistered ? "Til begivenheden" : "Gå til begivenheden og tilmeld"}
+          </Link>
+        </section>
       </MenuLayout>
     );
   }

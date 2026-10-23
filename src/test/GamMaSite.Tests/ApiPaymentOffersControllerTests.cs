@@ -19,6 +19,108 @@ namespace GamMaSite.Tests;
 
 public sealed class ApiPaymentOffersControllerTests
 {
+    [Fact]
+    public async Task GetAllowsUnregisteredUserToOpenEventPaymentLink()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedOfferAsync(db);
+        var eventItem = await db.ContentItems.SingleAsync(item => item.Id == offer.ContentItemId);
+        eventItem.StartDate = DateTime.UtcNow.AddDays(1);
+        eventItem.EndDate = DateTime.UtcNow.AddDays(1).AddHours(2);
+        await db.SaveChangesAsync();
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-without-registration")
+                }, "test"))
+            }
+        };
+
+        var result = Assert.IsType<OkObjectResult>(await controller.Get(offer.Id, default));
+        var paymentOffer = Assert.IsType<PaymentOfferDto>(result.Value);
+
+        Assert.Equal(offer.Id, paymentOffer.Id);
+        Assert.Equal("test-event", paymentOffer.EventSlug);
+    }
+
+    [Fact]
+    public async Task CheckoutReturnsBadGatewayWhenStripeCannotCreateEventSession()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedOfferAsync(db);
+        offer.ProviderProductId = "prod_event";
+        offer.AmountMinor = 2500;
+        offer.Currency = "DKK";
+        var eventItem = await db.ContentItems.SingleAsync(item => item.Id == offer.ContentItemId);
+        eventItem.EndDate = DateTime.UtcNow.AddDays(1);
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-event-payment",
+            UserName = "member@example.com",
+            Status = UserStatus.OPRETTET
+        });
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = offer.ContentItemId!.Value,
+            UserId = "user-event-payment",
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var product = new Stripe.Product { Id = "prod_event", Name = "Test product" };
+        var price = new Stripe.Price
+        {
+            Id = offer.ProviderPriceId,
+            ProductId = product.Id,
+            Active = true,
+            Type = "one_time",
+            UnitAmount = offer.AmountMinor,
+            Currency = "dkk"
+        };
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetProductAsync(product.Id)).ReturnsAsync(product);
+        stripe.Setup(value => value.GetPriceByIdAsync(price.Id)).ReturnsAsync(price);
+        stripe.Setup(value => value.StartPayment(
+                product,
+                price,
+                "user-event-payment",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "payment",
+                It.IsAny<System.Collections.Generic.IDictionary<string, string>>(),
+                It.IsAny<string>()))
+            .Throws(new Stripe.StripeException("Stripe idempotency conflict"));
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            stripe.Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-event-payment")
+                }, "test"))
+            }
+        };
+
+        var result = Assert.IsType<ObjectResult>(await controller.Checkout(offer.Id, default));
+
+        Assert.Equal(502, result.StatusCode);
+    }
+
     [Theory]
     [InlineData(RegistrationTypes.Interested)]
     [InlineData(RegistrationTypes.Waitlisted)]
