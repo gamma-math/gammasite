@@ -21,7 +21,7 @@ Medlemsoversigt, kalender, bibliotek, egne betalinger, egen finansoversigt og eg
 | --- | --- | --- |
 | `/members` | Medlemsoversigt med synlige oplysninger | Logget ind |
 | `/calendar` | Se kommende events | Logget ind |
-| `/bibliotek` | Se dokumenter og mapper | Logget ind |
+| `/Library` | Se dokumenter og mapper | Logget ind |
 | `/finance` | Se egne finansielle posteringer | Logget ind |
 | `/account/manage` | Rediger egen profil | Logget ind |
 

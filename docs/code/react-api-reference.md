@@ -115,6 +115,7 @@ This document describes the backend APIs currently used by the React pages. The 
 |---|---|---|---|---|---|
 | GET | `/api/calendar` | Member calendar page | External iCal feed configured by `ICalService` | Loads upcoming calendar events and maps them to the React calendar model. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 | GET | `/api/library` | Member library page | Server file system through `IIndexService` | Lists protected documents and folders for the requested path. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
+| GET | `/api/library/file?path={path}` | Member library page | Server file system through `IIndexService` | Returns the selected protected document with its detected MIME type. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 
 ## Finance API
 

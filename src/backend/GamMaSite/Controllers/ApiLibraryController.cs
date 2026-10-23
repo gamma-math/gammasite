@@ -44,5 +44,12 @@ namespace GamMaSite.Controllers
                 }).ToList()
             });
         }
+
+        [HttpGet("file")]
+        public async Task<IActionResult> GetFile([FromQuery] string path)
+        {
+            var content = await _indexService.GetContentAsync(path ?? string.Empty);
+            return File(content.Content, content.MimeType);
+        }
     }
 }

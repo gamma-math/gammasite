@@ -275,7 +275,9 @@ app.Use(async (context, next) =>
 {
     if (HttpMethods.IsGet(context.Request.Method) && context.Request.Path.Value == "/library")
     {
-        context.Response.Redirect($"/Library{context.Request.QueryString}", permanent: true);
+        context.Response.Redirect(
+            LegacyRouteRedirects.BuildLocation("library", context.Request.QueryString.ToString()),
+            permanent: true);
         return;
     }
 
@@ -293,10 +295,10 @@ app.MapGet("/react", (HttpContext context) => RedirectLegacyReactPath(string.Emp
 app.MapGet("/react/{**path}", (string path, HttpContext context) => RedirectLegacyReactPath(path, context));
 
 // Keep the English /Library route canonical for the React library page.
-app.MapGet("/bibliotek", (HttpContext context) => RedirectLegacyReactPath("Library", context));
-app.MapGet("/referater", (HttpContext context) => RedirectLegacyReactPath("Library", context));
-app.MapGet("/Library/Index", (HttpContext context) => RedirectLegacyReactPath("Library", context));
-app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPath("Library", context));
+app.MapGet("/bibliotek", (HttpContext context) => RedirectLegacyReactPath("bibliotek", context));
+app.MapGet("/referater", (HttpContext context) => RedirectLegacyReactPath("referater", context));
+app.MapGet("/Library/Index", (HttpContext context) => RedirectLegacyReactPath("Library/Index", context));
+app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPath("Library/IndexAsync", context));
 
 // Controller routes and Razor pages
 app.MapControllers();
@@ -324,13 +326,9 @@ app.Run();
 
 static IResult RedirectLegacyReactPath(string path, HttpContext context)
 {
-    var canonicalPath = string.Equals(path, "library", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(path, "bibliotek", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(path, "referater", StringComparison.OrdinalIgnoreCase)
-        ? "Library"
-        : path;
-    var target = string.IsNullOrWhiteSpace(canonicalPath) ? "/" : $"/{canonicalPath}";
-    return Results.Redirect($"{target}{context.Request.QueryString}", permanent: true);
+    return Results.Redirect(
+        LegacyRouteRedirects.BuildLocation(path, context.Request.QueryString.ToString()),
+        permanent: true);
 }
 
 static async Task EnsureContentItemsShowOnFrontPageColumnAsync(IServiceProvider services)

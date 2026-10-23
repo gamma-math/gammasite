@@ -44,14 +44,28 @@
             <tr><td><code>/account/register</code></td><td>Opret konto.</td><td>Offentlig</td></tr>
             <tr><td><code>/account/forgot-password</code></td><td>Anmod om nulstilling af adgangskode.</td><td>Offentlig</td></tr>
             <tr><td><code>/account/resend-email-confirmation</code></td><td>Send bekræftelsesmail igen.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/AccessDenied</code></td><td>Identity-side når brugeren ikke har adgang til en beskyttet funktion.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/ConfirmEmail</code></td><td>Bekræft e-mailadresse fra et tilsendt link.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/ConfirmEmailChange</code></td><td>Bekræft ændring af e-mailadresse.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/Lockout</code></td><td>Vises når loginforsøg har låst kontoen.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/LoginWith2fa</code></td><td>Gennemfør login med to-faktor authentication.</td><td>Offentlig under loginflow</td></tr>
+            <tr><td><code>/Identity/Account/LoginWithRecoveryCode</code></td><td>Gennemfør login med en recovery-kode.</td><td>Offentlig under loginflow</td></tr>
+            <tr><td><code>/Identity/Account/ResetPassword</code></td><td>Nulstil adgangskode fra et tilsendt link.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/ResetPasswordConfirmation</code></td><td>Bekræftelse efter nulstilling af adgangskode.</td><td>Offentlig</td></tr>
+            <tr><td><code>/Identity/Account/RegisterConfirmation</code></td><td>Bekræftelse efter legacy-registrering.</td><td>Offentlig</td></tr>
             <tr><td><code>/account/manage</code></td><td>Redigér profil og se medlemsstatus.</td><td>Logget ind</td></tr>
             <tr><td><code>/account/manage/email</code></td><td>Skift e-mailadresse.</td><td>Logget ind</td></tr>
             <tr><td><code>/account/manage/password</code></td><td>Skift adgangskode.</td><td>Logget ind</td></tr>
-            <tr><td><code>/account/manage/two-factor</code></td><td>Administrér totrinsbekræftelse.</td><td>Logget ind</td></tr>
-            <tr><td><code>/Identity/Account/Manage/TwoFactorAuthentication</code></td><td>Legacy MFA-oversigt og adgang til opsætning, nulstilling og recovery-koder.</td><td>Logget ind</td></tr>
+            <tr><td><code>/account/manage/two-factor</code><br><small><code>/Identity/Account/Manage/TwoFactorAuthentication</code></small></td><td>Administrér totrinsbekræftelse. Identity-URL’en redirecter til React-siden.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/ExternalLogin</code></td><td>Gennemfør eksternt login og callback-flow.</td><td>Offentlig under loginflow</td></tr>
+            <tr><td><code>/Identity/Account/ForgotPasswordConfirmation</code></td><td>Bekræftelse efter legacy-anmodning om nulstilling af adgangskode.</td><td>Offentlig</td></tr>
             <tr><td><code>/Identity/Account/Manage/EnableAuthenticator</code></td><td>Opsæt eller genopsæt en authenticator-app.</td><td>Logget ind</td></tr>
             <tr><td><code>/Identity/Account/Manage/ResetAuthenticator</code></td><td>Nulstil MFA-/authenticator-nøglen. Legacy Identity-side uden sidebar.</td><td>Logget ind</td></tr>
             <tr><td><code>/Identity/Account/Manage/Disable2fa</code></td><td>Deaktivér to-faktor authentication.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/GenerateRecoveryCodes</code></td><td>Generér et nyt sæt recovery-koder fra MFA-flowet.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/ShowRecoveryCodes</code></td><td>Vis de nygenererede recovery-koder.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/DownloadPersonalData</code></td><td>Download persondata fra det legacy Identity-flow.</td><td>Logget ind</td></tr>
+            <tr><td><code>/Identity/Account/Manage/ExternalLogins</code></td><td>Administrér eventuelle eksterne loginforbindelser.</td><td>Logget ind hvis ekstern loginudbyder er aktiveret</td></tr>
             <tr><td><code>/account/manage/subscriptions</code></td><td>Se og administrér betalingsaftaler.</td><td>Logget ind</td></tr>
             <tr><td><code>/account/manage/finance</code></td><td>Se egne finansielle posteringer.</td><td>Logget ind</td></tr>
             <tr><td><code>/account/manage/personal-data</code></td><td>Download eller se persondata.</td><td>Logget ind</td></tr>

@@ -39,7 +39,7 @@ export function LibraryPage({ user }) {
               <tr key={item.path}>
                 <td>
                   {item.type === "file" || item.type === "blob"
-                    ? <a href={`/Library?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</a>
+                    ? <a href={`/api/library/file?path=${encodeURIComponent(item.path)}`} target="_blank" rel="noreferrer">{item.icon} {item.name}</a>
                     : <Link href={`/Library?path=${encodeURIComponent(item.path)}`}>{item.icon} {item.name}</Link>}
                 </td>
               </tr>
