@@ -254,6 +254,7 @@ namespace GamMaSite.Services
             var deactivatedPrices = new List<string>();
             var deactivatedProducts = new List<string>();
             IDbContextTransaction transaction = null;
+            var providerCleanupStarted = false;
 
             try
             {
@@ -274,6 +275,7 @@ namespace GamMaSite.Services
 
                     foreach (var priceId in stripeTargets.Prices)
                     {
+                        providerCleanupStarted = true;
                         if (!await TryDeactivateStripePriceAsync(priceId))
                         {
                             throw new ContentDeletionException("En Stripe-pris kunne ikke arkiveres.");
@@ -284,6 +286,7 @@ namespace GamMaSite.Services
 
                     foreach (var productId in stripeTargets.Products)
                     {
+                        providerCleanupStarted = true;
                         if (!await TryDeactivateStripeProductAsync(productId))
                         {
                             throw new ContentDeletionException("Et Stripe-produkt kunne ikke arkiveres.");
@@ -308,7 +311,40 @@ namespace GamMaSite.Services
             catch (ContentDeletionException)
             {
                 await RestoreStripeDefinitionsAsync(deactivatedPrices, deactivatedProducts);
+                await RollbackContentDeletionAsync(transaction, item, links, registrations, offers);
+                throw;
+            }
+            catch (Exception exception) when (providerCleanupStarted)
+            {
+                _logger?.LogError(exception,
+                    "Content deletion failed after Stripe cleanup started for content item {ContentItemId}; attempting compensation.",
+                    id);
 
+                await RestoreStripeDefinitionsAsync(deactivatedPrices, deactivatedProducts);
+                await RollbackContentDeletionAsync(transaction, item, links, registrations, offers);
+
+                throw new ContentDeletionException(
+                    "Eventet kunne ikke slettes sikkert, fordi databaseændringen fejlede efter Stripe-arkiveringen.",
+                    exception);
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+        }
+
+        private async Task RollbackContentDeletionAsync(
+            IDbContextTransaction transaction,
+            ContentItem item,
+            IReadOnlyCollection<ContentLink> links,
+            IReadOnlyCollection<EventRegistration> registrations,
+            IReadOnlyCollection<PaymentOffer> offers)
+        {
+            try
+            {
                 if (transaction != null)
                 {
                     await transaction.RollbackAsync();
@@ -317,15 +353,12 @@ namespace GamMaSite.Services
                 {
                     await RestoreDeletedContentAsync(item, links, registrations, offers);
                 }
-
-                throw;
             }
-            finally
+            catch (Exception exception)
             {
-                if (transaction != null)
-                {
-                    await transaction.DisposeAsync();
-                }
+                _logger?.LogError(exception,
+                    "Could not roll back content deletion for content item {ContentItemId}.",
+                    item.Id);
             }
         }
 

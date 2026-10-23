@@ -8,5 +8,10 @@ namespace GamMaSite.Services
             : base(message)
         {
         }
+
+        public ContentDeletionException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 }
