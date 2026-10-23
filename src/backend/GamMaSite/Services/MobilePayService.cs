@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services;
 
@@ -83,11 +84,16 @@ public sealed class MobilePayService : IMobilePayService
 
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<MobilePayService> _logger;
 
-    public MobilePayService(HttpClient httpClient, IConfiguration configuration)
+    public MobilePayService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<MobilePayService> logger)
     {
         _httpClient = httpClient;
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<MobilePayPayment> CreateOneTimePaymentAsync(
@@ -290,24 +296,62 @@ public sealed class MobilePayService : IMobilePayService
         CancellationToken cancellationToken = default)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
+        var idempotencyKey = CreateStableIdempotencyKey(agreementId + ":" + orderId);
+        var dueDate = due.ToString("yyyy-MM-dd");
+
+        _logger.LogInformation(
+            "Creating MobilePay recurring charge for agreement {AgreementId}. OrderId {OrderId}, Due {DueDate}, AmountMinor {AmountMinor}, Currency {Currency}, IdempotencyKey {IdempotencyKey}.",
+            agreementId,
+            orderId,
+            dueDate,
+            amountMinor,
+            currency,
+            idempotencyKey);
+
         using var request = CreateRequest(
             HttpMethod.Post,
             $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}/charges",
             token);
-        request.Headers.Add("Idempotency-Key", CreateStableIdempotencyKey(agreementId + ":" + orderId));
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
         request.Content = JsonContent.Create(new
         {
             amount = amountMinor,
             transactionType = "DIRECT_CAPTURE",
             type = "RECURRING",
             description,
-            due = due.ToString("yyyy-MM-dd"),
+            due = dueDate,
             retryDays = 2,
             orderId
         });
 
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
-        await EnsureSuccessAsync(response, "oprette næste MobilePay-opkrævning");
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(request, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            _logger.LogError(
+                exception,
+                "MobilePay recurring charge request failed before receiving a response. AgreementId {AgreementId}, OrderId {OrderId}, Due {DueDate}.",
+                agreementId,
+                orderId,
+                dueDate);
+            throw;
+        }
+
+        using (response)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogInformation(
+                "MobilePay recurring charge response received. AgreementId {AgreementId}, OrderId {OrderId}, StatusCode {StatusCode}, ResponseBody {ResponseBody}.",
+                agreementId,
+                orderId,
+                (int)response.StatusCode,
+                TruncateForLog(responseBody));
+
+            await EnsureSuccessAsync(response, "oprette næste MobilePay-opkrævning");
+        }
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
@@ -442,5 +486,16 @@ public sealed class MobilePayService : IMobilePayService
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(reference + ":capture"));
         return new Guid(hash.Take(16).ToArray()).ToString();
+    }
+
+    private static string TruncateForLog(string value)
+    {
+        const int maxLength = 2000;
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength] + "…";
     }
 }

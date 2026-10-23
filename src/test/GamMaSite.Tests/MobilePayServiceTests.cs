@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -41,7 +42,10 @@ public sealed class MobilePayServiceTests
             })
             .Build();
 
-        var service = new MobilePayService(client, configuration);
+        var service = new MobilePayService(
+            client,
+            configuration,
+            NullLogger<MobilePayService>.Instance);
 
         var agreement = await service.GetAgreementAsync("agr-1");
 
