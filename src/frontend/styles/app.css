@@ -3086,6 +3086,17 @@ img {
   background: #eef4fb;
 }
 
+.account-field.has-error input {
+  border-color: #c9364d;
+  background: #fff7f8;
+}
+
+.account-field-error {
+  color: #8f1f2d;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
 .account-checkbox {
   display: flex;
   align-items: center;
