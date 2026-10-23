@@ -537,6 +537,12 @@ namespace GamMaSite.Services
                             continue;
                         }
 
+                        if (scanMarker is >= 0xd0 and <= 0xd7)
+                        {
+                            index += 2;
+                            continue;
+                        }
+
                         return scanMarker == 0xd9;
                     }
 
