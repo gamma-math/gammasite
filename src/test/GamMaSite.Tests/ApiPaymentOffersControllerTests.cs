@@ -1182,7 +1182,7 @@ public sealed class ApiPaymentOffersControllerTests
         var result = Assert.IsType<OkObjectResult>(await controller.Checkout(offer.Id, default));
 
         Assert.Contains("mobilepay.example/pay", result.Value?.ToString());
-        mobilePay.Verify(value => value.StopAgreementAsync("agreement-pending", It.IsAny<CancellationToken>()), Times.Never);
+        mobilePay.Verify(value => value.StopAgreementAsync("agreement-pending", It.IsAny<CancellationToken>()), Times.Once);
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
     }

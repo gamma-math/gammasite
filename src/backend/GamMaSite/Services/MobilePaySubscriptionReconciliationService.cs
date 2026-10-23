@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using Microsoft.EntityFrameworkCore;
@@ -198,8 +199,6 @@ public sealed class MobilePaySubscriptionReconciliationService
             return false;
         }
 
-        _db.Entry(subscription).State = EntityState.Detached;
-
         var providerSubscriptionId = subscription.ProviderSubscriptionId;
         if (string.IsNullOrWhiteSpace(providerSubscriptionId))
         {
@@ -231,23 +230,6 @@ public sealed class MobilePaySubscriptionReconciliationService
         }
 
         var providerStatus = agreement.Status?.Trim().ToUpperInvariant();
-        if (providerStatus == "ACTIVE")
-        {
-            return false;
-        }
-
-        if (providerStatus == "CREATED" || providerStatus == "PENDING")
-        {
-            // MobilePay has not activated the agreement yet. In this state
-            // stopping it may itself return 409, but it cannot create future
-            // recurring charges. The local pending reservation can therefore
-            // safely be released for a new checkout attempt.
-            return await MarkTerminalAsync(
-                subscription.Id,
-                PaymentSubscriptionStatuses.Canceled,
-                cancellationToken);
-        }
-
         if (providerStatus != "STOPPED" &&
             providerStatus != "EXPIRED" &&
             providerStatus != "REJECTED")
@@ -285,6 +267,16 @@ public sealed class MobilePaySubscriptionReconciliationService
         string status,
         CancellationToken cancellationToken)
     {
+        // TryAbandonPendingAsync can be called with the controller's tracked
+        // entity. Detach that instance before the locking query so the
+        // relational provider can materialize the current row safely.
+        var trackedEntry = _db.ChangeTracker.Entries<PaymentSubscription>()
+            .FirstOrDefault(entry => entry.Entity.Id == subscriptionId);
+        if (trackedEntry != null)
+        {
+            trackedEntry.State = EntityState.Detached;
+        }
+
         await using var transaction = await PaymentWebhookTransaction.BeginAsync(_db, cancellationToken);
         var current = await PaymentWebhookTransaction.LockSubscriptionAsync(
             _db,
