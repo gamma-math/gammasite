@@ -273,7 +273,8 @@ app.MapStaticAssets();
 // endpoint matching can treat it as the canonical /Library route.
 app.Use(async (context, next) =>
 {
-    if (HttpMethods.IsGet(context.Request.Method) && context.Request.Path.Value == "/library")
+    if (HttpMethods.IsGet(context.Request.Method)
+        && LegacyRouteRedirects.IsNonCanonicalLibraryPath(context.Request.Path.Value ?? string.Empty))
     {
         context.Response.Redirect(
             LegacyRouteRedirects.BuildLocation("library", context.Request.QueryString.ToString()),
@@ -302,6 +303,10 @@ app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPa
 
 // Controller routes and Razor pages
 app.MapControllers();
+app.MapMethods(
+    "/api/{**path}",
+    new[] { HttpMethods.Get, HttpMethods.Head, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete, HttpMethods.Options },
+    () => Results.NotFound());
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
 app.MapFallbackToController("{*path:nonfile}", "Index", "ReactShell");
 app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/account/login{context.Request.QueryString}"));
@@ -385,4 +390,8 @@ static async Task ExecuteSchemaCommandAsync(System.Data.Common.DbConnection conn
     await using var command = connection.CreateCommand();
     command.CommandText = sql;
     await command.ExecuteNonQueryAsync();
+}
+
+public partial class Program
+{
 }

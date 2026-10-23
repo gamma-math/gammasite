@@ -25,4 +25,28 @@ public class LegacyRouteRedirectTests
             "/events/test-event?returnUrl=%2Faccount%2Fmanage",
             LegacyRouteRedirects.BuildLocation("events/test-event", "?returnUrl=%2Faccount%2Fmanage"));
     }
+
+    [Theory]
+    [InlineData("/library")]
+    [InlineData("/library/")]
+    [InlineData("/LIBRARY/")]
+    public void IsNonCanonicalLibraryPath_RecognizesLegacyLibraryVariants(string path)
+    {
+        Assert.True(LegacyRouteRedirects.IsNonCanonicalLibraryPath(path));
+    }
+
+    [Fact]
+    public void IsNonCanonicalLibraryPath_LeavesCanonicalPathUntouched()
+    {
+        Assert.False(LegacyRouteRedirects.IsNonCanonicalLibraryPath("/Library"));
+    }
+
+    [Theory]
+    [InlineData("library/", "/Library")]
+    [InlineData("Library/Index/", "/Library")]
+    [InlineData("react/library/", "/react/library")]
+    public void BuildLocation_NormalizesTrailingSlashes(string path, string expectedPath)
+    {
+        Assert.Equal(expectedPath, LegacyRouteRedirects.BuildLocation(path));
+    }
 }
