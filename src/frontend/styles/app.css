@@ -3487,28 +3487,81 @@ img {
   font-size: 1.2rem;
 }
 
-.account-subscription-expander-header,
-.account-subscription-expander-cell,
-.account-subscription-expanded-row {
-  display: none;
+.account-subscription-overview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.account-subscriptions-scroll-wrap {
-  display: block;
-  width: 0;
-  min-width: 100%;
-  max-width: 100%;
-  overflow-x: auto !important;
+.account-subscription-overview-heading h3 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+  font-size: 1.25rem;
 }
 
-.account-subscriptions-table {
-  width: 100%;
-  min-width: 1450px;
+.account-subscription-overview-heading .menu-section-title {
+  margin-bottom: 4px;
 }
 
-.account-subscriptions-table th,
-.account-subscriptions-table td {
-  white-space: nowrap;
+.account-subscription-overview-heading p:not(.menu-section-title) {
+  margin: 0;
+  color: var(--muted);
+}
+
+.account-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.account-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.account-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.account-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.account-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.account-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.account-subscription-overview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
 }
 
 .account-subscription-delete-button {
@@ -3655,94 +3708,20 @@ img {
     padding: 14px 12px 16px;
   }
 
-  .account-subscriptions-table {
-    width: 100%;
-    min-width: 0;
-    table-layout: fixed;
+  .account-subscription-overview-heading {
+    flex-direction: column;
   }
 
-  .account-subscriptions-scroll-wrap {
-    width: 100%;
-    min-width: 0;
-    overflow-x: hidden !important;
+  .account-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
-  .account-subscriptions-table th,
-  .account-subscriptions-table td {
-    padding: 10px 8px;
-    white-space: normal;
-    overflow-wrap: anywhere;
+  .account-subscription-overview-actions {
+    justify-content: stretch;
   }
 
-  .account-subscription-expander-header,
-  .account-subscription-expander-cell {
-    display: table-cell;
-    width: 38px;
-    padding-right: 0 !important;
-    padding-left: 4px !important;
-  }
-
-  .account-subscriptions-table th:nth-child(2),
-  .account-subscriptions-table td:nth-child(2) {
-    width: 28%;
-    text-align: left;
-  }
-
-  .account-subscriptions-table th:nth-child(3),
-  .account-subscriptions-table td:nth-child(3) {
-    width: 38%;
-    text-align: left;
-  }
-
-  .account-subscriptions-table th:nth-child(4),
-  .account-subscriptions-table td:nth-child(4) {
-    display: none;
-  }
-
-  .account-subscriptions-table th:nth-child(5),
-  .account-subscriptions-table td:nth-child(5) {
-    width: 34%;
-    text-align: left;
-  }
-
-  .account-subscription-mobile-hidden {
-    display: none;
-  }
-
-  .account-subscription-expanded-row {
-    display: table-row;
-  }
-
-  .account-subscription-expanded-row > td {
-    padding: 12px 12px 16px;
-    background: #f8faff;
-  }
-
-  .account-subscription-details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin: 0 0 16px;
-  }
-
-  .account-subscription-details div {
-    display: grid;
-    gap: 3px;
-  }
-
-  .account-subscription-details dt {
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-  }
-
-  .account-subscription-details dd {
-    margin: 0;
-    color: var(--ink-strong);
-    font-size: 0.85rem;
-  }
-
-  .account-subscription-expanded-row .account-subscription-delete-button {
+  .account-subscription-overview-actions .account-subscription-delete-button {
     width: 100%;
   }
 }
