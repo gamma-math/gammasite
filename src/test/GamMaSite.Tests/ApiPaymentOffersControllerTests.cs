@@ -634,7 +634,7 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
-    public async Task UpdateForAdminUpdatesOpenMobilePayAgreementsWhenRecurringAmountChanges()
+    public async Task UpdateForAdminUpdatesOnlyActiveMobilePayAgreementsWhenRecurringAmountChanges()
     {
         await using var db = CreateDatabase();
         var offer = new PaymentOffer
@@ -732,8 +732,8 @@ public sealed class ApiPaymentOffersControllerTests
             It.IsAny<CancellationToken>()), Times.Once);
         mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
             "pending-agreement",
-            17500,
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<long>(),
+            It.IsAny<CancellationToken>()), Times.Never);
         mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
             "stopped-agreement",
             It.IsAny<long>(),

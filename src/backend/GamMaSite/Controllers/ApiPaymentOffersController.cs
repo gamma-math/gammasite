@@ -354,11 +354,7 @@ namespace GamMaSite.Controllers
                     subscription.PaymentOfferId == offer.Id &&
                     !string.IsNullOrWhiteSpace(subscription.ProviderSubscriptionId) &&
                     !EF.Functions.Like(subscription.ProviderSubscriptionId, "pending:%") &&
-                    (subscription.Status == PaymentSubscriptionStatuses.Pending ||
-                     subscription.Status == PaymentSubscriptionStatuses.Active ||
-                     subscription.Status == PaymentSubscriptionStatuses.Trialing ||
-                     subscription.Status == PaymentSubscriptionStatuses.PastDue ||
-                     subscription.Status == PaymentSubscriptionStatuses.Incomplete))
+                    subscription.Status == PaymentSubscriptionStatuses.Active)
                 .ToListAsync(cancellationToken);
 
             if (subscriptions.Count == 0)
