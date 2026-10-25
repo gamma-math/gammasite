@@ -2023,6 +2023,16 @@ img {
   width: 100%;
 }
 
+.admin-subscription-row-link {
+  display: inline-flex;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.admin-subscription-details-column {
+  width: 124px;
+}
+
 .admin-subscriptions-filters {
   align-items: end;
   justify-content: flex-start;
@@ -2370,6 +2380,127 @@ img {
   text-underline-offset: 3px;
 }
 
+.admin-subscription-overview-card,
+.admin-subscription-payments-card {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-subscription-overview-heading,
+.admin-subscription-payments-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-subscription-overview-heading h2,
+.admin-subscription-payments-heading h2 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-overview-heading p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.admin-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.admin-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.admin-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.admin-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.admin-subscription-overview-item-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-subscription-technical-details {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
+}
+
+.admin-subscription-technical-details summary {
+  width: fit-content;
+  color: var(--action-blue);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.admin-subscription-technical-details summary::marker {
+  color: var(--muted);
+}
+
+.admin-subscription-technical-grid {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-heading {
+  align-items: center;
+}
+
+.admin-subscription-payments-heading .menu-section-title {
+  margin-bottom: 4px;
+}
+
+.admin-subscription-payments-table-wrap {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-table {
+  min-width: 980px;
+}
+
+.admin-subscription-payment-id {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 700px) {
   .admin-mass-fields {
     align-items: stretch;
@@ -2384,6 +2515,26 @@ img {
     align-items: flex-start;
     flex-direction: column;
     padding: 18px;
+  }
+
+  .admin-subscription-overview-card,
+  .admin-subscription-payments-card {
+    padding: 18px;
+  }
+
+  .admin-subscription-overview-heading,
+  .admin-subscription-payments-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admin-subscription-overview-item-wide {
+    grid-column: auto;
   }
 
 }
@@ -3686,16 +3837,16 @@ img {
     table-layout: fixed;
   }
 
-  .admin-subscriptions-table .admin-subscription-expander-column {
-    width: 38px;
-  }
-
   .admin-subscriptions-table .admin-subscription-user-column {
-    width: 55%;
+    width: 46%;
   }
 
   .admin-subscriptions-table .admin-subscription-provider-column {
-    width: calc(45% - 38px);
+    width: 25%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-details-column {
+    width: 29%;
   }
 
   .admin-subscriptions-table .admin-subscription-mobile-column-hidden {
@@ -3710,23 +3861,21 @@ img {
     overflow-wrap: anywhere;
   }
 
-  .admin-subscription-expander-header,
-  .admin-subscription-expander-cell {
-    display: table-cell;
-    width: 38px;
-    padding-right: 0 !important;
-    padding-left: 4px !important;
+  .admin-subscriptions-table th:nth-child(1),
+  .admin-subscriptions-table td:nth-child(1) {
+    width: 46%;
+    text-align: left;
   }
 
   .admin-subscriptions-table th:nth-child(2),
   .admin-subscriptions-table td:nth-child(2) {
-    width: 48%;
+    width: 25%;
     text-align: left;
   }
 
   .admin-subscriptions-table th:nth-child(3),
   .admin-subscriptions-table td:nth-child(3) {
-    width: 32%;
+    width: 29%;
     text-align: left;
   }
 
@@ -3734,37 +3883,11 @@ img {
     display: none;
   }
 
-  .admin-subscription-detail-row {
-    display: table-row;
-  }
-
-  .admin-subscription-detail-row > td {
-    padding: 12px 12px 16px 50px;
-    background: #f8fbff;
-  }
-
-  .admin-subscription-details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin: 0 0 16px;
-  }
-
-  .admin-subscription-details div {
-    display: grid;
-    gap: 3px;
-  }
-
-  .admin-subscription-details dt {
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-  }
-
-  .admin-subscription-details dd {
-    margin: 0;
-    color: var(--ink-strong);
-    font-size: 0.85rem;
+  .admin-subscription-row-link {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 0.78rem;
   }
 
   .admin-content-image-input-row {

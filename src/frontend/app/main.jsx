@@ -37,6 +37,7 @@ import {
 import { AdminProductsPage } from "../pages/AdminProductsPage.jsx";
 import { AdminProductEditorPage } from "../pages/AdminProductsPage.jsx";
 import { AdminSubscriptionsPage } from "../pages/AdminSubscriptionsPage.jsx";
+import { AdminSubscriptionDetailPage } from "../pages/AdminSubscriptionDetailPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -369,6 +370,15 @@ function renderRoute(route, user, isAdmin, access) {
   }
   if (path === "/admin/subscriptions") {
     return <AdminSubscriptionsPage isAdmin={access.paymentsEditAll} />;
+  }
+  const adminSubscriptionDetailMatch = path.match(/^\/admin\/subscription\/(\d+)$/);
+  if (adminSubscriptionDetailMatch) {
+    return (
+      <AdminSubscriptionDetailPage
+        isAdmin={access.paymentsEditAll}
+        subscriptionId={Number(adminSubscriptionDetailMatch[1])}
+      />
+    );
   }
   if (path === "/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;

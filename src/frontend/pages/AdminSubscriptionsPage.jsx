@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { CircleMinus, CirclePlus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { MultiSelectDropdown } from "../components/MultiSelectDropdown.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
+import { Link } from "../routes/navigation.jsx";
 import { paymentSubscriptionsApi } from "../services/api.js";
 
 const dateFormatter = new Intl.DateTimeFormat("da-DK", {
@@ -44,7 +44,6 @@ function scopeLabel(scope) {
 export function AdminSubscriptionsPage({ isAdmin }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [userFilters, setUserFilters] = useState([]);
-  const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [isLoading, setIsLoading] = useState(Boolean(isAdmin));
   const [error, setError] = useState("");
 
@@ -78,15 +77,6 @@ export function AdminSubscriptionsPage({ isAdmin }) {
     const userValue = subscription.userId || subscription.userEmail || "";
     return userFilters.length === 0 || userFilters.includes(userValue);
   }), [subscriptions, userFilters]);
-
-  function toggleExpanded(id) {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   if (!isAdmin) {
     return (
@@ -124,14 +114,13 @@ export function AdminSubscriptionsPage({ isAdmin }) {
           <div className="menu-table-wrap admin-subscriptions-list">
             <table className="menu-member-table admin-subscriptions-table">
               <colgroup>
-                <col className="admin-subscription-expander-column" />
                 <col className="admin-subscription-user-column" />
                 <col className="admin-subscription-provider-column" />
                 <col span="5" className="admin-subscription-mobile-column-hidden" />
+                <col className="admin-subscription-details-column" />
               </colgroup>
               <thead>
                 <tr>
-                  <th className="admin-subscription-expander-header" aria-label="Detaljer" />
                   <th>Bruger</th>
                   <th>Udbyder</th>
                   <th className="admin-subscription-mobile-hidden">Produkt</th>
@@ -139,64 +128,34 @@ export function AdminSubscriptionsPage({ isAdmin }) {
                   <th className="admin-subscription-mobile-hidden">Status</th>
                   <th className="admin-subscription-mobile-hidden">Senest betalt</th>
                   <th className="admin-subscription-mobile-hidden">Næste opkrævning</th>
+                  <th>Detaljer</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSubscriptions.map((subscription) => {
-                  const isExpanded = expandedIds.has(subscription.id);
-
                   return (
-                    <Fragment key={subscription.id}>
-                      <tr>
-                        <td className="admin-subscription-expander-cell">
-                          <button className="menu-member-expander" type="button" aria-label={isExpanded ? "Skjul detaljer" : "Vis detaljer"} aria-expanded={isExpanded} onClick={() => toggleExpanded(subscription.id)}>
-                            {isExpanded ? <CircleMinus size={20} /> : <CirclePlus size={20} />}
-                          </button>
-                        </td>
-                        <td>
-                          <strong>{subscription.userName || "Ukendt bruger"}</strong>
-                          <br />
-                          <span className="muted">{subscription.userEmail || subscription.userId || "—"}</span>
-                        </td>
-                        <td>{providerLabel(subscription.provider)}</td>
-                        <td className="admin-subscription-mobile-hidden">
-                          {subscription.productName || "—"}
-                          <br />
-                          <span className="muted">{scopeLabel(subscription.scope)}</span>
-                        </td>
-                        <td className="admin-subscription-mobile-hidden">{formatAmount(subscription.amountMinor, subscription.currency)}</td>
-                        <td className="admin-subscription-mobile-hidden">{subscription.status || "—"}</td>
-                        <td className="admin-subscription-mobile-hidden">{formatDate(subscription.lastPaidAt)}</td>
-                        <td className="admin-subscription-mobile-hidden">{formatDate(subscription.nextChargeAt)}</td>
-                      </tr>
-                      {isExpanded && (
-                        <tr className="admin-subscription-detail-row">
-                          <td colSpan="8" className="admin-subscription-detail-cell">
-                            <dl className="admin-subscription-details">
-                              <div><dt>Internt abonnement-id</dt><dd>{subscription.id}</dd></div>
-                              <div><dt>Bruger-id</dt><dd>{subscription.userId}</dd></div>
-                              <div><dt>Internt tilbuds-id</dt><dd>{subscription.paymentOfferId}</dd></div>
-                              <div><dt>Udbyderens abonnements-id</dt><dd>{subscription.providerSubscriptionId}</dd></div>
-                              <div><dt>Udbyderens produkt-id</dt><dd>{subscription.providerProductId}</dd></div>
-                              <div><dt>Udbyderens pris-id</dt><dd>{subscription.providerPriceId}</dd></div>
-                              <div><dt>Produkt</dt><dd>{subscription.productName || "—"}</dd></div>
-                              <div><dt>Pris</dt><dd>{formatAmount(subscription.amountMinor, subscription.currency)}</dd></div>
-                              <div><dt>Status</dt><dd>{subscription.status || "—"}</dd></div>
-                              <div><dt>Senest betalt</dt><dd>{formatDate(subscription.lastPaidAt)}</dd></div>
-                              <div><dt>Næste opkrævning</dt><dd>{formatDate(subscription.nextChargeAt)}</dd></div>
-                              <div><dt>Nuværende periode fra</dt><dd>{formatDate(subscription.currentPeriodStart)}</dd></div>
-                              <div><dt>Nuværende periode til</dt><dd>{formatDate(subscription.currentPeriodEnd)}</dd></div>
-                              <div><dt>Scope</dt><dd>{scopeLabel(subscription.scope)}</dd></div>
-                              <div><dt>Annulleres ved periodens udløb</dt><dd>{subscription.cancelAtPeriodEnd ? "Ja" : "Nej"}</dd></div>
-                              <div><dt>Oprettet</dt><dd>{formatDate(subscription.created)}</dd></div>
-                              <div><dt>Opdateret</dt><dd>{formatDate(subscription.updated)}</dd></div>
-                              <div><dt>Seneste webhook-id</dt><dd>{subscription.lastProcessedWebhookId}</dd></div>
-                              <div><dt>Seneste webhook-tidspunkt</dt><dd>{formatDate(subscription.lastProcessedWebhookAt)}</dd></div>
-                            </dl>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
+                    <tr key={subscription.id}>
+                      <td>
+                        <strong>{subscription.userName || "Ukendt bruger"}</strong>
+                        <br />
+                        <span className="muted">{subscription.userEmail || subscription.userId || "—"}</span>
+                      </td>
+                      <td>{providerLabel(subscription.provider)}</td>
+                      <td className="admin-subscription-mobile-hidden">
+                        {subscription.productName || "—"}
+                        <br />
+                        <span className="muted">{scopeLabel(subscription.scope)}</span>
+                      </td>
+                      <td className="admin-subscription-mobile-hidden">{formatAmount(subscription.amountMinor, subscription.currency)}</td>
+                      <td className="admin-subscription-mobile-hidden">{subscription.status || "—"}</td>
+                      <td className="admin-subscription-mobile-hidden">{formatDate(subscription.lastPaidAt)}</td>
+                      <td className="admin-subscription-mobile-hidden">{formatDate(subscription.nextChargeAt)}</td>
+                      <td>
+                        <Link className="frontpage-button frontpage-button-secondary admin-subscription-row-link" href={`/admin/subscription/${subscription.id}`}>
+                          Se detaljer
+                        </Link>
+                      </td>
+                    </tr>
                   );
                 })}
                 {filteredSubscriptions.length === 0 && (

@@ -101,6 +101,56 @@ namespace GamMaSite.ViewModels.Api
         public IReadOnlyList<AdminSubscriptionDto> Subscriptions { get; set; }
     }
 
+    public class AdminPaymentSubscriptionDto
+    {
+        public int Id { get; set; }
+        public string UserId { get; set; }
+        public string UserName { get; set; }
+        public string UserEmail { get; set; }
+        public string Provider { get; set; }
+        public string ProviderSubscriptionId { get; set; }
+        public int? PaymentOfferId { get; set; }
+        public string ProviderProductId { get; set; }
+        public string ProviderPriceId { get; set; }
+        public string ProductName { get; set; }
+        public long? AmountMinor { get; set; }
+        public string Currency { get; set; }
+        public string OfferType { get; set; }
+        public string Scope { get; set; }
+        public string Status { get; set; }
+        public DateTime? CurrentPeriodStart { get; set; }
+        public DateTime? CurrentPeriodEnd { get; set; }
+        public DateTime? LastPaidAt { get; set; }
+        public DateTime? NextChargeAt { get; set; }
+        public bool CancelAtPeriodEnd { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime Updated { get; set; }
+        public string LastProcessedWebhookId { get; set; }
+        public DateTime? LastProcessedWebhookAt { get; set; }
+    }
+
+    public class AdminSubscriptionPaymentDto
+    {
+        public string Id { get; set; }
+        public string Type { get; set; }
+        public string Status { get; set; }
+        public long AmountMinor { get; set; }
+        public string Currency { get; set; }
+        public string Description { get; set; }
+        public DateTime? DueAt { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public DateTime? PaidAt { get; set; }
+        public string TransactionId { get; set; }
+        public string FailureReason { get; set; }
+    }
+
+    public class AdminPaymentSubscriptionDetailDto
+    {
+        public AdminPaymentSubscriptionDto Subscription { get; set; }
+        public IReadOnlyList<AdminSubscriptionPaymentDto> Payments { get; set; }
+        public string PaymentsError { get; set; }
+    }
+
     public class RoleDto
     {
         public string Id { get; set; }

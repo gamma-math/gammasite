@@ -56,7 +56,7 @@ public sealed class MobilePayServiceTests
     }
 
     [Fact]
-    public async Task GetRecurringChargesAsync_ReadsPendingChargeDetails()
+    public async Task GetRecurringChargesAsync_ReadsFlatRecurringApiAmount()
     {
         var handler = new StubHttpMessageHandler(request =>
         {
@@ -68,7 +68,7 @@ public sealed class MobilePayServiceTests
             Assert.Equal(HttpMethod.Get, request.Method);
             Assert.Equal("/recurring/v3/agreements/agr-1/charges", request.RequestUri?.AbsolutePath);
             return JsonResponse(
-                "[{\"id\":\"charge-1\",\"agreementId\":\"agr-1\",\"status\":\"PENDING\",\"type\":\"RECURRING\",\"amount\":{\"value\":15000,\"currency\":\"DKK\"},\"description\":\"Kontingent\",\"due\":\"2027-02-01T00:00:00Z\",\"retryDays\":3,\"transactionType\":\"RESERVE_CAPTURE\"}]");
+                "[{\"id\":\"charge-1\",\"agreementId\":\"agr-1\",\"status\":\"PENDING\",\"type\":\"RECURRING\",\"amount\":15000,\"currency\":\"DKK\",\"description\":\"Kontingent\",\"due\":\"2027-02-01T00:00:00Z\",\"retryDays\":3,\"transactionType\":\"RESERVE_CAPTURE\"}]");
         });
         using var client = new HttpClient(handler)
         {
@@ -104,6 +104,8 @@ public sealed class MobilePayServiceTests
 
             Assert.Equal(HttpMethod.Delete, request.Method);
             Assert.Equal("/recurring/v3/agreements/agr-1/charges/charge-1", request.RequestUri?.AbsolutePath);
+            Assert.True(request.Headers.TryGetValues("Idempotency-Key", out var idempotencyKeys));
+            Assert.False(string.IsNullOrWhiteSpace(Assert.Single(idempotencyKeys)));
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         });
         using var client = new HttpClient(handler)

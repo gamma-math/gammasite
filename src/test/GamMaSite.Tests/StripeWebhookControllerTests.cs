@@ -302,6 +302,104 @@ public sealed class StripeWebhookControllerTests
         Assert.Single(await db.PaymentSubscriptions.ToListAsync());
     }
 
+    [Theory]
+    [InlineData("invoice.paid")]
+    [InlineData("invoice.payment_succeeded")]
+    public async Task Receive_SendsRecurringPaymentEmailForSuccessfulSubscriptionInvoice(string eventType)
+    {
+        await using var db = CreateDb();
+        var previousPaymentAt = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var paymentAt = previousPaymentAt.AddMonths(1);
+        db.Users.Add(new SiteUser
+        {
+            Id = "user-recurring-email",
+            UserName = "member@example.com",
+            Email = "member@example.com",
+            Navn = "Member",
+            Status = UserStatus.BETALT
+        });
+        db.PaymentOffers.Add(new PaymentOffer
+        {
+            Scope = PaymentOfferScopes.Membership,
+            Provider = PaymentOfferProviders.Stripe,
+            OfferType = PaymentOfferTypes.Recurring,
+            ProductName = "Kontingent",
+            AmountMinor = 15000,
+            Currency = "DKK",
+            BillingInterval = "YEAR",
+            BillingIntervalCount = 1,
+            ProviderProductId = MembershipProductId,
+            ProviderPriceId = "price_recurring",
+            IsActive = true,
+            Created = previousPaymentAt,
+            Updated = previousPaymentAt
+        });
+        db.PaymentSubscriptions.Add(new PaymentSubscription
+        {
+            UserId = "user-recurring-email",
+            Provider = PaymentOfferProviders.Stripe,
+            ProviderSubscriptionId = "sub_recurring_email",
+            Status = "active",
+            LastPaidAt = previousPaymentAt,
+            Created = previousPaymentAt,
+            Updated = previousPaymentAt
+        });
+        await db.SaveChangesAsync();
+        Assert.Equal(previousPaymentAt, (await db.PaymentSubscriptions.SingleAsync()).LastPaidAt);
+
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetSubscriptionAsync("sub_recurring_email"))
+            .ReturnsAsync(new Subscription
+            {
+                Id = "sub_recurring_email",
+                Created = previousPaymentAt,
+                Status = "active",
+                Metadata = new Dictionary<string, string>
+                {
+                    ["Product"] = MembershipProductId,
+                    ["ProductName"] = "Kontingent"
+                },
+                Items = new StripeList<SubscriptionItem>
+                {
+                    Data = new List<SubscriptionItem>
+                    {
+                        new()
+                        {
+                            Price = new Price { Id = "price_recurring", ProductId = MembershipProductId },
+                            CurrentPeriodStart = paymentAt,
+                            CurrentPeriodEnd = paymentAt.AddYears(1)
+                        }
+                    }
+                }
+            });
+        stripe.Setup(value => value.GetProductAsync(MembershipProductId))
+            .ReturnsAsync(new Product { Id = MembershipProductId, Name = "Kontingent" });
+        var email = new Mock<ISystemEmailTemplateService>();
+        var controller = CreateController(db, stripe.Object, email.Object);
+        var created = new DateTimeOffset(paymentAt).ToUnixTimeSeconds();
+        var payload = $"{{\"id\":\"evt_recurring_payment_{eventType.Replace('.', '_')}\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"in_recurring_payment\",\"object\":\"invoice\",\"created\":{created},\"parent\":{{\"subscription_details\":{{\"subscription\":\"sub_recurring_email\"}}}}}}}},\"livemode\":false,\"type\":\"{eventType}\"}}";
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = await controller.Receive(default);
+
+        Assert.IsType<OkResult>(result);
+        var updatedSubscription = await db.PaymentSubscriptions.SingleAsync();
+        Assert.Equal("user-recurring-email", updatedSubscription.UserId);
+        Assert.Equal(paymentAt, updatedSubscription.LastPaidAt);
+        email.Verify(value => value.SendPaymentConfirmationAsync(
+            "member@example.com",
+            "Member",
+            "Kontingent",
+            15000,
+            "DKK",
+            PaymentOfferProviders.Stripe,
+            paymentAt,
+            true,
+            "YEAR",
+            1,
+            null), Times.Once);
+    }
+
     [Fact]
     public async Task Receive_IgnoresOlderSubscriptionWebhook()
     {
@@ -344,7 +442,10 @@ public sealed class StripeWebhookControllerTests
         Assert.Equal("newer-webhook", subscription.LastProcessedWebhookId);
     }
 
-    private static StripeWebhookController CreateController(ApplicationDbContext db, IStripeService stripe)
+    private static StripeWebhookController CreateController(
+        ApplicationDbContext db,
+        IStripeService stripe,
+        ISystemEmailTemplateService systemEmailTemplateService = null!)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -353,7 +454,12 @@ public sealed class StripeWebhookControllerTests
             })
             .Build();
 
-        return new StripeWebhookController(db, stripe, configuration, NullLogger<StripeWebhookController>.Instance);
+        return new StripeWebhookController(
+            db,
+            stripe,
+            configuration,
+            NullLogger<StripeWebhookController>.Instance,
+            systemEmailTemplateService);
     }
 
     private static void SetRequest(StripeWebhookController controller, string payload, string signature)

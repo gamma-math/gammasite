@@ -353,7 +353,7 @@ namespace GamMaSite.Controllers
                     subscription.Provider == PaymentOfferProviders.MobilePay &&
                     subscription.PaymentOfferId == offer.Id &&
                     !string.IsNullOrWhiteSpace(subscription.ProviderSubscriptionId) &&
-                    !subscription.ProviderSubscriptionId.StartsWith("pending:", StringComparison.Ordinal) &&
+                    !EF.Functions.Like(subscription.ProviderSubscriptionId, "pending:%") &&
                     (subscription.Status == PaymentSubscriptionStatuses.Pending ||
                      subscription.Status == PaymentSubscriptionStatuses.Active ||
                      subscription.Status == PaymentSubscriptionStatuses.Trialing ||
