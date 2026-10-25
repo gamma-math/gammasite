@@ -46,6 +46,8 @@ namespace GamMaSite.Services
 
         Task<Subscription> GetSubscriptionAsync(string id);
 
+        Task<IReadOnlyList<StripeSubscriptionPayment>> GetSubscriptionPaymentsAsync(string subscriptionId);
+
         Task<bool> UpdateSubscriptionPriceAsync(string subscriptionId, string priceId);
 
         Task<Subscription> CancelSubscriptionAsync(string id);
@@ -54,6 +56,16 @@ namespace GamMaSite.Services
     /*
      * Wraps Stripe SDK calls used by the PaymentOffers API and webhooks.
      */
+    public sealed record StripeSubscriptionPayment(
+        string Id,
+        string Status,
+        long AmountMinor,
+        string Currency,
+        string Description,
+        DateTime CreatedAt,
+        DateTime? DueAt,
+        DateTime? PaidAt);
+
     public class StripeService : IStripeService
     {
         public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null)
@@ -316,6 +328,35 @@ namespace GamMaSite.Services
             {
                 return null;
             }
+        }
+
+        public async Task<IReadOnlyList<StripeSubscriptionPayment>> GetSubscriptionPaymentsAsync(string subscriptionId)
+        {
+            if (string.IsNullOrWhiteSpace(subscriptionId))
+            {
+                return Array.Empty<StripeSubscriptionPayment>();
+            }
+
+            var invoices = await new InvoiceService().ListAsync(new InvoiceListOptions
+            {
+                Subscription = subscriptionId,
+                Limit = 100
+            });
+
+            return invoices.Data
+                .OrderByDescending(invoice => invoice.Created)
+                .Select(invoice => new StripeSubscriptionPayment(
+                    invoice.Id,
+                    invoice.Status,
+                    string.Equals(invoice.Status, "paid", StringComparison.OrdinalIgnoreCase)
+                        ? invoice.AmountPaid
+                        : invoice.AmountDue,
+                    invoice.Currency,
+                    invoice.Description ?? invoice.Number,
+                    invoice.Created,
+                    invoice.DueDate,
+                    invoice.StatusTransitions?.PaidAt))
+                .ToList();
         }
 
         public async Task<bool> UpdateSubscriptionPriceAsync(string subscriptionId, string priceId)

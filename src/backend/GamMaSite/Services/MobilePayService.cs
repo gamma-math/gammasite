@@ -98,7 +98,9 @@ public sealed record MobilePayCharge(
     string Description,
     DateTime? Due,
     int RetryDays = 2,
-    string TransactionType = "DIRECT_CAPTURE");
+    string TransactionType = "DIRECT_CAPTURE",
+    string TransactionId = null,
+    string FailureReason = null);
 
 public sealed class MobilePayService : IMobilePayService
 {
@@ -348,6 +350,9 @@ public sealed class MobilePayService : IMobilePayService
             HttpMethod.Delete,
             $"/recurring/v3/agreements/{Uri.EscapeDataString(agreementId)}/charges/{Uri.EscapeDataString(chargeId)}",
             token);
+        request.Headers.Add(
+            "Idempotency-Key",
+            CreateStableIdempotencyKey($"{agreementId}:charge:{chargeId}:cancel"));
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, "annullere MobilePay-opkrævningen");
     }
@@ -512,7 +517,7 @@ public sealed class MobilePayService : IMobilePayService
 
     private static MobilePayCharge ParseCharge(JsonElement root)
     {
-        var amount = ReadAmount(root, "amount");
+        var amount = ReadChargeAmount(root);
         var retryDays = root.TryGetProperty("retryDays", out var retryDaysElement) &&
             retryDaysElement.TryGetInt32(out var parsedRetryDays)
             ? parsedRetryDays
@@ -527,7 +532,26 @@ public sealed class MobilePayService : IMobilePayService
             ReadString(root, "description"),
             ReadDateTime(root, "due"),
             retryDays,
-            ReadString(root, "transactionType") ?? "DIRECT_CAPTURE");
+            ReadString(root, "transactionType") ?? "DIRECT_CAPTURE",
+            ReadString(root, "transactionId"),
+            ReadString(root, "failureReason"));
+    }
+
+    private static (long Value, string Currency) ReadChargeAmount(JsonElement root)
+    {
+        if (!root.TryGetProperty("amount", out var amount))
+        {
+            return (0, null);
+        }
+
+        // The Recurring API returns charges as { amount: 15000, currency: "DKK" },
+        // unlike the ePayment API which nests the value and currency in an amount object.
+        if (amount.TryGetInt64(out var value))
+        {
+            return (value, ReadString(root, "currency"));
+        }
+
+        return ReadAmount(root, "amount");
     }
 
     private static string ReadString(JsonElement root, params string[] path)

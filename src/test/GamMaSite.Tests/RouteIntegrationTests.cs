@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -65,5 +66,6 @@ public sealed class RouteTestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=127.0.0.1;Port=3306;Database=gammasite_route_tests;User Id=test;Password=test;");
         builder.UseSetting("MobilePay:BaseUrl", "https://example.com");
         builder.UseSetting("GitHub:ContentAPI", "https://api.github.com/repos/example/example/contents/");
+        builder.UseSetting("ContentMediaRootPath", Path.Combine(Path.GetTempPath(), "gammasite-route-tests-media"));
     }
 }

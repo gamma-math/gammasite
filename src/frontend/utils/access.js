@@ -62,6 +62,9 @@ export function adminPermissionForPath(path) {
   if (path === "/admin/subscriptions" || path.startsWith("/admin/subscriptions/")) {
     return permissions.paymentsEditAll;
   }
+  if (path === "/admin/subscription" || path.startsWith("/admin/subscription/")) {
+    return permissions.paymentsEditAll;
+  }
   if (path === "/admin/messages") {
     return permissions.messagesEdit;
   }

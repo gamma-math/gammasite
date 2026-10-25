@@ -2023,6 +2023,16 @@ img {
   width: 100%;
 }
 
+.admin-subscription-row-link {
+  display: inline-flex;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.admin-subscription-details-column {
+  width: 124px;
+}
+
 .admin-subscriptions-filters {
   align-items: end;
   justify-content: flex-start;
@@ -2370,6 +2380,127 @@ img {
   text-underline-offset: 3px;
 }
 
+.admin-subscription-overview-card,
+.admin-subscription-payments-card {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-subscription-overview-heading,
+.admin-subscription-payments-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-subscription-overview-heading h2,
+.admin-subscription-payments-heading h2 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-overview-heading p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.admin-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.admin-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.admin-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.admin-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.admin-subscription-overview-item-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-subscription-technical-details {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
+}
+
+.admin-subscription-technical-details summary {
+  width: fit-content;
+  color: var(--action-blue);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.admin-subscription-technical-details summary::marker {
+  color: var(--muted);
+}
+
+.admin-subscription-technical-grid {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-heading {
+  align-items: center;
+}
+
+.admin-subscription-payments-heading .menu-section-title {
+  margin-bottom: 4px;
+}
+
+.admin-subscription-payments-table-wrap {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-table {
+  min-width: 980px;
+}
+
+.admin-subscription-payment-id {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 700px) {
   .admin-mass-fields {
     align-items: stretch;
@@ -2384,6 +2515,26 @@ img {
     align-items: flex-start;
     flex-direction: column;
     padding: 18px;
+  }
+
+  .admin-subscription-overview-card,
+  .admin-subscription-payments-card {
+    padding: 18px;
+  }
+
+  .admin-subscription-overview-heading,
+  .admin-subscription-payments-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admin-subscription-overview-item-wide {
+    grid-column: auto;
   }
 
 }
@@ -3336,28 +3487,81 @@ img {
   font-size: 1.2rem;
 }
 
-.account-subscription-expander-header,
-.account-subscription-expander-cell,
-.account-subscription-expanded-row {
-  display: none;
+.account-subscription-overview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.account-subscriptions-scroll-wrap {
-  display: block;
-  width: 0;
-  min-width: 100%;
-  max-width: 100%;
-  overflow-x: auto !important;
+.account-subscription-overview-heading h3 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+  font-size: 1.25rem;
 }
 
-.account-subscriptions-table {
-  width: 100%;
-  min-width: 1450px;
+.account-subscription-overview-heading .menu-section-title {
+  margin-bottom: 4px;
 }
 
-.account-subscriptions-table th,
-.account-subscriptions-table td {
-  white-space: nowrap;
+.account-subscription-overview-heading p:not(.menu-section-title) {
+  margin: 0;
+  color: var(--muted);
+}
+
+.account-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.account-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.account-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.account-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.account-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.account-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.account-subscription-overview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
 }
 
 .account-subscription-delete-button {
@@ -3504,94 +3708,20 @@ img {
     padding: 14px 12px 16px;
   }
 
-  .account-subscriptions-table {
-    width: 100%;
-    min-width: 0;
-    table-layout: fixed;
+  .account-subscription-overview-heading {
+    flex-direction: column;
   }
 
-  .account-subscriptions-scroll-wrap {
-    width: 100%;
-    min-width: 0;
-    overflow-x: hidden !important;
+  .account-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
-  .account-subscriptions-table th,
-  .account-subscriptions-table td {
-    padding: 10px 8px;
-    white-space: normal;
-    overflow-wrap: anywhere;
+  .account-subscription-overview-actions {
+    justify-content: stretch;
   }
 
-  .account-subscription-expander-header,
-  .account-subscription-expander-cell {
-    display: table-cell;
-    width: 38px;
-    padding-right: 0 !important;
-    padding-left: 4px !important;
-  }
-
-  .account-subscriptions-table th:nth-child(2),
-  .account-subscriptions-table td:nth-child(2) {
-    width: 28%;
-    text-align: left;
-  }
-
-  .account-subscriptions-table th:nth-child(3),
-  .account-subscriptions-table td:nth-child(3) {
-    width: 38%;
-    text-align: left;
-  }
-
-  .account-subscriptions-table th:nth-child(4),
-  .account-subscriptions-table td:nth-child(4) {
-    display: none;
-  }
-
-  .account-subscriptions-table th:nth-child(5),
-  .account-subscriptions-table td:nth-child(5) {
-    width: 34%;
-    text-align: left;
-  }
-
-  .account-subscription-mobile-hidden {
-    display: none;
-  }
-
-  .account-subscription-expanded-row {
-    display: table-row;
-  }
-
-  .account-subscription-expanded-row > td {
-    padding: 12px 12px 16px;
-    background: #f8faff;
-  }
-
-  .account-subscription-details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin: 0 0 16px;
-  }
-
-  .account-subscription-details div {
-    display: grid;
-    gap: 3px;
-  }
-
-  .account-subscription-details dt {
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-  }
-
-  .account-subscription-details dd {
-    margin: 0;
-    color: var(--ink-strong);
-    font-size: 0.85rem;
-  }
-
-  .account-subscription-expanded-row .account-subscription-delete-button {
+  .account-subscription-overview-actions .account-subscription-delete-button {
     width: 100%;
   }
 }
@@ -3686,16 +3816,16 @@ img {
     table-layout: fixed;
   }
 
-  .admin-subscriptions-table .admin-subscription-expander-column {
-    width: 38px;
-  }
-
   .admin-subscriptions-table .admin-subscription-user-column {
-    width: 55%;
+    width: 46%;
   }
 
   .admin-subscriptions-table .admin-subscription-provider-column {
-    width: calc(45% - 38px);
+    width: 25%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-details-column {
+    width: 29%;
   }
 
   .admin-subscriptions-table .admin-subscription-mobile-column-hidden {
@@ -3710,23 +3840,21 @@ img {
     overflow-wrap: anywhere;
   }
 
-  .admin-subscription-expander-header,
-  .admin-subscription-expander-cell {
-    display: table-cell;
-    width: 38px;
-    padding-right: 0 !important;
-    padding-left: 4px !important;
+  .admin-subscriptions-table th:nth-child(1),
+  .admin-subscriptions-table td:nth-child(1) {
+    width: 46%;
+    text-align: left;
   }
 
   .admin-subscriptions-table th:nth-child(2),
   .admin-subscriptions-table td:nth-child(2) {
-    width: 48%;
+    width: 25%;
     text-align: left;
   }
 
   .admin-subscriptions-table th:nth-child(3),
   .admin-subscriptions-table td:nth-child(3) {
-    width: 32%;
+    width: 29%;
     text-align: left;
   }
 
@@ -3734,37 +3862,11 @@ img {
     display: none;
   }
 
-  .admin-subscription-detail-row {
-    display: table-row;
-  }
-
-  .admin-subscription-detail-row > td {
-    padding: 12px 12px 16px 50px;
-    background: #f8fbff;
-  }
-
-  .admin-subscription-details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin: 0 0 16px;
-  }
-
-  .admin-subscription-details div {
-    display: grid;
-    gap: 3px;
-  }
-
-  .admin-subscription-details dt {
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 700;
-  }
-
-  .admin-subscription-details dd {
-    margin: 0;
-    color: var(--ink-strong);
-    font-size: 0.85rem;
+  .admin-subscription-row-link {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 0.78rem;
   }
 
   .admin-content-image-input-row {

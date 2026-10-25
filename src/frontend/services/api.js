@@ -234,7 +234,8 @@ export const paymentOffersApi = {
 };
 
 export const paymentSubscriptionsApi = {
-  listAdmin: () => request("/api/payment-subscriptions/admin")
+  listAdmin: () => request("/api/payment-subscriptions/admin"),
+  getAdmin: (id) => request(`/api/payment-subscriptions/admin/${encodeURIComponent(id)}`)
 };
 
 export const registrationsApi = {

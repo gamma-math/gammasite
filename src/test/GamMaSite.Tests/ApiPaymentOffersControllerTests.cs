@@ -688,6 +688,17 @@ public sealed class ApiPaymentOffersControllerTests
                 Status = PaymentSubscriptionStatuses.Canceled,
                 Created = DateTime.UtcNow,
                 Updated = DateTime.UtcNow
+            },
+            new PaymentSubscription
+            {
+                UserId = "user-pending-placeholder",
+                PaymentOfferId = offer.Id,
+                Provider = PaymentOfferProviders.MobilePay,
+                ProviderSubscriptionId = "pending:checkout-reference",
+                ProviderProductId = offer.Id.ToString(),
+                Status = PaymentSubscriptionStatuses.Pending,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow
             });
         await db.SaveChangesAsync();
 
@@ -725,6 +736,10 @@ public sealed class ApiPaymentOffersControllerTests
             It.IsAny<CancellationToken>()), Times.Once);
         mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
             "stopped-agreement",
+            It.IsAny<long>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        mobilePay.Verify(value => value.UpdateAgreementAmountAsync(
+            "pending:checkout-reference",
             It.IsAny<long>(),
             It.IsAny<CancellationToken>()), Times.Never);
         Assert.Equal(17500, (await db.PaymentOffers.SingleAsync()).AmountMinor);

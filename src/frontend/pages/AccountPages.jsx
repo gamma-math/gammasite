@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { CircleMinus, CirclePlus, KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
 import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./MembersPage.jsx";
@@ -288,7 +288,6 @@ function PaymentSubscriptionsPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState("");
   const [subscriptionToCancel, setSubscriptionToCancel] = useState(null);
-  const [expandedSubscriptionIds, setExpandedSubscriptionIds] = useState(new Set());
 
   useEffect(() => {
     let active = true;
@@ -343,96 +342,42 @@ function PaymentSubscriptionsPanel() {
     }
   };
 
-  const toggleSubscription = (subscriptionId) => {
-    setExpandedSubscriptionIds((current) => {
-      const next = new Set(current);
-      if (next.has(subscriptionId)) {
-        next.delete(subscriptionId);
-      } else {
-        next.add(subscriptionId);
-      }
-      return next;
-    });
-  };
+  const subscription = subscriptions[0];
 
   return (
     <section className="account-subscriptions-panel">
-      <h2>Mine betalingsaftaler</h2>
       {isLoading && <p className="muted">Henter dine betalingsaftaler...</p>}
       {error && <p className="status-message status-message-error">{error}</p>}
       {!isLoading && !error && (
-        <div className="account-finance-table-container">
-          <div className="menu-table-wrap account-finance-table-wrap account-subscriptions-scroll-wrap">
-            <table className="menu-member-table account-finance-table account-subscriptions-table">
-            <thead>
-              <tr>
-                <th className="account-subscription-expander-header" aria-label="Detaljer" />
-                <th>Udbyder</th>
-                <th>Produkt</th>
-                <th className="account-subscription-mobile-hidden">Pris</th>
-                <th>Status</th>
-                <th className="account-subscription-mobile-hidden">Senest betalt</th>
-                <th className="account-subscription-mobile-hidden">Næste opkrævning</th>
-                <th className="account-subscription-mobile-hidden">Oprettet</th>
-                <th className="account-subscription-mobile-hidden">Opdateret</th>
-                <th className="account-subscription-mobile-hidden" aria-label="Handlinger" />
-              </tr>
-            </thead>
-            <tbody>
-              {subscriptions.map((subscription, index) => {
-                const subscriptionKey = `${subscription.providerSubscriptionId || subscription.provider}-${subscription.created}-${index}`;
-                const isExpanded = expandedSubscriptionIds.has(subscriptionKey);
-                return (
-                  <Fragment key={subscriptionKey}>
-                    <tr>
-                      <td className="account-subscription-expander-cell">
-                        <button
-                          className="menu-member-expander"
-                          type="button"
-                          aria-label={isExpanded ? "Skjul abonnementsdetaljer" : "Vis abonnementsdetaljer"}
-                          aria-expanded={isExpanded}
-                          onClick={() => toggleSubscription(subscriptionKey)}
-                        >
-                          {isExpanded ? <CircleMinus size={18} /> : <CirclePlus size={18} />}
-                        </button>
-                      </td>
-                      <td>{subscription.provider || "—"}</td>
-                      <td>{subscription.productName || "—"}</td>
-                      <td className="account-subscription-mobile-hidden">{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</td>
-                      <td>{subscription.status || "—"}</td>
-                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.lastPaidAt)}</td>
-                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.nextChargeAt)}</td>
-                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.created)}</td>
-                      <td className="account-subscription-mobile-hidden">{formatSubscriptionDate(subscription.updated)}</td>
-                      <td className="account-subscription-mobile-hidden"><SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} /></td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="account-subscription-expanded-row">
-                        <td></td>
-                        <td colSpan="4">
-                          <dl className="account-subscription-details">
-                            <div><dt>Pris</dt><dd>{formatSubscriptionAmount(subscription.amountMinor, subscription.currency)}</dd></div>
-                            <div><dt>Senest betalt</dt><dd>{formatSubscriptionDate(subscription.lastPaidAt)}</dd></div>
-                            <div><dt>Næste opkrævning</dt><dd>{formatSubscriptionDate(subscription.nextChargeAt)}</dd></div>
-                            <div><dt>Oprettet</dt><dd>{formatSubscriptionDate(subscription.created)}</dd></div>
-                            <div><dt>Opdateret</dt><dd>{formatSubscriptionDate(subscription.updated)}</dd></div>
-                          </dl>
-                          <SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {subscriptions.length === 0 && (
-                <tr>
-                  <td colSpan="10">Du har ingen betalingsaftaler endnu.</td>
-                </tr>
-              )}
-            </tbody>
-            </table>
-          </div>
-        </div>
+        subscription ? (
+          <>
+            <div className="account-subscription-overview-heading">
+              <div>
+                <p className="menu-section-title">Betalingsaftale</p>
+                <h3>{subscription.productName || "Betalingsaftale"}</h3>
+                <p>{subscription.provider || "—"} · {subscription.status || "—"}</p>
+              </div>
+              <span className={subscriptionStatusClassName(subscription.status)}>{subscription.status || "—"}</span>
+            </div>
+
+            <dl className="account-subscription-overview-grid">
+              <SubscriptionDetailItem label="Produkt" value={subscription.productName} />
+              <SubscriptionDetailItem label="Pris" value={formatSubscriptionAmount(subscription.amountMinor, subscription.currency)} />
+              <SubscriptionDetailItem label="Udbyder" value={subscription.provider} />
+              <SubscriptionDetailItem label="Status" value={subscription.status} />
+              <SubscriptionDetailItem label="Senest betalt" value={formatSubscriptionDate(subscription.lastPaidAt)} />
+              <SubscriptionDetailItem label="Næste opkrævning" value={formatSubscriptionDate(subscription.nextChargeAt)} />
+              <SubscriptionDetailItem label="Oprettet" value={formatSubscriptionDate(subscription.created)} />
+              <SubscriptionDetailItem label="Opdateret" value={formatSubscriptionDate(subscription.updated)} />
+            </dl>
+
+            <div className="account-subscription-overview-actions">
+              <SubscriptionCancelButton subscription={subscription} deletingId={deletingId} onRequestCancel={requestCancelSubscription} />
+            </div>
+          </>
+        ) : (
+          <p className="muted">Du har ingen betalingsaftale endnu.</p>
+        )
       )}
 
       {subscriptionToCancel && (
@@ -448,6 +393,26 @@ function PaymentSubscriptionsPanel() {
       )}
     </section>
   );
+}
+
+function SubscriptionDetailItem({ label, value }) {
+  return (
+    <div className="account-subscription-overview-item">
+      <dt>{label}</dt>
+      <dd>{value || "—"}</dd>
+    </div>
+  );
+}
+
+function subscriptionStatusClassName(status) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (["canceled", "cancelled", "expired"].includes(normalizedStatus)) {
+    return "account-subscription-status account-subscription-status-terminal";
+  }
+  if (["pending", "past_due", "incomplete"].includes(normalizedStatus)) {
+    return "account-subscription-status account-subscription-status-pending";
+  }
+  return "account-subscription-status";
 }
 
 function SubscriptionCancelButton({ subscription, deletingId, onRequestCancel }) {
