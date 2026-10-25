@@ -2,15 +2,6 @@
 
 Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført test.
 
-## Forberedelse
-
-- [x] Start GamMa lokalt med `run-local.ps1`.
-- [x] Kontrollér, at testdatabasen er opdateret med betalingsprodukter og email-skabeloner.
-- [x] Start Stripe CLI med forwarding til `/api/payments/stripe/webhook`.
-- [x] Start MobilePay-tunnelen, og kontrollér at `VIPPS_WEBHOOK_URL` peger på den aktuelle tunnel.
-- [x] Kontrollér, at MobilePay-webhooken findes:
-  `src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --list-webhooks`
-
 ## Produkter og administration
 
 - [x] Åbn `/admin/products`.
@@ -25,7 +16,7 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Kontrollér succes-siden, at brugeren står som betalt, og at `SYSTEM_PAYMENT_CONFIRMATION` sendes.
 - [x] Gennemfør et medlemskab som gentagen betaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus og abonnementet på `/account/manage/subscriptions`.
-- [x] Kontrollér at `SYSTEM_PAYMENT_RECURRING` sendes med produkt, beløb, betalingsfrekvens og kontolink.
+- [o] Kontrollér at `SYSTEM_PAYMENT_RECURRING` sendes med produkt, beløb, betalingsfrekvens og kontolink.
 - [x] Opsig abonnementet fra hjemmesiden, og kontrollér at det også er opsagt hos Stripe.
 - [x] Test afbrudt betaling og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.
 - [o] Udløs eller simulér en senere Stripe-opkrævning, og kontrollér webhook, seneste betaling, næste opkrævning og email.
@@ -34,15 +25,17 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 
 - [x] Gennemfør et medlemskab med MobilePay som engangsbetaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus og `SYSTEM_PAYMENT_CONFIRMATION`.
-- [x] Find betalingen i MobilePay med:
-  `src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --status <reference>`
+- [] Find betalingen i MobilePay med:
+  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm payment-status --status <reference>`
 - [x] Gennemfør et medlemskab med MobilePay som gentagen betaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus, abonnementssiden og `SYSTEM_PAYMENT_RECURRING`.
 - [x] Kontrollér aftalen i MobilePay med:
-  `src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --agreement-status agr_sWPvEGT`
-- [x] Opsig aftalen fra hjemmesiden, og kontrollér status med `--agreement-status`.
-- [x] Kontrollér MobilePay-aftalens charges med `src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --list-charges <agreement-id>`.
-- [ ] Kontrollér at næste MobilePay-charge oprettes automatisk til 1. februar det følgende år, og at en ny charge oprettes efter næste gennemførte betaling.
+  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
+- [x] Opsig aftalen fra hjemmesiden, og kontrollér status med:
+  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
+- [x] Kontrollér MobilePay-aftalens charges med:
+  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm charges --list-charges agr_TdWANbY`.
+- [] Kontrollér at næste MobilePay-charge oprettes automatisk til 1. februar det følgende år, og at en ny charge oprettes efter næste gennemførte betaling.
 - [x] Test afbrudt betaling, og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.
 
 ## Events
@@ -59,18 +52,6 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Kontrollér at gentagne betalinger også viser betalingsfrekvens og link til kontoen.
 - [x] Send samme webhook mere end én gang, og kontrollér at status og email ikke behandles dobbelt.
 - [x] Kontrollér at login, events, nyheder, admin-sider og medlemsadgang stadig fungerer.
-- [x] Kør automatiske tests:
-  `dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj`
-
-
 
 # FIXES
 
-
-## MINOR FIXES
-
-- [x] UI for abbonnement siden.
-- [ ] I det hele taget skal menuerne kunne droppes down og up for mobiloplevelsen.
-- [ ] Siden man lander på når man trykker betalt og når man har Betalt - Der skal man under menuen på mobilen.
-- [ ] Placering for knapperne når man har trykket deltager skal der kigges på.
-- [ ] Status markør for betalt længere op ud over med knapperne.

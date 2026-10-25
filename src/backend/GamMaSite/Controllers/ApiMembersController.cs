@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Controllers
 {
@@ -25,14 +24,12 @@ namespace GamMaSite.Controllers
         private readonly UserManager<SiteUser> _userManager;
         private readonly IAccessControlService _accessControl;
         private readonly ApplicationDbContext _db;
-        private readonly IConfiguration _configuration;
 
-        public ApiMembersController(UserManager<SiteUser> userManager, IAccessControlService accessControl, ApplicationDbContext db, IConfiguration configuration = null)
+        public ApiMembersController(UserManager<SiteUser> userManager, IAccessControlService accessControl, ApplicationDbContext db)
         {
             _userManager = userManager;
             _accessControl = accessControl;
             _db = db;
-            _configuration = configuration;
         }
 
         [HttpGet]
@@ -107,11 +104,6 @@ namespace GamMaSite.Controllers
                     Updated = subscription.Updated
                 })
                 .ToListAsync();
-
-            foreach (var subscription in subscriptions)
-            {
-                subscription.ProviderDashboardUrl = BuildProviderDashboardUrl(subscription.Provider, subscription.ProviderSubscriptionId);
-            }
 
             return Ok(new AdminMemberSubscriptionsDto
             {
@@ -234,22 +226,5 @@ namespace GamMaSite.Controllers
             };
         }
 
-        private string BuildProviderDashboardUrl(string provider, string providerSubscriptionId)
-        {
-            if (!string.Equals(provider, "Stripe", StringComparison.OrdinalIgnoreCase) ||
-                string.IsNullOrWhiteSpace(providerSubscriptionId))
-            {
-                return null;
-            }
-
-            var accountId = _configuration?["StripeConfig:AccountId"]?.Trim();
-            var environment = _configuration?["StripeConfig:Environment"]?.Trim().ToLowerInvariant();
-            if (string.IsNullOrWhiteSpace(accountId) || (environment != "test" && environment != "live"))
-            {
-                return null;
-            }
-
-            return $"https://dashboard.stripe.com/{Uri.EscapeDataString(accountId)}/{environment}/subscriptions/{Uri.EscapeDataString(providerSubscriptionId)}";
-        }
     }
 }

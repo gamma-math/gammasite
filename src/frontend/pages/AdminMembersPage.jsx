@@ -214,9 +214,6 @@ export function AdminMemberSubscriptionsPage({ isAdmin, memberId }) {
                 <SubscriptionDetail label="Abonnements-id" value={subscription.providerSubscriptionId} />
                 <SubscriptionDetail label="Produkt-id" value={subscription.providerProductId} />
                 <SubscriptionDetail label="Pris-id" value={subscription.providerPriceId} />
-                {subscription.providerDashboardUrl && (
-                  <a className="frontpage-button frontpage-button-secondary admin-subscription-dashboard-link" href={subscription.providerDashboardUrl} target="_blank" rel="noreferrer">Åbn i Stripe</a>
-                )}
               </div>
             </article>
           ))}
