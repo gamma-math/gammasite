@@ -72,34 +72,24 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
   <!-- Membership -->
   <div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#173042;line-height:1.45;font-size:0.9rem;">
     <div style="padding:16px;background-color:#fffefb;border-radius:10px;border:1px solid #e9efe8;">
-      <p style="margin:0 0 8px;font-weight:bold;">Medlemskab?</p>
-      <p style="margin:0 0 8px;">Husk, at deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab.</p>
-      <p style="margin:0 0 8px;">
-        Tjek betaling og opdater dine oplysninger p&aring;
-        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">
-          GamMa.dk - <span style="font-weight:bold;">Profil</span>
-        </a>.
+      <p style="margin:0 0 8px;font-weight:bold;">Medlemskab</p>
+      <p style="margin:0 0 12px;">
+        Deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab. P&aring;
+        <a href="https://gam-ma.dk/pay" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Betal medlemskab</a>
+        kan du altid tjekke din medlemsstatus.
       </p>
-      <p style="margin:0 0 8px;">Bliv medlem s&aring;dan her:</p>
-      <ul style="margin:0 0 10px;padding-left:20px;">
-        <li>MobilePay: <strong>150 kr. til 22766</strong></li>
-        <li>Log ind p&aring; <a href="https://gam-ma.dk/" style="color:#337ab7;text-decoration:none;">gam-ma.dk</a> og betal med kort under <em>Menu &gt;&gt; Betal</em></li>
-        <li>Skan eller tryk p&aring; QR-koden nedenfor</li>
-      </ul>
-      <p style="margin:0 0 10px;font-size:0.85rem;color:#5b7383;">
-        Er du studerende, er medlemskabet gratis. Kontakt bestyrelsen, s&aring; vi kan notere det.
-      </p>
-      <p style="margin:0 0 10px;text-align:center;">
-        <a href="https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amp;amount=150&amp;comment=Medlemskab" target="_blank" style="text-decoration:none;">
-          <img src="https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/mails/img/qr/QR_medlemskab.png?raw=true"
-               alt="Medlemskab MobilePay QR"
-               width="150"
-               style="border:0;display:block;margin:0 auto;height:auto;">
+      <p style="margin:0 0 14px;text-align:center;">
+        <a href="https://gam-ma.dk/pay" target="_blank" style="display:inline-block;padding:9px 16px;background:#337ab7;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Betal medlemskab eller opret betalingsaftale
         </a>
+      </p>
+      <p style="margin:0 0 10px;">
+        Er du stadig <strong>studerende</strong>, er medlemskab gratis. Det kan du angive under
+        <a href="https://gam-ma.dk/account/manage" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Profil</a>.
       </p>
       <p style="margin:0;text-align:center;font-size:0.75rem;">
         &Oslash;nsker du at blive afmeldt eller udmeldt, s&aring; log ind p&aring;
-        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">GamMa.dk - Privatdata</a>
+        <a href="https://gam-ma.dk/account/manage/personal-data" target="_blank" style="color:#337ab7;text-decoration:none;">Privatdata</a>
         og klik <b>''slet''</b>.
       </p>
     </div>
@@ -215,28 +205,24 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
 <!-- Membership -->
 <div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#000000;line-height:1.45;font-size:0.9rem;">
   <div style="padding:16px;background-color:#fffefd;border-radius:10px;border:1px solid #f1f1f1;">
-    <p style="margin:0 0 8px;font-weight:bold;">Medlemskab?</p>
-    <p style="margin:0 0 8px;">Husk, at deltagelse i GamMa-arrangementer kræver et aktivt medlemskab.</p>
-    <p style="margin:0 0 8px;">
-      Tjek betaling og opdater dine oplysninger på
-      <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">
-        GamMa.dk → <span style="font-weight:bold;">Profil</span>
-      </a>.
+    <p style="margin:0 0 8px;font-weight:bold;">Medlemskab</p>
+    <p style="margin:0 0 12px;">
+      Deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab. P&aring;
+      <a href="https://gam-ma.dk/pay" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Betal medlemskab</a>
+      kan du altid tjekke din medlemsstatus.
     </p>
-    <p style="margin:0 0 8px;">Bliv medlem sådan her:</p>
-    <ul style="margin:0 0 10px;padding-left:20px;">
-      <li>MobilePay: <strong>150 kr. til 22766</strong></li>
-      <li>Log ind på <a href="https://gam-ma.dk/" style="color:#337ab7;text-decoration:none;">gam-ma.dk</a> og betal med kort under <em>Menu &gt;&gt; Betal</em></li>
-      <li>Skan/tryk på QR-koden nedenfor</li>
-    </ul>
-    <p style="margin:0 0 10px;text-align:center;">
-      <a href="https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amp;amount=150&amp;comment=Medlemskab" target="_blank" style="text-decoration:none;">
-        <img src="https://lh7-rt.googleusercontent.com/docsz/AD_4nXdzlpmoaRPEsXlhWfS76cmyJHopn0ji3CFV1v86x-DkurRa-LThEnuVntyyz_TKWq4tRvNRxZatoo88bb_rs3aaczNZWpWHxotuJ6quVDo4NXxpXu6ZEJsyEW1Ig5IR0xfB8fM8?key=AprQhRqq-JWjeqGFDCqqvMz9" alt="Medlemskab MobilePay QR" width="150" style="border:0;display:block;margin:0 auto;height:auto;">
+    <p style="margin:0 0 14px;text-align:center;">
+      <a href="https://gam-ma.dk/pay" target="_blank" style="display:inline-block;padding:9px 16px;background:#337ab7;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">
+        Betal medlemskab eller opret betalingsaftale
       </a>
     </p>
+    <p style="margin:0 0 10px;">
+      Er du stadig <strong>studerende</strong>, er medlemskab gratis. Det kan du angive under
+      <a href="https://gam-ma.dk/account/manage" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Profil</a>.
+    </p>
     <p style="margin:0;text-align:center;font-size:0.75rem;">
-      Ønsker du at blive afmeldt/udmeldt, så log ind på
-      <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">GamMa.dk → Privatdata</a>
+      &Oslash;nsker du at blive afmeldt eller udmeldt, s&aring; log ind p&aring;
+      <a href="https://gam-ma.dk/account/manage/personal-data" target="_blank" style="color:#337ab7;text-decoration:none;">Privatdata</a>
       og klik <b>''slet''</b>.
     </p>
   </div>
@@ -412,21 +398,27 @@ GamMas bestyrelse',
   'Din betaling af {{ProductName}} er gennemført',
   '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Din betaling af {{ProductName}} er gennemf&oslash;rt</div>
 <div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
-  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
-    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  <a href="https://gam-ma.dk/" target="_blank" style="display:block;text-decoration:none;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;max-height:180px;height:auto;padding:16px 0;border:0;outline:none;background-color:#ffffff;object-fit:contain;">
   </a>
-  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
-    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
-    <p style="margin:0 0 20px;">Tak for din betaling af <strong>{{ProductName}}</strong> hos GamMa.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #d9e7f5;background-color:#f8fbfe;">
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaler</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{Name}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Email</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{Email}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaling for</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Bel&oslash;b</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-size:18px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingssystem</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentProvider}}</td></tr>
-      <tr><td style="padding:11px 13px;color:#5c7085;">Betalingsdato</td><td style="padding:11px 13px;text-align:right;">{{PaymentDate}}</td></tr>
-    </table>
-    <p style="margin:20px 0 0;">Med venlig hilsen<br><strong>GamMa</strong></p>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px;background-color:#ffffff;border:1px solid #d9e7f5;">
+    <div style="padding:24px 24px 20px;font-size:15px;line-height:1.55;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#337ab7;">BETALINGSKVITTERING</p>
+      <p style="margin:0 0 12px;font-size:22px;font-weight:bold;color:#10233a;">Tak for din betaling</p>
+      <p style="margin:0 0 20px;">Hej <strong>{{Name}}</strong><br>Din betaling af <strong>{{ProductName}}</strong> hos GamMa er gennemf&oslash;rt.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background-color:#ffffff;font-size:13px;">
+        <thead><tr><th colspan="2" style="padding:9px 12px;background-color:#eef5fb;text-align:left;font-size:11px;letter-spacing:0.5px;color:#5c7085;">BETALINGSOVERSIGT</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betaler</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">E-mail</td><td style="padding:8px 12px;text-align:right;">{{Email}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Produkt</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingssystem</td><td style="padding:8px 12px;text-align:right;">{{PaymentProvider}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsdato</td><td style="padding:8px 12px;text-align:right;">{{PaymentDate}}</td></tr>
+          <tr><td style="padding:11px 12px;background-color:#eef5fb;font-weight:bold;color:#173042;">Betalt</td><td style="padding:11px 12px;background-color:#eef5fb;text-align:right;font-size:17px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:20px 0 0;font-size:14px;">Med venlig hilsen<br><strong>GamMa</strong></p>
+    </div>
   </div>
   <div style="height:16px;"></div>
 </div>',
@@ -456,25 +448,31 @@ GamMa',
   'Din betaling af {{ProductName}} er gennemført; fremtidige betalinger trækkes automatisk',
   '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;overflow:hidden;opacity:0;">Din betaling af {{ProductName}} er gennemf&oslash;rt; fremtidige betalinger tr&aelig;kkes automatisk</div>
 <div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
-  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
-    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  <a href="https://gam-ma.dk/" target="_blank" style="display:block;text-decoration:none;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;max-height:180px;height:auto;padding:16px 0;border:0;outline:none;background-color:#ffffff;object-fit:contain;">
   </a>
-  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
-    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
-    <p style="margin:0 0 20px;">Tak for din betaling af <strong>{{ProductName}}</strong> hos GamMa. Din betaling er gennemført, og fremtidige betalinger vil blive trukket automatisk.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #d9e7f5;background-color:#f8fbfe;">
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaler</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{Name}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Email</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{Email}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betaling for</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Bel&oslash;b</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;font-size:18px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingssystem</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentProvider}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingsdato</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{PaymentDate}}</td></tr>
-      <tr><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;color:#5c7085;">Betalingsfrekvens</td><td style="padding:11px 13px;border-bottom:1px solid #d9e7f5;text-align:right;">{{BillingPeriod}}</td></tr>
-      <tr><td style="padding:11px 13px;color:#5c7085;">Aftaletype</td><td style="padding:11px 13px;text-align:right;">Automatisk betaling</td></tr>
-    </table>
-    <p style="margin:20px 0 0;color:#4f6475;">Din betaling for <strong>{{ProductName}}</strong> vil fremover blive trukket automatisk, indtil aftalen opsiges.</p>
-    <p style="margin:20px 0 0;">Du kan altid se status og opsige din betalingsaftale på <strong><a href="https://gam-ma.dk/account/manage/subscriptions" style="color:#2485c7;">din konto</a></strong>.</p>
-    <p style="margin:20px 0 0;">Med venlig hilsen<br><strong>GamMa</strong></p>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px;background-color:#ffffff;border:1px solid #d9e7f5;">
+    <div style="padding:24px 24px 20px;font-size:15px;line-height:1.55;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#337ab7;">BETALINGSAFTALE</p>
+      <p style="margin:0 0 12px;font-size:22px;font-weight:bold;color:#10233a;">Tak for din betaling</p>
+      <p style="margin:0 0 20px;">Hej <strong>{{Name}}</strong><br>Din betaling af <strong>{{ProductName}}</strong> hos GamMa er gennemf&oslash;rt. Fremtidige betalinger bliver trukket automatisk.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background-color:#ffffff;font-size:13px;">
+        <thead><tr><th colspan="2" style="padding:9px 12px;background-color:#eef5fb;text-align:left;font-size:11px;letter-spacing:0.5px;color:#5c7085;">BETALINGSOVERSIGT</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betaler</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">E-mail</td><td style="padding:8px 12px;text-align:right;">{{Email}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Produkt</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingssystem</td><td style="padding:8px 12px;text-align:right;">{{PaymentProvider}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsdato</td><td style="padding:8px 12px;text-align:right;">{{PaymentDate}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsfrekvens</td><td style="padding:8px 12px;text-align:right;">{{BillingPeriod}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Aftaletype</td><td style="padding:8px 12px;text-align:right;">Automatisk betaling</td></tr>
+          <tr><td style="padding:11px 12px;background-color:#eef5fb;font-weight:bold;color:#173042;">Betalt</td><td style="padding:11px 12px;background-color:#eef5fb;text-align:right;font-size:17px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:20px 0 0;color:#4f6475;">Din betaling for <strong>{{ProductName}}</strong> bliver trukket automatisk, indtil betalingsaftalen opsiges.</p>
+      <p style="margin:14px 0 0;">Du kan altid se status eller opsige betalingsaftalen på <a href="https://gam-ma.dk/account/manage/subscriptions" style="color:#2485c7;font-weight:bold;text-decoration:none;">din konto</a>.</p>
+      <p style="margin:20px 0 0;font-size:14px;">Med venlig hilsen<br><strong>GamMa</strong></p>
+    </div>
   </div>
   <div style="height:16px;"></div>
 </div>',

@@ -60,8 +60,6 @@ jobs:
           SMS_APIGATEWAY_KEY: ${{ secrets.SMS_APIGATEWAY_KEY }}
           STRIPE_PUBLIC_API_KEY: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
           STRIPE_SECRET_API_KEY: ${{ secrets.STRIPE_SECRET_API_KEY }}
-          STRIPE_ACCOUNT_ID: ${{ vars.STRIPE_ACCOUNT_ID }}
-          STRIPE_ENVIRONMENT: ${{ vars.STRIPE_ENVIRONMENT }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           GH_API_KEY: ${{ secrets.GH_API_KEY }}
           ICAL_HOST_ADDRESS: ${{ secrets.ICAL_HOST_ADDRESS }}
@@ -86,8 +84,6 @@ jobs:
             'SMS_APIGATEWAY_KEY',
             'STRIPE_PUBLIC_API_KEY',
             'STRIPE_SECRET_API_KEY',
-            'STRIPE_ACCOUNT_ID',
-            'STRIPE_ENVIRONMENT',
             'STRIPE_WEBHOOK_SECRET',
             'GH_API_KEY',
             'ICAL_HOST_ADDRESS',
@@ -118,8 +114,6 @@ jobs:
           SmsSender.ApiKey: ${{ secrets.SMS_APIGATEWAY_KEY }}
           StripeConfig.PublicApiKey: ${{ secrets.STRIPE_PUBLIC_API_KEY }}
           StripeConfig.SecretApiKey: ${{ secrets.STRIPE_SECRET_API_KEY }}
-          StripeConfig.AccountId: ${{ vars.STRIPE_ACCOUNT_ID }}
-          StripeConfig.Environment: ${{ vars.STRIPE_ENVIRONMENT }}
           StripeConfig.WebhookSecret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           MobilePay.BaseUrl: ${{ vars.VIPPS_BASE_URL }}
           MobilePay.Msn: ${{ vars.VIPPS_MSN }}

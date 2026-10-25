@@ -73,8 +73,6 @@ namespace GamMaSite.ViewModels.Api
 
         public string ProviderPriceId { get; set; }
 
-        public string ProviderDashboardUrl { get; set; }
-
         public string Status { get; set; }
 
         public DateTime? CurrentPeriodStart { get; set; }

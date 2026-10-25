@@ -192,15 +192,7 @@ public class ApiMembersControllerTests
         await db.SaveChangesAsync();
         var manager = TestDoubles.UserManager();
         manager.SetupGet(value => value.Users).Returns(db.Users);
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["StripeConfig:AccountId"] = "acct_test",
-                ["StripeConfig:Environment"] = "test"
-            })
-            .Build();
-
-        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object, db, configuration)
+        var result = await new ApiMembersController(manager.Object, new Mock<IAccessControlService>().Object, db)
             .GetUserSubscriptions(member.Id);
 
         var response = Assert.IsType<AdminMemberSubscriptionsDto>(Assert.IsType<OkObjectResult>(result).Value);
@@ -208,7 +200,6 @@ public class ApiMembersControllerTests
         Assert.Equal(member.Navn, response.MemberName);
         Assert.Equal("sub_active", subscription.ProviderSubscriptionId);
         Assert.Equal("Kontingent", subscription.ProductName);
-        Assert.Equal("https://dashboard.stripe.com/acct_test/test/subscriptions/sub_active", subscription.ProviderDashboardUrl);
     }
 
     [Fact]
