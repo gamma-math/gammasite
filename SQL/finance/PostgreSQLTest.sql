@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS public.mobilepay (
     transfer_date date,
     payment_tx_id text,
     payner_name text,
+    merchant_reference text,
+    source_product text,
 
     -- false = importeret
     -- true = manuelt oprettet
@@ -334,6 +336,8 @@ ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS created_at timestamp wi
 ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS merchant_reference text;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS source_product text;
 ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;

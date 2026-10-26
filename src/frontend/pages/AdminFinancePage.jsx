@@ -3584,7 +3584,8 @@ export function FinanceAdminImportPage({ isAdmin }) {
               <li>Transfer Reference</li>
               <li>Transfer Date</li>
               <li>Payment Transaction ID</li>
-              <li>User Name</li>
+              <li>User Name (m&aring; gerne v&aelig;re tom)</li>
+              <li>Merchant Reference og Product (valgfri, bruges til at finde navn)</li>
             </ul>
             <input
               ref={mobilePayInputRef}
