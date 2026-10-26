@@ -32,6 +32,7 @@ public sealed class VippsWebhookController : ControllerBase
     private readonly IMobilePayService _mobilePayService;
     private readonly IMobilePayEventReferenceService _referenceService;
     private readonly ISystemEmailTemplateService _systemEmailTemplateService;
+    private readonly IFinanceMobilePayReferenceService _financeMobilePayReferenceService;
 
     public VippsWebhookController(
         IConfiguration configuration,
@@ -39,7 +40,8 @@ public sealed class VippsWebhookController : ControllerBase
         ApplicationDbContext db,
         IMobilePayService mobilePayService,
         IMobilePayEventReferenceService referenceService,
-        ISystemEmailTemplateService systemEmailTemplateService = null)
+        ISystemEmailTemplateService systemEmailTemplateService = null,
+        IFinanceMobilePayReferenceService financeMobilePayReferenceService = null)
     {
         _configuration = configuration;
         _logger = logger;
@@ -47,6 +49,7 @@ public sealed class VippsWebhookController : ControllerBase
         _mobilePayService = mobilePayService;
         _referenceService = referenceService;
         _systemEmailTemplateService = systemEmailTemplateService;
+        _financeMobilePayReferenceService = financeMobilePayReferenceService;
     }
 
     [HttpPost("webhook")]
@@ -220,6 +223,13 @@ public sealed class VippsWebhookController : ControllerBase
             await transaction.CommitAsync(cancellationToken);
         }
 
+        await RememberMobilePayReferenceAsync(
+            reference,
+            FinanceMobilePayReferenceTypes.OneTime,
+            null,
+            user,
+            cancellationToken);
+
         if (!wasAlreadyPaid && canSendPaymentEmail)
         {
             await SendPaymentEmailAsync(
@@ -297,6 +307,17 @@ public sealed class VippsWebhookController : ControllerBase
         {
             await transaction.CommitAsync(cancellationToken);
         }
+
+        var eventPayer = await _db.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == registration.UserId, cancellationToken);
+        await RememberMobilePayReferenceAsync(
+            reference,
+            FinanceMobilePayReferenceTypes.OneTime,
+            null,
+            eventPayer,
+            cancellationToken);
+
         if (canSendPaymentEmail)
         {
             await SendPaymentEmailAsync(
@@ -423,6 +444,12 @@ public sealed class VippsWebhookController : ControllerBase
             {
                 await transaction.CommitAsync(cancellationToken);
             }
+            await RememberMobilePayReferenceAsync(
+                chargeId,
+                FinanceMobilePayReferenceTypes.Recurring,
+                agreementId,
+                activatedUser,
+                cancellationToken);
             if (!wasAlreadyProcessed && activatedOffer != null)
             {
                 await SendPaymentEmailAsync(
@@ -532,6 +559,12 @@ public sealed class VippsWebhookController : ControllerBase
             {
                 await transaction.CommitAsync(cancellationToken);
             }
+            await RememberMobilePayReferenceAsync(
+                chargeId,
+                FinanceMobilePayReferenceTypes.Recurring,
+                agreementId,
+                user,
+                cancellationToken);
             if (!isInitialCharge && offer != null)
             {
                 await SendPaymentEmailAsync(
@@ -551,6 +584,12 @@ public sealed class VippsWebhookController : ControllerBase
         {
             await transaction.CommitAsync(cancellationToken);
         }
+        await RememberMobilePayReferenceAsync(
+            chargeId,
+            FinanceMobilePayReferenceTypes.Recurring,
+            agreementId,
+            user,
+            cancellationToken);
         if (!isInitialCharge && offer != null)
         {
             await SendPaymentEmailAsync(
@@ -560,6 +599,31 @@ public sealed class VippsWebhookController : ControllerBase
                 recurring: true,
                 cancellationToken: cancellationToken);
         }
+    }
+
+    private Task RememberMobilePayReferenceAsync(
+        string merchantReference,
+        string paymentType,
+        string agreementId,
+        SiteUser user,
+        CancellationToken cancellationToken)
+    {
+        if (_financeMobilePayReferenceService == null ||
+            user == null ||
+            string.IsNullOrWhiteSpace(merchantReference) ||
+            string.IsNullOrWhiteSpace(user.Id))
+        {
+            return Task.CompletedTask;
+        }
+
+        var payerName = string.IsNullOrWhiteSpace(user.Navn) ? user.UserName : user.Navn;
+        return _financeMobilePayReferenceService.RecordAsync(
+            merchantReference,
+            paymentType,
+            agreementId,
+            user.Id,
+            payerName,
+            cancellationToken);
     }
 
     private async Task ScheduleNextChargeAsync(

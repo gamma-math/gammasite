@@ -69,7 +69,7 @@ public sealed class VippsWebhookControllerTests
         await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
-        db.Users.Add(new SiteUser { Id = "user-member-test", UserName = "member@gamma.test", Status = UserStatus.OPRETTET });
+        db.Users.Add(new SiteUser { Id = "user-member-test", UserName = "member@gamma.test", Navn = "Membership Member", Status = UserStatus.OPRETTET });
         db.PaymentOffers.Add(new PaymentOffer
         {
             Id = 7,
@@ -95,17 +95,26 @@ public sealed class VippsWebhookControllerTests
         var referenceService = new MobilePayEventReferenceService(configuration);
         var reference = referenceService.CreateMembership("user-member-test", 7);
         var payload = $"{{\"reference\":\"{reference}\",\"name\":\"CAPTURED\"}}";
+        var financeReferences = new Mock<IFinanceMobilePayReferenceService>();
         var controller = CreateController(
             payload,
             db: db,
             mobilePayService: new Mock<IMobilePayService>().Object,
-            referenceService: referenceService);
+            referenceService: referenceService,
+            financeMobilePayReferenceService: financeReferences.Object);
 
         var result = await controller.Receive(default);
 
         Assert.IsType<OkResult>(result);
         var user = await db.Users.SingleAsync(item => item.Id == "user-member-test");
         Assert.Equal(UserStatus.BETALT, user.Status);
+        financeReferences.Verify(service => service.RecordAsync(
+            reference,
+            FinanceMobilePayReferenceTypes.OneTime,
+            null,
+            "user-member-test",
+            "Membership Member",
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -114,7 +123,7 @@ public sealed class VippsWebhookControllerTests
         await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
-        db.Users.Add(new SiteUser { Id = "user-recurring-test", UserName = "recurring@gamma.test", Status = UserStatus.OPRETTET });
+        db.Users.Add(new SiteUser { Id = "user-recurring-test", UserName = "recurring@gamma.test", Navn = "Recurring Member", Status = UserStatus.OPRETTET });
         db.PaymentOffers.Add(new PaymentOffer
         {
             Id = 8,
@@ -161,11 +170,13 @@ public sealed class VippsWebhookControllerTests
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        var financeReferences = new Mock<IFinanceMobilePayReferenceService>();
         var controller = CreateController(
             "{\"name\":\"recurring.charge-captured.v1\",\"agreementId\":\"agr_test\",\"chargeId\":\"chg_test\",\"occurred\":\"2026-10-19T08:00:00Z\"}",
             db: db,
             mobilePayService: mobilePay.Object,
-            referenceService: referenceService);
+            referenceService: referenceService,
+            financeMobilePayReferenceService: financeReferences.Object);
 
         var result = await controller.Receive(default);
 
@@ -174,6 +185,7 @@ public sealed class VippsWebhookControllerTests
             db: db,
             mobilePayService: mobilePay.Object,
             referenceService: referenceService,
+            financeMobilePayReferenceService: financeReferences.Object,
             webhookId: "test-webhook");
         var duplicateResult = await duplicateController.Receive(default);
 
@@ -193,6 +205,13 @@ public sealed class VippsWebhookControllerTests
             "DKK",
             "Kontingent",
             nextChargeAt,
+            It.IsAny<CancellationToken>()), Times.Once);
+        financeReferences.Verify(service => service.RecordAsync(
+            "chg_test",
+            FinanceMobilePayReferenceTypes.Recurring,
+            "agr_test",
+            "user-recurring-test",
+            "Recurring Member",
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -469,6 +488,7 @@ public sealed class VippsWebhookControllerTests
         ApplicationDbContext? db = null,
         IMobilePayService? mobilePayService = null,
         IMobilePayEventReferenceService? referenceService = null,
+        IFinanceMobilePayReferenceService? financeMobilePayReferenceService = null,
         string? signedDate = null,
         string webhookId = "test-webhook")
     {
@@ -487,7 +507,8 @@ public sealed class VippsWebhookControllerTests
             NullLogger<VippsWebhookController>.Instance,
             db,
             mobilePayService,
-            referenceService);
+            referenceService,
+            financeMobilePayReferenceService: financeMobilePayReferenceService);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = "POST";

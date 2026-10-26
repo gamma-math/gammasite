@@ -6,9 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GamMaSite.Data;
-using GamMaSite.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using NpgsqlTypes;
@@ -22,13 +19,9 @@ namespace GamMaSite.Services
     public sealed class FinanceImportService
     {
         private readonly string _connectionString;
-        private readonly ApplicationDbContext _applicationDb;
-        private readonly IMobilePayService _mobilePayService;
-        private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
+        private readonly IFinanceMobilePayReferenceService _mobilePayReferenceService;
         private static readonly Encoding Windows1252 = CreateWindows1252Encoding();
         private const string UnknownPayerName = "Unknown";
-        private const string OnlinePaymentsProduct = "Online payments";
-        private const string BillingAndRecurringPaymentsProduct = "Billing and Recurring Payments";
 
         private static Encoding CreateWindows1252Encoding()
         {
@@ -64,12 +57,8 @@ namespace GamMaSite.Services
 
         public FinanceImportService(
             IConfiguration configuration,
-            ApplicationDbContext applicationDb = null,
-            IMobilePayService mobilePayService = null,
-            IMobilePayEventReferenceService mobilePayReferenceService = null)
+            IFinanceMobilePayReferenceService mobilePayReferenceService = null)
         {
-            _applicationDb = applicationDb;
-            _mobilePayService = mobilePayService;
             _mobilePayReferenceService = mobilePayReferenceService;
             var configuredConnection = configuration["FinanceWrite:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceWrite"];
             if (!string.IsNullOrWhiteSpace(configuredConnection))
@@ -305,21 +294,11 @@ namespace GamMaSite.Services
                 return rows;
             }
 
-            var onlineNames = new Dictionary<string, string>(StringComparer.Ordinal);
-            var recurringNames = await ResolveRecurringChargePayersAsync(missingNames, cancellationToken);
-
-            foreach (var reference in missingNames
-                         .Where(row => IsSourceProduct(row.SourceProduct, OnlinePaymentsProduct))
-                         .Select(row => row.MerchantReference)
-                         .Where(reference => !string.IsNullOrWhiteSpace(reference))
-                         .Distinct(StringComparer.Ordinal))
-            {
-                var payerName = await ResolveOnlinePaymentPayerAsync(reference, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(payerName))
-                {
-                    onlineNames[reference] = payerName;
-                }
-            }
+            var payerNames = _mobilePayReferenceService == null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : await _mobilePayReferenceService.GetPayerNamesAsync(
+                    missingNames.Select(row => row.MerchantReference),
+                    cancellationToken);
 
             return rows.Select(row =>
             {
@@ -328,150 +307,10 @@ namespace GamMaSite.Services
                     return row;
                 }
 
-                string payerName = null;
-                if (IsSourceProduct(row.SourceProduct, OnlinePaymentsProduct))
-                {
-                    onlineNames.TryGetValue(row.MerchantReference ?? "", out payerName);
-                }
-                else if (IsSourceProduct(row.SourceProduct, BillingAndRecurringPaymentsProduct))
-                {
-                    recurringNames.TryGetValue(row.MerchantReference ?? "", out payerName);
-                }
-
+                payerNames.TryGetValue(row.MerchantReference ?? "", out var payerName);
                 return row with { PayerName = string.IsNullOrWhiteSpace(payerName) ? UnknownPayerName : payerName };
             }).ToArray();
         }
-
-        private async Task<string> ResolveOnlinePaymentPayerAsync(string merchantReference, CancellationToken cancellationToken)
-        {
-            if (_applicationDb == null || _mobilePayReferenceService == null || string.IsNullOrWhiteSpace(merchantReference))
-            {
-                return null;
-            }
-
-            try
-            {
-                if (_mobilePayReferenceService.TryParseMembership(merchantReference, out var userId, out _))
-                {
-                    return await FindUserNameAsync(userId, cancellationToken);
-                }
-
-                if (_mobilePayReferenceService.TryParse(merchantReference, out var registrationId, out _))
-                {
-                    var registration = await _applicationDb.EventRegistrations
-                        .AsNoTracking()
-                        .Where(item => item.Id == registrationId)
-                        .Select(item => item.UserId)
-                        .SingleOrDefaultAsync(cancellationToken);
-                    return await FindUserNameAsync(registration, cancellationToken);
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                // A missing historical user, invalid signed reference, or an
-                // unavailable MySQL database must not block the CSV import.
-            }
-
-            return null;
-        }
-
-        private async Task<Dictionary<string, string>> ResolveRecurringChargePayersAsync(
-            IReadOnlyCollection<MobilePayImportRow> rows,
-            CancellationToken cancellationToken)
-        {
-            var references = rows
-                .Where(row => IsSourceProduct(row.SourceProduct, BillingAndRecurringPaymentsProduct))
-                .Select(row => row.MerchantReference)
-                .Where(reference => !string.IsNullOrWhiteSpace(reference))
-                .ToHashSet(StringComparer.Ordinal);
-            var resolved = new Dictionary<string, string>(StringComparer.Ordinal);
-
-            if (references.Count == 0 || _applicationDb == null || _mobilePayService == null)
-            {
-                return resolved;
-            }
-
-            try
-            {
-                var subscriptions = await _applicationDb.PaymentSubscriptions
-                    .AsNoTracking()
-                    .Where(subscription => subscription.Provider == PaymentOfferProviders.MobilePay)
-                    .Select(subscription => new RecurringAgreementOwner(subscription.ProviderSubscriptionId, subscription.UserId))
-                    .ToListAsync(cancellationToken);
-                var userIds = subscriptions
-                    .Select(subscription => subscription.UserId)
-                    .Where(userId => !string.IsNullOrWhiteSpace(userId))
-                    .Distinct()
-                    .ToArray();
-                var users = await _applicationDb.Users
-                    .AsNoTracking()
-                    .Where(user => userIds.Contains(user.Id))
-                    .Select(user => new { user.Id, user.Navn })
-                    .ToListAsync(cancellationToken);
-                var userNames = users
-                    .Where(user => !string.IsNullOrWhiteSpace(user.Navn))
-                    .ToDictionary(user => user.Id, user => user.Navn, StringComparer.Ordinal);
-
-                foreach (var subscription in subscriptions)
-                {
-                    if (string.IsNullOrWhiteSpace(subscription.AgreementId) ||
-                        subscription.AgreementId.StartsWith("pending:", StringComparison.Ordinal) ||
-                        !userNames.TryGetValue(subscription.UserId, out var payerName))
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        var charges = await _mobilePayService.GetRecurringChargesAsync(subscription.AgreementId, cancellationToken);
-                        foreach (var charge in charges.Where(charge => references.Contains(charge.Id)))
-                        {
-                            resolved.TryAdd(charge.Id, payerName);
-                        }
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception)
-                    {
-                        // One unavailable agreement is simply left unresolved.
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                // Historical data can be imported even when lookup services are
-                // unavailable; rows without a match become Unknown below.
-            }
-
-            return resolved;
-        }
-
-        private async Task<string> FindUserNameAsync(string userId, CancellationToken cancellationToken)
-        {
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return null;
-            }
-
-            return await _applicationDb.Users
-                .AsNoTracking()
-                .Where(user => user.Id == userId)
-                .Select(user => user.Navn)
-                .SingleOrDefaultAsync(cancellationToken);
-        }
-
-        private static bool IsSourceProduct(string sourceProduct, string expectedProduct) =>
-            string.Equals(sourceProduct?.Trim(), expectedProduct, StringComparison.OrdinalIgnoreCase);
 
         private static async Task<FinancePostingSyncDto> SyncDerivedPostingsAsync(
             NpgsqlConnection connection,
@@ -892,7 +731,6 @@ namespace GamMaSite.Services
             string PayerName,
             string MerchantReference,
             string SourceProduct);
-        private sealed record RecurringAgreementOwner(string AgreementId, string UserId);
     }
 
     public sealed class FinanceImportResultDto
