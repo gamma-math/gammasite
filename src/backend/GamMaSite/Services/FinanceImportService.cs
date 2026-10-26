@@ -6,6 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GamMaSite.Data;
+using GamMaSite.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using NpgsqlTypes;
@@ -19,7 +22,13 @@ namespace GamMaSite.Services
     public sealed class FinanceImportService
     {
         private readonly string _connectionString;
+        private readonly ApplicationDbContext _applicationDb;
+        private readonly IMobilePayService _mobilePayService;
+        private readonly IMobilePayEventReferenceService _mobilePayReferenceService;
         private static readonly Encoding Windows1252 = CreateWindows1252Encoding();
+        private const string UnknownPayerName = "Unknown";
+        private const string OnlinePaymentsProduct = "Online payments";
+        private const string BillingAndRecurringPaymentsProduct = "Billing and Recurring Payments";
 
         private static Encoding CreateWindows1252Encoding()
         {
@@ -46,11 +55,22 @@ namespace GamMaSite.Services
             new CsvColumnRule("Transfer Reference", CsvValueType.Text, true, true, new[] { "transferreference", "overforselsreference" }),
             new CsvColumnRule("Transfer Date", CsvValueType.Date, true, true, new[] { "transferdate", "overforselsdato" }),
             new CsvColumnRule("Payment Transaction ID", CsvValueType.Text, true, true, new[] { "paymenttransactionid", "betalingstransaktionsid" }),
-            new CsvColumnRule("User Name", CsvValueType.Text, true, true, new[] { "username", "payername", "betalersnavn" }),
+            // Newer API exports intentionally omit the payer's name. It is
+            // resolved from the provider reference before we create postings.
+            new CsvColumnRule("User Name", CsvValueType.Text, true, false, new[] { "username", "payername", "betalersnavn" }),
+            new CsvColumnRule("Merchant Reference", CsvValueType.Text, false, false, new[] { "merchantreference" }),
+            new CsvColumnRule("Product", CsvValueType.Text, false, false, new[] { "product" }),
         };
 
-        public FinanceImportService(IConfiguration configuration)
+        public FinanceImportService(
+            IConfiguration configuration,
+            ApplicationDbContext applicationDb = null,
+            IMobilePayService mobilePayService = null,
+            IMobilePayEventReferenceService mobilePayReferenceService = null)
         {
+            _applicationDb = applicationDb;
+            _mobilePayService = mobilePayService;
+            _mobilePayReferenceService = mobilePayReferenceService;
             var configuredConnection = configuration["FinanceWrite:CONNECTION_STRING"] ?? configuration["ConnectionStrings:FinanceWrite"];
             if (!string.IsNullOrWhiteSpace(configuredConnection))
             {
@@ -109,6 +129,14 @@ namespace GamMaSite.Services
             if (bankRows.Count == 0 && mobilePayRows.Count == 0)
             {
                 throw new ArgumentException("Vælg mindst én CSV-fil med mindst én datarække.");
+            }
+
+            // Enrichment happens before the raw source rows are upserted. The
+            // subsequent posting sync only reads public.mobilepay and never
+            // calls either the application database or MobilePay.
+            if (mobilePayRows.Count > 0)
+            {
+                mobilePayRows = await EnrichMobilePayRowsAsync(mobilePayRows, cancellationToken);
             }
 
             await using var connection = new NpgsqlConnection(_connectionString);
@@ -235,14 +263,16 @@ namespace GamMaSite.Services
             {
                 await using var command = new NpgsqlCommand(@"
                     INSERT INTO public.mobilepay
-                        (date, timestamp_iso, amount, message, transaction_type, transfer_ref, transfer_date, payment_tx_id, payner_name, is_manual, created_at, updated_at)
+                        (date, timestamp_iso, amount, message, transaction_type, transfer_ref, transfer_date, payment_tx_id, payner_name, merchant_reference, source_product, is_manual, created_at, updated_at)
                     VALUES
-                        (@date, @timestamp_iso, @amount, @message, @transaction_type, @transfer_ref, @transfer_date, @payment_tx_id, @payner_name, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        (@date, @timestamp_iso, @amount, @message, @transaction_type, @transfer_ref, @transfer_date, @payment_tx_id, @payner_name, @merchant_reference, @source_product, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT (timestamp_iso, amount, message, transaction_type, transfer_ref, payment_tx_id) WHERE is_manual = false
                     DO UPDATE SET
                         date = EXCLUDED.date,
                         transfer_date = EXCLUDED.transfer_date,
                         payner_name = EXCLUDED.payner_name,
+                        merchant_reference = EXCLUDED.merchant_reference,
+                        source_product = EXCLUDED.source_product,
                         updated_at = CURRENT_TIMESTAMP
                     RETURNING (xmax = 0);", connection, transaction);
                 command.Parameters.Add("date", NpgsqlDbType.Date).Value = row.Date;
@@ -254,11 +284,194 @@ namespace GamMaSite.Services
                 command.Parameters.Add("transfer_date", NpgsqlDbType.Date).Value = row.TransferDate ?? (object)DBNull.Value;
                 command.Parameters.Add("payment_tx_id", NpgsqlDbType.Text).Value = DbText(row.PaymentTransactionId);
                 command.Parameters.Add("payner_name", NpgsqlDbType.Text).Value = DbText(row.PayerName);
+                command.Parameters.Add("merchant_reference", NpgsqlDbType.Text).Value = DbText(row.MerchantReference);
+                command.Parameters.Add("source_product", NpgsqlDbType.Text).Value = DbText(row.SourceProduct);
                 var inserted = (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
                 if (inserted) result.RowsInserted++; else result.RowsUpdated++;
             }
             return result;
         }
+
+        private async Task<IReadOnlyList<MobilePayImportRow>> EnrichMobilePayRowsAsync(
+            IReadOnlyList<MobilePayImportRow> rows,
+            CancellationToken cancellationToken)
+        {
+            var missingNames = rows
+                .Where(row => string.IsNullOrWhiteSpace(row.PayerName))
+                .ToArray();
+
+            if (missingNames.Length == 0)
+            {
+                return rows;
+            }
+
+            var onlineNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            var recurringNames = await ResolveRecurringChargePayersAsync(missingNames, cancellationToken);
+
+            foreach (var reference in missingNames
+                         .Where(row => IsSourceProduct(row.SourceProduct, OnlinePaymentsProduct))
+                         .Select(row => row.MerchantReference)
+                         .Where(reference => !string.IsNullOrWhiteSpace(reference))
+                         .Distinct(StringComparer.Ordinal))
+            {
+                var payerName = await ResolveOnlinePaymentPayerAsync(reference, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(payerName))
+                {
+                    onlineNames[reference] = payerName;
+                }
+            }
+
+            return rows.Select(row =>
+            {
+                if (!string.IsNullOrWhiteSpace(row.PayerName))
+                {
+                    return row;
+                }
+
+                string payerName = null;
+                if (IsSourceProduct(row.SourceProduct, OnlinePaymentsProduct))
+                {
+                    onlineNames.TryGetValue(row.MerchantReference ?? "", out payerName);
+                }
+                else if (IsSourceProduct(row.SourceProduct, BillingAndRecurringPaymentsProduct))
+                {
+                    recurringNames.TryGetValue(row.MerchantReference ?? "", out payerName);
+                }
+
+                return row with { PayerName = string.IsNullOrWhiteSpace(payerName) ? UnknownPayerName : payerName };
+            }).ToArray();
+        }
+
+        private async Task<string> ResolveOnlinePaymentPayerAsync(string merchantReference, CancellationToken cancellationToken)
+        {
+            if (_applicationDb == null || _mobilePayReferenceService == null || string.IsNullOrWhiteSpace(merchantReference))
+            {
+                return null;
+            }
+
+            try
+            {
+                if (_mobilePayReferenceService.TryParseMembership(merchantReference, out var userId, out _))
+                {
+                    return await FindUserNameAsync(userId, cancellationToken);
+                }
+
+                if (_mobilePayReferenceService.TryParse(merchantReference, out var registrationId, out _))
+                {
+                    var registration = await _applicationDb.EventRegistrations
+                        .AsNoTracking()
+                        .Where(item => item.Id == registrationId)
+                        .Select(item => item.UserId)
+                        .SingleOrDefaultAsync(cancellationToken);
+                    return await FindUserNameAsync(registration, cancellationToken);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // A missing historical user, invalid signed reference, or an
+                // unavailable MySQL database must not block the CSV import.
+            }
+
+            return null;
+        }
+
+        private async Task<Dictionary<string, string>> ResolveRecurringChargePayersAsync(
+            IReadOnlyCollection<MobilePayImportRow> rows,
+            CancellationToken cancellationToken)
+        {
+            var references = rows
+                .Where(row => IsSourceProduct(row.SourceProduct, BillingAndRecurringPaymentsProduct))
+                .Select(row => row.MerchantReference)
+                .Where(reference => !string.IsNullOrWhiteSpace(reference))
+                .ToHashSet(StringComparer.Ordinal);
+            var resolved = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            if (references.Count == 0 || _applicationDb == null || _mobilePayService == null)
+            {
+                return resolved;
+            }
+
+            try
+            {
+                var subscriptions = await _applicationDb.PaymentSubscriptions
+                    .AsNoTracking()
+                    .Where(subscription => subscription.Provider == PaymentOfferProviders.MobilePay)
+                    .Select(subscription => new RecurringAgreementOwner(subscription.ProviderSubscriptionId, subscription.UserId))
+                    .ToListAsync(cancellationToken);
+                var userIds = subscriptions
+                    .Select(subscription => subscription.UserId)
+                    .Where(userId => !string.IsNullOrWhiteSpace(userId))
+                    .Distinct()
+                    .ToArray();
+                var users = await _applicationDb.Users
+                    .AsNoTracking()
+                    .Where(user => userIds.Contains(user.Id))
+                    .Select(user => new { user.Id, user.Navn })
+                    .ToListAsync(cancellationToken);
+                var userNames = users
+                    .Where(user => !string.IsNullOrWhiteSpace(user.Navn))
+                    .ToDictionary(user => user.Id, user => user.Navn, StringComparer.Ordinal);
+
+                foreach (var subscription in subscriptions)
+                {
+                    if (string.IsNullOrWhiteSpace(subscription.AgreementId) ||
+                        subscription.AgreementId.StartsWith("pending:", StringComparison.Ordinal) ||
+                        !userNames.TryGetValue(subscription.UserId, out var payerName))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var charges = await _mobilePayService.GetRecurringChargesAsync(subscription.AgreementId, cancellationToken);
+                        foreach (var charge in charges.Where(charge => references.Contains(charge.Id)))
+                        {
+                            resolved.TryAdd(charge.Id, payerName);
+                        }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception)
+                    {
+                        // One unavailable agreement is simply left unresolved.
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Historical data can be imported even when lookup services are
+                // unavailable; rows without a match become Unknown below.
+            }
+
+            return resolved;
+        }
+
+        private async Task<string> FindUserNameAsync(string userId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            return await _applicationDb.Users
+                .AsNoTracking()
+                .Where(user => user.Id == userId)
+                .Select(user => user.Navn)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        private static bool IsSourceProduct(string sourceProduct, string expectedProduct) =>
+            string.Equals(sourceProduct?.Trim(), expectedProduct, StringComparison.OrdinalIgnoreCase);
 
         private static async Task<FinancePostingSyncDto> SyncDerivedPostingsAsync(
             NpgsqlConnection connection,
@@ -428,7 +641,9 @@ namespace GamMaSite.Services
                 var transferReference = Required(Value(record, "transferreference", "overforselsreference"), "Transfer Reference", record.LineNumber);
                 var transferDate = ParseDate(Required(Value(record, "transferdate", "overforselsdato"), "Transfer Date", record.LineNumber), "Transfer Date", record.LineNumber);
                 var paymentTransactionId = Required(Value(record, "paymenttransactionid", "betalingstransaktionsid"), "Payment Transaction ID", record.LineNumber);
-                var payerName = Required(Value(record, "username", "payername", "betalersnavn"), "User Name", record.LineNumber);
+                var payerName = Value(record, "username", "payername", "betalersnavn").Trim();
+                var merchantReference = Value(record, "merchantreference").Trim();
+                var sourceProduct = Value(record, "product").Trim();
                 result.Add(new MobilePayImportRow(
                     date,
                     timestamp,
@@ -438,7 +653,9 @@ namespace GamMaSite.Services
                     transferReference,
                     transferDate,
                     paymentTransactionId,
-                    payerName));
+                    payerName,
+                    merchantReference,
+                    sourceProduct));
             }
             return result;
         }
@@ -663,7 +880,19 @@ namespace GamMaSite.Services
 
         private sealed record CsvRecord(int LineNumber, Dictionary<string, string> Values);
         private sealed record BankImportRow(DateTime Date, string Text, decimal Amount, decimal Balance);
-        private sealed record MobilePayImportRow(DateTime Date, DateTime Timestamp, decimal Amount, string Message, string TransactionType, string TransferReference, DateTime? TransferDate, string PaymentTransactionId, string PayerName);
+        private sealed record MobilePayImportRow(
+            DateTime Date,
+            DateTime Timestamp,
+            decimal Amount,
+            string Message,
+            string TransactionType,
+            string TransferReference,
+            DateTime? TransferDate,
+            string PaymentTransactionId,
+            string PayerName,
+            string MerchantReference,
+            string SourceProduct);
+        private sealed record RecurringAgreementOwner(string AgreementId, string UserId);
     }
 
     public sealed class FinanceImportResultDto

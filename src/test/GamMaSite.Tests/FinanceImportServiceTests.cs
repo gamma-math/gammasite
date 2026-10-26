@@ -77,6 +77,19 @@ public sealed class FinanceImportServiceTests
     }
 
     [Fact]
+    public async Task Import_AllowsEmptyMobilePayUserNameWhenProviderReferencesArePresent()
+    {
+        using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name;Merchant Reference;Product\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Kontingent;Payment;REF-1;03-09-2026;TX-1;;chr-example;Billing and Recurring Payments\n");
+
+        // Parsing and the source-row enrichment both complete before the test
+        // reaches the unavailable finance database.
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+            FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
+
+        Assert.DoesNotContain("User Name", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Import_ParsesSemicolonAndDanishDecimalBeforeOpeningDatabase()
     {
         using var bank = Csv("Dato;Tekst;Beløb;Saldo\n03.09.2026;Test;-244,00;12.500,50\n");
