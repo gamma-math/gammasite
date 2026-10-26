@@ -247,6 +247,86 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
     ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- --------------------------------------------------------
+
+--
+-- Payment offers for events and memberships
+--
+
+CREATE TABLE IF NOT EXISTS `PaymentOffers` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `ContentItemId` int DEFAULT NULL,
+  `ContentItemScopeKey` int GENERATED ALWAYS AS (coalesce(`ContentItemId`, 0)) STORED,
+  `Scope` varchar(32) NOT NULL DEFAULT 'EVENT',
+  `Provider` varchar(32) NOT NULL,
+  `OfferType` varchar(32) NOT NULL,
+  `LinkLabel` varchar(128) DEFAULT NULL,
+  `ProductName` varchar(256) NOT NULL,
+  `ProviderProductId` varchar(128) DEFAULT NULL,
+  `ProviderPriceId` varchar(128) DEFAULT NULL,
+  `ProviderPaymentLinkId` varchar(128) DEFAULT NULL,
+  `ProviderPaymentUrl` text,
+  `AmountMinor` bigint DEFAULT NULL,
+  `Currency` varchar(3) DEFAULT NULL,
+  `BillingInterval` varchar(32) DEFAULT NULL,
+  `BillingIntervalCount` int DEFAULT NULL,
+  `IsActive` tinyint NOT NULL DEFAULT '1',
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType`
+    (`Scope`, `ContentItemScopeKey`, `Provider`, `OfferType`),
+  KEY `IX_PaymentOffers_ContentItemId` (`ContentItemId`),
+  KEY `IX_PaymentOffers_ProviderPriceId` (`Provider`, `ProviderPriceId`),
+  CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
+    FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
+    ON DELETE RESTRICT ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Current membership subscription state
+--
+
+CREATE TABLE IF NOT EXISTS `PaymentSubscriptions` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(128)
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_general_ci
+    NOT NULL,
+  `PaymentOfferId` int DEFAULT NULL,
+  `Provider` varchar(32) NOT NULL,
+  `ProviderSubscriptionId` varchar(128) NOT NULL,
+  `ProductName` varchar(256) DEFAULT NULL,
+  `ProviderProductId` varchar(128) DEFAULT NULL,
+  `ProviderPriceId` varchar(128) DEFAULT NULL,
+  `Status` varchar(32) NOT NULL,
+  `CurrentPeriodStart` datetime DEFAULT NULL,
+  `CurrentPeriodEnd` datetime DEFAULT NULL,
+  `NextChargeAt` datetime DEFAULT NULL,
+  `LastPaidAt` datetime DEFAULT NULL,
+  `CancelAtPeriodEnd` tinyint NOT NULL DEFAULT '0',
+  `LastProcessedWebhookId` varchar(256) DEFAULT NULL,
+  `LastProcessedWebhookAt` datetime DEFAULT NULL,
+  `Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UX_PaymentSubscriptions_UserId` (`UserId`),
+  UNIQUE KEY `UX_PaymentSubscriptions_ProviderSubscriptionId` (`Provider`, `ProviderSubscriptionId`),
+  KEY `IX_PaymentSubscriptions_Status` (`Status`),
+  KEY `IX_PaymentSubscriptions_ProviderPriceId` (`ProviderPriceId`),
+  KEY `IX_PaymentSubscriptions_PaymentOfferId` (`PaymentOfferId`),
+  CONSTRAINT `FK_PaymentSubscriptions_PaymentOffers_PaymentOfferId`
+    FOREIGN KEY (`PaymentOfferId`) REFERENCES `PaymentOffers` (`Id`)
+    ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_PaymentSubscriptions_AspNetUsers_UserId`
+    FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS `EventRegistrations` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ContentItemId` int NOT NULL,

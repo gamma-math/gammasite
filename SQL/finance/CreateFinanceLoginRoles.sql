@@ -41,6 +41,7 @@ ALTER TABLE public.account DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_account DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.forecast DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mobilepay DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mobilepay_reference_lookup DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postering_group DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posteringer DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.import_history DISABLE ROW LEVEL SECURITY;
@@ -49,6 +50,7 @@ REVOKE ALL ON TABLE
     public.account,
     public.bank_account,
     public.mobilepay,
+    public.mobilepay_reference_lookup,
     public.postering_group,
     public.forecast,
     public.posteringer,
@@ -75,6 +77,7 @@ GRANT SELECT ON TABLE
     public.account,
     public.bank_account,
     public.mobilepay,
+    public.mobilepay_reference_lookup,
     public.postering_group,
     public.forecast,
     public.posteringer,
@@ -91,6 +94,7 @@ GRANT INSERT, UPDATE, DELETE ON TABLE
     public.account,
     public.bank_account,
     public.mobilepay,
+    public.mobilepay_reference_lookup,
     public.postering_group,
     public.forecast,
     public.posteringer,

@@ -2,7 +2,7 @@
 
 GamMaSite is the website for Alumneforeningen GamMa. The current application is a hybrid ASP.NET Core site with a React/Vite frontend served from the backend.
 
-The active user experience is primarily React-based under `/react/*`, while ASP.NET Core still owns hosting, Identity, API endpoints, payments, email, and selected security-sensitive Razor flows.
+The active user experience is primarily React-based on canonical public routes without a `/react` prefix, while ASP.NET Core still owns hosting, Identity, API endpoints, payments, email, and selected security-sensitive Razor flows. Legacy `/react/*` URLs permanently redirect to their canonical equivalents.
 
 ## Technology
 
@@ -29,6 +29,8 @@ Only tracked project folders/files are listed here:
 |-- src/
 |   |-- backend/GamMaSite/         ASP.NET Core application and deployed web assets.
 |   |-- frontend/                  React/Vite source application.
+|   |-- scripts/
+|   |   `-- vipps/                  MobilePay/Vipps CLI, Docker setup, and pytest tests.
 |   `-- test/GamMaSite.Tests/      Backend unit tests for APIs, services, Identity, and Finance validation.
 |-- GamMaSite.sln                  Solution file for the backend project.
 |-- global.json                    .NET SDK version pin.

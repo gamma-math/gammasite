@@ -83,7 +83,6 @@ const backendDescriptions = {
   "ViewModels/Api/EventRegistrationDtos.cs": "API-kontrakter for eventtilmeldinger og deltageroplysninger.",
   "ViewModels/Api/MembershipDtos.cs": "API-kontrakter for medlemmer, roller og rettigheder.",
   "ViewModels/Api/SiteFeatureDtos.cs": "API-kontrakter for konfigurerbare funktioner i sitet.",
-  "ViewModels/ProductInfo.cs": "Viewmodel med produktinformation til betalingsflowet."
 };
 
 function backendPurpose(path) {

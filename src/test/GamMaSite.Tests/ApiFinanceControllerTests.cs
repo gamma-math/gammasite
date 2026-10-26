@@ -55,7 +55,7 @@ public sealed class ApiFinanceControllerTests
 
     [Theory]
     [InlineData("bank", "eksempel-bankkontoudtog.csv", "Dato;Tekst;Bel")]
-    [InlineData("mobilepay", "eksempel-mobilepay-transaktioner.csv", "Date;Timestamp;Amount")]
+    [InlineData("mobilepay", "eksempel-mobilepay-transaktioner.csv", "User Name;Merchant Reference;Product")]
     public void DownloadImportTemplate_ReturnsUtf8Csv(string source, string fileName, string expectedHeader)
     {
         var result = Controller(new DefaultHttpContext()).DownloadImportTemplate(source);

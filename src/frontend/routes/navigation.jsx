@@ -1,27 +1,36 @@
+import { authHref } from "../utils/authNavigation.js";
+
 export const adminSections = [
   {
     items: [
-      { href: "/react/admin/events", label: "Events", permission: "content.edit" },
-      { href: "/react/admin/news", label: "Nyheder", permission: "content.edit" },
+      { href: "/admin/events", label: "Events", permission: "content.edit" },
+      { href: "/admin/news", label: "Nyheder", permission: "content.edit" },
+    ],
+  },
+  {
+    label: "Betalingsaftaler",
+    items: [
+      { href: "/admin/products", label: "Produkter", permission: "payments.edit.all" },
+      { href: "/admin/subscriptions", label: "Betalingsaftaler", permission: "payments.edit.all" },
     ],
   },
   {
     label: "Beskeder",
     items: [
-      { href: "/react/admin/messages", label: "Beskeder", permission: "messages.edit" },
-      { href: "/react/admin/templates", label: "Besked Skabeloner", permission: "email_templates.edit" },
+      { href: "/admin/messages", label: "Beskeder", permission: "messages.edit" },
+      { href: "/admin/templates", label: "Besked Skabeloner", permission: "email_templates.edit" },
     ],
   },
   {
     label: "Medlemmer",
     items: [
-      { href: "/react/admin/users", label: "Medlemmer", permission: "roles.edit" },
-      { href: "/react/admin/roles", label: "Roller", permission: "roles.edit" },
+      { href: "/admin/users", label: "Medlemmer", permission: "roles.edit" },
+      { href: "/admin/roles", label: "Roller", permission: "roles.edit" },
     ],
   },
   {
     label: "Finans",
-    items: [{ href: "/react/admin/finance", label: "Finans", permission: "finance.view.all" }],
+    items: [{ href: "/admin/finance", label: "Finans", permission: "finance.view.all" }],
   },
 ];
 
@@ -39,20 +48,35 @@ export function navigate(href) {
 /**
  * Internal link component for React routes with normal anchor fallback behavior.
  */
-export function Link({ href, className, children, ...props }) {
+export function Link({ href, className, children, onClick, ...props }) {
+  const targetHref = withAuthReturnUrl(href);
+
   return (
     <a
-      href={href}
+      href={targetHref}
       className={className}
       onClick={(event) => {
-        if (href.startsWith("/react")) {
+        if (targetHref.startsWith("/")) {
           event.preventDefault();
-          navigate(href);
+          navigate(targetHref);
         }
+        onClick?.(event);
       }}
       {...props}
     >
       {children}
     </a>
   );
+}
+
+function withAuthReturnUrl(href) {
+  if (href !== "/account/login" && href !== "/account/register") {
+    return href;
+  }
+
+  const location = window.location;
+  const currentParams = new URLSearchParams(location.search);
+  const existingReturnUrl = currentParams.get("returnUrl") ?? currentParams.get("ReturnUrl");
+  const isAuthPage = location.pathname === "/account/login" || location.pathname === "/account/register";
+  return authHref(href, isAuthPage && existingReturnUrl ? existingReturnUrl : undefined, location);
 }

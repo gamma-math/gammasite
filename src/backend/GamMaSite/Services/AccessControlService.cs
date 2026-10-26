@@ -19,6 +19,7 @@ namespace GamMaSite.Services
         public const string RolesEdit = "roles.edit";
         public const string FinanceViewAll = "finance.view.all";
         public const string FinanceEditAll = "finance.edit.all";
+        public const string PaymentsEditAll = "payments.edit.all";
     }
 
     public static class PermissionPolicies
@@ -38,6 +39,7 @@ namespace GamMaSite.Services
         public const string RolesOrMessages = "permission.roles-or-messages";
         public const string FinanceViewAll = "permission.finance.view.all";
         public const string FinanceEditAll = "permission.finance.edit.all";
+        public const string PaymentsEditAll = "permission.payments.edit.all";
     }
 
     public sealed class PermissionRequirement : IAuthorizationRequirement

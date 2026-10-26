@@ -37,16 +37,16 @@ export function AdminRolesPage({ isAdmin }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
   }
 
   return (
-    <AdminLayout active="/react/admin/roles" canWrite={true}>
+    <AdminLayout active="/admin/roles" canWrite={true}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Roller</p>
         </div>
-        <Link className="menu-create-button" href="/react/admin/roles/new">
+        <Link className="menu-create-button" href="/admin/roles/new">
           <Plus size={16} />
           Opret ny
         </Link>
@@ -68,7 +68,7 @@ export function AdminRolesPage({ isAdmin }) {
                 <td>{role.name}</td>
                 <td>{role.id}</td>
                 <td className="table-actions">
-                  <Link className="admin-table-button" href={`/react/admin/roles/${role.id}/edit`}>Opdater</Link>
+                  <Link className="admin-table-button" href={`/admin/roles/${role.id}/edit`}>Opdater</Link>
                   {!isProtectedRole(role) && (
                     <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => remove(role)}>
                       <Trash2 size={14} />
@@ -140,7 +140,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
 
     try {
       const role = await rolesApi.create(name);
-      navigate(`/react/admin/roles/${role.id}/edit`);
+      navigate(`/admin/roles/${role.id}/edit`);
     } catch (reason) {
       setError(reason.message);
     }
@@ -180,7 +180,7 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
   }
 
   if (!isAdmin) {
-    return <AdminLayout active="/react/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
+    return <AdminLayout active="/admin/roles" canWrite={false}><p className="status-message status-message-warning">Du har ikke rettigheder til at administrere roller.</p></AdminLayout>;
   }
 
   const selectedRole = roles.find((role) => role.id === roleId);
@@ -191,13 +191,13 @@ export function AdminRolesEditorPage({ isAdmin, roleId }) {
   const filteredAvailableMembers = filterUsers(availableMembers, memberSearch);
 
   return (
-    <AdminLayout active="/react/admin/roles" canWrite={true}>
+    <AdminLayout active="/admin/roles" canWrite={true}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Roller</p>
           <h1>{isNew ? "Opret ny rolle" : `Opdater ${selectedRole?.name ?? "rolle"}`}</h1>
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/roles">Tilbage til oversigt</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/admin/roles">Tilbage til oversigt</Link>
       </div>
 
       {isNew ? (
@@ -352,6 +352,7 @@ function permissionLabel(code) {
   return {
     "content.edit": "Events og nyheder",
     "registrations.edit": "Tilmeldinger",
+    "payments.edit.all": "Betalinger",
     "finance.view.all": "Se alle finanser",
     "finance.edit.all": "Rediger alle finanser",
     "messages.edit": "Beskeder",
@@ -363,6 +364,7 @@ function permissionLabel(code) {
 const PERMISSION_ORDER = [
   "content.edit",
   "registrations.edit",
+  "payments.edit.all",
   "messages.edit",
   "email_templates.edit",
   "roles.edit",

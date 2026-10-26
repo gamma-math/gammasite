@@ -1,0 +1,173 @@
+import { useEffect, useMemo, useState } from "react";
+import { MultiSelectDropdown } from "../components/MultiSelectDropdown.jsx";
+import { AdminLayout } from "../layouts/AdminLayout.jsx";
+import { Link } from "../routes/navigation.jsx";
+import { paymentSubscriptionsApi } from "../services/api.js";
+
+const dateFormatter = new Intl.DateTimeFormat("da-DK", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatDate(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : dateFormatter.format(date);
+}
+
+function formatAmount(amountMinor, currency) {
+  if (amountMinor == null) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("da-DK", {
+    style: "currency",
+    currency: (currency || "DKK").toUpperCase(),
+  }).format(amountMinor / 100);
+}
+
+function providerLabel(provider) {
+  if (provider === "MOBILEPAY") return "MobilePay";
+  if (provider === "STRIPE") return "Stripe";
+  return provider || "—";
+}
+
+function scopeLabel(scope) {
+  if (scope === "MEMBERSHIP") return "Medlemskab";
+  if (scope === "EVENT") return "Event";
+  return scope || "—";
+}
+
+export function AdminSubscriptionsPage({ isAdmin }) {
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [userFilters, setUserFilters] = useState([]);
+  const [isLoading, setIsLoading] = useState(Boolean(isAdmin));
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    setIsLoading(true);
+    paymentSubscriptionsApi.listAdmin()
+      .then((result) => setSubscriptions(Array.isArray(result) ? result : []))
+      .catch((loadError) => setError(loadError.message || "Betalingsaftalerne kunne ikke hentes."))
+      .finally(() => setIsLoading(false));
+  }, [isAdmin]);
+
+  const userOptions = useMemo(() => {
+    const options = new Map();
+    for (const subscription of subscriptions) {
+      const value = subscription.userId || subscription.userEmail || "";
+      if (!value) continue;
+      options.set(value, {
+        id: value,
+        title: subscription.userName || subscription.userEmail || subscription.userId,
+        summary: subscription.userEmail || subscription.userId,
+      });
+    }
+    return [...options.entries()]
+      .sort((left, right) => left[1].title.localeCompare(right[1].title, "da"))
+      .map(([, item]) => item);
+  }, [subscriptions]);
+
+  const filteredSubscriptions = useMemo(() => subscriptions.filter((subscription) => {
+    const userValue = subscription.userId || subscription.userEmail || "";
+    return userFilters.length === 0 || userFilters.includes(userValue);
+  }), [subscriptions, userFilters]);
+
+  if (!isAdmin) {
+    return (
+      <AdminLayout active="/admin/subscriptions" canWrite={false}>
+        <p className="status-message status-message-warning">Du har ikke rettigheder til at se betalingsaftaler.</p>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout active="/admin/subscriptions" canWrite>
+      <div className="menu-panel-header">
+        <div>
+          <p className="menu-section-title">Betalingsaftaler</p>
+        </div>
+      </div>
+
+      {isLoading && <p className="muted">Henter betalingsaftaler...</p>}
+      {error && <p className="status-message status-message-error">{error}</p>}
+
+      {!isLoading && !error && (
+        <>
+          <div className="menu-table-toolbar admin-products-filters admin-subscriptions-filters">
+            <MultiSelectDropdown
+              label="Bruger"
+              placeholder="Alle brugere"
+              items={userOptions}
+              selectedIds={userFilters}
+              onChange={setUserFilters}
+              showMeta={false}
+              searchable
+            />
+          </div>
+
+          <div className="menu-table-wrap admin-subscriptions-list">
+            <table className="menu-member-table admin-subscriptions-table">
+              <colgroup>
+                <col className="admin-subscription-user-column" />
+                <col className="admin-subscription-provider-column" />
+                <col span="5" className="admin-subscription-mobile-column-hidden" />
+                <col className="admin-subscription-details-column" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Bruger</th>
+                  <th>Udbyder</th>
+                  <th className="admin-subscription-mobile-hidden">Produkt</th>
+                  <th className="admin-subscription-mobile-hidden">Pris</th>
+                  <th className="admin-subscription-mobile-hidden">Status</th>
+                  <th className="admin-subscription-mobile-hidden">Senest betalt</th>
+                  <th className="admin-subscription-mobile-hidden">Næste opkrævning</th>
+                  <th>Detaljer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSubscriptions.map((subscription) => {
+                  return (
+                    <tr key={subscription.id}>
+                      <td>
+                        <strong>{subscription.userName || "Ukendt bruger"}</strong>
+                        <br />
+                        <span className="muted">{subscription.userEmail || subscription.userId || "—"}</span>
+                      </td>
+                      <td>{providerLabel(subscription.provider)}</td>
+                      <td className="admin-subscription-mobile-hidden">
+                        {subscription.productName || "—"}
+                        <br />
+                        <span className="muted">{scopeLabel(subscription.scope)}</span>
+                      </td>
+                      <td className="admin-subscription-mobile-hidden">{formatAmount(subscription.amountMinor, subscription.currency)}</td>
+                      <td className="admin-subscription-mobile-hidden">{subscription.status || "—"}</td>
+                      <td className="admin-subscription-mobile-hidden">{formatDate(subscription.lastPaidAt)}</td>
+                      <td className="admin-subscription-mobile-hidden">{formatDate(subscription.nextChargeAt)}</td>
+                      <td>
+                        <Link className="frontpage-button frontpage-button-secondary admin-subscription-row-link" href={`/admin/subscription/${subscription.id}`}>
+                          Se detaljer
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredSubscriptions.length === 0 && (
+                  <tr>
+                    <td colSpan="8" className="muted">Ingen betalingsaftaler matcher filtrene.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </AdminLayout>
+  );
+}

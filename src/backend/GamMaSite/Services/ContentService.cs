@@ -6,6 +6,7 @@ using GamMaSite.Data;
 using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
@@ -32,13 +33,20 @@ namespace GamMaSite.Services
         private readonly IContentMediaService _contentMedia;
         private readonly ILogger<ContentService> _logger;
         private readonly IEventRegistrationService _eventRegistrations;
+        private readonly IStripeService _stripeService;
 
-        public ContentService(ApplicationDbContext db, IContentMediaService contentMedia = null, ILogger<ContentService> logger = null, IEventRegistrationService eventRegistrations = null)
+        public ContentService(
+            ApplicationDbContext db,
+            IContentMediaService contentMedia = null,
+            ILogger<ContentService> logger = null,
+            IEventRegistrationService eventRegistrations = null,
+            IStripeService stripeService = null)
         {
             _db = db;
             _contentMedia = contentMedia;
             _logger = logger;
             _eventRegistrations = eventRegistrations ?? new EventRegistrationService(db);
+            _stripeService = stripeService;
         }
 
         public async Task<IReadOnlyList<ContentItem>> GetPublishedAsync(string type, bool frontPageOnly = false)
@@ -239,16 +247,244 @@ namespace GamMaSite.Services
             }
 
             var pictureUrl = item.PictureUrl;
-            _db.ContentItems.Remove(item);
-            await _db.SaveChangesAsync();
+            var links = await _db.ContentLinks.Where(link => link.ContentItemId == id).ToListAsync();
+            var registrations = await _db.EventRegistrations.Where(registration => registration.ContentItemId == id).ToListAsync();
+            var offers = await _db.PaymentOffers.Where(offer => offer.ContentItemId == id).ToListAsync();
+            var stripeTargets = await GetStripeCleanupTargetsAsync(offers);
+            var deactivatedPrices = new List<string>();
+            var deactivatedProducts = new List<string>();
+            IDbContextTransaction transaction = null;
+            var providerCleanupStarted = false;
 
-            if (_contentMedia != null)
+            try
             {
-                await DeleteLocalFileBestEffortAsync(pictureUrl);
+                transaction = await BeginContentTransactionAsync();
+
+                _db.ContentLinks.RemoveRange(links);
+                _db.EventRegistrations.RemoveRange(registrations);
+                _db.PaymentOffers.RemoveRange(offers);
+                _db.ContentItems.Remove(item);
+                await _db.SaveChangesAsync();
+
+                if (stripeTargets.Prices.Count > 0 || stripeTargets.Products.Count > 0)
+                {
+                    if (_stripeService == null)
+                    {
+                        throw new ContentDeletionException("Stripe-tjenesten er ikke tilgængelig, så eventets betalingsprodukter ikke kunne arkiveres.");
+                    }
+
+                    foreach (var priceId in stripeTargets.Prices)
+                    {
+                        providerCleanupStarted = true;
+                        if (!await TryDeactivateStripePriceAsync(priceId))
+                        {
+                            throw new ContentDeletionException("En Stripe-pris kunne ikke arkiveres.");
+                        }
+
+                        deactivatedPrices.Add(priceId);
+                    }
+
+                    foreach (var productId in stripeTargets.Products)
+                    {
+                        providerCleanupStarted = true;
+                        if (!await TryDeactivateStripeProductAsync(productId))
+                        {
+                            throw new ContentDeletionException("Et Stripe-produkt kunne ikke arkiveres.");
+                        }
+
+                        deactivatedProducts.Add(productId);
+                    }
+                }
+
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync();
+                }
+
+                if (_contentMedia != null)
+                {
+                    await DeleteLocalFileBestEffortAsync(pictureUrl);
+                }
+
+                return true;
+            }
+            catch (ContentDeletionException)
+            {
+                await RestoreStripeDefinitionsAsync(deactivatedPrices, deactivatedProducts);
+                await RollbackContentDeletionAsync(transaction, item, links, registrations, offers);
+                throw;
+            }
+            catch (Exception exception) when (providerCleanupStarted)
+            {
+                _logger?.LogError(exception,
+                    "Content deletion failed after Stripe cleanup started for content item {ContentItemId}; attempting compensation.",
+                    id);
+
+                await RestoreStripeDefinitionsAsync(deactivatedPrices, deactivatedProducts);
+                await RollbackContentDeletionAsync(transaction, item, links, registrations, offers);
+
+                throw new ContentDeletionException(
+                    "Eventet kunne ikke slettes sikkert, fordi databaseændringen fejlede efter Stripe-arkiveringen.",
+                    exception);
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+        }
+
+        private async Task RollbackContentDeletionAsync(
+            IDbContextTransaction transaction,
+            ContentItem item,
+            IReadOnlyCollection<ContentLink> links,
+            IReadOnlyCollection<EventRegistration> registrations,
+            IReadOnlyCollection<PaymentOffer> offers)
+        {
+            try
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync();
+                }
+                else
+                {
+                    await RestoreDeletedContentAsync(item, links, registrations, offers);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogError(exception,
+                    "Could not roll back content deletion for content item {ContentItemId}.",
+                    item.Id);
+            }
+        }
+
+        private async Task<StripeCleanupTargets> GetStripeCleanupTargetsAsync(IReadOnlyCollection<PaymentOffer> offers)
+        {
+            var stripeOffers = offers
+                .Where(offer => string.Equals(offer.Provider, PaymentOfferProviders.Stripe, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var offerIds = offers.Select(offer => offer.Id).ToList();
+            var productIds = stripeOffers
+                .Select(offer => offer.ProviderProductId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var priceIds = stripeOffers
+                .Select(offer => offer.ProviderPriceId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var usedProductIds = productIds.Count == 0
+                ? new List<string>()
+                : await _db.PaymentOffers
+                    .Where(offer => !offerIds.Contains(offer.Id)
+                        && offer.Provider == PaymentOfferProviders.Stripe
+                        && productIds.Contains(offer.ProviderProductId))
+                    .Select(offer => offer.ProviderProductId)
+                    .Distinct()
+                    .ToListAsync();
+            var usedPriceIds = priceIds.Count == 0
+                ? new List<string>()
+                : await _db.PaymentOffers
+                    .Where(offer => !offerIds.Contains(offer.Id)
+                        && offer.Provider == PaymentOfferProviders.Stripe
+                        && priceIds.Contains(offer.ProviderPriceId))
+                    .Select(offer => offer.ProviderPriceId)
+                    .Distinct()
+                    .ToListAsync();
+
+            return new StripeCleanupTargets(
+                priceIds.Where(id => !usedPriceIds.Contains(id, StringComparer.Ordinal)).ToList(),
+                productIds.Where(id => !usedProductIds.Contains(id, StringComparer.Ordinal)).ToList());
+        }
+
+        private async Task<bool> TryDeactivateStripePriceAsync(string priceId)
+        {
+            try
+            {
+                return await _stripeService.DeactivatePriceAsync(priceId);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "Could not archive Stripe price {PriceId} while deleting content.", priceId);
+                return false;
+            }
+        }
+
+        private async Task<bool> TryDeactivateStripeProductAsync(string productId)
+        {
+            try
+            {
+                return await _stripeService.DeactivateProductAsync(productId);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "Could not archive Stripe product {ProductId} while deleting content.", productId);
+                return false;
+            }
+        }
+
+        private async Task RestoreStripeDefinitionsAsync(
+            IReadOnlyCollection<string> priceIds,
+            IReadOnlyCollection<string> productIds)
+        {
+            if (_stripeService == null)
+            {
+                return;
             }
 
-            return true;
+            foreach (var priceId in priceIds)
+            {
+                try
+                {
+                    await _stripeService.SetPriceActiveAsync(priceId, true);
+                }
+                catch (Exception exception)
+                {
+                    _logger?.LogWarning(exception, "Could not restore Stripe price {PriceId} after content deletion failed.", priceId);
+                }
+            }
+
+            foreach (var productId in productIds)
+            {
+                try
+                {
+                    await _stripeService.SetProductActiveAsync(productId, true);
+                }
+                catch (Exception exception)
+                {
+                    _logger?.LogWarning(exception, "Could not restore Stripe product {ProductId} after content deletion failed.", productId);
+                }
+            }
         }
+
+        private async Task RestoreDeletedContentAsync(
+            ContentItem item,
+            IReadOnlyCollection<ContentLink> links,
+            IReadOnlyCollection<EventRegistration> registrations,
+            IReadOnlyCollection<PaymentOffer> offers)
+        {
+            _db.ChangeTracker.Clear();
+            _db.ContentItems.Add(item);
+            _db.ContentLinks.AddRange(links);
+            _db.EventRegistrations.AddRange(registrations);
+            _db.PaymentOffers.AddRange(offers);
+            await _db.SaveChangesAsync();
+        }
+
+        private Task<IDbContextTransaction> BeginContentTransactionAsync()
+        {
+            return _db.Database.IsRelational()
+                ? _db.Database.BeginTransactionAsync()
+                : Task.FromResult<IDbContextTransaction>(null);
+        }
+
+        private sealed record StripeCleanupTargets(IReadOnlyList<string> Prices, IReadOnlyList<string> Products);
 
         private async Task DeleteLocalFileBestEffortAsync(string pictureUrl)
         {
@@ -276,7 +512,12 @@ namespace GamMaSite.Services
 
         private static IQueryable<ContentItem> IncludeLinks(IQueryable<ContentItem> query)
         {
-            return query.Include(item => item.Links.OrderBy(link => link.SortOrder));
+            return query
+                .Include(item => item.Links.OrderBy(link => link.SortOrder))
+                .Include(item => item.PaymentOffers
+                    .Where(offer => offer.IsActive)
+                    .OrderBy(offer => offer.Created)
+                    .ThenBy(offer => offer.Id));
         }
 
         private static int? ValidateMaxParticipants(int? maxParticipants)
@@ -328,6 +569,12 @@ namespace GamMaSite.Services
         private static string SecureUrl(string value)
         {
             var url = Required(value, nameof(value));
+            if (url.StartsWith("/", StringComparison.Ordinal)
+                && !url.StartsWith("//", StringComparison.Ordinal))
+            {
+                return url;
+            }
+
             if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed) || parsed.Scheme != Uri.UriSchemeHttps)
             {
                 throw new ArgumentException("Content links must use an absolute HTTPS URL");

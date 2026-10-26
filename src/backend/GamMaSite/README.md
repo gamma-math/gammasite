@@ -10,12 +10,12 @@ Only tracked project folders/files are listed here:
 GamMaSite/
 |-- Areas/
 |   `-- Identity/                  ASP.NET Core Identity Razor pages and account/security flows.
-|-- Controllers/                   React shell routing, API controllers, Stripe endpoints, and legacy MVC controllers.
+|-- Controllers/                   React shell routing, API controllers, and payment webhooks.
 |-- Data/                          EF Core database context and Identity/data conversion configuration.
 |-- Models/                        Identity extensions, content entities, registrations, templates, enums, and legacy view models.
 |-- Properties/                    Launch, publish, and service dependency configuration.
 |-- Services/                      Business and integration services for content, email, SMS, Stripe, calendar, and library data.
-|-- ViewModels/                    API DTOs and legacy payment view models.
+|-- ViewModels/                    API DTOs.
 |-- Views/
 |   |-- React/                     Razor shell that loads the built React app.
 |   |-- Shared/                    Shared Razor layout/error partials.
@@ -25,7 +25,6 @@ GamMaSite/
 |   |-- Messages/                  Legacy MVC views.
 |   |-- Calendar/                  Legacy MVC views.
 |   |-- Library/                   Legacy MVC views.
-|   `-- Pay/                       Legacy/payment Razor views.
 |-- wwwroot/                       Static assets, shared CSS/JS, third-party libraries, logo, and built React assets.
 |-- Program.cs                     Service registration, middleware, redirects, routing, and startup.
 `-- GamMaSite.csproj               Backend project and NuGet dependencies.
@@ -33,8 +32,8 @@ GamMaSite/
 
 ## Active Runtime Responsibilities
 
-* Host the React app and map `/react/*` routes to the React shell.
-* Redirect selected old MVC/Identity URLs to React routes.
+* Host the React app on canonical public routes without a `/react` prefix.
+* Permanently redirect legacy `/react/*` URLs and selected old MVC/Identity URLs to the canonical routes.
 * Provide authenticated JSON APIs for React.
 * Manage users, roles, account state, and security through ASP.NET Core Identity.
 * Persist content, links, registrations, templates, and user data through EF Core/MySQL.

@@ -4,6 +4,7 @@ export function ConfirmationDialog({
   title,
   message,
   confirmLabel = "Bekræft",
+  busyLabel = "Afmelder...",
   onConfirm,
   onCancel,
   isBusy = false
@@ -33,7 +34,7 @@ export function ConfirmationDialog({
               Annuller
             </button>
             <button className="profile-button profile-button-danger" type="button" onClick={onConfirm} disabled={isBusy}>
-              {isBusy ? "Afmelder..." : confirmLabel}
+              {isBusy ? busyLabel : confirmLabel}
             </button>
           </div>
         </div>

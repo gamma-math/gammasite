@@ -5,6 +5,7 @@ const links = [
   ["Forside", "index.html", "home"],
   ["QA-vejledninger", "qa/index.html", "qa"],
   ["Events og nyheder", "qa/events-news.html", "qa.events"],
+  ["Priser", "qa/priser.html", "qa.prices"],
   ["Tilmeldinger", "qa/tilmeldinger.html", "qa.registrations"],
   ["Beskeder", "qa/beskeder.html", "qa.messages"],
   ["Beskedskabeloner", "qa/skabeloner.html", "qa.templates"],
@@ -18,8 +19,10 @@ const links = [
   ["CSV-import", "finans/import.html", "finance.import"],
   ["Budgetter", "finans/budgetter.html", "finance.budgets"],
   ["Systemoversigt", "systemer/index.html", "systems"],
+  ["Pages", "systemer/pages.html", "pages"],
   ["Lokal opsætning", "kodebase/lokal-opsætning.html", "code.setup"],
   ["Deploy Hjemmesiden", "kodebase/pipeline.html", "code.pipeline"],
+  ["Webhooks", "kodebase/webhooks.html", "code.webhooks"],
   ["GitHub Pages", "kodebase/github-pages.html", "code.pages"],
   ["Kodestruktur", "kodebase/struktur.html", "code.structure"],
   [".github/", "kodebase/mappe-github.html", "code.github"],
@@ -33,9 +36,9 @@ const links = [
 ];
 
 const groups = [
-  ["QA-vejledninger", ["qa", "qa.events", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
+  ["QA-vejledninger", ["qa", "qa.events", "qa.prices", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
   ["Finans", ["finance", "finance.postings", "finance.groups", "finance.export", "finance.import", "finance.budgets"]],
-  ["Teknik", ["systems", "code.setup", "code.pipeline", "code.pages", "code.incident"]],
+  ["Teknik", ["systems", "pages", "code.setup", "code.pipeline", "code.webhooks", "code.pages", "code.incident"]],
   ["Kodestruktur", ["code.structure", "code.github", "code.vscode", "code.docs", "code.sql", "code.backend", "code.frontend", "code.backend-tests", "code.frontend-tests"]]
 ];
 
@@ -75,6 +78,66 @@ document.querySelectorAll("[data-file-search-input]").forEach((input) => {
     let visibleRows = 0;
     rows.forEach((row) => {
       const matches = !query || row.dataset.fileSearch.includes(query);
+      row.hidden = !matches;
+      if (matches) visibleRows += 1;
+    });
+    empty.hidden = visibleRows > 0;
+  });
+});
+
+document.querySelectorAll("[data-pages-search-input]").forEach((input) => {
+  const documentation = input.closest(".pages-documentation");
+  const table = documentation.querySelector("[data-pages-table]");
+  const rows = [...table.querySelectorAll("tbody tr")];
+  const empty = documentation.querySelector("[data-pages-search-empty]");
+  const publicAccountPages = [
+    "/account/login",
+    "/account/register",
+    "/account/forgot-password",
+    "/account/resend-email-confirmation",
+  ];
+  const menuRoots = [
+    "/events",
+    "/news",
+    "/members",
+    "/calendar",
+    "/Library",
+    "/library",
+    "/bibliotek",
+    "/referater",
+    "/pay",
+    "/pay/kontingent-success",
+    "/finance",
+  ];
+
+  rows.forEach((row) => {
+    const firstUrl = row.querySelector("code")?.textContent.trim() ?? "";
+    const area = firstUrl.startsWith("/admin")
+      ? "Admin"
+      : firstUrl.startsWith("/Identity/Account/Manage/")
+        ? "Profil"
+      : publicAccountPages.includes(firstUrl)
+        ? "Generel"
+      : firstUrl.startsWith("/account")
+        ? "Profil"
+        : menuRoots.some((root) => firstUrl === root || (root !== "/" && firstUrl.startsWith(`${root}/`)))
+            || /^\/events\/[^/]+\/pay\/[^/]+$/.test(firstUrl)
+            ? "Menu"
+            : "Generel";
+    const areaCell = document.createElement("td");
+    areaCell.textContent = area;
+    row.insertBefore(areaCell, row.cells[1]);
+    const implementationCell = document.createElement("td");
+    implementationCell.textContent = firstUrl.startsWith("/Identity/") ? "Legacy" : "React";
+    row.insertBefore(implementationCell, row.cells[2]);
+    row.dataset.pagesSearch = row.textContent.trim().toLocaleLowerCase("da-DK");
+  });
+
+  input.addEventListener("input", () => {
+    const query = input.value.trim().toLocaleLowerCase("da-DK");
+    let visibleRows = 0;
+    rows.forEach((row) => {
+      const matches = !query || row.dataset.pagesSearch.includes(query);
       row.hidden = !matches;
       if (matches) visibleRows += 1;
     });

@@ -9,6 +9,7 @@ import { formatDate } from "../utils/format.js";
 import { hasAnyPermission, permissions } from "../utils/access.js";
 import { sortRegistrations } from "../utils/registrationSort.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
+import { loginHref } from "../utils/authNavigation.js";
 
 const registrationTypes = [
   { value: "ATTENDEE", label: "Deltager" },
@@ -31,6 +32,8 @@ export function EventRegistrationsPage({ slug, user }) {
   const [capacitySummary, setCapacitySummary] = useState(null);
   const [registrationToRemove, setRegistrationToRemove] = useState(null);
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
+  const [registrationToMarkUnpaid, setRegistrationToMarkUnpaid] = useState(null);
+  const [isUpdatingPaymentStatus, setIsUpdatingPaymentStatus] = useState(false);
   const [error, setError] = useState("");
   const canViewRegistrations = user.isAuthenticated;
   const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
@@ -84,9 +87,33 @@ export function EventRegistrationsPage({ slug, user }) {
       const updated = await registrationsApi.update(item.id, registration.id, payload);
       setRegistrations((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
       setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+      return true;
     } catch (requestError) {
       setError(requestError.message);
+      return false;
     }
+  }
+
+  function requestRegisteredChange(registration, registered) {
+    if (registration.registered && !registered) {
+      setRegistrationToMarkUnpaid(registration);
+      return;
+    }
+
+    updateRegistration(registration, { registered });
+  }
+
+  async function markRegistrationUnpaid() {
+    if (!registrationToMarkUnpaid || isUpdatingPaymentStatus) {
+      return;
+    }
+
+    setIsUpdatingPaymentStatus(true);
+    const updated = await updateRegistration(registrationToMarkUnpaid, { registered: false });
+    if (updated) {
+      setRegistrationToMarkUnpaid(null);
+    }
+    setIsUpdatingPaymentStatus(false);
   }
 
   async function unregisterRegistration(registration) {
@@ -138,33 +165,33 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   if (error && !item) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="muted">Henter tilmeldte...</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="muted">Henter tilmeldte...</p></MenuLayout>;
   }
 
   if (!user.isAuthenticated) {
     return (
-      <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+      <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
         <div className="menu-panel-header">
           <div>
             <p className="menu-section-title">Begivenheder</p>
             <h1>{item.title}</h1>
             <p className="menu-panel-lead">Log ind for at se tilmeldte.</p>
           </div>
-          <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
+          <Link className="menu-attend-button menu-attend-button-primary" href={loginHref()}>
             <LogIn size={16} />
             Login
-          </a>
+          </Link>
         </div>
       </MenuLayout>
     );
   }
 
   if (!canViewRegistrations) {
-    return <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
+    return <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}><p className="status-message status-message-warning">Du har ikke rettigheder til at se tilmeldte.</p></MenuLayout>;
   }
 
   const sortedRegistrations = sortRegistrations(registrations);
@@ -180,7 +207,7 @@ export function EventRegistrationsPage({ slug, user }) {
     .slice(0, 8);
 
   return (
-    <MenuLayout active="/react/events" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/events" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Begivenheder</p>
@@ -193,7 +220,7 @@ export function EventRegistrationsPage({ slug, user }) {
             </p>
           )}
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href={`/react/events/${item.slug}`}>
+        <Link className="frontpage-button frontpage-button-secondary" href={`/events/${item.slug}`}>
           Begivenheden
         </Link>
       </div>
@@ -289,7 +316,7 @@ export function EventRegistrationsPage({ slug, user }) {
                     <td className="menu-registration-desktop-cell">
                       {canEditRegistrations ? (
                         <div className="menu-registration-action-group">
-                          <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                          <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
                           {registrationOpen && (
                             <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                               Afmeld
@@ -311,7 +338,7 @@ export function EventRegistrationsPage({ slug, user }) {
                             <RegistrationTypeSelect registration={registration} updateRegistration={updateRegistration} />
                           </label>
                           <div className="menu-registration-action-group menu-registration-unregister-action">
-                            <RegistrationRegisteredToggle registration={registration} updateRegistration={updateRegistration} />
+                            <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
                             {registrationOpen && (
                               <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                                 Afmeld
@@ -346,6 +373,18 @@ export function EventRegistrationsPage({ slug, user }) {
           isBusy={isRemovingRegistration}
         />
       )}
+
+      {registrationToMarkUnpaid && (
+        <ConfirmationDialog
+          title="Markér som ikke betalt"
+          message={`Er du sikker på, at ${attendeeName(registrationToMarkUnpaid)} skal registreres som ikke betalt?`}
+          confirmLabel="Ja, markér som ikke betalt"
+          busyLabel="Opdaterer..."
+          onConfirm={markRegistrationUnpaid}
+          onCancel={() => !isUpdatingPaymentStatus && setRegistrationToMarkUnpaid(null)}
+          isBusy={isUpdatingPaymentStatus}
+        />
+      )}
     </MenuLayout>
   );
 }
@@ -358,10 +397,10 @@ function RegistrationTypeSelect({ registration, updateRegistration }) {
   );
 }
 
-function RegistrationRegisteredToggle({ registration, updateRegistration }) {
+function RegistrationRegisteredToggle({ registration, onChange }) {
   return (
     <label className="menu-registration-check">
-      <input type="checkbox" checked={registration.registered} onChange={(event) => updateRegistration(registration, { registered: event.target.checked })} />
+      <input type="checkbox" checked={registration.registered} onChange={(event) => onChange(registration, event.target.checked)} />
       <span>{registration.registered ? "Ja" : "Nej"}</span>
     </label>
   );

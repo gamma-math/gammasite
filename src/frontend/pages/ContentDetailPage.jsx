@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarPlus, Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
+import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { contentApi, registrationsApi } from "../services/api.js";
@@ -8,7 +9,8 @@ import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
 import { isRegistrationOpen } from "../utils/registrationOpen.js";
-import { confirmedRegistrationCount, isWaitlisted } from "../utils/registrationCapacity.js";
+import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
+import { loginHref } from "../utils/authNavigation.js";
 
 /**
  * Shows a single event or news article with registration and related-link actions.
@@ -20,6 +22,8 @@ export function ContentDetailPage({ slug, type, user }) {
   const [capacitySummary, setCapacitySummary] = useState(null);
   const [eventAccess, setEventAccess] = useState(null);
   const [calendarHref, setCalendarHref] = useState("");
+  const [showUnregisterConfirmation, setShowUnregisterConfirmation] = useState(false);
+  const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -71,27 +75,68 @@ export function ContentDetailPage({ slug, type, user }) {
   }, [item]);
 
   if (error) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="status-message status-message-error">{error}</p></MenuLayout>;
   }
 
   if (!item) {
-    return <MenuLayout active={type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
+    return <MenuLayout active={type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat"><p className="muted">Henter indhold...</p></MenuLayout>;
   }
 
   const canEditContent = hasPermission(user, permissions.contentEdit) || Boolean(eventAccess?.canEditEvent);
   const canViewRegistrations = user.isAuthenticated;
   const isEvent = item.type === "EVENT";
   const hasImage = Boolean(item.pictureUrl);
-  const registrationsPath = `/react/events/${item.slug}/registrations`;
-  const editPath = `/react/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
+  const registrationsPath = `/events/${item.slug}/registrations`;
+  const editPath = `/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
   const registrationOpen = isRegistrationOpen(item);
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? confirmedRegistrationCount(registrations);
   const isCapacityReached = maxParticipants != null && (capacitySummary?.isFull ?? confirmedParticipants >= maxParticipants);
+  const canPayForEvent = isEvent
+    && registrationOpen
+    && user.isAuthenticated
+    && Boolean(registration)
+    && registration.registered === false
+    && countsTowardsCapacity(registration);
+  const paymentCompleted = isEvent
+    && user.isAuthenticated
+    && Boolean(registration)
+    && registration.registered === true
+    && countsTowardsCapacity(registration);
+  const registrationType = registration?.registrationType ?? registration?.RegistrationType;
+  const eventRegistrationStatus = isEvent && registration
+    ? paymentCompleted
+      ? "Betalt"
+      : registrationType === "WAITLISTED"
+        ? "Venteliste"
+        : registrationType === "INTERESTED"
+          ? "Interesseret"
+          : countsTowardsCapacity(registration) && registration.registered === false
+            ? "Tilmeldt"
+            : ""
+    : "";
+  const paymentOfferLinks = (item.paymentOffers ?? item.PaymentOffers ?? [])
+    .filter((offer) => offer.isActive !== false && offer.paymentUrl)
+    .map((offer) => ({
+      id: `payment-offer-${offer.id}`,
+      label: offer.linkLabel || "Betalingslink",
+      url: offer.paymentUrl,
+      type: "PAYMENT"
+    }));
+  const visibleLinks = [...(item.links ?? []), ...paymentOfferLinks].filter((link) => {
+    const isManagedPaymentLink = isEventPaymentLink(link);
+    return !isManagedPaymentLink || canPayForEvent || paymentCompleted;
+  });
 
-  async function toggleRegistration() {
-    if (registration) {
+  async function unregisterCurrentUser() {
+    if (!registration || isRemovingRegistration) {
+      return;
+    }
+
+    setIsRemovingRegistration(true);
+    setError("");
+    try {
       await registrationsApi.unregister(item.id);
       setRegistration(null);
       const [nextRegistrations, nextSummary] = await Promise.all([
@@ -100,20 +145,36 @@ export function ContentDetailPage({ slug, type, user }) {
       ]);
       setRegistrations(nextRegistrations);
       setCapacitySummary(nextSummary);
+      setShowUnregisterConfirmation(false);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsRemovingRegistration(false);
+    }
+  }
+
+  async function toggleRegistration() {
+    if (registration) {
+      setShowUnregisterConfirmation(true);
       return;
     }
 
-    const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
-    setRegistration(next);
-    setRegistrations((current) => {
-      const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
-      return [...withoutCurrentUser, next];
-    });
-    setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+    setError("");
+    try {
+      const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
+      setRegistration(next);
+      setRegistrations((current) => {
+        const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
+        return [...withoutCurrentUser, next];
+      });
+      setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   return (
-    <MenuLayout active={item.type === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
+    <MenuLayout active={item.type === "EVENT" ? "/events" : "/news"} isAuthenticated={user.isAuthenticated} contentClassName="menu-content-flat">
       <article className="menu-detail-card">
         <div className="menu-detail-hero">
           <div>
@@ -139,59 +200,88 @@ export function ContentDetailPage({ slug, type, user }) {
                 {item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}
                 {item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}
                 {maxParticipants != null && <div><strong>Pladser:</strong> {confirmedParticipants}/{maxParticipants}</div>}
+                {eventRegistrationStatus && <div className="event-registration-status-line"><strong>Status:</strong> {eventRegistrationStatus}</div>}
                 {isCapacityReached && <div className="event-capacity-message">Der er ikke flere ledige pladser. Du kan skrive dig på venteliste.</div>}
               </div>
             )}
-            {isEvent && (
-              <div className="menu-detail-bottom-bar">
-                <div className="menu-attendee-preview" aria-hidden="true">
-                  {registrations.filter((eventRegistration) => !isWaitlisted(eventRegistration)).slice(0, 4).map((eventRegistration) => (
-                    <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
-                  ))}
-                </div>
-                <div className="menu-detail-footer-actions">
-                  {registrationOpen && user.isAuthenticated ? (
-                    <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
-                      {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
-                      {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
-                    </button>
-                  ) : registrationOpen ? (
-                    <a className="menu-attend-button menu-attend-button-primary" href={`/Identity/Account/Login?ReturnUrl=${encodeURIComponent(window.location.pathname)}`}>
-                      <LogIn size={16} />
-                      {isCapacityReached ? "Venteliste" : "Tilmeld"}
-                    </a>
-                  ) : null}
-                  {canViewRegistrations && (
-                    <Link className="menu-attend-button" href={registrationsPath}>
-                      <Users size={16} />
-                      Tilmeldte
-                    </Link>
-                  )}
-                  {canEditContent && (
-                    <Link className="menu-attend-button" href={editPath}>
-                      <Edit3 size={16} />
-                      Rediger
-                    </Link>
-                  )}
-                  <a className="menu-attend-button" href={calendarHref} download={calendarFileName}>
-                    <CalendarPlus size={16} />
-                    Kalender
-                  </a>
-                </div>
-              </div>
-            )}
           </div>
-          {(item.links ?? []).length > 0 && (
+          {visibleLinks.length > 0 && (
             <aside className="menu-detail-side" aria-label="Event links">
-            {(item.links ?? []).map((link) => (
-              <a className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`} href={link.url} target="_blank" rel="noreferrer" key={link.id}>
-                <span>{shortLinkLabel(link.label)}</span>
-              </a>
+            {visibleLinks.map((link) => (
+              isEventPaymentLink(link) && paymentCompleted ? (
+                <div className="menu-detail-side-link menu-detail-side-link-payment menu-detail-side-link-paid" aria-label="Betaling gennemført" key={link.id}>
+                  <span>{shortLinkLabel(link.label)}</span>
+                  <strong>Betalt</strong>
+                </div>
+              ) : (
+                <a
+                  className={`menu-detail-side-link menu-detail-side-link-${link.type?.toLowerCase()}`}
+                  href={link.url}
+                  target={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/") ? undefined : "_blank"}
+                  rel={link.type?.toUpperCase() === "PAYMENT" && link.url?.startsWith("/") ? undefined : "noreferrer"}
+                  key={link.id}
+                >
+                  <span>{shortLinkLabel(link.label)}</span>
+                </a>
+              )
             ))}
             </aside>
           )}
+          {isEvent && (
+            <div className="menu-detail-bottom-bar">
+              <div className="menu-attendee-preview" aria-hidden="true">
+                {registrations.filter((eventRegistration) => !isWaitlisted(eventRegistration)).slice(0, 4).map((eventRegistration) => (
+                  <span className="menu-registration-avatar" title={attendeeName(eventRegistration)} key={eventRegistration.id}>{attendeeInitials(eventRegistration)}</span>
+                ))}
+              </div>
+              <div className="menu-detail-footer-actions">
+                {registrationOpen && user.isAuthenticated ? (
+                  <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
+                    {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
+                    {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}
+                  </button>
+                ) : registrationOpen ? (
+                  <Link className="menu-attend-button menu-attend-button-primary" href={loginHref()}>
+                    <LogIn size={16} />
+                    {isCapacityReached ? "Venteliste" : "Tilmeld"}
+                  </Link>
+                ) : null}
+                {canViewRegistrations && (
+                  <Link className="menu-attend-button" href={registrationsPath}>
+                    <Users size={16} />
+                    Tilmeldte
+                  </Link>
+                )}
+                {canEditContent && (
+                  <Link className="menu-attend-button" href={editPath}>
+                    <Edit3 size={16} />
+                    Rediger
+                  </Link>
+                )}
+                <a className="menu-attend-button" href={calendarHref} download={calendarFileName}>
+                  <CalendarPlus size={16} />
+                  Kalender
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </article>
+      {showUnregisterConfirmation && registration && (
+        <ConfirmationDialog
+          title={isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld tilmelding"}
+          message={isWaitlisted(registration)
+            ? "Er du sikker på, at du vil afmelde dig fra ventelisten?"
+            : paymentCompleted
+              ? <>Er du sikker på, at du vil afmelde din tilmelding?<br /><br /><strong>Bemærk:</strong> Du har allerede betalt for dette arrangement. Hvis du afmelder dig, bliver beløbet ikke automatisk tilbagebetalt.</>
+              : "Er du sikker på, at du vil afmelde din tilmelding?"}
+          confirmLabel="Ja, afmeld"
+          busyLabel="Afmelder..."
+          isBusy={isRemovingRegistration}
+          onConfirm={unregisterCurrentUser}
+          onCancel={() => !isRemovingRegistration && setShowUnregisterConfirmation(false)}
+        />
+      )}
     </MenuLayout>
   );
 }
@@ -201,6 +291,11 @@ function shortLinkLabel(label) {
     .replace("-gruppen", "")
     .replace("Linked In", "LinkedIn")
     .trim();
+}
+
+function isEventPaymentLink(link) {
+  return String(link.type ?? "").toUpperCase() === "PAYMENT"
+    && /\/(?:react\/)?events\/[^/]+\/pay\/\d+$/i.test(link.url ?? "");
 }
 
 function createCalendarContent(item) {

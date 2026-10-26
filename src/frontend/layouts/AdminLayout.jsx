@@ -1,61 +1,62 @@
 import { adminSections, Link } from "../routes/navigation.jsx";
 import { CircleArrowLeft } from "lucide-react";
+import { SidebarNav } from "../components/SidebarNav.jsx";
 import { hasPermission, useAccessUser } from "../utils/access.js";
 
 const financeSections = [
   {
     items: [
       {
-        href: "/react/admin/events",
+        href: "/admin/events",
         label: "Tilbage til Admin",
         icon: CircleArrowLeft,
         permissions: ["content.edit", "roles.edit", "email_templates.edit", "messages.edit"],
       },
-      { href: "/react/admin/finance", label: "Overblik", permission: "finance.view.all" },
-      { href: "/react/admin/finance/postings", label: "Posteringer", permission: "finance.view.all" },
+      { href: "/admin/finance", label: "Overblik", permission: "finance.view.all" },
+      { href: "/admin/finance/postings", label: "Posteringer", permission: "finance.view.all" },
     ],
   },
   {
     label: "Rediger finanser",
     items: [
-      { href: "/react/admin/finance/csv-import", label: "CSV-import", permission: "finance.edit.all" },
+      { href: "/admin/finance/csv-import", label: "CSV-import", permission: "finance.edit.all" },
       {
-        href: "/react/admin/finance/postings/edit",
+        href: "/admin/finance/postings/edit",
         label: "Posteringer",
         permission: "finance.edit.all",
       },
-      { href: "/react/admin/finance/chart-of-accounts", label: "Kontoplan", permission: "finance.edit.all" },
+      { href: "/admin/finance/chart-of-accounts", label: "Kontoplan", permission: "finance.edit.all" },
       {
-        href: "/react/admin/finance/posting-groups",
+        href: "/admin/finance/posting-groups",
         label: "Posteringsgrupper",
         permission: "finance.edit.all",
       },
-      { href: "/react/admin/finance/budgets", label: "Budgetter", permission: "finance.edit.all" },
+      { href: "/admin/finance/budgets", label: "Budgetter", permission: "finance.edit.all" },
     ],
   },
 ];
 
 function financeActivePath(pathname) {
-  if (pathname === "/react/admin/finance") return "/react/admin/finance";
-  if (pathname === "/react/admin/finance/postings") {
-    return "/react/admin/finance/postings";
+  if (pathname === "/admin/finance") return "/admin/finance";
+  if (pathname === "/admin/finance/postings") {
+    return "/admin/finance/postings";
   }
-  if (pathname.startsWith("/react/admin/finance/postings/")) {
-    return "/react/admin/finance/postings/edit";
+  if (pathname.startsWith("/admin/finance/postings/")) {
+    return "/admin/finance/postings/edit";
   }
-  if (pathname.startsWith("/react/admin/finance/chart-of-accounts")) {
-    return "/react/admin/finance/chart-of-accounts";
+  if (pathname.startsWith("/admin/finance/chart-of-accounts")) {
+    return "/admin/finance/chart-of-accounts";
   }
-  if (pathname.startsWith("/react/admin/finance/posting-groups")) {
-    return "/react/admin/finance/posting-groups";
+  if (pathname.startsWith("/admin/finance/posting-groups")) {
+    return "/admin/finance/posting-groups";
   }
-  if (pathname.startsWith("/react/admin/finance/budgets")) {
-    return "/react/admin/finance/budgets";
+  if (pathname.startsWith("/admin/finance/budgets")) {
+    return "/admin/finance/budgets";
   }
-  if (pathname.startsWith("/react/admin/finance/csv-import")) {
-    return "/react/admin/finance/csv-import";
+  if (pathname.startsWith("/admin/finance/csv-import")) {
+    return "/admin/finance/csv-import";
   }
-  return "/react/admin/finance";
+  return "/admin/finance";
 }
 
 /**
@@ -69,7 +70,7 @@ export function AdminLayout({
 }) {
   const accessUser = useAccessUser();
   const isFinanceAdmin = window.location.pathname.startsWith(
-    "/react/admin/finance",
+    "/admin/finance",
   );
   const sections = isFinanceAdmin
     ? financeSections
@@ -97,36 +98,21 @@ export function AdminLayout({
   return (
     <main className="menu-shell">
       <section className="menu-workspace">
-        <aside className="menu-sidebar">
-          <h2 className="menu-sidebar-title">
-            {isFinanceAdmin ? "Finans Admin" : "Admin"}
-          </h2>
-          <nav className="menu-side-nav" aria-label="Admin sektioner">
-            {sections.map((section, index) => (
-              <div
-                className="menu-nav-section"
-                key={section.label ?? `section-${index}`}
-              >
-                {section.label && (
-                  <p className="menu-nav-section-title">{section.label}</p>
-                )}
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      className={`menu-side-link ${activePath === item.href ? "is-active" : ""}`}
-                      href={item.href}
-                      key={item.href}
-                    >
-                      {Icon && <Icon size={20} strokeWidth={2.2} aria-hidden="true" />}
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-        </aside>
+        <SidebarNav
+          title={isFinanceAdmin ? "Finans Admin" : "Admin"}
+          sections={sections}
+          active={activePath}
+          ariaLabel="Admin sektioner"
+          renderLink={(item, className, _isActive, onNavigate) => {
+            const Icon = item.icon;
+            return (
+              <Link className={className} href={item.href} key={item.href} onClick={onNavigate}>
+                {Icon && <Icon size={20} strokeWidth={2.2} aria-hidden="true" />}
+                {item.label}
+              </Link>
+            );
+          }}
+        />
         <section className={`menu-content ${contentClassName}`.trim()}>
           {children}
         </section>

@@ -38,6 +38,12 @@ export function AdminTemplatesPage({ isAdmin }) {
     [templates]
   );
   const sortedTemplates = useSortedMembers(sortableTemplates, sort);
+  const contentTemplates = sortedTemplates.filter((template) => ["EVENT", "NEWSLETTER"].includes(
+    String(template.templateType ?? template.TemplateType ?? "").toUpperCase()
+  ));
+  const systemTemplates = sortedTemplates.filter((template) => String(
+    template.templateType ?? template.TemplateType ?? ""
+  ).toUpperCase().startsWith("SYSTEM"));
 
   useEffect(() => {
     if (isAdmin) {
@@ -64,25 +70,53 @@ export function AdminTemplatesPage({ isAdmin }) {
 
   if (!isAdmin) {
     return (
-      <AdminLayout active="/react/admin/templates" canWrite={false}>
+      <AdminLayout active="/admin/templates" canWrite={false}>
         <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere beskedskabeloner.</p>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout active="/react/admin/templates" canWrite={isAdmin}>
+    <AdminLayout active="/admin/templates" canWrite={isAdmin}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Besked Skabeloner</p>
         </div>
-        <Link className="menu-create-button" href="/react/admin/templates/new">
+        <Link className="menu-create-button" href="/admin/templates/new">
           <Plus size={16} />
           Opret ny
         </Link>
       </div>
 
       {error && <p className="status-message status-message-error">{error}</p>}
+      <div className="admin-template-sections">
+        <TemplateSection
+          title="Event- og newsletter-skabeloner"
+          templates={contentTemplates}
+          emptyMessage="Ingen event- eller newsletter-skabeloner endnu."
+          sort={sort}
+          setSort={setSort}
+          onRemove={remove}
+        />
+        <TemplateSection
+          title="System mails"
+          templates={systemTemplates}
+          emptyMessage="Ingen systemmails endnu."
+          sort={sort}
+          setSort={setSort}
+          onRemove={remove}
+        />
+      </div>
+    </AdminLayout>
+  );
+}
+
+function TemplateSection({ title, templates, emptyMessage, sort, setSort, onRemove }) {
+  return (
+    <section className="admin-template-section">
+      <div className="admin-template-section-heading">
+        <h2>{title}</h2>
+      </div>
       <div className="menu-table-wrap">
         <table className="menu-member-table admin-template-table">
           <thead>
@@ -95,15 +129,15 @@ export function AdminTemplatesPage({ isAdmin }) {
             </tr>
           </thead>
           <tbody>
-            {sortedTemplates.map((template) => (
+            {templates.map((template) => (
               <tr key={template.id}>
                 <td>{template.name}</td>
                 <td>{template.templateType}</td>
                 <td><span className="tag">{template.isActive ? "Aktiv" : "Inaktiv"}</span></td>
                 <td>{formatDate(template.updated)}</td>
                 <td className="table-actions">
-                  <Link className="admin-table-button" href={`/react/admin/templates/${template.id}/edit`}>Rediger</Link>
-                  <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => remove(template)}>
+                  <Link className="admin-table-button" href={`/admin/templates/${template.id}/edit`}>Rediger</Link>
+                  <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => onRemove(template)}>
                     <Trash2 size={14} />
                     Slet
                   </button>
@@ -112,13 +146,13 @@ export function AdminTemplatesPage({ isAdmin }) {
             ))}
             {templates.length === 0 && (
               <tr>
-                <td colSpan="5">Ingen templates endnu.</td>
+                <td colSpan="5">{emptyMessage}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </AdminLayout>
+    </section>
   );
 }
 
@@ -167,7 +201,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
       setSelected(result);
       setMessage("Templaten er gemt.");
       if (!selected.id) {
-        navigate(`/react/admin/templates/${result.id}/edit`);
+        navigate(`/admin/templates/${result.id}/edit`);
       }
     } catch (reason) {
       setError(reason.message);
@@ -176,13 +210,13 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
 
   async function remove() {
     if (!selected.id) {
-      navigate("/react/admin/templates");
+      navigate("/admin/templates");
       return;
     }
 
     try {
       await emailTemplatesApi.delete(selected.id);
-      navigate("/react/admin/templates");
+      navigate("/admin/templates");
     } catch (reason) {
       setError(reason.message);
     }
@@ -210,20 +244,20 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
 
   if (!isAdmin) {
     return (
-      <AdminLayout active="/react/admin/templates" canWrite={false}>
+      <AdminLayout active="/admin/templates" canWrite={false}>
         <p className="status-message status-message-warning">Du har ikke rettigheder til at redigere beskedskabeloner.</p>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout active="/react/admin/templates" canWrite={isAdmin}>
+    <AdminLayout active="/admin/templates" canWrite={isAdmin}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Beskeder</p>
           <h1>{isNew ? "Opret ny template" : "Rediger template"}</h1>
         </div>
-        <Link className="frontpage-button frontpage-button-secondary" href="/react/admin/templates">Tilbage til oversigt</Link>
+        <Link className="frontpage-button frontpage-button-secondary" href="/admin/templates">Tilbage til oversigt</Link>
       </div>
 
       <form className="menu-editor-form admin-template-editor" onSubmit={save}>

@@ -45,6 +45,19 @@ This document describes the backend APIs currently used by the React pages. The 
 | POST | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Validates and stores one PNG/JPEG of at most 2 MiB and updates `PictureUrl`. Requires `content.edit` or organizer access for an event. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
 | DELETE | `/api/content/{id}/image` | Event/news edit page | Configured content media folder and `ContentItems` | Removes the image reference and deletes an unreferenced local upload. External URLs are only detached. | [ApiContentControllerTests.cs](../../src/test/GamMaSite.Tests/ApiContentControllerTests.cs), [ContentMediaServiceTests.cs](../../src/test/GamMaSite.Tests/ContentMediaServiceTests.cs) |
 
+## Payment administration API
+
+| Method | Endpoint | React pages | Data source | Purpose | Tests |
+|---|---|---|---|---|---|
+| GET | `/api/payment-offers/admin` | Admin products page | `PaymentOffers`, `ContentItems` | Lists global and event payment products. Requires `payments.edit.all`; event-specific product management remains on the event API. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/admin/events` | Admin products page | `ContentItems` | Lists event IDs and titles for the product filter. Requires `payments.edit.all`; read-only endpoint. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/event/{contentItemId}` | Admin event editor | `PaymentOffers`, `ContentItems`, `ContentLinks` | Lists payment offers for one event. Requires event edit access. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| POST | `/api/payment-offers/event/{contentItemId}` | Admin event editor | `PaymentOffers`, Stripe, MobilePay | Creates or updates event payment offers and synchronizes provider data. Requires event edit access. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/admin/{id}` | Admin products page | `PaymentOffers`, `ContentItems` | Loads one global payment product for editing. Requires `payments.edit.all`. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| PUT | `/api/payment-offers/admin/{id}` | Admin products page | `PaymentOffers`, Stripe, MobilePay | Updates one global payment product and synchronizes provider data. Requires `payments.edit.all`. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| DELETE | `/api/payment-offers/{id}` | Admin event editor | `PaymentOffers`, Stripe, MobilePay | Deletes an event payment offer after checking event edit access. Provider cleanup is best-effort and failures are logged. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-subscriptions/admin` | Admin payment agreements page | `PaymentSubscriptions`, `PaymentOffers`, `AspNetUsers` | Lists all payment agreements. Requires `payments.edit.all`. | [ApiAdminPaymentSubscriptionsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiAdminPaymentSubscriptionsControllerTests.cs) |
+
 ## Event registration API
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
@@ -102,6 +115,7 @@ This document describes the backend APIs currently used by the React pages. The 
 |---|---|---|---|---|---|
 | GET | `/api/calendar` | Member calendar page | External iCal feed configured by `ICalService` | Loads upcoming calendar events and maps them to the React calendar model. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 | GET | `/api/library` | Member library page | Server file system through `IIndexService` | Lists protected documents and folders for the requested path. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
+| GET | `/api/library/file?path={path}` | Member library page | Server file system through `IIndexService` | Returns the selected protected document with its detected MIME type. | [ApiLibraryAndCalendarControllerTests.cs](../../src/test/GamMaSite.Tests/ApiLibraryAndCalendarControllerTests.cs) |
 
 ## Finance API
 
@@ -143,11 +157,16 @@ Finance CRUD, PostgreSQL conflict handling, import-history persistence, bank/Mob
 
 | Method | Endpoint | React pages | Data source | Purpose | Tests |
 |---|---|---|---|---|---|
-| GET | `/api/payments/config` | Payment page and generic payment page | Application configuration | Returns the public Stripe API key. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
-| GET | `/api/payments/products` | Payment page | External Stripe Products and Prices | Lists available membership or payment products. | Not yet covered |
-| GET | `/api/payments/products/{id}` | Product payment page | External Stripe Product and Price | Loads one Stripe product and its price. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
-| POST | `/api/Stripe/Product` | Product payment page | External Stripe Checkout | Creates a checkout session for a Stripe product. | Not yet covered |
-| POST | `/api/Stripe/Generic` | Generic payment page | External Stripe Checkout | Creates a checkout session for a custom amount and description. | Not yet covered |
+| GET | `/api/payments/config` | Payment page | Application configuration | Returns the public Stripe API key used to open Stripe Checkout for a PaymentOffer. | [ApiPaymentsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentsControllerTests.cs) |
+| GET | `/api/payment-offers/membership` | Payment page | `PaymentOffers`, `AspNetUsers`, `PaymentSubscriptions` | Lists active membership offers available to the signed-in user. Paid and student members cannot purchase membership again. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/{id}` | Event payment page | `PaymentOffers`, `ContentItems`, `EventRegistrations` | Loads an active event payment offer for an attendee or organizer. Interested and waitlisted users are rejected. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| POST | `/api/payment-offers/{id}/checkout` | Payment page | `PaymentOffers`, `EventRegistrations`, `PaymentSubscriptions`, Stripe, MobilePay | Starts a Stripe or MobilePay checkout. Requires authentication, applies checkout rate limiting, and only allows event payment for attendees or organizers. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/success-context?session={session}` | Stripe payment success page | Stripe, `PaymentOffers`, `EventRegistrations`, `PaymentSubscriptions`, `AspNetUsers` | Validates that the Stripe session belongs to the signed-in user and reports the current payment result. Requires authentication and checkout rate limiting. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/payment-offers/mobilepay-context?reference={reference}` | MobilePay payment success page | MobilePay, `PaymentOffers`, `EventRegistrations`, `PaymentSubscriptions`, `AspNetUsers` | Checks MobilePay payment state. Recurring membership checks reconcile the provider agreement, subscription, and membership status in one locked database transaction. Protected by provider-read rate limiting. | [ApiPaymentOffersControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentOffersControllerTests.cs) |
+| GET | `/api/account/subscriptions` | Account subscriptions page | MobilePay, Stripe, `PaymentSubscriptions`, `PaymentOffers`, `AspNetUsers` | Lists the current user's subscriptions. MobilePay agreements are reconciled after reloading and locking the current subscription row; the endpoint uses provider-read rate limiting. | [ApiPaymentSubscriptionsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentSubscriptionsControllerTests.cs) |
+| DELETE | `/api/account/subscriptions/{providerSubscriptionId}` | Account subscriptions page | Stripe, MobilePay, `PaymentSubscriptions` | Cancels the current user's provider subscription and clears future local charges. Requires authentication and antiforgery protection. | [ApiPaymentSubscriptionsControllerTests.cs](../../src/test/GamMaSite.Tests/ApiPaymentSubscriptionsControllerTests.cs) |
+
+The `payment-provider-read` rate limit is partitioned by authenticated user and client IP and permits 30 requests per minute. It covers the MobilePay polling context and subscription reconciliation endpoints. Payment checkout uses the separate `payment-checkout` policy.
 
 ## Rich text editor API
 

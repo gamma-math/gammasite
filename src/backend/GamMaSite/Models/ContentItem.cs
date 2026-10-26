@@ -48,6 +48,8 @@ namespace GamMaSite.Models
 
         public ICollection<ContentLink> Links { get; set; } = new List<ContentLink>();
 
+        public ICollection<PaymentOffer> PaymentOffers { get; set; } = new List<PaymentOffer>();
+
         public ICollection<EventRegistration> EventRegistrations { get; set; } = new List<EventRegistration>();
     }
 }

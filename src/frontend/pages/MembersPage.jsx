@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
+import { Link } from "../routes/navigation.jsx";
 import { membersApi } from "../services/api.js";
+import { loginHref } from "../utils/authNavigation.js";
 
 /**
  * Member directory with search, sorting, and pagination.
@@ -31,7 +33,7 @@ export function MembersPage({ user }) {
   }
 
   return (
-    <MenuLayout active="/react/members" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/members" isAuthenticated={user.isAuthenticated}>
       <div className="menu-panel-header">
         <div>
           <p className="menu-section-title">Medlemmer</p>
@@ -82,7 +84,7 @@ export function LoginRequired({ title }) {
       <section className="page-shell frontpage-section">
         <h1>{title}</h1>
         <p className="muted">Du skal være logget ind for at se denne side.</p>
-        <a className="frontpage-button frontpage-button-primary" href="/react/account/login">Login</a>
+        <Link className="frontpage-button frontpage-button-primary" href={loginHref()}>Login</Link>
       </section>
     </main>
   );

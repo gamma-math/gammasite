@@ -144,7 +144,7 @@ function FinanceHeader({ currentYear, lastUpdated, setYear, year }) {
         </p>
         <a
           className="finance-live-profile-link"
-          href="/react/account/manage/finance"
+          href="/account/manage/finance"
         >
           Mine transaktioner
         </a>
@@ -376,7 +376,7 @@ export function FinancePage({ user }) {
   if (!user.isAuthenticated) return <LoginRequired title="Finans" />;
 
   return (
-    <MenuLayout active="/react/finance" isAuthenticated={user.isAuthenticated}>
+    <MenuLayout active="/finance" isAuthenticated={user.isAuthenticated}>
       <FinanceHeader
         currentYear={currentYear}
         lastUpdated={overview?.lastUpdated}

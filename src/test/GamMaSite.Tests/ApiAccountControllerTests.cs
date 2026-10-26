@@ -17,7 +17,7 @@ namespace GamMaSite.Tests;
 public class ApiAccountControllerTests
 {
     [Fact]
-    public async Task Login_SuccessFallsBackToReactForExternalReturnUrl()
+    public async Task Login_SuccessFallsBackToHomeForExternalReturnUrl()
     {
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);
@@ -32,7 +32,7 @@ public class ApiAccountControllerTests
         });
 
         var response = Assert.IsType<OkObjectResult>(result).Value;
-        Assert.Equal("/react", response?.GetType().GetProperty("redirectUrl")?.GetValue(response));
+        Assert.Equal("/", response?.GetType().GetProperty("redirectUrl")?.GetValue(response));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class ApiAccountControllerTests
     }
 
     [Fact]
-    public async Task Logout_SignsOutAndReturnsReactRedirect()
+    public async Task Logout_SignsOutAndReturnsHomeRedirect()
     {
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);
@@ -76,7 +76,7 @@ public class ApiAccountControllerTests
     [Fact]
     public async Task UpdateProfile_UpdatesStudentStatusAndRefreshesSignIn()
     {
-        var user = new SiteUser { Id = "user-1", UserName = "user@example.com", Status = UserStatus.BETALT };
+        var user = new SiteUser { Id = "user-1", UserName = "user@example.com", Status = UserStatus.OPRETTET };
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);
         ConfigureUser(userManager, user);
@@ -93,6 +93,28 @@ public class ApiAccountControllerTests
         Assert.Equal("Updated", user.Navn);
         Assert.Equal(UserStatus.STUDERENDE, user.Status);
         signIn.Verify(value => value.RefreshSignInAsync(user), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_RejectsStudentStatusForPaidUser()
+    {
+        var user = new SiteUser { Id = "user-1", UserName = "user@example.com", Status = UserStatus.BETALT };
+        var userManager = TestDoubles.UserManager();
+        var signIn = TestDoubles.SignInManager(userManager);
+        ConfigureUser(userManager, user);
+        userManager.Setup(value => value.GetPhoneNumberAsync(user)).ReturnsAsync(user.PhoneNumber);
+        var controller = AccountController(userManager, signIn);
+
+        var result = await controller.UpdateProfile(new UpdateProfileRequest
+        {
+            Navn = "Updated", PhoneNumber = user.PhoneNumber, IsStudent = true, Visibility = true
+        });
+
+        var response = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("betalt medlemskab", response.Value?.ToString());
+        Assert.Equal(UserStatus.BETALT, user.Status);
+        userManager.Verify(value => value.UpdateAsync(It.IsAny<SiteUser>()), Times.Never);
+        signIn.Verify(value => value.RefreshSignInAsync(It.IsAny<SiteUser>()), Times.Never);
     }
 
     [Fact]

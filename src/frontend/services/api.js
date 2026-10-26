@@ -1,5 +1,102 @@
 const CSRF_HEADER = "X-CSRF-TOKEN";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+const CHECKOUT_KEY_PREFIX = "gammasite:payment-checkout:";
+const CHECKOUT_KEY_TTL_MS = 8 * 60 * 1000;
+const inMemoryCheckoutKeys = new Map();
+
+/**
+ * Creates a key for one logical checkout flow. The key is deliberately kept
+ * in sessionStorage so a network timeout can be retried without creating a
+ * second provider payment. MobilePay redirect URLs expire quickly, so the
+ * key also expires before a stale provider checkout can be reused.
+ */
+export function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function checkoutStorage() {
+  try {
+    return globalThis.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function checkoutStorageKey(offerId) {
+  return `${CHECKOUT_KEY_PREFIX}${offerId}`;
+}
+
+function isUsableCheckoutKey(entry) {
+  return entry &&
+    typeof entry.key === "string" &&
+    entry.key.length > 0 &&
+    typeof entry.createdAt === "number" &&
+    Number.isFinite(entry.createdAt) &&
+    Date.now() >= entry.createdAt &&
+    Date.now() - entry.createdAt < CHECKOUT_KEY_TTL_MS;
+}
+
+function createCheckoutKeyEntry() {
+  return { key: createIdempotencyKey(), createdAt: Date.now() };
+}
+
+function getOrCreateCheckoutKey(offerId) {
+  const storage = checkoutStorage();
+  if (!storage) {
+    const existing = inMemoryCheckoutKeys.get(String(offerId));
+    if (isUsableCheckoutKey(existing)) {
+      return existing.key;
+    }
+
+    const created = createCheckoutKeyEntry();
+    inMemoryCheckoutKeys.set(String(offerId), created);
+    return created.key;
+  }
+
+  const key = checkoutStorageKey(offerId);
+  const serialized = storage.getItem(key);
+  if (serialized) {
+    try {
+      const existing = JSON.parse(serialized);
+      if (isUsableCheckoutKey(existing)) {
+        return existing.key;
+      }
+    } catch {
+      // The previous format only stored the key. Treat it as expired so old
+      // browser sessions receive a fresh MobilePay checkout.
+    }
+
+    storage.removeItem(key);
+  }
+
+  const created = createCheckoutKeyEntry();
+  storage.setItem(key, JSON.stringify(created));
+  return created.key;
+}
+
+function clearCheckoutKey(offerId) {
+  inMemoryCheckoutKeys.delete(String(offerId));
+  checkoutStorage()?.removeItem(checkoutStorageKey(offerId));
+}
+
+function clearAllCheckoutKeys() {
+  inMemoryCheckoutKeys.clear();
+  const storage = checkoutStorage();
+  if (!storage) {
+    return;
+  }
+
+  for (let index = storage.length - 1; index >= 0; index -= 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(CHECKOUT_KEY_PREFIX)) {
+      storage.removeItem(key);
+    }
+  }
+}
 
 /**
  * Reads the antiforgery token emitted by the ASP.NET host page.
@@ -105,6 +202,8 @@ export const accountApi = {
   forgotPassword: (email) => request("/api/account/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resendEmailConfirmation: (email) => request("/api/account/resend-email-confirmation", { method: "POST", body: JSON.stringify({ email }) }),
   profile: () => request("/api/account/profile"),
+  subscriptions: () => request("/api/account/subscriptions"),
+  cancelSubscription: (providerSubscriptionId) => request(`/api/account/subscriptions/${encodeURIComponent(providerSubscriptionId)}`, { method: "DELETE" }),
   updateProfile: (payload) => request("/api/account/profile", { method: "PUT", body: JSON.stringify(payload) }),
   changeEmail: (newEmail) => request("/api/account/change-email", { method: "POST", body: JSON.stringify({ newEmail }) }),
   sendVerificationEmail: () => request("/api/account/send-verification-email", { method: "POST" }),
@@ -140,6 +239,31 @@ export const contentApi = {
 /**
  * Event registration API for signups and attendee administration.
  */
+export const paymentOffersApi = {
+  listForEvent: (contentItemId) => request("/api/payment-offers/event/" + contentItemId),
+  listMembership: () => request("/api/payment-offers/membership"),
+  listAdmin: () => request("/api/payment-offers/admin"),
+  listAdminEvents: () => request("/api/payment-offers/admin/events"),
+  getAdmin: (id) => request(`/api/payment-offers/admin/${id}`),
+  updateAdmin: (id, payload) => request(`/api/payment-offers/admin/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  saveForEvent: (contentItemId, payload) => request("/api/payment-offers/event/" + contentItemId, { method: "POST", body: JSON.stringify(payload) }),
+  get: (id) => request("/api/payment-offers/" + id),
+  successContext: (session) => request(`/api/payment-offers/success-context?session=${encodeURIComponent(session)}`),
+  mobilePayContext: (reference) => request(`/api/payment-offers/mobilepay-context?reference=${encodeURIComponent(reference)}`),
+  checkout: (id) => request("/api/payment-offers/" + id + "/checkout", {
+    method: "POST",
+    headers: { "Idempotency-Key": getOrCreateCheckoutKey(id) }
+  }),
+  clearCheckoutAttempt: clearCheckoutKey,
+  clearAllCheckoutAttempts: clearAllCheckoutKeys,
+  remove: (id) => request("/api/payment-offers/" + id, { method: "DELETE" })
+};
+
+export const paymentSubscriptionsApi = {
+  listAdmin: () => request("/api/payment-subscriptions/admin"),
+  getAdmin: (id) => request(`/api/payment-subscriptions/admin/${encodeURIComponent(id)}`)
+};
+
 export const registrationsApi = {
   mine: (contentId) => request(`/api/content/${contentId}/registrations/me`),
   summary: (contentId) => request(`/api/content/${contentId}/registrations/summary`),
@@ -168,6 +292,7 @@ export const emailTemplatesApi = {
 export const membersApi = {
   list: () => request("/api/members"),
   listAdmin: () => request("/api/members/admin"),
+  subscriptions: (id) => request(`/api/members/${encodeURIComponent(id)}/subscriptions`),
   listFinance: () => request("/api/members/finance"),
   listForEvent: (contentId) => request(`/api/members/event/${contentId}`),
   updateStatus: (id, status) => request(`/api/members/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
@@ -202,14 +327,10 @@ export const libraryApi = {
 };
 
 /**
- * Payment API for Stripe product and checkout flows.
+ * Shared Stripe configuration used by PaymentOffers checkout.
  */
 export const paymentsApi = {
-  config: () => request("/api/payments/config"),
-  products: () => request("/api/payments/products"),
-  product: (id) => request(`/api/payments/products/${encodeURIComponent(id)}`),
-  startProductCheckout: (product, user) => request(`/api/Stripe/Product?product=${encodeURIComponent(product)}&user=${encodeURIComponent(user)}`, { method: "POST" }),
-  startGenericCheckout: (product, price, description, user) => request(`/api/Stripe/Generic?product=${encodeURIComponent(product)}&price=${encodeURIComponent(price)}&description=${encodeURIComponent(description)}&user=${encodeURIComponent(user)}`, { method: "POST" })
+  config: () => request("/api/payments/config")
 };
 
 /**

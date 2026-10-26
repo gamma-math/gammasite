@@ -24,7 +24,7 @@ import {
   FinanceAdminPostingDetailPage,
   FinanceAdminPostingsPage,
 } from "../pages/AdminFinancePage.jsx";
-import { AdminMembersPage } from "../pages/AdminMembersPage.jsx";
+import { AdminMemberSubscriptionsPage, AdminMembersPage } from "../pages/AdminMembersPage.jsx";
 import { AdminMessagesPage } from "../pages/AdminMessagesPage.jsx";
 import {
   AdminRolesEditorPage,
@@ -34,6 +34,10 @@ import {
   AdminTemplateEditorPage,
   AdminTemplatesPage,
 } from "../pages/AdminTemplatesPage.jsx";
+import { AdminProductsPage } from "../pages/AdminProductsPage.jsx";
+import { AdminProductEditorPage } from "../pages/AdminProductsPage.jsx";
+import { AdminSubscriptionsPage } from "../pages/AdminSubscriptionsPage.jsx";
+import { AdminSubscriptionDetailPage } from "../pages/AdminSubscriptionDetailPage.jsx";
 import { CalendarPage } from "../pages/CalendarPage.jsx";
 import { ContentDetailPage } from "../pages/ContentDetailPage.jsx";
 import { EventRegistrationsPage } from "../pages/EventRegistrationsPage.jsx";
@@ -42,13 +46,13 @@ import { FrontPage } from "../pages/FrontPage.jsx";
 import { LibraryPage } from "../pages/LibraryPage.jsx";
 import { MembersPage } from "../pages/MembersPage.jsx";
 import {
-  GenericPaymentPage,
+  EventPaymentPage,
   PaymentPage,
   PaymentStatusPage,
-  ProductPaymentPage,
 } from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
 import { Link } from "../routes/navigation.jsx";
+import { setMobileMenuCollapsed } from "../utils/mobileMenu.js";
 import { meApi } from "../services/api.js";
 import { AccessContext, adminPermissionForPath, canAccessAdmin, firstAdminPath, hasAnyPermission, hasPermission, permissions } from "../utils/access.js";
 import "../styles/app.css";
@@ -127,7 +131,8 @@ function App() {
     messagesEdit: hasPermission(user, permissions.messagesEdit),
     rolesEdit: hasPermission(user, permissions.rolesEdit),
     financeView: hasAnyPermission(user, [permissions.financeViewAll, permissions.financeEditAll]),
-    financeEdit: hasPermission(user, permissions.financeEditAll)
+    financeEdit: hasPermission(user, permissions.financeEditAll),
+    paymentsEditAll: hasPermission(user, permissions.paymentsEditAll)
   };
 
   return (
@@ -149,7 +154,7 @@ function Header({ user, isReadAdmin, adminPath }) {
     <header className="site-header frontpage-header">
       <div className="page-shell">
         <div className="frontpage-topbar">
-          <Link className="brand" href="/react">
+          <Link className="brand" href="/">
             <img src="/lib/logo_blue.png" alt="GamMa logo" />
           </Link>
 
@@ -157,7 +162,8 @@ function Header({ user, isReadAdmin, adminPath }) {
             <div className="frontpage-left-actions">
               <Link
                 className="frontpage-button frontpage-button-secondary"
-                href="/react/events"
+                href="/events"
+                onClick={() => setMobileMenuCollapsed(false)}
               >
                 <Menu size={16} />
                 Menu
@@ -166,6 +172,7 @@ function Header({ user, isReadAdmin, adminPath }) {
                 <Link
                   className="frontpage-button frontpage-button-secondary"
                   href={adminPath}
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   Admin
                 </Link>
@@ -180,8 +187,9 @@ function Header({ user, isReadAdmin, adminPath }) {
               ) : user.isAuthenticated ? (
                 <Link
                   className="frontpage-profile-link frontpage-profile-link-default"
-                  href="/react/account/manage"
+                  href="/account/manage"
                   aria-label="Profil"
+                  onClick={() => setMobileMenuCollapsed(false)}
                 >
                   <UserCircle size={23} />
                 </Link>
@@ -189,13 +197,13 @@ function Header({ user, isReadAdmin, adminPath }) {
                 <>
                   <Link
                     className="frontpage-button frontpage-button-secondary"
-                    href="/react/account/login"
+                    href="/account/login"
                   >
                     Login
                   </Link>
                   <Link
                     className="frontpage-button frontpage-button-primary"
-                    href="/react/account/register"
+                    href="/account/register"
                   >
                     Bliv medlem
                   </Link>
@@ -215,7 +223,7 @@ function Header({ user, isReadAdmin, adminPath }) {
 function renderRoute(route, user, isAdmin, access) {
   const path = route.path;
 
-  if (path === "/react/admin" || path === "/react/admin/") {
+  if (path === "/admin" || path === "/admin/") {
     return <AdminRedirectPage path={firstAdminPath(user)} />;
   }
 
@@ -228,112 +236,98 @@ function renderRoute(route, user, isAdmin, access) {
     return <FrontPage user={user} />;
   }
   if (
-    path === "/react/events" ||
-    path === "/react/arrangementer" ||
+    path === "/events" ||
+    path === "/arrangementer" ||
     path === "/Home/Arrangementer"
   ) {
     return <FrontPage mode="EVENT" title="Begivenheder" user={user} />;
   }
-  if (path === "/react/news") {
+  if (path === "/news") {
     return <FrontPage mode="NEWS" title="Nyheder" user={user} />;
   }
-  if (path === "/react/members" || path === "/Users") {
+  if (path === "/members" || path === "/Users") {
     return <MembersPage user={user} />;
   }
-  if (path === "/react/calendar" || path === "/Calendar") {
+  if (path === "/calendar" || path === "/Calendar") {
     return <CalendarPage user={user} />;
   }
-  if (
-    path === "/react/bibliotek" ||
-    path === "/react/referater" ||
-    path === "/react/library" ||
-    path === "/Library"
-  ) {
+  if (path === "/Library") {
     return <LibraryPage user={user} search={route.search} />;
   }
-  if (path === "/react/pay" || path === "/Pay" || path === "/Pay/Index") {
+  if (path === "/pay" || path === "/Pay" || path === "/Pay/Index") {
     return <PaymentPage user={user} />;
   }
-  if (path === "/react/finance") {
+  if (path === "/finance") {
     return <FinancePage user={user} />;
   }
-  if (path === "/react/pay/generic" || path === "/Pay/Generisk") {
-    return <GenericPaymentPage user={user} />;
+  if (path === "/pay/success" || path === "/Pay/Success") {
+    const query = new URLSearchParams(route.search);
+    return <PaymentStatusPage status="success" session={query.get("session")} reference={query.get("reference")} user={user} />;
   }
-  if (path === "/react/pay/success" || path === "/Pay/Success") {
-    return <PaymentStatusPage status="success" user={user} />;
-  }
-  if (path === "/react/pay/kontingent-success") {
+  if (path === "/pay/kontingent-success") {
     return <PaymentStatusPage status="kontingent-success" user={user} />;
   }
-  if (path === "/react/pay/cancel" || path === "/Pay/Cancel") {
+  if (path === "/pay/cancel" || path === "/Pay/Cancel") {
     return <PaymentStatusPage status="cancel" user={user} />;
   }
-  const oldProductMatch = path.match(/^\/Pay\/Product\/?([^/]*)$/);
-  if (oldProductMatch && oldProductMatch[1]) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(oldProductMatch[1])}
-        user={user}
-      />
-    );
+  const eventPaymentSuccessMatch = path.match(/^\/events\/([^/]+)\/pay\/success$/);
+  if (eventPaymentSuccessMatch) {
+    return <PaymentStatusPage status="event-success" eventSlug={decodeURIComponent(eventPaymentSuccessMatch[1])} reference={new URLSearchParams(route.search).get("reference")} user={user} />;
   }
-  const productMatch = path.match(/^\/react\/pay\/products\/([^/]+)$/);
-  if (productMatch) {
-    return (
-      <ProductPaymentPage
-        productId={decodeURIComponent(productMatch[1])}
-        user={user}
-      />
-    );
+  const eventPaymentMatch = path.match(/^\/events\/([^/]+)\/pay\/(\d+)$/);
+  if (eventPaymentMatch) {
+    return <EventPaymentPage eventSlug={decodeURIComponent(eventPaymentMatch[1])} offerId={Number(eventPaymentMatch[2])} user={user} />;
   }
-  if (path === "/react/om") {
+  if (path === "/om") {
     return <StaticPage page="about" />;
   }
-  if (path === "/react/betingelser" || path === "/Home/Betingelser") {
+  if (path === "/betingelser" || path === "/Home/Betingelser") {
     return <StaticPage page="terms" />;
   }
-  if (path === "/react/cookies" || path === "/Home/Cookies") {
+  if (path === "/cookies" || path === "/Home/Cookies") {
     return <StaticPage page="cookies" />;
   }
-  if (path === "/react/account/login") {
+  if (path === "/account/login") {
     return <LoginPage />;
   }
-  if (path === "/react/account/register") {
+  if (path === "/account/register") {
     return <RegisterPage />;
   }
-  if (path === "/react/account/forgot-password") {
+  if (path === "/account/forgot-password") {
     return <ForgotPasswordPage />;
   }
-  if (path === "/react/account/resend-email-confirmation") {
+  if (path === "/account/resend-email-confirmation") {
     return <ResendEmailConfirmationPage />;
   }
-  if (path === "/react/account/manage") {
+  if (path === "/account/manage") {
     return <AccountManagePage user={user} section="profile" />;
   }
-  if (path === "/react/account/manage/email") {
+  if (path === "/account/manage/email") {
     return <AccountManagePage user={user} section="email" />;
   }
-  if (path === "/react/account/manage/password") {
+  if (path === "/account/manage/password") {
     return <AccountManagePage user={user} section="password" />;
   }
-  if (path === "/react/account/manage/two-factor") {
+  if (path === "/account/manage/two-factor") {
     return <AccountManagePage user={user} section="two-factor" />;
   }
-  if (path === "/react/account/manage/finance") {
+  if (path === "/account/manage/subscriptions") {
+    return <AccountManagePage user={user} section="subscriptions" />;
+  }
+  if (path === "/account/manage/finance") {
     return <AccountManagePage user={user} section="finance" />;
   }
-  if (path === "/react/account/manage/personal-data") {
+  if (path === "/account/manage/personal-data") {
     return <AccountManagePage user={user} section="personal-data" />;
   }
-  if (path === "/react/account/manage/delete-personal-data") {
+  if (path === "/account/manage/delete-personal-data") {
     return <AccountManagePage user={user} section="delete-personal-data" />;
   }
-  if (path === "/react/account/manage/logout") {
+  if (path === "/account/manage/logout") {
     return <AccountManagePage user={user} section="logout" />;
   }
   const eventRegistrationsMatch = path.match(
-    /^\/react\/events\/([^/]+)\/registrations$/,
+    /^\/events\/([^/]+)\/registrations$/,
   );
   if (eventRegistrationsMatch) {
     return (
@@ -343,7 +337,7 @@ function renderRoute(route, user, isAdmin, access) {
       />
     );
   }
-  if (path.startsWith("/react/events/")) {
+  if (path.startsWith("/events/")) {
     return (
       <ContentDetailPage
         type="EVENT"
@@ -352,21 +346,47 @@ function renderRoute(route, user, isAdmin, access) {
       />
     );
   }
-  if (path.startsWith("/react/news/")) {
+  if (path.startsWith("/news/")) {
     return (
       <ContentDetailPage type="NEWS" slug={path.split("/").pop()} user={user} />
     );
   }
-  if (path === "/react/admin/news") {
+  if (path === "/admin/news") {
     return <AdminContentPage type="NEWS" isAdmin={access.contentEdit} />;
   }
-  if (path === "/react/admin/finance") {
+  const adminProductEditorMatch = path.match(
+    /^\/admin\/products\/(\d+)\/edit$/,
+  );
+  if (adminProductEditorMatch) {
+    return (
+      <AdminProductEditorPage
+        isAdmin={access.paymentsEditAll}
+        offerId={Number(adminProductEditorMatch[1])}
+      />
+    );
+  }
+  if (path === "/admin/products") {
+    return <AdminProductsPage isAdmin={access.paymentsEditAll} />;
+  }
+  if (path === "/admin/subscriptions") {
+    return <AdminSubscriptionsPage isAdmin={access.paymentsEditAll} />;
+  }
+  const adminSubscriptionDetailMatch = path.match(/^\/admin\/subscription\/(\d+)$/);
+  if (adminSubscriptionDetailMatch) {
+    return (
+      <AdminSubscriptionDetailPage
+        isAdmin={access.paymentsEditAll}
+        subscriptionId={Number(adminSubscriptionDetailMatch[1])}
+      />
+    );
+  }
+  if (path === "/admin/finance") {
     return <FinanceAdminOverviewPage isAdmin={access.financeView} search={route.search} />;
   }
-  if (path === "/react/admin/finance/postings") {
+  if (path === "/admin/finance/postings") {
     return <FinanceAdminPostingsPage isAdmin={access.financeView} canWrite={access.financeEdit} search={route.search} />;
   }
-  if (path === "/react/admin/finance/postings/edit") {
+  if (path === "/admin/finance/postings/edit") {
     return (
       <FinanceAdminCashierPostingsPage
         isAdmin={access.financeEdit}
@@ -374,20 +394,20 @@ function renderRoute(route, user, isAdmin, access) {
       />
     );
   }
-  if (path === "/react/admin/finance/csv-import") {
+  if (path === "/admin/finance/csv-import") {
     return <FinanceAdminImportPage isAdmin={access.financeEdit} />;
   }
-  if (path === "/react/admin/finance/budgets") {
+  if (path === "/admin/finance/budgets") {
     return <FinanceAdminBudgetsPage isAdmin={access.financeEdit} />;
   }
-  if (path === "/react/admin/finance/chart-of-accounts") {
+  if (path === "/admin/finance/chart-of-accounts") {
     return <FinanceAdminAccountsPage isAdmin={access.financeEdit} />;
   }
-  if (path === "/react/admin/finance/posting-groups") {
+  if (path === "/admin/finance/posting-groups") {
     return <FinanceAdminPostingGroupsPage isAdmin={access.financeEdit} />;
   }
   const adminFinancePostingGroupMatch = path.match(
-    /^\/react\/admin\/finance\/posting-groups\/([^/]+)$/,
+    /^\/admin\/finance\/posting-groups\/([^/]+)$/,
   );
   if (adminFinancePostingGroupMatch) {
     return (
@@ -398,7 +418,7 @@ function renderRoute(route, user, isAdmin, access) {
     );
   }
   const adminFinanceBudgetMatch = path.match(
-    /^\/react\/admin\/finance\/budgets\/([^/]+)$/,
+    /^\/admin\/finance\/budgets\/([^/]+)$/,
   );
   if (adminFinanceBudgetMatch) {
     return (
@@ -409,7 +429,7 @@ function renderRoute(route, user, isAdmin, access) {
     );
   }
   const adminFinancePostingMatch = path.match(
-    /^\/react\/admin\/finance\/postings\/([^/]+)$/,
+    /^\/admin\/finance\/postings\/([^/]+)$/,
   );
   if (adminFinancePostingMatch) {
     return (
@@ -421,7 +441,7 @@ function renderRoute(route, user, isAdmin, access) {
     );
   }
   const adminNewsEditorMatch = path.match(
-    /^\/react\/admin\/news\/(new|\d+\/edit)$/,
+    /^\/admin\/news\/(new|\d+\/edit)$/,
   );
   if (adminNewsEditorMatch) {
     const itemId =
@@ -432,11 +452,11 @@ function renderRoute(route, user, isAdmin, access) {
       <AdminContentEditorPage type="NEWS" isAdmin={access.contentEdit} itemId={itemId} />
     );
   }
-  if (path === "/react/admin/templates") {
+  if (path === "/admin/templates") {
     return <AdminTemplatesPage isAdmin={access.emailTemplatesEdit} />;
   }
   const adminTemplateEditorMatch = path.match(
-    /^\/react\/admin\/templates\/(new|\d+\/edit)$/,
+    /^\/admin\/templates\/(new|\d+\/edit)$/,
   );
   if (adminTemplateEditorMatch) {
     const templateId =
@@ -448,20 +468,26 @@ function renderRoute(route, user, isAdmin, access) {
     );
   }
   if (
-    path === "/react/admin/users" ||
+    /^\/admin\/users\/[^/]+\/subscriptions$/.test(path)
+  ) {
+    const memberId = decodeURIComponent(path.split("/")[4]);
+    return <AdminMemberSubscriptionsPage isAdmin={access.rolesEdit} memberId={memberId} />;
+  }
+  if (
+    path === "/admin/users" ||
     path === "/Users/Expanded" ||
     path === "/Users/UpdateMass"
   ) {
     return <AdminMembersPage isAdmin={access.rolesEdit} />;
   }
-  if (path === "/react/admin/messages" || path === "/Messages") {
+  if (path === "/admin/messages" || path === "/Messages") {
     return <AdminMessagesPage isAdmin={access.messagesEdit} />;
   }
-  if (path === "/react/admin/roles/new" || path === "/Role/Create") {
+  if (path === "/admin/roles/new" || path === "/Role/Create") {
     return <AdminRolesEditorPage isAdmin={access.rolesEdit} roleId={null} />;
   }
   const adminRoleEditorMatch = path.match(
-    /^\/react\/admin\/roles\/([^/]+)\/edit$/,
+    /^\/admin\/roles\/([^/]+)\/edit$/,
   );
   if (adminRoleEditorMatch) {
     return (
@@ -480,14 +506,14 @@ function renderRoute(route, user, isAdmin, access) {
       />
     );
   }
-  if (path === "/react/admin/roles" || path === "/Role") {
+  if (path === "/admin/roles" || path === "/Role") {
     return <AdminRolesPage isAdmin={access.rolesEdit} />;
   }
-  if (path === "/react/admin/events") {
+  if (path === "/admin/events") {
     return <AdminContentPage type="EVENT" isAdmin={access.contentEdit} />;
   }
   const adminEventEditorMatch = path.match(
-    /^\/react\/admin\/events\/(new|\d+\/edit)$/,
+    /^\/admin\/events\/(new|\d+\/edit)$/,
   );
   if (adminEventEditorMatch) {
     const itemId =
@@ -523,7 +549,7 @@ function Footer() {
           <h2>Alumneforeningen GamMa</h2>
           <ul className="frontpage-contact-list">
             <li>
-              Betingelser og vedtægter: <Link href="/react/betingelser">Link til dem</Link>
+              Betingelser og vedtægter: <Link href="/betingelser">Link til dem</Link>
             </li>
             <li>CVR: 34637768</li>
             <li>

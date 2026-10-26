@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Services;
@@ -30,6 +31,22 @@ public class ApiLibraryAndCalendarControllerTests
         Assert.Equal("Document", item.Name);
         Assert.Equal("🗎", item.Icon);
         index.Verify(value => value.GetContentMetasAsync("folder"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetFile_ReturnsProtectedFileContentFromIndexService()
+    {
+        var index = new Mock<IIndexService>();
+        var content = Encoding.UTF8.GetBytes("document content");
+        index.Setup(value => value.GetContentAsync("folder/document.txt"))
+            .ReturnsAsync(new ContentType { Content = content, MimeType = "text/plain" });
+
+        var result = await new ApiLibraryController(index.Object).GetFile("folder/document.txt");
+
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal(content, file.FileContents);
+        Assert.Equal("text/plain", file.ContentType);
+        index.Verify(value => value.GetContentAsync("folder/document.txt"), Times.Once);
     }
 
     [Fact]

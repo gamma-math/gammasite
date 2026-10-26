@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS public.mobilepay (
     transfer_date date,
     payment_tx_id text,
     payner_name text,
+    merchant_reference text,
+    source_product text,
 
     -- false = importeret
     -- true = manuelt oprettet
@@ -92,6 +94,26 @@ ON public.mobilepay (
     payment_tx_id
 ) NULLS NOT DISTINCT
 WHERE is_manual = false;
+
+-- Historical MobilePay reference cache, populated best-effort from payment
+-- webhooks. It lets finance imports resolve a payer without querying Vipps.
+CREATE TABLE IF NOT EXISTS public.mobilepay_reference_lookup (
+    merchant_reference text NOT NULL,
+    payment_type text NOT NULL,
+    agreement_id text,
+    user_id text NOT NULL,
+    payer_name text,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT mobilepay_reference_lookup_pkey PRIMARY KEY (merchant_reference),
+    CONSTRAINT mobilepay_reference_lookup_payment_type_check
+        CHECK (payment_type IN ('ONE_TIME', 'RECURRING'))
+);
+
+CREATE INDEX IF NOT EXISTS ix_mobilepay_reference_lookup_agreement_id
+ON public.mobilepay_reference_lookup (agreement_id)
+WHERE agreement_id IS NOT NULL;
 
 
 -- =========================================================
@@ -334,6 +356,10 @@ ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS created_at timestamp wi
 ALTER TABLE public.bank_account ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS merchant_reference text;
+ALTER TABLE public.mobilepay ADD COLUMN IF NOT EXISTS source_product text;
+ALTER TABLE public.mobilepay_reference_lookup ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.mobilepay_reference_lookup ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.postering_group ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.forecast ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
@@ -359,6 +385,8 @@ DROP TRIGGER IF EXISTS bank_account_set_updated_at ON public.bank_account;
 CREATE TRIGGER bank_account_set_updated_at BEFORE UPDATE ON public.bank_account FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS mobilepay_set_updated_at ON public.mobilepay;
 CREATE TRIGGER mobilepay_set_updated_at BEFORE UPDATE ON public.mobilepay FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+DROP TRIGGER IF EXISTS mobilepay_reference_lookup_set_updated_at ON public.mobilepay_reference_lookup;
+CREATE TRIGGER mobilepay_reference_lookup_set_updated_at BEFORE UPDATE ON public.mobilepay_reference_lookup FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS postering_group_set_updated_at ON public.postering_group;
 CREATE TRIGGER postering_group_set_updated_at BEFORE UPDATE ON public.postering_group FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS forecast_set_updated_at ON public.forecast;

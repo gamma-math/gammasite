@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GamMaSite.Services;
+using Moq;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -74,6 +78,44 @@ public sealed class FinanceImportServiceTests
             FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
 
         Assert.DoesNotContain("Message", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Import_AllowsEmptyMobilePayUserNameWhenProviderReferencesArePresent()
+    {
+        using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name;Merchant Reference;Product\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Kontingent;Payment;REF-1;03-09-2026;TX-1;;chr-example;Billing and Recurring Payments\n");
+
+        // Parsing and the source-row enrichment both complete before the test
+        // reaches the unavailable finance database.
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+            FinanceTestHelpers.ImportService().ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
+
+        Assert.DoesNotContain("User Name", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Import_UsesPostgresReferenceCacheForEmptyMobilePayUserName()
+    {
+        using var mobilePay = Csv("Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name;Merchant Reference;Product\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Kontingent;Payment;REF-1;03-09-2026;TX-1;;chr-example;Billing and Recurring Payments\n");
+        var references = new Mock<IFinanceMobilePayReferenceService>();
+        references
+            .Setup(service => service.GetPayerNamesAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, string>
+            {
+                ["chr-example"] = "Cached payer"
+            });
+        var service = new FinanceImportService(FinanceTestHelpers.Configuration(), references.Object);
+
+        // The finance database is intentionally unavailable in this unit test.
+        // Reaching that boundary proves the cache lookup completed first.
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            service.ImportAsync(null, null, mobilePay, "mobilepay.csv", false, CancellationToken.None));
+
+        references.Verify(cache => cache.GetPayerNamesAsync(
+            It.Is<IEnumerable<string>>(values => values.Contains("chr-example")),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

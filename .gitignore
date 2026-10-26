@@ -24,6 +24,7 @@ build/
 bld/
 [Bb]in/
 [Oo]bj/
+**/artifacts/
 
 # Visual Studio 2015 cache/options directory
 .vs/
@@ -55,6 +56,7 @@ multiproject.code-workspace
 # Local environment and ad-hoc run files
 .env
 .env.*
+!src/scripts/vipps/.env.example
 /src/backend/GamMaSite/appsettings.Development.json
 *.log
 run-local.*
@@ -63,6 +65,18 @@ legacy-cleanup-notes.txt
 
 # Frontend dependencies
 node_modules/
+
+# Python-generated files
+**/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
 
 # Local, user-uploaded content images. Keep the root directory for local setup.
 /src/backend/gammasite-media/*

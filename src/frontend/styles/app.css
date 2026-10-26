@@ -331,6 +331,13 @@ img {
     linear-gradient(180deg, var(--action-soft), rgba(255, 255, 255, 0.72));
 }
 
+.menu-panel-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .menu-shell {
   width: min(1380px, calc(100% - 40px));
   margin: 34px auto 44px;
@@ -347,8 +354,29 @@ img {
   min-width: 0;
 }
 
+.menu-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .menu-sidebar-title {
   font-size: 1.2rem;
+}
+
+.menu-sidebar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #cfd8e6;
+  border-radius: 10px;
+  color: var(--ink-strong);
+  background: #ffffff;
+  cursor: pointer;
 }
 
 .menu-side-nav {
@@ -552,6 +580,50 @@ img {
 
 .menu-editor-link-row > .menu-inline-add-button {
   margin-top: 10px;
+}
+
+.admin-payment-offer-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #dbe4f2;
+}
+
+.admin-payment-offer-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-payment-offer-entry {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-payment-offer-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe4f2;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.admin-payment-offer-draft {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbe4f2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.payment-offer-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--action-blue);
 }
 
 .admin-editor-shell > .status-message {
@@ -791,7 +863,13 @@ img {
   font-weight: 800;
 }
 
+.event-registration-status-line {
+  margin-bottom: 8px;
+}
+
 .menu-detail-side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: grid;
   align-content: start;
   gap: 10px;
@@ -817,7 +895,23 @@ img {
   background: #3859ef;
 }
 
+.menu-detail-side-link-paid {
+  justify-content: space-between;
+  gap: 12px;
+  color: #176b4d;
+  border-color: #9bd9bd;
+  background: #effaf3;
+}
+
+.menu-detail-side-link-paid strong {
+  color: #198754;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
 .menu-detail-bottom-bar {
+  grid-column: 1;
+  grid-row: 2;
   justify-content: space-between;
   gap: 18px;
   margin-top: 28px;
@@ -1403,6 +1497,14 @@ img {
   color: var(--ink-strong);
 }
 
+.admin-product-editor .admin-field select:disabled {
+  border-color: #d7dde6;
+  background: #eef1f5;
+  color: #7b8491;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .admin-color-field input[type="color"] {
   width: 92px;
   min-height: 46px;
@@ -1446,6 +1548,22 @@ img {
 
 .menu-table-wrap {
   overflow-x: auto;
+}
+
+.admin-template-sections {
+  display: grid;
+  gap: 22px;
+}
+
+.admin-template-section {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-template-section-heading h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 1.15rem;
 }
 
 .admin-editor-toolbar {
@@ -1852,6 +1970,78 @@ img {
   margin-bottom: 18px;
 }
 
+.admin-products-filters {
+  align-items: end;
+  justify-content: flex-start;
+}
+
+.admin-products-filters .admin-field {
+  width: min(280px, 100%);
+}
+
+.admin-subscription-expander-header,
+.admin-subscription-expander-cell {
+  display: table-cell;
+}
+
+.admin-subscription-detail-row {
+  display: table-row;
+}
+
+.admin-subscription-detail-row > td {
+  padding: 12px 14px 18px 60px;
+  background: #f8fbff;
+}
+
+.admin-subscription-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.admin-subscription-details div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-subscription-details dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.admin-subscription-details dd {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-subscriptions-table {
+  width: 100%;
+}
+
+.admin-subscription-row-link {
+  display: inline-flex;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.admin-subscription-details-column {
+  width: 124px;
+}
+
+.admin-subscriptions-filters {
+  align-items: end;
+  justify-content: flex-start;
+}
+
+.admin-subscriptions-filters .admin-multi-select {
+  width: min(280px, 100%);
+}
+
 .menu-table-page-size {
   display: inline-flex;
   align-items: center;
@@ -2128,6 +2318,236 @@ img {
   background: #f8faff;
 }
 
+.admin-mass-fields {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+
+.admin-mass-exclusion {
+  flex-basis: 100%;
+}
+
+.admin-subscription-detail-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #d7dfe9;
+  background: linear-gradient(115deg, #ffffff, #f1f4ff);
+}
+
+.admin-subscription-detail-header h1 {
+  margin: 0 0 8px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-detail-list {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-subscription-detail-card {
+  padding: 22px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-subscription-detail-card h2 {
+  margin: 0 0 18px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-detail-card .account-readonly-row strong {
+  overflow-wrap: anywhere;
+}
+
+.admin-subscription-dashboard-link {
+  justify-self: start;
+  width: fit-content;
+  margin-top: 2px;
+}
+
+.admin-subscription-link {
+  color: var(--action-blue);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-subscription-overview-card,
+.admin-subscription-payments-card {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #d7dfe9;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-subscription-overview-heading,
+.admin-subscription-payments-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-subscription-overview-heading h2,
+.admin-subscription-payments-heading h2 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+}
+
+.admin-subscription-overview-heading p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.admin-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.admin-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.admin-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.admin-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.admin-subscription-overview-item-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-subscription-technical-details {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
+}
+
+.admin-subscription-technical-details summary {
+  width: fit-content;
+  color: var(--action-blue);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.admin-subscription-technical-details summary::marker {
+  color: var(--muted);
+}
+
+.admin-subscription-technical-grid {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-heading {
+  align-items: center;
+}
+
+.admin-subscription-payments-heading .menu-section-title {
+  margin-bottom: 4px;
+}
+
+.admin-subscription-payments-table-wrap {
+  margin-top: 18px;
+}
+
+.admin-subscription-payments-table {
+  min-width: 980px;
+}
+
+.admin-subscription-payment-id {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .admin-mass-fields {
+    align-items: stretch;
+  }
+
+  .admin-mass-fields .admin-field,
+  .admin-mass-fields .profile-button {
+    width: 100%;
+  }
+
+  .admin-subscription-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .admin-subscription-overview-card,
+  .admin-subscription-payments-card {
+    padding: 18px;
+  }
+
+  .admin-subscription-overview-heading,
+  .admin-subscription-payments-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admin-subscription-overview-item-wide {
+    grid-column: auto;
+  }
+
+}
+
+.admin-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
 .menu-member-status-select {
   min-height: 40px;
   padding: 0 12px;
@@ -2339,13 +2759,153 @@ img {
   background: #ffffff;
 }
 
+.membership-paid-card {
+  display: block;
+  padding: 18px 0 24px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.membership-paid-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  max-width: 620px;
+  color: #146846;
+}
+
+.membership-paid-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 3px solid #2caf70;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #2caf70;
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.membership-paid-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.membership-paid-copy strong {
+  color: var(--ink-strong);
+  font-size: 1.1rem;
+}
+
+.membership-paid-copy small {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  .membership-paid-card {
+    padding: 14px 0 18px;
+  }
+
+  .membership-paid-message {
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .membership-paid-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.45rem;
+  }
+
+  .membership-paid-copy {
+    gap: 3px;
+  }
+
+  .membership-paid-copy strong {
+    font-size: 1rem;
+  }
+
+  .membership-paid-copy small {
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+}
+
 .payment-choice-actions {
   display: grid;
   justify-items: center;
   gap: 16px;
-  width: min(100%, 520px);
+  width: 100%;
   margin-top: 26px;
 }
+
+  .payment-type-options {
+    display: grid;
+    gap: 12px;
+    max-width: 100%;
+    margin: 18px 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  @media (min-width: 800px) {
+    .payment-type-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .payment-type-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid #d7dfe9;
+    border-radius: 14px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .payment-type-option.is-selected {
+    border-color: var(--accent);
+    background: #eef8fd;
+    box-shadow: 0 0 0 2px rgba(27, 169, 220, 0.12);
+  }
+
+  .payment-type-option input {
+    flex: 0 0 auto;
+    margin-top: 4px;
+    accent-color: var(--accent);
+  }
+
+  .payment-type-option span {
+    display: grid;
+    gap: 4px;
+  }
+
+  .payment-type-option small {
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .payment-type-note {
+    max-width: 720px;
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+    background: #f4f9fd;
+    line-height: 1.45;
+  }
+
+  .payment-method-kicker {
+    margin-top: 28px;
+  }
 
 .payment-choice-divider {
   display: flex;
@@ -2366,10 +2926,23 @@ img {
   background: #d7dfe9;
 }
 
+@media (min-width: 800px) {
+  .payment-choice-actions {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .payment-choice-divider {
+    width: auto;
+    min-width: 130px;
+  }
+}
+
 .menu-payment-button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
+  gap: 8px;
   justify-self: start;
   min-height: 48px;
   padding: 0 18px;
@@ -2390,6 +2963,22 @@ img {
   color: var(--ink-strong);
   border-color: #cfd8e6;
   background: #ffffff;
+}
+
+.payment-method-icon {
+  flex: 0 0 auto;
+}
+
+.payment-terms-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-align: center;
+}
+
+.payment-terms-note a {
+  color: var(--accent-deep);
+  font-weight: 700;
 }
 
 .menu-payment-product-card {
@@ -2416,6 +3005,22 @@ img {
 
 .menu-payment-status-card > .frontpage-button {
   justify-self: start;
+}
+
+.menu-payment-event-success {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  max-width: 920px;
+  padding: 36px;
+  border: 1px solid #d7e1ef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.menu-payment-event-success h1,
+.menu-payment-event-success p {
+  margin: 0;
 }
 
 .menu-payment-product-card h1 {
@@ -2632,6 +3237,17 @@ img {
   background: #eef4fb;
 }
 
+.account-field.has-error input {
+  border-color: #c9364d;
+  background: #fff7f8;
+}
+
+.account-field-error {
+  color: #8f1f2d;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
 .account-checkbox {
   display: flex;
   align-items: center;
@@ -2644,6 +3260,14 @@ img {
   width: 18px;
   height: 18px;
   accent-color: var(--accent);
+}
+
+.account-checkbox-help {
+  display: block;
+  margin-top: 3px;
+  color: #5d6b7e;
+  font-size: 0.82rem;
+  font-weight: 400;
 }
 
 .account-links {
@@ -2853,6 +3477,117 @@ img {
   width: 100%;
 }
 
+.account-subscriptions-panel {
+  margin-bottom: 32px;
+}
+
+.account-subscriptions-panel h2 {
+  margin: 0 0 16px;
+  color: var(--ink-strong);
+  font-size: 1.2rem;
+}
+
+.account-subscription-overview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.account-subscription-overview-heading h3 {
+  margin: 0 0 6px;
+  color: var(--ink-strong);
+  font-size: 1.25rem;
+}
+
+.account-subscription-overview-heading .menu-section-title {
+  margin-bottom: 4px;
+}
+
+.account-subscription-overview-heading p:not(.menu-section-title) {
+  margin: 0;
+  color: var(--muted);
+}
+
+.account-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #e8f7ef;
+  color: #18794e;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.account-subscription-status-terminal {
+  background: #fff0f1;
+  color: #b4233c;
+}
+
+.account-subscription-status-pending {
+  background: #fff6df;
+  color: #9a6700;
+}
+
+.account-subscription-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 32px;
+  margin: 24px 0 0;
+}
+
+.account-subscription-overview-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-subscription-overview-item dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.account-subscription-overview-item dd {
+  margin: 0;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.account-subscription-overview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #d7dfe9;
+}
+
+.account-subscription-delete-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--action-blue);
+  border-radius: 10px;
+  color: #ffffff;
+  background: var(--action-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-subscription-delete-button:hover {
+  background: #2f4bd3;
+  border-color: #2f4bd3;
+}
+
+.account-subscription-delete-button:disabled {
+  border-color: #d6deec;
+  color: #7a889b;
+  background: #f4f6f9;
+  cursor: not-allowed;
+}
+
 .account-finance-table-container {
   min-width: 0;
 }
@@ -2972,6 +3707,23 @@ img {
   .account-finance-table-container.is-expanded {
     padding: 14px 12px 16px;
   }
+
+  .account-subscription-overview-heading {
+    flex-direction: column;
+  }
+
+  .account-subscription-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .account-subscription-overview-actions {
+    justify-content: stretch;
+  }
+
+  .account-subscription-overview-actions .account-subscription-delete-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -2989,6 +3741,12 @@ img {
   .menu-editor-actions,
   .menu-detail-footer-actions {
     flex-wrap: wrap;
+  }
+
+  .menu-detail-side,
+  .menu-detail-bottom-bar {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .frontpage-topbar,
@@ -3016,6 +3774,101 @@ img {
 }
 
 @media (max-width: 640px) {
+  .menu-sidebar-header {
+    min-height: 42px;
+  }
+
+  .menu-sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .menu-sidebar.is-collapsed .menu-sidebar-title {
+    margin-bottom: 0;
+  }
+
+  .menu-sidebar.is-collapsed .menu-side-nav {
+    display: none;
+  }
+
+  .admin-subscriptions-filters {
+    display: block;
+  }
+
+  .admin-subscriptions-filters .admin-multi-select {
+    width: 100%;
+  }
+
+  .admin-subscriptions-filters .admin-multi-select-menu {
+    position: static;
+    width: 100%;
+    max-height: 240px;
+    border-top: 1px solid #cfd8e6;
+    border-radius: 0 0 5px 5px;
+    box-shadow: none;
+  }
+
+  .admin-subscriptions-list {
+    overflow-x: hidden;
+  }
+
+  .admin-subscriptions-table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .admin-subscriptions-table .admin-subscription-user-column {
+    width: 46%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-provider-column {
+    width: 25%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-details-column {
+    width: 29%;
+  }
+
+  .admin-subscriptions-table .admin-subscription-mobile-column-hidden {
+    display: none;
+    width: 0;
+  }
+
+  .admin-subscriptions-table th,
+  .admin-subscriptions-table td {
+    padding: 10px 8px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-subscriptions-table th:nth-child(1),
+  .admin-subscriptions-table td:nth-child(1) {
+    width: 46%;
+    text-align: left;
+  }
+
+  .admin-subscriptions-table th:nth-child(2),
+  .admin-subscriptions-table td:nth-child(2) {
+    width: 25%;
+    text-align: left;
+  }
+
+  .admin-subscriptions-table th:nth-child(3),
+  .admin-subscriptions-table td:nth-child(3) {
+    width: 29%;
+    text-align: left;
+  }
+
+  .admin-subscription-mobile-hidden {
+    display: none;
+  }
+
+  .admin-subscription-row-link {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 0.78rem;
+  }
+
   .admin-content-image-input-row {
     grid-template-columns: 1fr;
   }
@@ -3197,14 +4050,27 @@ img {
   }
 
   .menu-detail-bottom-bar {
+    grid-column: 1;
+    grid-row: auto;
     display: grid;
     gap: 18px;
+    margin-top: 0;
     justify-content: stretch;
-    margin-top: 22px;
   }
 
   .menu-attendee-preview {
     justify-content: flex-start;
+  }
+
+  .menu-detail-side {
+    grid-column: 1;
+    grid-row: 2;
+    padding-top: 18px;
+    border-top: 1px solid #dce4ef;
+  }
+
+  .menu-detail-body {
+    row-gap: 0;
   }
 
   .menu-detail-footer-actions {
@@ -3248,6 +4114,7 @@ img {
 
   .menu-registration-table th:nth-child(2),
   .menu-registration-table th:nth-child(3),
+  .menu-registration-table th:nth-child(4),
   .menu-registration-desktop-cell {
     display: none;
   }

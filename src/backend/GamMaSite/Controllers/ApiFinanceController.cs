@@ -300,7 +300,7 @@ namespace GamMaSite.Controllers
             else if (string.Equals(source, "mobilepay", StringComparison.OrdinalIgnoreCase))
             {
                 fileName = "eksempel-mobilepay-transaktioner.csv";
-                content = "Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name\r\n02-09-2026;2026-09-02T18:28:10+02:00;50,00;Eksempelbetaling;Payment;02000227660010309261;03-09-2026;36332578042;Eksempel Bruger\r\n";
+                content = "Date;Timestamp;Amount;Message;Transaction Type;Transfer Reference;Transfer Date;Payment Transaction ID;User Name;Merchant Reference;Product\r\n25-10-2026;2026-10-25T23:04:59+01:00;10,00;Kontingent;Payment;02020976840012510261;26-10-2026;36855827025;;chr-eksempel;Billing and Recurring Payments\r\n";
             }
             else
             {

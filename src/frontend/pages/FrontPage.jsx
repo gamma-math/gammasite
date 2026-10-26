@@ -31,7 +31,7 @@ export function FrontPage({ mode, title, user }) {
     const visibleItems = sortedItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
 
     return (
-      <MenuLayout active={mode === "EVENT" ? "/react/events" : "/react/news"} isAuthenticated={user?.isAuthenticated}>
+      <MenuLayout active={mode === "EVENT" ? "/events" : "/news"} isAuthenticated={user?.isAuthenticated}>
         <div className="menu-panel-header">
           <div>
             <p className="menu-section-title">{title}</p>
@@ -81,7 +81,7 @@ export function FrontPage({ mode, title, user }) {
       <section className="frontpage-section frontpage-news">
         <div className="frontpage-section-head">
           <h2>Nyheder og events</h2>
-          <Link className="frontpage-button frontpage-button-secondary" href="/react/events">Se mere</Link>
+          <Link className="frontpage-button frontpage-button-secondary" href="/events">Se mere</Link>
         </div>
         {error && <p className="status-message status-message-error">{error}</p>}
         <div className="frontpage-news-grid">

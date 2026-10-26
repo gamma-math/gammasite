@@ -54,6 +54,9 @@ public class ContentMediaServiceTests
             var result = await service.UploadAsync(13, File(JpegBytes(), "photo.png", "image/png"));
             Assert.Equal("/media/content/news/nyhed.jpg", result.Url);
 
+            var restartMarkerResult = await service.UploadAsync(13, File(JpegBytesWithRestartMarker(), "photo.jpg", "image/jpeg"));
+            Assert.Equal("/media/content/news/nyhed.jpg", restartMarkerResult.Url);
+
             await Assert.ThrowsAsync<ContentMediaValidationException>(() => service.UploadAsync(13, File(new byte[(int)ContentMediaService.MaxImageSize + 1], "large.jpg", "image/jpeg")));
             await Assert.ThrowsAsync<ContentMediaValidationException>(() => service.UploadAsync(13, File(new byte[] { 1, 2, 3, 4 }, "fake.jpg", "image/jpeg")));
         }
@@ -254,6 +257,13 @@ public class ContentMediaServiceTests
         0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00,
         0x00, 0xff, 0xd9
     };
+
+    private static byte[] JpegBytesWithRestartMarker()
+    {
+        return JpegBytes()[..^2]
+            .Concat(new byte[] { 0xff, 0xd0, 0xff, 0xd9 })
+            .ToArray();
+    }
 
     private static string CreateTempDirectory()
     {

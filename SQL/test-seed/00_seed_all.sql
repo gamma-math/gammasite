@@ -1,10 +1,12 @@
-﻿-- Test seed for GAMMASITE
+-- Test seed for GAMMASITE
 -- Uses fake test data only.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
 
 DELETE FROM `EventRegistrations`;
+DELETE FROM `PaymentSubscriptions`;
+DELETE FROM `PaymentOffers`;
 DELETE FROM `ContentLinks`;
 DELETE FROM `ContentItems`;
 DELETE FROM `EmailTemplates`;
@@ -20,7 +22,8 @@ INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) V
 ('role-admin', 'Admin', 'ADMIN', '3bff48cf-bde8-43f2-8e4f-0d27d5f9ec01'),
 ('role-test', 'Test', 'TEST', '73f673e8-b29b-46dc-9bf1-8ca4a9422cc1'),
 ('role-finance', 'Finance', 'FINANCE', '793dddb1-a177-4a9a-9ff7-a2224f8533e1'),
-('role-mail', 'Rolle mail test', 'ROLLE MAIL TEST', '2c2212b9-5c03-4f83-94fd-97769ad33dc4');
+('role-mail', 'Rolle mail test', 'ROLLE MAIL TEST', '2c2212b9-5c03-4f83-94fd-97769ad33dc4'),
+('role-payments', 'Payments', 'PAYMENTS', '5f69c4d1-8f3b-4ae2-9eea-4a3f4d8a90b1');
 
 INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) VALUES
 ('role-kasserer', 'Kasserer', 'KASSERER', 'd7b5c54e-1a7a-4d42-a7eb-7e12f45c3f01'),
@@ -35,7 +38,8 @@ INSERT INTO `Permissions` (`Code`, `Description`) VALUES
   ('finance.edit.all', 'Se og redigere alle finanser'),
   ('messages.edit', CONVERT(0x5365206265736B65646F6D72C3A5646574206F672073656E6465206265736B65646572 USING utf8mb4)),
   ('email_templates.edit', 'Se, oprette, redigere og slette beskedskabeloner'),
-  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4))
+  ('roles.edit', CONVERT(0x5365206F672061646D696E697374726572652068656C6520726F6C6C652D206F67207065726D697373696F6E736F6D72C3A5646574 USING utf8mb4)),
+  ('payments.edit.all', 'Se og administrere alle betalingsprodukter og betalingsaftaler')
 ON DUPLICATE KEY UPDATE
   `Description` = VALUES(`Description`);
 
@@ -71,6 +75,11 @@ INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
 SELECT 'role-kommunikation', `Id`
 FROM `Permissions`
 WHERE `Code` IN ('messages.edit', 'email_templates.edit');
+
+INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
+SELECT 'role-payments', `Id`
+FROM `Permissions`
+WHERE `Code` = 'payments.edit.all';
 
 INSERT INTO `AspNetRoleClaims` (`ClaimType`, `ClaimValue`, `RoleId`)
 SELECT 'permission', p.`Code`, rp.`RoleId`
@@ -121,6 +130,7 @@ INSERT INTO `AspNetUserTokens` (`UserId`, `LoginProvider`, `Name`, `Value`) VALU
 INSERT INTO `AspNetUserRoles` (`UserId`, `RoleId`) VALUES
 ('user-admin-test', 'role-admin'),
 ('user-admin-test', 'role-finance'),
+('user-admin-test', 'role-payments'),
 ('user-member-test', 'role-test'),
 ('user-fake-001', 'role-admin'),
 ('user-fake-002', 'role-test'),
@@ -238,6 +248,15 @@ INSERT INTO `ContentLinks` (`ContentItemId`, `Label`, `Url`, `Type`, `SortOrder`
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'koebenhavnermuren-2026' LIMIT 1), 'Facebook-event', 'https://www.facebook.com/events/1528726255308131/', 'FACEBOOK', 0, '2026-08-15 10:05:00', '2026-08-15 10:05:00'),
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'koebenhavnermuren-2026' LIMIT 1), 'Tilmeld dig - betal 50 kr.', 'https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amount=50&comment=K%C3%B8benhavnermuren', 'PAYMENT', 1, '2026-08-15 10:05:00', '2026-08-15 10:05:00');
 
+INSERT INTO `PaymentOffers` (
+  `ContentItemId`, `Scope`, `Provider`, `OfferType`, `LinkLabel`, `ProductName`,
+  `AmountMinor`, `Currency`, `BillingInterval`, `BillingIntervalCount`
+) VALUES
+(NULL, 'MEMBERSHIP', 'MOBILEPAY', 'ONE_TIME', 'Betal én gang', 'Kontingent', 15000, 'DKK', NULL, NULL),
+(NULL, 'MEMBERSHIP', 'MOBILEPAY', 'RECURRING', 'Betal automatisk', 'Kontingent', 15000, 'DKK', 'YEAR', 1),
+(NULL, 'MEMBERSHIP', 'STRIPE', 'ONE_TIME', 'Betal én gang', 'Kontingent', 15000, 'DKK', NULL, NULL),
+(NULL, 'MEMBERSHIP', 'STRIPE', 'RECURRING', 'Betal automatisk', 'Kontingent', 15000, 'DKK', 'YEAR', 1);
+
 INSERT INTO `EventRegistrations` (`ContentItemId`, `UserId`, `RegistrationType`, `Registered`, `ResponseText`, `Created`, `Updated`) VALUES
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'bastard-fyraftenscafe-2026' LIMIT 1), 'user-member-test', 'ATTENDEE', 1, 'Kommer forbi til en øl og et spil.', '2026-04-16 09:15:00', '2026-04-16 09:15:00'),
 ((SELECT `Id` FROM `ContentItems` WHERE `Slug` = 'faglig-aften-juni-2026' LIMIT 1), 'user-admin-test', 'ORGANIZER', 1, 'Hjælper med mad og oplægsholdere.', '2026-04-21 09:20:00', '2026-04-21 09:20:00'),
@@ -316,34 +335,24 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
   <!-- Membership -->
   <div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#173042;line-height:1.45;font-size:0.9rem;">
     <div style="padding:16px;background-color:#fffefb;border-radius:10px;border:1px solid #e9efe8;">
-      <p style="margin:0 0 8px;font-weight:bold;">Medlemskab?</p>
-      <p style="margin:0 0 8px;">Husk, at deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab.</p>
-      <p style="margin:0 0 8px;">
-        Tjek betaling og opdater dine oplysninger p&aring;
-        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">
-          GamMa.dk - <span style="font-weight:bold;">Profil</span>
-        </a>.
+      <p style="margin:0 0 8px;font-weight:bold;">Medlemskab</p>
+      <p style="margin:0 0 12px;">
+        Deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab. P&aring;
+        <a href="https://gam-ma.dk/pay" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Betal medlemskab</a>
+        kan du altid tjekke din medlemsstatus.
       </p>
-      <p style="margin:0 0 8px;">Bliv medlem s&aring;dan her:</p>
-      <ul style="margin:0 0 10px;padding-left:20px;">
-        <li>MobilePay: <strong>150 kr. til 22766</strong></li>
-        <li>Log ind p&aring; <a href="https://gam-ma.dk/" style="color:#337ab7;text-decoration:none;">gam-ma.dk</a> og betal med kort under <em>Menu &gt;&gt; Betal</em></li>
-        <li>Skan eller tryk p&aring; QR-koden nedenfor</li>
-      </ul>
-      <p style="margin:0 0 10px;font-size:0.85rem;color:#5b7383;">
-        Er du studerende, er medlemskabet gratis. Kontakt bestyrelsen, s&aring; vi kan notere det.
-      </p>
-      <p style="margin:0 0 10px;text-align:center;">
-        <a href="https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amp;amount=150&amp;comment=Medlemskab" target="_blank" style="text-decoration:none;">
-          <img src="https://github.com/AbrahimBorgiPrivat/GAMMA---ASSETS/blob/main/res/mails/img/qr/QR_medlemskab.png?raw=true"
-               alt="Medlemskab MobilePay QR"
-               width="150"
-               style="border:0;display:block;margin:0 auto;height:auto;">
+      <p style="margin:0 0 14px;text-align:center;">
+        <a href="https://gam-ma.dk/pay" target="_blank" style="display:inline-block;padding:9px 16px;background:#337ab7;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Betal medlemskab eller opret betalingsaftale
         </a>
+      </p>
+      <p style="margin:0 0 10px;">
+        Er du stadig <strong>studerende</strong>, er medlemskab gratis. Det kan du angive under
+        <a href="https://gam-ma.dk/account/manage" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Profil</a>.
       </p>
       <p style="margin:0;text-align:center;font-size:0.75rem;">
         &Oslash;nsker du at blive afmeldt eller udmeldt, s&aring; log ind p&aring;
-        <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">GamMa.dk - Privatdata</a>
+        <a href="https://gam-ma.dk/account/manage/personal-data" target="_blank" style="color:#337ab7;text-decoration:none;">Privatdata</a>
         og klik <b>''slet''</b>.
       </p>
     </div>
@@ -459,28 +468,24 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
 <!-- Membership -->
 <div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#000000;line-height:1.45;font-size:0.9rem;">
   <div style="padding:16px;background-color:#fffefd;border-radius:10px;border:1px solid #f1f1f1;">
-    <p style="margin:0 0 8px;font-weight:bold;">Medlemskab?</p>
-    <p style="margin:0 0 8px;">Husk, at deltagelse i GamMa-arrangementer kræver et aktivt medlemskab.</p>
-    <p style="margin:0 0 8px;">
-      Tjek betaling og opdater dine oplysninger på
-      <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">
-        GamMa.dk → <span style="font-weight:bold;">Profil</span>
-      </a>.
+    <p style="margin:0 0 8px;font-weight:bold;">Medlemskab</p>
+    <p style="margin:0 0 12px;">
+      Deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab. P&aring;
+      <a href="https://gam-ma.dk/pay" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Betal medlemskab</a>
+      kan du altid tjekke din medlemsstatus.
     </p>
-    <p style="margin:0 0 8px;">Bliv medlem sådan her:</p>
-    <ul style="margin:0 0 10px;padding-left:20px;">
-      <li>MobilePay: <strong>150 kr. til 22766</strong></li>
-      <li>Log ind på <a href="https://gam-ma.dk/" style="color:#337ab7;text-decoration:none;">gam-ma.dk</a> og betal med kort under <em>Menu &gt;&gt; Betal</em></li>
-      <li>Skan/tryk på QR-koden nedenfor</li>
-    </ul>
-    <p style="margin:0 0 10px;text-align:center;">
-      <a href="https://mobilepay.dk/erhverv/betalingslink/betalingslink-svar?phone=22766&amp;amount=150&amp;comment=Medlemskab" target="_blank" style="text-decoration:none;">
-        <img src="https://lh7-rt.googleusercontent.com/docsz/AD_4nXdzlpmoaRPEsXlhWfS76cmyJHopn0ji3CFV1v86x-DkurRa-LThEnuVntyyz_TKWq4tRvNRxZatoo88bb_rs3aaczNZWpWHxotuJ6quVDo4NXxpXu6ZEJsyEW1Ig5IR0xfB8fM8?key=AprQhRqq-JWjeqGFDCqqvMz9" alt="Medlemskab MobilePay QR" width="150" style="border:0;display:block;margin:0 auto;height:auto;">
+    <p style="margin:0 0 14px;text-align:center;">
+      <a href="https://gam-ma.dk/pay" target="_blank" style="display:inline-block;padding:9px 16px;background:#337ab7;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">
+        Betal medlemskab eller opret betalingsaftale
       </a>
     </p>
+    <p style="margin:0 0 10px;">
+      Er du stadig <strong>studerende</strong>, er medlemskab gratis. Det kan du angive under
+      <a href="https://gam-ma.dk/account/manage" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Profil</a>.
+    </p>
     <p style="margin:0;text-align:center;font-size:0.75rem;">
-      Ønsker du at blive afmeldt/udmeldt, så log ind på
-      <a href="https://www.gam-ma.dk/Identity/Account/Manage" target="_blank" style="color:#337ab7;text-decoration:none;">GamMa.dk → Privatdata</a>
+      &Oslash;nsker du at blive afmeldt eller udmeldt, s&aring; log ind p&aring;
+      <a href="https://gam-ma.dk/account/manage/personal-data" target="_blank" style="color:#337ab7;text-decoration:none;">Privatdata</a>
       og klik <b>''slet''</b>.
     </p>
   </div>
@@ -532,7 +537,29 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
   'System - Opret ny bruger',
   'Bekræft din email',
   'Bekræft din GamMa-bruger',
-  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div><div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;"><a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a><div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div><div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div><div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1>
+    <p style="margin:0 0 18px;">{{Intro}}</p>
+    <a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a>
+    <p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p>
+    <p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p>
+  </div>
+  <div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div>
+  <div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr>
+      <td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td>
+      <td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td>
+      <td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td>
+    </tr></tbody></table>
+  </div>
+  <div style="height:16px;"></div>
+</div>',
   'Hej {{Name}}
 
 {{Intro}}
@@ -552,7 +579,21 @@ GamMas bestyrelse',
   'System - Bekræft email',
   'Bekræft din email',
   'Bekræft din email hos GamMa',
-  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div><div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;"><a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a><div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div><div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div><div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1>
+    <p style="margin:0 0 18px;">{{Intro}}</p>
+    <a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a>
+    <p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p>
+    <p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p>
+  </div>
+  <div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div>
+  <div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div>
+  <div style="height:16px;"></div>
+</div>',
   'Hej {{Name}}
 
 {{Intro}}
@@ -572,7 +613,12 @@ GamMas bestyrelse',
   'System - Ændr email',
   'Bekræft email',
   'Bekræft din nye email hos GamMa',
-  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div><div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;"><a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a><div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div><div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div><div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div>
+  <div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div>
+  <div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
   'Hej {{Name}}
 
 {{Intro}}
@@ -592,7 +638,8 @@ GamMas bestyrelse',
   'System - Nulstil password',
   'Nulstil Password',
   'Nulstil dit password hos GamMa',
-  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div><div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;"><a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a><div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div><div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div><div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;"><a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:180px;object-fit:contain;background-color:#ffffff;padding:16px 0;"></a><div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;"><p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1><p style="margin:0 0 18px;">{{Intro}}</p><a href="{{ActionUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a><p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p><p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p></div><div style="height:1px;background-color:#cfe0ef;width:90%;max-width:640px;margin:0 auto 12px auto;"></div><div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;"><table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">LinkedIn</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Instagram</div></a></td><td style="padding:10px;border:none;background:none;text-align:center;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;display:inline-block;text-align:center;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="36" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:12px;color:#000000;text-align:center;">Facebook</div></a></td></tr></tbody></table></div><div style="height:16px;"></div></div>',
   'Hej {{Name}}
 
 {{Intro}}
@@ -607,8 +654,113 @@ GamMas bestyrelse',
   1,
   '2026-09-03 12:00:00',
   '2026-09-03 12:00:00'
-);
+),
+(
+  'System - Betalingsbekræftelse',
+  'Tak for din betaling af {{ProductName}} hos GamMa',
+  'Din betaling af {{ProductName}} er gennemført',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Din betaling af {{ProductName}} er gennemf&oslash;rt</div>
+<div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="display:block;text-decoration:none;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;max-height:180px;height:auto;padding:16px 0;border:0;outline:none;background-color:#ffffff;object-fit:contain;">
+  </a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px;background-color:#ffffff;border:1px solid #d9e7f5;">
+    <div style="padding:24px 24px 20px;font-size:15px;line-height:1.55;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#337ab7;">BETALINGSKVITTERING</p>
+      <p style="margin:0 0 12px;font-size:22px;font-weight:bold;color:#10233a;">Tak for din betaling</p>
+      <p style="margin:0 0 20px;">Hej <strong>{{Name}}</strong><br>Din betaling af <strong>{{ProductName}}</strong> hos GamMa er gennemf&oslash;rt.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background-color:#ffffff;font-size:13px;">
+        <thead><tr><th colspan="2" style="padding:9px 12px;background-color:#eef5fb;text-align:left;font-size:11px;letter-spacing:0.5px;color:#5c7085;">BETALINGSOVERSIGT</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betaler</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">E-mail</td><td style="padding:8px 12px;text-align:right;">{{Email}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Produkt</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingssystem</td><td style="padding:8px 12px;text-align:right;">{{PaymentProvider}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsdato</td><td style="padding:8px 12px;text-align:right;">{{PaymentDate}}</td></tr>
+          <tr><td style="padding:11px 12px;background-color:#eef5fb;font-weight:bold;color:#173042;">Betalt</td><td style="padding:11px 12px;background-color:#eef5fb;text-align:right;font-size:17px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:20px 0 0;font-size:14px;">Med venlig hilsen<br><strong>GamMa</strong></p>
+    </div>
+  </div>
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
 
+Tak for din betaling af {{ProductName}} hos GamMa.
+
+Betaler: {{Name}}
+Email: {{Email}}
+Betaling for: {{ProductName}}
+Beloeb: {{Amount}}
+Betalingssystem: {{PaymentProvider}}
+Betalingsdato: {{PaymentDate}}
+
+Gem gerne denne mail som dokumentation for din betaling.
+
+Med venlig hilsen
+GamMa',
+  'SYSTEM_PAYMENT_CONFIRMATION',
+  1,
+  '2026-10-20 12:00:00',
+  '2026-10-20 12:00:00'
+),
+(
+  'System - Bekræft automatisk betaling',
+  'Tak for din betaling af {{ProductName}} hos GamMa',
+  'Din betaling af {{ProductName}} er gennemført; fremtidige betalinger trækkes automatisk',
+  '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;overflow:hidden;opacity:0;">Din betaling af {{ProductName}} er gennemf&oslash;rt; fremtidige betalinger tr&aelig;kkes automatisk</div>
+<div style="margin:0;padding:0;background-color:#eef5fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+  <a href="https://gam-ma.dk/" target="_blank" style="display:block;text-decoration:none;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="100%" style="display:block;max-height:180px;height:auto;padding:16px 0;border:0;outline:none;background-color:#ffffff;object-fit:contain;">
+  </a>
+  <div style="width:90%;max-width:640px;margin:18px auto 22px;background-color:#ffffff;border:1px solid #d9e7f5;">
+    <div style="padding:24px 24px 20px;font-size:15px;line-height:1.55;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:bold;letter-spacing:1px;color:#337ab7;">BETALINGSAFTALE</p>
+      <p style="margin:0 0 12px;font-size:22px;font-weight:bold;color:#10233a;">Tak for din betaling</p>
+      <p style="margin:0 0 20px;">Hej <strong>{{Name}}</strong><br>Din betaling af <strong>{{ProductName}}</strong> hos GamMa er gennemf&oslash;rt. Fremtidige betalinger bliver trukket automatisk.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background-color:#ffffff;font-size:13px;">
+        <thead><tr><th colspan="2" style="padding:9px 12px;background-color:#eef5fb;text-align:left;font-size:11px;letter-spacing:0.5px;color:#5c7085;">BETALINGSOVERSIGT</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betaler</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{Name}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">E-mail</td><td style="padding:8px 12px;text-align:right;">{{Email}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Produkt</td><td style="padding:8px 12px;text-align:right;font-weight:bold;">{{ProductName}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingssystem</td><td style="padding:8px 12px;text-align:right;">{{PaymentProvider}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsdato</td><td style="padding:8px 12px;text-align:right;">{{PaymentDate}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Betalingsfrekvens</td><td style="padding:8px 12px;text-align:right;">{{BillingPeriod}}</td></tr>
+          <tr><td style="padding:8px 12px;color:#5c7085;">Aftaletype</td><td style="padding:8px 12px;text-align:right;">Automatisk betaling</td></tr>
+          <tr><td style="padding:11px 12px;background-color:#eef5fb;font-weight:bold;color:#173042;">Betalt</td><td style="padding:11px 12px;background-color:#eef5fb;text-align:right;font-size:17px;font-weight:bold;color:#10233a;">{{Amount}}</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:20px 0 0;color:#4f6475;">Din betaling for <strong>{{ProductName}}</strong> bliver trukket automatisk, indtil betalingsaftalen opsiges.</p>
+      <p style="margin:14px 0 0;">Du kan altid se status eller opsige betalingsaftalen på <a href="https://gam-ma.dk/account/manage/subscriptions" style="color:#2485c7;font-weight:bold;text-decoration:none;">din konto</a>.</p>
+      <p style="margin:20px 0 0;font-size:14px;">Med venlig hilsen<br><strong>GamMa</strong></p>
+    </div>
+  </div>
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
+
+Tak for din betaling af {{ProductName}} hos GamMa. Din betaling er gennemført, og fremtidige betalinger vil blive trukket automatisk.
+
+Betaler: {{Name}}
+Email: {{Email}}
+Betaling for: {{ProductName}}
+Beloeb: {{Amount}}
+Betalingssystem: {{PaymentProvider}}
+Betalingsdato: {{PaymentDate}}
+Betalingsfrekvens: {{BillingPeriod}}
+Aftaletype: Automatisk betaling
+
+Din betaling for {{ProductName}} vil fremover blive trukket automatisk, indtil aftalen opsiges. Du kan altid se status og opsige din betalingsaftale på din konto: https://gam-ma.dk/account/manage/subscriptions
+
+Med venlig hilsen
+GamMa',
+  'SYSTEM_PAYMENT_RECURRING',
+  1,
+  '2026-10-20 12:00:00',
+  '2026-10-20 12:00:00'
+);
 SET FOREIGN_KEY_CHECKS=1;
 
 INSERT INTO `ContentItems` (

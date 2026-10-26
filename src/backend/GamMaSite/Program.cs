@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -28,6 +29,13 @@ LocalEnvironment.Load();
 /* Create WebApplicationBuilder */
 var builder = WebApplication.CreateBuilder(args);
 
+var publicBaseUrl = builder.Configuration["PublicBaseUrl"]?.TrimEnd('/');
+if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
+    (publicBaseUri.Scheme != Uri.UriSchemeHttps && publicBaseUri.Scheme != Uri.UriSchemeHttp))
+{
+    throw new InvalidOperationException("PublicBaseUrl skal være en fuld HTTP(S)-URL.");
+}
+
 
 /* ConfigureServices: Use this section to add services to the container. */
 // For more: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/startup?view=aspnetcore-8.0
@@ -35,7 +43,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add the database connection
 var mysqlConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var serverVersion = new MySqlServerVersion(new Version(8, 0));
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseMySql(mysqlConn, serverVersion));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(
+        mysqlConn,
+        serverVersion,
+        mySqlOptions => mySqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+    )
+);
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add HSTS
@@ -77,6 +91,22 @@ builder.Services.AddTransient<IEmailSender, EmailService>(EmailInstance);
 builder.Services.AddScoped<IStripeService, StripeService>(i => new StripeService());
 StripeConfiguration.ApiKey = builder.Configuration["StripeConfig:SecretApiKey"];
 
+// Add MobilePay/Vipps ePayment integration.
+builder.Services.AddHttpClient<IMobilePayService, MobilePayService>(client =>
+{
+    var baseUrl = builder.Configuration["MobilePay:BaseUrl"];
+    if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var mobilePayBaseUri) ||
+        (mobilePayBaseUri.Scheme != Uri.UriSchemeHttps && mobilePayBaseUri.Scheme != Uri.UriSchemeHttp))
+    {
+        throw new InvalidOperationException("MobilePay:BaseUrl skal være en fuld HTTP(S)-URL.");
+    }
+
+    client.BaseAddress = new Uri(mobilePayBaseUri.ToString().TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddScoped<IMobilePayEventReferenceService, MobilePayEventReferenceService>();
+builder.Services.AddScoped<MobilePaySubscriptionReconciliationService>();
+
 // API services used by the future React frontend.
 builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IContentMediaService, ContentMediaService>();
@@ -84,6 +114,7 @@ builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>(
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
 builder.Services.AddScoped<FinanceReportService>();
+builder.Services.AddScoped<IFinanceMobilePayReferenceService, FinanceMobilePayReferenceService>();
 builder.Services.AddScoped<FinanceImportService>();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
@@ -104,6 +135,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(PermissionPolicies.RolesOrMessages, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.RolesEdit, PermissionCodes.MessagesEdit)));
     options.AddPolicy(PermissionPolicies.FinanceViewAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceViewAll, PermissionCodes.FinanceEditAll)));
     options.AddPolicy(PermissionPolicies.FinanceEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.FinanceEditAll)));
+    options.AddPolicy(PermissionPolicies.PaymentsEditAll, policy => policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(PermissionCodes.PaymentsEditAll)));
 });
 
 // Add Github
@@ -168,6 +200,28 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy("payment-checkout", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("payment-provider-read", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}:" +
+            (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -216,35 +270,72 @@ if (Directory.Exists(contentMediaRoot))
 }
 app.MapStaticAssets();
 
+// Redirect the exact lowercase library URL before ASP.NET's case-insensitive
+// endpoint matching can treat it as the canonical /Library route.
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method)
+        && LegacyRouteRedirects.IsNonCanonicalLibraryPath(context.Request.Path.Value ?? string.Empty))
+    {
+        context.Response.Redirect(
+            LegacyRouteRedirects.BuildLocation("library", context.Request.QueryString.ToString()),
+            permanent: true);
+        return;
+    }
+
+    await next();
+});
+
 app.UseRouting();
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+// Redirect legacy React-prefixed public URLs to their canonical paths.
+app.MapGet("/react", (HttpContext context) => RedirectLegacyReactPath(string.Empty, context));
+app.MapGet("/react/{**path}", (string path, HttpContext context) => RedirectLegacyReactPath(path, context));
+
+// Keep the English /Library route canonical for the React library page.
+app.MapGet("/bibliotek", (HttpContext context) => RedirectLegacyReactPath("bibliotek", context));
+app.MapGet("/referater", (HttpContext context) => RedirectLegacyReactPath("referater", context));
+app.MapGet("/Library/Index", (HttpContext context) => RedirectLegacyReactPath("Library/Index", context));
+app.MapGet("/Library/IndexAsync", (HttpContext context) => RedirectLegacyReactPath("Library/IndexAsync", context));
 
 // Controller routes and Razor pages
 app.MapControllers();
+app.MapMethods(
+    "/api/{**path}",
+    new[] { HttpMethods.Get, HttpMethods.Head, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete, HttpMethods.Options },
+    () => Results.NotFound());
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
-app.MapFallbackToController("/react/{*path:nonfile}", "Index", "React");
-app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/react/account/login{context.Request.QueryString}"));
-app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/react/account/register{context.Request.QueryString}"));
-app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/react/account/forgot-password"));
-app.MapGet("/Identity/Account/ResendEmailConfirmation", () => Results.Redirect("/react/account/resend-email-confirmation"));
-app.MapGet("/Identity/Account/Manage", () => Results.Redirect("/react/account/manage"));
-app.MapGet("/Identity/Account/Manage/Index", () => Results.Redirect("/react/account/manage"));
-app.MapGet("/Identity/Account/Manage/Email", () => Results.Redirect("/react/account/manage/email"));
-app.MapGet("/Identity/Account/Manage/ChangePassword", () => Results.Redirect("/react/account/manage/password"));
-app.MapGet("/Identity/Account/Manage/TwoFactorAuthentication", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/GenerateRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/ShowRecoveryCodes", () => Results.Redirect("/react/account/manage/two-factor"));
-app.MapGet("/Identity/Account/Manage/PersonalData", () => Results.Redirect("/react/account/manage/personal-data"));
-app.MapGet("/Identity/Account/Manage/DeletePersonalData", () => Results.Redirect("/react/account/manage/delete-personal-data"));
-app.MapGet("/Identity/Account/Logout", () => Results.Redirect("/react/account/manage/logout"));
+app.MapFallbackToController("{*path:nonfile}", "Index", "ReactShell");
+app.MapGet("/Identity/Account/Login", (HttpContext context) => Results.Redirect($"/account/login{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/Register", (HttpContext context) => Results.Redirect($"/account/register{context.Request.QueryString}"));
+app.MapGet("/Identity/Account/ForgotPassword", () => Results.Redirect("/account/forgot-password"));
+app.MapGet("/Identity/Account/ResendEmailConfirmation", () => Results.Redirect("/account/resend-email-confirmation"));
+app.MapGet("/Identity/Account/Manage", () => Results.Redirect("/account/manage"));
+app.MapGet("/Identity/Account/Manage/Index", () => Results.Redirect("/account/manage"));
+app.MapGet("/Identity/Account/Manage/Email", () => Results.Redirect("/account/manage/email"));
+app.MapGet("/Identity/Account/Manage/ChangePassword", () => Results.Redirect("/account/manage/password"));
+app.MapGet("/Identity/Account/Manage/TwoFactorAuthentication", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/GenerateRecoveryCodes", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/ShowRecoveryCodes", () => Results.Redirect("/account/manage/two-factor"));
+app.MapGet("/Identity/Account/Manage/PersonalData", () => Results.Redirect("/account/manage/personal-data"));
+app.MapGet("/Identity/Account/Manage/DeletePersonalData", () => Results.Redirect("/account/manage/delete-personal-data"));
+app.MapGet("/Identity/Account/Logout", () => Results.Redirect("/account/manage/logout"));
 app.MapRazorPages().WithStaticAssets();
 
 
 /* Run the application */
 app.Run();
+
+static IResult RedirectLegacyReactPath(string path, HttpContext context)
+{
+    return Results.Redirect(
+        LegacyRouteRedirects.BuildLocation(path, context.Request.QueryString.ToString()),
+        permanent: true);
+}
 
 static async Task EnsureContentItemsShowOnFrontPageColumnAsync(IServiceProvider services)
 {
@@ -300,4 +391,8 @@ static async Task ExecuteSchemaCommandAsync(System.Data.Common.DbConnection conn
     await using var command = connection.CreateCommand();
     command.CommandText = sql;
     await command.ExecuteNonQueryAsync();
+}
+
+public partial class Program
+{
 }
