@@ -1505,6 +1505,8 @@ namespace GamMaSite.Controllers
                 subscription.NextChargeAt = null;
                 subscription.LastPaidAt = null;
                 subscription.CancelAtPeriodEnd = false;
+                subscription.LastProcessedWebhookId = null;
+                subscription.LastProcessedWebhookAt = null;
                 subscription.Updated = now;
                 await _db.SaveChangesAsync(cancellationToken);
 
@@ -1524,6 +1526,8 @@ namespace GamMaSite.Controllers
                     cancellationToken);
 
                 subscription.ProviderSubscriptionId = agreement.AgreementId;
+                subscription.LastProcessedWebhookId = null;
+                subscription.LastProcessedWebhookAt = null;
                 subscription.Updated = now;
                 await _db.SaveChangesAsync(cancellationToken);
 

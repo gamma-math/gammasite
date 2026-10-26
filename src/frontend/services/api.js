@@ -1,12 +1,14 @@
 const CSRF_HEADER = "X-CSRF-TOKEN";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 const CHECKOUT_KEY_PREFIX = "gammasite:payment-checkout:";
+const CHECKOUT_KEY_TTL_MS = 8 * 60 * 1000;
 const inMemoryCheckoutKeys = new Map();
 
 /**
  * Creates a key for one logical checkout flow. The key is deliberately kept
  * in sessionStorage so a network timeout can be retried without creating a
- * second provider payment, while a new browser session starts cleanly.
+ * second provider payment. MobilePay redirect URLs expire quickly, so the
+ * key also expires before a stale provider checkout can be reused.
  */
 export function createIdempotencyKey() {
   if (globalThis.crypto?.randomUUID) {
@@ -28,28 +30,52 @@ function checkoutStorageKey(offerId) {
   return `${CHECKOUT_KEY_PREFIX}${offerId}`;
 }
 
+function isUsableCheckoutKey(entry) {
+  return entry &&
+    typeof entry.key === "string" &&
+    entry.key.length > 0 &&
+    typeof entry.createdAt === "number" &&
+    Number.isFinite(entry.createdAt) &&
+    Date.now() >= entry.createdAt &&
+    Date.now() - entry.createdAt < CHECKOUT_KEY_TTL_MS;
+}
+
+function createCheckoutKeyEntry() {
+  return { key: createIdempotencyKey(), createdAt: Date.now() };
+}
+
 function getOrCreateCheckoutKey(offerId) {
   const storage = checkoutStorage();
   if (!storage) {
     const existing = inMemoryCheckoutKeys.get(String(offerId));
-    if (existing) {
-      return existing;
+    if (isUsableCheckoutKey(existing)) {
+      return existing.key;
     }
 
-    const created = createIdempotencyKey();
+    const created = createCheckoutKeyEntry();
     inMemoryCheckoutKeys.set(String(offerId), created);
-    return created;
+    return created.key;
   }
 
   const key = checkoutStorageKey(offerId);
-  const existing = storage.getItem(key);
-  if (existing) {
-    return existing;
+  const serialized = storage.getItem(key);
+  if (serialized) {
+    try {
+      const existing = JSON.parse(serialized);
+      if (isUsableCheckoutKey(existing)) {
+        return existing.key;
+      }
+    } catch {
+      // The previous format only stored the key. Treat it as expired so old
+      // browser sessions receive a fresh MobilePay checkout.
+    }
+
+    storage.removeItem(key);
   }
 
-  const created = createIdempotencyKey();
-  storage.setItem(key, created);
-  return created;
+  const created = createCheckoutKeyEntry();
+  storage.setItem(key, JSON.stringify(created));
+  return created.key;
 }
 
 function clearCheckoutKey(offerId) {

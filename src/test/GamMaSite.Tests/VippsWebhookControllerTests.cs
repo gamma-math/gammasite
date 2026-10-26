@@ -147,6 +147,11 @@ public sealed class VippsWebhookControllerTests
             ProviderProductId = "8",
             ProductName = "Kontingent",
             Status = PaymentSubscriptionStatuses.Pending,
+            // Webhook-Id identifies the configured endpoint and is reused by
+            // Vipps. A previous agreement may therefore have left this value
+            // on the user's reused subscription row.
+            LastProcessedWebhookId = "test-webhook",
+            LastProcessedWebhookAt = new DateTime(2026, 10, 18, 8, 0, 0, DateTimeKind.Utc),
             Created = DateTime.UtcNow,
             Updated = DateTime.UtcNow
         });
@@ -196,6 +201,7 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Active, subscription.Status);
+        Assert.NotEqual("test-webhook", subscription.LastProcessedWebhookId);
         var nextChargeAt = Assert.IsType<DateTime>(subscription.NextChargeAt);
         Assert.Equal(new DateTime(2027, 2, 1, 0, 0, 0, DateTimeKind.Utc), nextChargeAt);
         mobilePay.Verify(service => service.CreateRecurringChargeAsync(
@@ -334,7 +340,8 @@ public sealed class VippsWebhookControllerTests
         var subscription = await db.PaymentSubscriptions.SingleAsync();
         Assert.Equal(UserStatus.OPRETTET, user.Status);
         Assert.Equal(PaymentSubscriptionStatuses.Canceled, subscription.Status);
-        Assert.Equal("late-activation-webhook", subscription.LastProcessedWebhookId);
+        Assert.NotEqual("late-activation-webhook", subscription.LastProcessedWebhookId);
+        Assert.False(string.IsNullOrWhiteSpace(subscription.LastProcessedWebhookId));
         mobilePay.Verify(service => service.CreateRecurringChargeAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
