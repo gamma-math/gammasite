@@ -1,0 +1,19 @@
+# Never send local credentials or environment files to the Docker build daemon.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Repository metadata and local build output are not needed by the image build.
+.git
+.git/**
+**/.git
+**/.git/**
+**/node_modules
+**/bin
+**/obj
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.coverage
+**/coverage
+**/.mypy_cache

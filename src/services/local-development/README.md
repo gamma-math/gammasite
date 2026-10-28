@@ -74,9 +74,9 @@ Hvis der skal bruges testdata, og databaserne er helt tomme, køres seed eksplic
 docker compose --profile tools run --rm --build seed
 ```
 
-Seed-servicen kører inde i Docker med databaseklienterne til MySQL og PostgreSQL. Den afviser ikke-tomme databaser og registrerer, hvis seed allerede er kørt. Den er derfor ikke en del af den almindelige opstart, og den kræver ikke Git for Windows eller lokale databaseklienter.
+Seed-servicen kører inde i Docker med databaseklienterne til MySQL og PostgreSQL. Den registrerer, hvis seed allerede er kørt, og afviser databaser, hvor relevante seed-tabeller allerede indeholder data. Den er derfor ikke en del af den almindelige opstart.
 
-Før seed harmoniserer servicen den lokale `AspNetRoleClaims`-tabel til `utf8mb4_general_ci`, så den kan sammenlignes med de øvrige lokale rettighedstabeller på MySQL 8.
+Før seed harmoniserer servicen de lokale MySQL-tabeller til `utf8mb4_general_ci`, så joins kan sammenlignes korrekt på MySQL 8.
 
 Hvis hjælpe-imaget allerede er bygget, kan man også køre seed-servicen direkte:
 
@@ -209,7 +209,7 @@ Der findes med vilje ingen automatisk reset-kommando. Brug ikke `docker compose 
 
 - GamMaSite: `http://localhost:5000`
 - MySQL: `localhost:3306`
-- Finance PostgreSQL: `localhost:5434`
+- Finance PostgreSQL: `localhost:5433`
 
 Portene kan ændres i `.env`. Databaseportene bindes kun til loopback-interfacet.
 
@@ -328,7 +328,7 @@ Denne profil er valgfri og kræver ingen ændring af kontoindstillinger. En admi
 - `ports are not available` for `5433` eller `3306`: porten bruges allerede af en lokal PostgreSQL-/MySQL-installation eller en anden service. Sæt eksempelvis `FINANCE_POSTGRES_PORT=5434` eller `MYSQL_PORT=3307` i den lokale `.env`, og start derefter stacken igen. Appens interne forbindelser bruger fortsat Compose-servicenavnene og containerportene `5432`/`3306`.
 - En database er ikke healthy: kør `docker compose logs mysql` eller `docker compose logs finance-postgres`.
 - GamMaSite starter ikke: kontrollér `docker compose logs app`; appen venter på begge database-healthchecks.
-- `ERROR 1267 ... Illegal mix of collations` under seed: kør seed-kommandoen igen. Seed-servicen harmoniserer den lokale claims-tabel automatisk; ingen databasevolumes skal slettes.
+- `ERROR 1267 ... Illegal mix of collations` under seed: kontrollér først, at databasen kun indeholder de forventede tomme seed-tabeller. Seed-servicen harmoniserer relevante lokale MySQL-tabeller automatisk; ingen databasevolumes skal slettes for at rette en collation-fejl.
 - HTTP-check fejler: kontrollér `APP_PORT` og `docker compose logs app`.
 - Stripe webhook returnerer fejl: kontrollér `docker compose --profile integrations logs stripe-cli`, API-key-permissions og at `STRIPE_WEBHOOK_SECRET` svarer til den aktive CLI-session.
 - MobilePay-webhooken returnerer unauthorized: kontrollér den lokale `VIPPS_WEBHOOK_SECRET`, den registrerede URL og `docker compose --profile integrations ps tunnel`.

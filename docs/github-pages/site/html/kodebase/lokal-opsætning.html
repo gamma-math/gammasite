@@ -129,7 +129,7 @@ docker compose logs -f mysql finance-postgres</code></pre>
           <tbody>
             <tr><td>GamMaSite</td><td><code>http://localhost:5000</code></td></tr>
             <tr><td>MySQL</td><td><code>localhost:3306</code></td></tr>
-            <tr><td>Finance PostgreSQL</td><td><code>localhost:5434</code></td></tr>
+            <tr><td>Finance PostgreSQL</td><td><code>localhost:5433</code></td></tr>
           </tbody>
         </table>
         <p>Databaseportene bindes kun til localhost og kan ændres i den lokale <code>.env</code>.</p>
@@ -149,7 +149,7 @@ docker compose logs -f mysql finance-postgres</code></pre>
           <li><strong>Porten er optaget:</strong> Brug eksempelvis <code>MYSQL_PORT=3307</code> eller <code>FINANCE_POSTGRES_PORT=5434</code> i den lokale <code>.env</code>.</li>
           <li><strong>Database ikke healthy:</strong> Se <code>docker compose logs mysql</code> eller <code>docker compose logs finance-postgres</code>.</li>
           <li><strong>Appen starter ikke:</strong> Se <code>docker compose logs app</code>. Appen venter på begge database-healthchecks.</li>
-          <li><strong>Collation-fejl under seed:</strong> Kør seed-kommandoen igen. Seed-servicen harmoniserer den lokale claims-tabel.</li>
+          <li><strong>Collation-fejl under seed:</strong> Kontrollér først, at databasen kun indeholder de forventede tomme seed-tabeller. Seed-servicen harmoniserer relevante lokale MySQL-tabeller.</li>
           <li><strong>Stripe-fejl:</strong> Kontrollér Stripe CLI-loggen, test-mode API-key permissions og at secretet stammer fra den aktive CLI-session.</li>
           <li><strong>MobilePay unauthorized:</strong> Kontrollér <code>VIPPS_WEBHOOK_SECRET</code>, webhook-URL’en og at tunnel-containeren kører.</li>
         </ul>

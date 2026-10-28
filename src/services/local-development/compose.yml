@@ -2,7 +2,7 @@ name: gammasite-local-development
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql@sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-gammasite_local}
@@ -28,7 +28,7 @@ services:
       start_period: 20s
 
   finance-postgres:
-    image: postgres:16-alpine
+    image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${FINANCE_POSTGRES_DB:-gamma_finance_local}
@@ -140,7 +140,7 @@ services:
 
   stripe-cli:
     profiles: ["integrations"]
-    image: stripe/stripe-cli:latest
+    image: stripe/stripe-cli@sha256:7bd92a6315b5716767e96727f921abedc131e60648299d4cf6b3a7d5f108b39d
     restart: unless-stopped
     depends_on:
       app:
@@ -156,7 +156,7 @@ services:
       - http://app:8080/api/payments/stripe/webhook
 
   tunnel:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared@sha256:1b1d34d0a9c0bfca9de72db8460d328db3f19edd2b96169114e3e893a97bbe53
     profiles: ["integrations"]
     restart: unless-stopped
     depends_on:

@@ -27,47 +27,6 @@ postgres_cmd() {
         "$@"
 }
 
-# The local schema contains tables with both MySQL 8's default utf8mb4
-# collations and utf8mb4_general_ci. Normalize all Identity tables before
-# running the seed so joins used by login and claims work on both fresh and
-# existing local volumes.
-mysql_cmd <<'SQL'
-SET FOREIGN_KEY_CHECKS=0;
-ALTER TABLE `AspNetUsers`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetRoles`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetRoleClaims`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetUserClaims`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetUserLogins`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetUserRoles`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `AspNetUserTokens`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `ContentItems`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `ContentLinks`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `DeviceCodes`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `EmailTemplates`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `EventRegistrations`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `PaymentOffers`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `PaymentSubscriptions`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `Permissions`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-ALTER TABLE `RolePermissions`
-    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-SET FOREIGN_KEY_CHECKS=1;
-SQL
-
 mysql_cmd <<'SQL'
 CREATE TABLE IF NOT EXISTS LocalDevelopmentSeedRuns (
     SeedName varchar(128) NOT NULL,
@@ -80,11 +39,68 @@ mysql_seeded="$(mysql_cmd --batch --skip-column-names --silent -e "SELECT COUNT(
 if [[ "$mysql_seeded" != "0" ]]; then
     echo "GamMaSite test seed is already recorded; skipping MySQL seed."
 else
-    mysql_users="$(mysql_cmd --batch --skip-column-names --silent -e 'SELECT COUNT(*) FROM AspNetUsers;')"
-    if [[ "$mysql_users" != "0" ]]; then
-        echo "Refusing to run the destructive GamMaSite test seed against a non-empty database." >&2
+    mysql_existing_rows="$(mysql_cmd --batch --skip-column-names --silent -e '
+        SELECT
+            (SELECT COUNT(*) FROM `AspNetUserClaims`) +
+            (SELECT COUNT(*) FROM `AspNetUserLogins`) +
+            (SELECT COUNT(*) FROM `DeviceCodes`) +
+            (SELECT COUNT(*) FROM `EventRegistrations`) +
+            (SELECT COUNT(*) FROM `PaymentSubscriptions`) +
+            (SELECT COUNT(*) FROM `PaymentOffers`) +
+            (SELECT COUNT(*) FROM `ContentLinks`) +
+            (SELECT COUNT(*) FROM `ContentItems`) +
+            (SELECT COUNT(*) FROM `EmailTemplates`) +
+            (SELECT COUNT(*) FROM `AspNetUserTokens`) +
+            (SELECT COUNT(*) FROM `AspNetUserRoles`) +
+            (SELECT COUNT(*) FROM `AspNetRoleClaims`) +
+            (SELECT COUNT(*) FROM `RolePermissions`) +
+            (SELECT COUNT(*) FROM `Permissions`) +
+            (SELECT COUNT(*) FROM `AspNetUsers`) +
+            (SELECT COUNT(*) FROM `AspNetRoles`);')"
+    if [[ "$mysql_existing_rows" != "0" ]]; then
+        echo "Refusing to run the GamMaSite test seed: one or more seed tables already contain data." >&2
         exit 6
     fi
+
+    # The local schema contains tables with both MySQL 8's default utf8mb4
+    # collations and utf8mb4_general_ci. Normalize them only after the safety
+    # check and immediately before the seed so existing data is not rewritten.
+    mysql_cmd <<'SQL'
+    SET FOREIGN_KEY_CHECKS=0;
+    ALTER TABLE `AspNetUsers`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetRoles`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetRoleClaims`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetUserClaims`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetUserLogins`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetUserRoles`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `AspNetUserTokens`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `ContentItems`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `ContentLinks`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `DeviceCodes`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `EmailTemplates`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `EventRegistrations`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `PaymentOffers`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `PaymentSubscriptions`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `Permissions`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ALTER TABLE `RolePermissions`
+        CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    SET FOREIGN_KEY_CHECKS=1;
+SQL
 
     mysql_cmd < "$SQL_ROOT/test-seed/00_seed_all.sql"
     mysql_cmd -e "INSERT INTO LocalDevelopmentSeedRuns (SeedName) VALUES ('gammasite-test-seed');"
@@ -102,9 +118,17 @@ finance_seeded="$(postgres_cmd --tuples-only --no-align -c "SELECT COUNT(*) FROM
 if [[ "$finance_seeded" != "0" ]]; then
     echo "Finance test seed is already recorded; skipping PostgreSQL seed."
 else
-    finance_accounts="$(postgres_cmd --tuples-only --no-align -c 'SELECT COUNT(*) FROM public.account;')"
-    if [[ "$finance_accounts" != "0" ]]; then
-        echo "Refusing to run the Finance test seed against a non-empty database." >&2
+    finance_existing_rows="$(postgres_cmd --tuples-only --no-align -c '
+        SELECT
+            (SELECT COUNT(*) FROM public.account) +
+            (SELECT COUNT(*) FROM public.postering_group) +
+            (SELECT COUNT(*) FROM public.forecast) +
+            (SELECT COUNT(*) FROM public.bank_account) +
+            (SELECT COUNT(*) FROM public.mobilepay) +
+            (SELECT COUNT(*) FROM public.posteringer) +
+            (SELECT COUNT(*) FROM public.import_history);')"
+    if [[ "$finance_existing_rows" != "0" ]]; then
+        echo "Refusing to run the Finance test seed: one or more seed tables already contain data." >&2
         exit 7
     fi
 
