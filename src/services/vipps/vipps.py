@@ -48,13 +48,13 @@ def validate_api_config() -> None:
     }
     missing = [name for name, value in configured.items() if not value]
     if missing:
-        raise SystemExit(f"Missing {', '.join(missing)} in src/scripts/vipps/.env")
+        raise SystemExit(f"Missing {', '.join(missing)} in src/services/vipps/.env")
 
 
 def required_value(argument: str | None, configured: str | None, name: str) -> str:
     value = argument or configured
     if not value:
-        raise SystemExit(f"Missing {name} in src/scripts/vipps/.env")
+        raise SystemExit(f"Missing {name} in src/services/vipps/.env")
     return value
 
 
@@ -103,7 +103,7 @@ def api_headers(*, idempotency_key: str | None = None) -> dict:
 
 
 def create_payment() -> dict:
-    assert VIPPS_RETURN_URL, "Missing VIPPS_RETURN_URL in src/scripts/vipps/.env"
+    assert VIPPS_RETURN_URL, "Missing VIPPS_RETURN_URL in src/services/vipps/.env"
 
     reference = f"gamma-test-{uuid.uuid4().hex[:16]}"
     response = requests.post(
@@ -170,7 +170,7 @@ def capture_payment(reference: str) -> dict:
 
 def register_webhook(url: str | None = None) -> dict:
     url = url or VIPPS_WEBHOOK_URL
-    assert url, "Missing VIPPS_WEBHOOK_URL in src/scripts/vipps/.env"
+    assert url, "Missing VIPPS_WEBHOOK_URL in src/services/vipps/.env"
 
     response = requests.post(
         f"{VIPPS_BASE_URL}/webhooks/v1/webhooks",
@@ -190,10 +190,10 @@ def register_webhook(url: str | None = None) -> dict:
 
 
 def create_agreement() -> dict:
-    assert VIPPS_PHONE_NUMBER, "Missing VIPPS_PHONE_NUMBER in src/scripts/vipps/.env"
-    assert VIPPS_RETURN_URL, "Missing VIPPS_RETURN_URL in src/scripts/vipps/.env"
+    assert VIPPS_PHONE_NUMBER, "Missing VIPPS_PHONE_NUMBER in src/services/vipps/.env"
+    assert VIPPS_RETURN_URL, "Missing VIPPS_RETURN_URL in src/services/vipps/.env"
     assert VIPPS_MERCHANT_AGREEMENT_URL, (
-        "Missing VIPPS_MERCHANT_AGREEMENT_URL in src/scripts/vipps/.env"
+        "Missing VIPPS_MERCHANT_AGREEMENT_URL in src/services/vipps/.env"
     )
 
     external_id = f"gamma-test-{uuid.uuid4().hex[:16]}"
@@ -244,7 +244,7 @@ def list_agreements() -> dict:
 
 
 def accept_agreement(agreement_id: str) -> None:
-    assert VIPPS_PHONE_NUMBER, "Missing VIPPS_PHONE_NUMBER in src/scripts/vipps/.env"
+    assert VIPPS_PHONE_NUMBER, "Missing VIPPS_PHONE_NUMBER in src/services/vipps/.env"
     response = requests.patch(
         f"{VIPPS_BASE_URL}/recurring/v3/agreements/{agreement_id}/accept",
         headers=api_headers(idempotency_key=str(uuid.uuid4())),
