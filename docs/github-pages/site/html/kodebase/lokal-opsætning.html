@@ -1,7 +1,164 @@
-<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lokal opsætning · GamMaSite</title><link rel="stylesheet" href="../../css/styles.css"></head><body data-root="../" data-page="code.setup"><header id="site-header" class="site-header"></header><div class="docs-layout"><aside id="sidebar" class="sidebar"></aside><main class="content"><p class="eyebrow">Kode · Lokal opsætning</p><h1>Start løsningen lokalt</h1><p class="lead">Brug .NET SDK 10, en kompatibel Node-version og MySQL 8 eller nyere.</p><ol class="steps"><li>Hent repositoryet, og gå til projektmappen.<pre><code>git clone &lt;repository-url&gt;
-cd gammasite</code></pre></li><li>Installer frontendpakkerne, og byg React-klienten.<pre><code>cd src/frontend
-npm ci
-npm run build</code></pre></li><li>Gå tilbage til repositoryroden, og gendan .NET-pakkerne.<pre><code>cd ../..
-dotnet restore GamMaSite.sln</code></pre></li><li>Start backenden med <code>make run</code>. Du kan også bruge <code>dotnet run --project src/backend/GamMaSite/GamMaSite.csproj</code>.</li><li>Kør backend- og frontendtestene.<pre><code>dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj
-cd src/frontend
-npm test</code></pre></li></ol><div class="callout callout--warning"><p>Lokale konfigurationsfiler og hemmeligheder må ikke committes.</p></div></main></div><footer class="footer">GamMaSite dokumentation</footer><script src="../../js/app.js"></script></body></html>
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lokal opsætning &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.setup">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; Lokal opsætning</p>
+      <p class="lead">Start GamMaSite, MySQL 8 og Finance PostgreSQL 16 med Docker Compose. Start Stripe CLI og Cloudflare-tunnel samlet, når lokale webhooks skal testes.</p>
+
+      <section class="section">
+        <h2>Forudsætninger</h2>
+        <ul>
+          <li>Docker Engine eller Docker Desktop med Docker Compose v2.</li>
+          <li>Docker Desktop skal køre med Linux-containere.</li>
+          <li>Vipps-credentials, hvis lokale Vipps-webhooks skal registreres eller roteres.</li>
+          <li>En lokal Stripe test-mode restricted API-key, hvis Stripe CLI skal bruges.</li>
+        </ul>
+        <p>Brug kun testcredentials lokalt, og commit aldrig lokale miljøfiler eller secrets.</p>
+      </section>
+
+      <section class="section">
+        <h2>1. Før du starter</h2>
+        <ol class="steps">
+          <li>Åbn en terminal i repositoryets rod, og gå til den lokale udviklingsservice:
+            <pre><code>cd src/services/local-development</code></pre>
+          </li>
+          <li>En lokal <code>.env</code> er valgfri ved almindelig opstart. Compose har lokale standardværdier for databaser og porte.</li>
+          <li>Brug <code>.env.example</code> som oversigt over understøttede variabelnavne. <code>STRIPE_WEBHOOK_SECRET</code> og <code>VIPPS_WEBHOOK_SECRET</code> skal ikke udfyldes manuelt; integrationsscripts genererer dem.</li>
+          <li>Kontrollér Compose-konfigurationen uden at starte containere:
+            <pre><code>docker compose config --quiet</code></pre>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <h2>2. Første opstart</h2>
+        <ol class="steps">
+          <li>Byg images, og start GamMaSite samt begge databaser:
+            <pre><code>docker compose up -d --build</code></pre>
+          </li>
+          <li>Kontrollér containerstatus:
+            <pre><code>docker compose ps</code></pre>
+          </li>
+          <li>Kontrollér Compose, container-health, databaseforbindelser og den lokale HTTP-adresse:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/validate.sh</code></pre>
+          </li>
+          <li>Hvis databaserne er helt tomme, indlæs testdata eksplicit:
+            <pre><code>docker compose --profile tools run --rm --build seed</code></pre>
+          </li>
+        </ol>
+        <p>Seed-servicen kører MySQL- og PostgreSQL-seed inde i Docker, afviser ikke-tomme databaser og registrerer, hvis seed allerede er kørt. Den ændrer ikke databasevolumes ved almindelig opstart.</p>
+      </section>
+
+      <section class="section">
+        <h2>3. Start Stripe CLI og webhook-tunnel</h2>
+        <p>Start Stripe CLI og Cloudflare Quick Tunnel samlet som detached Compose-services:</p>
+        <pre><code>docker compose --profile tools run --rm --build tools scripts/integrations-up.sh</code></pre>
+        <ol class="steps">
+          <li>Sørg for, at GamMaSite allerede kører med <code>docker compose up -d</code>.</li>
+          <li>Sørg for, at <code>STRIPE_SECRET_API_KEY</code> i den lokale <code>.env</code> er en Stripe test-mode restricted API-key.</li>
+          <li>Kør integrationskommandoen ovenfor.</li>
+          <li>Scriptet starter Stripe CLI og tunnelen, gemmer det dynamiske <code>STRIPE_WEBHOOK_SECRET</code> og <code>PUBLIC_WEBHOOK_BASE_URL</code> i den lokale <code>.env</code> og genstarter kun <code>app</code>.</li>
+        </ol>
+        <p>Stripe CLI forwarder til:</p>
+        <pre><code>/api/payments/stripe/webhook</code></pre>
+        <p>Den restricted Stripe test-key skal mindst have <strong>Debugging Tools &rarr; Write</strong> (<code>stripecli_session_write</code>) for at Stripe CLI kan oprette en listen-session. Backendens Stripe-funktioner kræver desuden adgang til Checkout Sessions, Products, Prices og Subscriptions samt læseadgang til Invoices.</p>
+        <p>Kontrollér integrationsservices:</p>
+        <pre><code>docker compose --profile integrations ps
+docker compose --profile integrations logs -f stripe-cli tunnel</code></pre>
+        <p>Stop kun integrationsservices:</p>
+        <pre><code>docker compose --profile integrations stop stripe-cli tunnel</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>4. Registrér eller rotér Vipps/MobilePay-webhook</h2>
+        <p>Tunnelen skal være startet med <code>scripts/integrations-up.sh</code>, før Vipps-webhooken registreres. Den eksterne webhook-URL bliver dermed:</p>
+        <pre><code>${PUBLIC_WEBHOOK_BASE_URL}/api/payments/vipps/webhook</code></pre>
+        <ol class="steps">
+          <li>Vis de aktive webhooks og deres ID’er:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list</code></pre>
+          </li>
+          <li>Ved første registrering opret en ny webhook:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register</code></pre>
+          </li>
+          <li>Ved rotation bruges ID’et før kolon i listen som <code>OLD_WEBHOOK_ID</code>:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID</code></pre>
+          </li>
+        </ol>
+        <p>Vipps-scriptet bruger Vipps-credentials og <code>VIPPS_MSN</code> fra den lokale <code>.env</code>, gemmer den nye <code>VIPPS_WEBHOOK_SECRET</code> lokalt og genstarter kun <code>app</code>. Den gamle webhook slettes ikke automatisk.</p>
+      </section>
+
+      <section class="section">
+        <h2>5. Genbyg kun frontend og backend</h2>
+        <p>Hvis databaserne allerede kører, og der kun er ændret i applikationskode eller frontend:</p>
+        <pre><code>docker compose up -d --build --no-deps app</code></pre>
+        <p>Ved behov for et helt nyt image uden Docker-cache:</p>
+        <pre><code>docker compose build --no-cache app
+docker compose up -d --no-deps app</code></pre>
+        <p>Databaser og volumes bliver ikke genbygget eller ændret af disse kommandoer.</p>
+      </section>
+
+      <section class="section">
+        <h2>6. Daglig brug</h2>
+        <p>Start eksisterende containere igen uden rebuild:</p>
+        <pre><code>docker compose up -d</code></pre>
+        <p>Genstart kun hjemmesiden:</p>
+        <pre><code>docker compose restart app</code></pre>
+        <p>Se status og logs:</p>
+        <pre><code>docker compose ps
+docker compose logs -f app
+docker compose logs -f mysql finance-postgres</code></pre>
+        <p>Kør en engangskommando i app-imaget:</p>
+        <pre><code>docker compose run --rm --no-deps app &lt;kommando&gt;</code></pre>
+        <p>Stop hele stacken uden at slette database- eller medievolumes:</p>
+        <pre><code>docker compose down</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>Lokale adresser</h2>
+        <table class="table">
+          <thead><tr><th>Service</th><th>Adresse</th></tr></thead>
+          <tbody>
+            <tr><td>GamMaSite</td><td><code>http://localhost:5000</code></td></tr>
+            <tr><td>MySQL</td><td><code>localhost:3306</code></td></tr>
+            <tr><td>Finance PostgreSQL</td><td><code>localhost:5433</code></td></tr>
+          </tbody>
+        </table>
+        <p>Databaseportene bindes kun til localhost og kan ændres i den lokale <code>.env</code>.</p>
+      </section>
+
+      <section class="section">
+        <h2>Databaseinitialisering</h2>
+        <p>MySQL initialiseres første gang et tomt named volume oprettes med <code>SQL/AspNetMysql.test.sql</code>. Finance PostgreSQL initialiseres med <code>SQL/finance/PostgreSQLTest.sql</code>. Testdata køres kun eksplicit med seed-servicen.</p>
+        <p>Der er ikke fundet EF Core migrationsfiler i backendprojektet. Schemaændringer skal derfor håndteres som særskilte, gennemgåede SQL-ændringer.</p>
+        <div class="callout callout--warning"><p>Brug ikke <code>docker compose down -v</code>, medmindre alle lokale database- og mediedata med vilje må slettes. Ændringer i init-SQL køres ikke automatisk igen på eksisterende volumes.</p></div>
+      </section>
+
+      <section class="section">
+        <h2>Almindelige fejl</h2>
+        <ul>
+          <li><strong>Docker Linux-engine mangler:</strong> Start Docker Desktop, kontrollér med <code>docker info</code>, at både Client og Server svarer, og kør derefter opstarten igen.</li>
+          <li><strong>Porten er optaget:</strong> Brug eksempelvis <code>MYSQL_PORT=3307</code> eller <code>FINANCE_POSTGRES_PORT=5434</code> i den lokale <code>.env</code>.</li>
+          <li><strong>Database ikke healthy:</strong> Se <code>docker compose logs mysql</code> eller <code>docker compose logs finance-postgres</code>.</li>
+          <li><strong>Appen starter ikke:</strong> Se <code>docker compose logs app</code>. Appen venter på begge database-healthchecks.</li>
+          <li><strong>Collation-fejl under seed:</strong> Kontrollér først, at databasen kun indeholder de forventede tomme seed-tabeller. Seed-servicen harmoniserer relevante lokale MySQL-tabeller.</li>
+          <li><strong>Stripe-fejl:</strong> Kontrollér Stripe CLI-loggen, test-mode API-key permissions og at secretet stammer fra den aktive CLI-session.</li>
+          <li><strong>MobilePay unauthorized:</strong> Kontrollér <code>VIPPS_WEBHOOK_SECRET</code>, webhook-URL’en og at tunnel-containeren kører.</li>
+        </ul>
+      </section>
+
+      <div class="callout callout--warning"><p>Den lokale Cloudflare Quick Tunnel-URL er midlertidig og må ikke bruges som permanent TEST- eller PROD-webhook. Lokale secrets må ikke committes.</p></div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

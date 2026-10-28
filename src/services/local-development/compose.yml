@@ -1,0 +1,173 @@
+name: gammasite-local-development
+
+services:
+  mysql:
+    image: mysql@sha256:64756cc92f707eb504496d774353990bcb0f6999ddf598b6ad188f2da66bd000
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-gammasite_local}
+      MYSQL_USER: ${MYSQL_APP_USER:-gammasite_app}
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:-change-me-local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-local-root}
+      TZ: ${MYSQL_TZ:-Europe/Copenhagen}
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - gammasite_local_mysql_data:/var/lib/mysql
+      - ../../../SQL/AspNetMysql.test.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../../../SQL/test-seed:/seed/mysql:ro
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=socket -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  finance-postgres:
+    image: postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FINANCE_POSTGRES_DB:-gamma_finance_local}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${FINANCE_POSTGRES_ADMIN_PASSWORD:-change-me-local-finance-admin}
+      FINANCE_READ_PASSWORD: ${FINANCE_READ_PASSWORD:-change-me-local-finance-read}
+      FINANCE_WRITE_PASSWORD: ${FINANCE_WRITE_PASSWORD:-change-me-local-finance-write}
+      TZ: ${FINANCE_POSTGRES_TZ:-Europe/Copenhagen}
+    ports:
+      - "127.0.0.1:${FINANCE_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - gammasite_local_finance_data:/var/lib/postgresql/data
+      - ./postgres-init/00-roles.sh:/docker-entrypoint-initdb.d/00-roles.sh:ro
+      - ../../../SQL/finance/PostgreSQLTest.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./postgres-init/02-access.sh:/docker-entrypoint-initdb.d/02-access.sh:ro
+      - ../../../SQL/finance/test-seed:/seed/finance:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  app:
+    build:
+      context: ../../..
+      dockerfile: src/services/local-development/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      finance-postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:5000}
+      AllowedHosts: ${ALLOWED_HOSTS:-localhost}
+      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-gammasite_local};User=${MYSQL_APP_USER:-gammasite_app};Password=${MYSQL_APP_PASSWORD:-change-me-local};
+      FinanceRead__CONNECTION_STRING: Host=finance-postgres;Port=5432;Database=${FINANCE_POSTGRES_DB:-gamma_finance_local};Username=gamma_finance_read;Password=${FINANCE_READ_PASSWORD:-change-me-local-finance-read};
+      FinanceWrite__CONNECTION_STRING: Host=finance-postgres;Port=5432;Database=${FINANCE_POSTGRES_DB:-gamma_finance_local};Username=gamma_finance_write;Password=${FINANCE_WRITE_PASSWORD:-change-me-local-finance-write};
+      EmailSender__Host: ${MAILGUN_HOST:-}
+      EmailSender__ApiKey: ${MAILGUN_API_KEY:-}
+      EmailSender__Mail: ${MAILGUN_MAIL:-}
+      SmsSender__ApiKey: ${SMS_APIGATEWAY_KEY:-}
+      StripeConfig__PublicApiKey: ${STRIPE_PUBLIC_API_KEY:-}
+      StripeConfig__SecretApiKey: ${STRIPE_SECRET_API_KEY:-}
+      StripeConfig__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      MobilePay__BaseUrl: ${VIPPS_BASE_URL:-https://apitest.vipps.no}
+      MobilePay__Msn: ${VIPPS_MSN:-}
+      MobilePay__ClientId: ${VIPPS_CLIENT_ID:-}
+      MobilePay__ClientSecret: ${VIPPS_CLIENT_SECRET:-}
+      MobilePay__SubscriptionKey: ${VIPPS_OCP_APIM_SUBSCRIPTION_KEY:-}
+      MobilePay__WebhookSecret: ${VIPPS_WEBHOOK_SECRET:-}
+      GitHub__Token: ${GITHUB_TOKEN:-}
+      GitLab__Token: ${GITLAB_TOKEN:-}
+      ICal__ICalAddress: ${ICAL_HOST_ADDRESS:-}
+      ContentMediaRootPath: /app/content-media
+    ports:
+      - "127.0.0.1:${APP_PORT:-5000}:8080"
+    volumes:
+      - gammasite_local_content_media:/app/content-media
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --header 'Host: localhost' http://127.0.0.1:8080/ > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  tools:
+    profiles: ["tools"]
+    image: gammasite-local-development-tools:latest
+    build:
+      context: ../../..
+      dockerfile: src/services/local-development/Dockerfile
+      target: local-tools
+    working_dir: /workspace/src/services/local-development
+    environment:
+      LOCAL_DEVELOPMENT_DOCKER: "1"
+    volumes:
+      - ../../..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  seed:
+    profiles: ["tools"]
+    image: gammasite-local-development-seed:latest
+    build:
+      context: ../../..
+      dockerfile: src/services/local-development/Dockerfile
+      target: local-tools
+    depends_on:
+      mysql:
+        condition: service_healthy
+      finance-postgres:
+        condition: service_healthy
+    working_dir: /workspace/src/services/local-development
+    volumes:
+      - ../../..:/workspace:ro
+    entrypoint: ["bash"]
+    command: ["scripts/seed-container.sh"]
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-gammasite_local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-local-root}
+      FINANCE_POSTGRES_HOST: finance-postgres
+      FINANCE_POSTGRES_DB: ${FINANCE_POSTGRES_DB:-gamma_finance_local}
+      FINANCE_POSTGRES_ADMIN_PASSWORD: ${FINANCE_POSTGRES_ADMIN_PASSWORD:-change-me-local-finance-admin}
+      SQL_ROOT: /workspace/SQL
+
+  stripe-cli:
+    profiles: ["integrations"]
+    image: stripe/stripe-cli@sha256:7bd92a6315b5716767e96727f921abedc131e60648299d4cf6b3a7d5f108b39d
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_API_KEY:-}
+    entrypoint: ["stripe"]
+    command:
+      - listen
+      - --events
+      - checkout.session.completed,checkout.session.async_payment_succeeded,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,invoice.payment_action_required
+      - --forward-to
+      - http://app:8080/api/payments/stripe/webhook
+
+  tunnel:
+    image: cloudflare/cloudflared@sha256:1b1d34d0a9c0bfca9de72db8460d328db3f19edd2b96169114e3e893a97bbe53
+    profiles: ["integrations"]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["tunnel", "--no-autoupdate", "--url", "http://app:8080"]
+
+volumes:
+  gammasite_local_mysql_data:
+    name: gammasite-local-development-mysql-data
+  gammasite_local_finance_data:
+    name: gammasite-local-development-finance-data
+  gammasite_local_content_media:
+    name: gammasite-local-development-content-media
