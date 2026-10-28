@@ -7,14 +7,14 @@
 Kør kommandoerne fra repositoryets rod i PowerShell:
 
 ```powershell
-Push-Location src/scripts/vipps
+Push-Location src/services/vipps
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
 Pop-Location
 ```
 
-Åbn derefter `src/scripts/vipps/.env` og udfyld credentials. Scriptet læser kun denne lokale fil; den er ikke den samme som projektets `.env.local`.
+Åbn derefter `src/services/vipps/.env` og udfyld credentials. Scriptet læser kun denne lokale fil; den er ikke den samme som projektets `.env.local`.
 
 Følgende værdier skal være sat:
 
@@ -36,7 +36,7 @@ Brug produktions-URL og produktionscredentials, når webhooken oprettes i produk
 Der er en separat Docker Compose-service for hver kommando. Start kun den service, du vil bruge:
 
 ```powershell
-Push-Location src/scripts/vipps
+Push-Location src/services/vipps
 docker compose --profile manual run --rm webhooks
 Pop-Location
 ```
@@ -57,19 +57,19 @@ De vigtigste services er:
 Eksempel på sikker rotation:
 
 ```powershell
-Push-Location src/scripts/vipps
+Push-Location src/services/vipps
 docker compose --profile manual run --rm rotate-webhook
 # Deploy VIPPS_WEBHOOK_SECRET fra outputtet og test endpointet.
 docker compose --profile manual run --rm delete-webhook
 Pop-Location
 ```
 
-Hver service kontrollerer sine nødvendige værdier fra `src/scripts/vipps/.env` og stopper med en forklaring, hvis en værdi mangler. ID'er til operationer sættes i `.env.example`-felterne `VIPPS_PAYMENT_REFERENCE`, `VIPPS_AGREEMENT_ID`, `VIPPS_CHARGE_ID` og `VIPPS_OLD_WEBHOOK_ID`.
+Hver service kontrollerer sine nødvendige værdier fra `src/services/vipps/.env` og stopper med en forklaring, hvis en værdi mangler. ID'er til operationer sættes i `.env.example`-felterne `VIPPS_PAYMENT_REFERENCE`, `VIPPS_AGREEMENT_ID`, `VIPPS_CHARGE_ID` og `VIPPS_OLD_WEBHOOK_ID`.
 
 ## Se eksisterende webhooks
 
 ```powershell
-src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --list-webhooks
+src/services/vipps/.venv/Scripts/python.exe src/services/vipps/vipps.py --list-webhooks
 ```
 
 Notér ID'et på den webhook, der skal udskiftes.
@@ -79,7 +79,7 @@ Notér ID'et på den webhook, der skal udskiftes.
 Opret først den nye webhook, mens den gamle stadig er aktiv:
 
 ```powershell
-src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py `
+src/services/vipps/.venv/Scripts/python.exe src/services/vipps/vipps.py `
   --rotate-webhook <gammelt-webhook-id> `
   https://test.gam-ma.dk/api/payments/vipps/webhook
 ```
@@ -93,7 +93,7 @@ Kommandoen opretter og verificerer den nye webhook, viser dens ID og udskriver d
 5. Slet først derefter den gamle webhook:
 
 ```powershell
-src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py `
+src/services/vipps/.venv/Scripts/python.exe src/services/vipps/vipps.py `
   --delete-webhook <gammelt-webhook-id>
 ```
 
@@ -102,13 +102,13 @@ src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py `
 Hvis der ikke skal roteres fra en eksisterende webhook, kan en ny oprettes med:
 
 ```powershell
-src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --register-webhook
+src/services/vipps/.venv/Scripts/python.exe src/services/vipps/vipps.py --register-webhook
 ```
 
 Den viste secret skal gemmes som `VIPPS_WEBHOOK_SECRET`. Sletning kræver altid et eksplicit ID:
 
 ```powershell
-src/scripts/vipps/.venv/Scripts/python.exe src/scripts/vipps/vipps.py --delete-webhook <webhook-id>
+src/services/vipps/.venv/Scripts/python.exe src/services/vipps/vipps.py --delete-webhook <webhook-id>
 ```
 
 Brug aldrig en lokalhost-URL eller en Cloudflare-tunnel som permanent webhook-URL for test- eller produktionsserveren.

@@ -26,15 +26,15 @@ Brug kun sandbox/testmiljøer og testbrugere. Sæt kryds efter hver gennemført 
 - [x] Gennemfør et medlemskab med MobilePay som engangsbetaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus og `SYSTEM_PAYMENT_CONFIRMATION`.
 - [] Find betalingen i MobilePay med:
-  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm payment-status --status <reference>`
+  `docker compose -f src/services/vipps/docker-compose.yml --profile manual run --rm payment-status --status <reference>`
 - [x] Gennemfør et medlemskab med MobilePay som gentagen betaling.
 - [x] Kontrollér succes-siden, medlemskabsstatus, abonnementssiden og `SYSTEM_PAYMENT_RECURRING`.
 - [x] Kontrollér aftalen i MobilePay med:
-  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
+  `docker compose -f src/services/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
 - [x] Opsig aftalen fra hjemmesiden, og kontrollér status med:
-  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
+  `docker compose -f src/services/vipps/docker-compose.yml --profile manual run --rm agreement-status --agreement-status agr_TdWANbY`
 - [x] Kontrollér MobilePay-aftalens charges med:
-  `docker compose -f src/scripts/vipps/docker-compose.yml --profile manual run --rm charges --list-charges agr_TdWANbY`.
+  `docker compose -f src/services/vipps/docker-compose.yml --profile manual run --rm charges --list-charges agr_TdWANbY`.
 - [] Kontrollér at næste MobilePay-charge oprettes automatisk til 1. februar det følgende år, og at en ny charge oprettes efter næste gennemførte betaling.
 - [x] Test afbrudt betaling, og kontrollér at brugeren ender på siden for betaling, der ikke blev gennemført.
 
