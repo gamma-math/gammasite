@@ -56,7 +56,7 @@ multiproject.code-workspace
 # Local environment and ad-hoc run files
 .env
 .env.*
-!src/scripts/vipps/.env.example
+!src/services/**/.env.example
 /src/backend/GamMaSite/appsettings.Development.json
 *.log
 run-local.*
