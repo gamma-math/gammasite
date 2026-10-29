@@ -146,6 +146,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         const savedOffers = [];
         for (const draft of paymentDrafts) {
           savedOffers.push(await paymentOffersApi.saveForEvent(nextItem.id, {
+            offerId: draft.offerId ?? null,
             linkLabel: draft.linkLabel,
             provider: draft.provider,
             amount: Number(draft.amount),
@@ -155,7 +156,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
         setPaymentOffers((current) => {
           const next = [...current];
           savedOffers.forEach((offer) => {
-            const index = next.findIndex((currentOffer) => currentOffer.provider === offer.provider);
+            const index = next.findIndex((currentOffer) => currentOffer.id === offer.id);
             if (index >= 0) next[index] = offer;
             else next.push(offer);
           });

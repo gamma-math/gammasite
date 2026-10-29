@@ -789,8 +789,18 @@ namespace GamMaSite.Controllers
                 var productName = Required(request?.ProductName, "Produktnavn");
                 var linkLabel = Required(request?.LinkLabel, "Link label");
                 var amountMinor = ToMinorUnits(request.Amount);
-                offer = item.PaymentOffers.FirstOrDefault(current =>
-                    current.Provider == provider && current.OfferType == PaymentOfferTypes.OneTime);
+                offer = request.OfferId.HasValue
+                    ? item.PaymentOffers.FirstOrDefault(current => current.Id == request.OfferId.Value)
+                    : item.PaymentOffers.FirstOrDefault(current =>
+                        current.Provider == provider &&
+                        current.OfferType == PaymentOfferTypes.OneTime &&
+                        string.Equals(current.ProductName, productName, StringComparison.OrdinalIgnoreCase));
+
+                if (request.OfferId.HasValue && offer == null)
+                {
+                    return BadRequest(new { error = "Betalingstilbuddet hører ikke til dette event." });
+                }
+
                 originalOffer = offer == null ? null : PaymentOfferSnapshot.Capture(offer);
 
                 if (offer == null)

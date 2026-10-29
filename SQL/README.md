@@ -9,6 +9,7 @@ Only tracked project folders/files are listed here:
 ```text
 SQL/
 |-- test-seed/                     Ordered seed scripts for Identity, content, registrations, and templates.
+|-- migrations/                    One-time schema changes for existing databases.
 |-- views/                         SQL view definitions.
 |-- AspNetMysql.sql                Main database schema script.
 `-- AspNetMysql.test.sql           Test/staging database schema script.
@@ -36,3 +37,4 @@ Run schema/table scripts before seed scripts. Insert parent data before dependen
 * The seed data is intended for local/test environments, not production user data.
 * Keep scripts idempotent where practical so they can be re-run safely during test setup.
 * Avoid documenting or relying on local-only database exports that are not tracked in Git.
+* Apply files in `SQL/migrations/` once to existing databases when a schema change is introduced; new databases receive the same shape from the main schema scripts.
