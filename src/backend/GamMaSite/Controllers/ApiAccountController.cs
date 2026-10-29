@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -28,17 +29,20 @@ namespace GamMaSite.Controllers
         private readonly UserManager<SiteUser> _userManager;
         private readonly ISystemEmailTemplateService _systemEmailTemplateService;
         private readonly IAntiforgery _antiforgery;
+        private readonly IEventRegistrationService _eventRegistrationService;
 
         public ApiAccountController(
             SignInManager<SiteUser> signInManager,
             UserManager<SiteUser> userManager,
             ISystemEmailTemplateService systemEmailTemplateService,
-            IAntiforgery antiforgery)
+            IAntiforgery antiforgery,
+            IEventRegistrationService eventRegistrationService)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _systemEmailTemplateService = systemEmailTemplateService;
             _antiforgery = antiforgery;
+            _eventRegistrationService = eventRegistrationService;
         }
 
         [HttpGet("csrf-token")]
@@ -176,6 +180,14 @@ namespace GamMaSite.Controllers
                 membershipPaidAt = user.KontingentDato,
                 visibility = user.Visibility.IsVisible()
             });
+        }
+
+        [HttpGet("events")]
+        [Authorize]
+        public async Task<IActionResult> GetEvents()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Ok(await _eventRegistrationService.GetAccountRegistrationsAsync(userId));
         }
 
         [HttpPost("logout")]

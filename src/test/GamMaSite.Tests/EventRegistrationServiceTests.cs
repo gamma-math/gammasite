@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using GamMaSite.Data;
 using GamMaSite.Models;
@@ -96,6 +97,50 @@ public class EventRegistrationServiceTests
             new AddEventRegistrationRequest { UserId = "user-1", RegistrationType = RegistrationTypes.Attendee });
 
         Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
+    }
+
+    [Fact]
+    public async Task GetAccountRegistrationsAsync_ReturnsOnlyUsersEventsSortedByStartDateDescending()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1" },
+            new SiteUser { Id = "user-2", UserName = "user-2" });
+
+        var latest = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(3));
+        latest.Title = "Latest event";
+        latest.Slug = "latest-event";
+        latest.StartDate = DateTime.UtcNow.AddDays(2);
+        var older = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(2));
+        older.Title = "Older event";
+        older.Slug = "older-event";
+        older.StartDate = DateTime.UtcNow.AddDays(1);
+        var otherUsersEvent = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(4));
+        otherUsersEvent.Title = "Other users event";
+        otherUsersEvent.Slug = "other-users-event";
+        otherUsersEvent.StartDate = DateTime.UtcNow.AddDays(3);
+        var news = new ContentItem
+        {
+            Title = "News",
+            Slug = "news",
+            Type = ContentTypes.News,
+            Status = ContentStatuses.Published,
+            StartDate = DateTime.UtcNow.AddDays(4)
+        };
+        db.ContentItems.AddRange(latest, older, otherUsersEvent, news);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItem = latest, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItem = older, UserId = "user-1", RegistrationType = RegistrationTypes.Waitlisted },
+            new EventRegistration { ContentItem = otherUsersEvent, UserId = "user-2", RegistrationType = RegistrationTypes.Attendee },
+            new EventRegistration { ContentItem = news, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee });
+        await db.SaveChangesAsync();
+
+        var result = await new EventRegistrationService(db).GetAccountRegistrationsAsync("user-1");
+
+        Assert.Equal(new[] { "Latest event", "Older event" }, result.Select(item => item.Title));
+        Assert.Equal(RegistrationTypes.Attendee, result[0].RegistrationType);
+        Assert.True(result[0].Registered);
+        Assert.Equal(RegistrationTypes.Waitlisted, result[1].RegistrationType);
     }
 
     [Fact]

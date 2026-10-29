@@ -24,7 +24,8 @@ public class ApiAccountControllerTests
         signIn.Setup(value => value.PasswordSignInAsync("user@example.com", "Password1!", false, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
         var controller = new ApiAccountController(signIn.Object, userManager.Object,
-            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object);
+            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object,
+            new Mock<IEventRegistrationService>().Object);
 
         var result = await controller.Login(new LoginRequest
         {
@@ -43,7 +44,8 @@ public class ApiAccountControllerTests
         signIn.Setup(value => value.PasswordSignInAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.LockedOut);
         var controller = new ApiAccountController(signIn.Object, userManager.Object,
-            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object);
+            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object,
+            new Mock<IEventRegistrationService>().Object);
 
         Assert.IsType<BadRequestObjectResult>(await controller.Login(new LoginRequest()));
     }
@@ -54,7 +56,8 @@ public class ApiAccountControllerTests
         var userManager = TestDoubles.UserManager();
         var signIn = TestDoubles.SignInManager(userManager);
         var controller = new ApiAccountController(signIn.Object, userManager.Object,
-            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object);
+            new Mock<ISystemEmailTemplateService>().Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object,
+            new Mock<IEventRegistrationService>().Object);
 
         var result = await controller.Logout();
 
@@ -172,7 +175,8 @@ public class ApiAccountControllerTests
         users.Setup(value => value.FindByEmailAsync(user.Email)).ReturnsAsync(user);
         users.Setup(value => value.IsEmailConfirmedAsync(user)).ReturnsAsync(false);
         var controller = new ApiAccountController(TestDoubles.SignInManager(users).Object, users.Object,
-            systemEmail.Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object);
+            systemEmail.Object, new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object,
+            new Mock<IEventRegistrationService>().Object);
 
         Assert.IsType<OkObjectResult>(await controller.ForgotPassword(new EmailRequest { Email = user.Email }));
         systemEmail.Verify(value => value.SendPasswordResetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -183,7 +187,8 @@ public class ApiAccountControllerTests
     {
         return new ApiAccountController(signIn.Object, users.Object,
             new Mock<ISystemEmailTemplateService>().Object,
-            new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object)
+            new Mock<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().Object,
+            new Mock<IEventRegistrationService>().Object)
         {
             ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
             {
