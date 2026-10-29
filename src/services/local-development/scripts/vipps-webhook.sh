@@ -29,6 +29,7 @@ usage() {
     echo "  ./scripts/vipps-webhook.sh list"
     echo "  ./scripts/vipps-webhook.sh register [--url PUBLIC_WEBHOOK_URL]"
     echo "  ./scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID [--url PUBLIC_WEBHOOK_URL]"
+    echo "  ./scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID"
 }
 
 operation="${1:-}"
@@ -49,7 +50,7 @@ fi
 old_webhook_id=""
 webhook_url="${VIPPS_WEBHOOK_URL:-}"
 
-if [[ "$operation" == "rotate" ]]; then
+if [[ "$operation" == "rotate" || "$operation" == "delete" ]]; then
     old_webhook_id="${1:-}"
     shift || true
     if [[ -z "$old_webhook_id" ]]; then
@@ -79,11 +80,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "$webhook_url" && -n "${PUBLIC_WEBHOOK_BASE_URL:-}" ]]; then
+if [[ "$operation" != "delete" && -z "$webhook_url" && -n "${PUBLIC_WEBHOOK_BASE_URL:-}" ]]; then
     webhook_url="${PUBLIC_WEBHOOK_BASE_URL%/}/api/payments/vipps/webhook"
 fi
 
-if [[ -z "$webhook_url" ]]; then
+if [[ "$operation" != "delete" && -z "$webhook_url" ]]; then
     echo "A public Vipps webhook URL is required. Start integrations-up.sh first or provide --url." >&2
     exit 2
 fi
@@ -101,15 +102,23 @@ compose_args=(
     --rm
     --build
     "${vipps_credentials_args[@]}"
-    -e "VIPPS_WEBHOOK_URL=$webhook_url"
 )
 
 if [[ "$operation" == "register" ]]; then
-    compose_args+=(register-webhook)
+    compose_args+=(
+        -e "VIPPS_WEBHOOK_URL=$webhook_url"
+        register-webhook
+    )
+elif [[ "$operation" == "rotate" ]]; then
+    compose_args+=(
+        -e "VIPPS_WEBHOOK_URL=$webhook_url"
+        -e "VIPPS_OLD_WEBHOOK_ID=$old_webhook_id"
+        rotate-webhook
+    )
 else
     compose_args+=(
         -e "VIPPS_OLD_WEBHOOK_ID=$old_webhook_id"
-        rotate-webhook
+        delete-webhook
     )
 fi
 
@@ -117,6 +126,11 @@ if ! docker compose "${compose_args[@]}" >"$log_file" 2>&1; then
     echo "Vipps webhook operation failed. Check Vipps credentials, permissions and the public URL." >&2
     echo "No local webhook secret was changed." >&2
     exit 1
+fi
+
+if [[ "$operation" == "delete" ]]; then
+    echo "Vipps webhook was deleted: $old_webhook_id"
+    exit 0
 fi
 
 webhook_secret="$(sed -nE 's/.*VIPPS_WEBHOOK_SECRET:[[:space:]]*([^[:space:]]+).*/\1/p' "$log_file" | tail -n 1 || true)"

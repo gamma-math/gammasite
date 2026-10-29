@@ -133,7 +133,13 @@ Ved rotation:
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
 ```
 
-Vipps-scriptet gemmer den nye `VIPPS_WEBHOOK_SECRET` og genstarter kun `app`. Tunnelen kører detached som en Compose-service.
+Når den nye webhook er verificeret, kan den gamle slettes:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
+```
+
+Ved registrering eller rotation gemmer Vipps-scriptet den nye `VIPPS_WEBHOOK_SECRET` og genstarter kun `app`. Ved sletning ændres den lokale `.env` ikke. Tunnelen kører detached som en Compose-service.
 
 Kontrollér eller stop integrationsservices:
 
@@ -297,6 +303,12 @@ Ved rotation bruges det eksisterende webhook-ID. Den gamle webhook bliver med vi
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+```
+
+Når den nye webhook er verificeret, slettes den gamle med:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
 ```
 
 Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale `VIPPS_WEBHOOK_SECRET` ikke. Efter en vellykket registrering eller rotation genstartes `app`, så den nye secret anvendes.
