@@ -150,7 +150,7 @@ namespace GamMaSite.Data
                 entity.HasKey(m => m.Id);
                 entity.Property(m => m.ContentItemScopeKey)
                     .HasColumnName("ContentItemScopeKey")
-                    .HasComputedColumnSql("COALESCE(`ContentItemId`, 0)", stored: true);
+                    .HasComputedColumnSql("CASE WHEN `Scope` = 'MEMBERSHIP' THEN 0 ELSE NULL END", stored: true);
                 entity.HasIndex(m => new { m.Scope, m.ContentItemScopeKey, m.Provider, m.OfferType })
                     .IsUnique()
                     .HasDatabaseName("UX_PaymentOffers_Scope_ContentItemId_Provider_OfferType");

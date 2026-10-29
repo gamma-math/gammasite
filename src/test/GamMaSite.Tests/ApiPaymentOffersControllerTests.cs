@@ -405,6 +405,57 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task SaveForEventAllowsMultipleOneTimeOffersForTheSameProvider()
+    {
+        await using var db = CreateDatabase();
+        var item = new ContentItem
+        {
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            Title = "Test event",
+            Slug = "test-event",
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        var access = new Mock<IAccessControlService>();
+        access.Setup(value => value.CanEditEventAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), item.Id))
+            .ReturnsAsync(true);
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            access.Object);
+
+        await controller.SaveForEvent(item.Id, new SavePaymentOfferRequest
+        {
+            LinkLabel = "Studerende",
+            Provider = PaymentOfferProviders.MobilePay,
+            Amount = 100,
+            ProductName = "Julefrokost 2026 (Studerende)"
+        });
+
+        await controller.SaveForEvent(item.Id, new SavePaymentOfferRequest
+        {
+            LinkLabel = "Almindelig",
+            Provider = PaymentOfferProviders.MobilePay,
+            Amount = 300,
+            ProductName = "Julefrokost 2026"
+        });
+
+        var offers = await db.PaymentOffers
+            .Where(offer => offer.ContentItemId == item.Id)
+            .ToListAsync();
+
+        Assert.Equal(2, offers.Count);
+        Assert.All(offers, offer => Assert.Equal(PaymentOfferProviders.MobilePay, offer.Provider));
+        Assert.Equal(
+            new[] { "Julefrokost 2026", "Julefrokost 2026 (Studerende)" },
+            offers.Select(offer => offer.ProductName).OrderBy(value => value));
+    }
+
+    [Fact]
     public async Task SaveForEventRejectsPaymentOfferBelowMinimumAmount()
     {
         await using var db = CreateDatabase();

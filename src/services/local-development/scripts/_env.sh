@@ -10,11 +10,25 @@ load_local_env() {
         return 1
     fi
 
-    set -a
-    # shellcheck disable=SC1091
-    # Read both Unix and Windows line endings without rewriting the local env file.
-    source <(sed 's/\r$//' "$env_file")
-    set +a
+    # Read both Unix and Windows line endings without executing values as shell
+    # code. Compose values such as ALLOWED_HOSTS may contain semicolons.
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"
+        [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+        if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[2]}"
+            local value="${BASH_REMATCH[3]}"
+
+            if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+                value="${value:1:${#value}-2}"
+            elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+                value="${value:1:${#value}-2}"
+            fi
+
+            export "$key=$value"
+        fi
+    done < "$env_file"
 }
 
 ensure_local_env() {
@@ -56,5 +70,5 @@ update_local_env() {
 }
 
 restart_local_app() {
-    docker compose up -d --no-deps app
+    docker compose up -d --no-deps --force-recreate app
 }

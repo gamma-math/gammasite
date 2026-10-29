@@ -92,6 +92,9 @@ docker compose --profile integrations logs -f stripe-cli tunnel</code></pre>
           <li>Ved rotation bruges ID’et før kolon i listen som <code>OLD_WEBHOOK_ID</code>:
             <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID</code></pre>
           </li>
+          <li>Når den nye webhook er verificeret, kan den gamle slettes:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID</code></pre>
+          </li>
         </ol>
         <p>Vipps-scriptet bruger Vipps-credentials og <code>VIPPS_MSN</code> fra den lokale <code>.env</code>, gemmer den nye <code>VIPPS_WEBHOOK_SECRET</code> lokalt og genstarter kun <code>app</code>. Den gamle webhook slettes ikke automatisk.</p>
       </section>

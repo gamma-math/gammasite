@@ -147,6 +147,8 @@ namespace GamMaSite.ViewModels.Api
 
     public class SavePaymentOfferRequest
     {
+        public int? OfferId { get; set; }
+
         public string LinkLabel { get; set; }
 
         public string Provider { get; set; }
