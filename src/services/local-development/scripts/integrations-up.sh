@@ -63,6 +63,7 @@ public_webhook_host="${public_webhook_base_url#https://}"
 ensure_local_env
 update_local_env .env STRIPE_WEBHOOK_SECRET "$stripe_webhook_secret"
 update_local_env .env PUBLIC_WEBHOOK_BASE_URL "$public_webhook_base_url"
+update_local_env .env PUBLIC_BASE_URL "$public_webhook_base_url"
 
 allowed_hosts="${ALLOWED_HOSTS:-localhost}"
 if [[ "$allowed_hosts" != "*" && ";$allowed_hosts;" != *";$public_webhook_host;"* ]]; then
@@ -75,6 +76,7 @@ restart_local_app
 echo "Stripe CLI and Cloudflare Tunnel are running in the background."
 echo "STRIPE_WEBHOOK_SECRET was updated in the local .env."
 echo "PUBLIC_WEBHOOK_BASE_URL was updated in the local .env."
+echo "PUBLIC_BASE_URL uses the current webhook tunnel host."
 echo "ALLOWED_HOSTS includes the current webhook tunnel host."
 echo "Vipps webhook URL: ${public_webhook_base_url%/}/api/payments/vipps/webhook"
 echo "Use 'docker compose --profile integrations ps' to check them."
