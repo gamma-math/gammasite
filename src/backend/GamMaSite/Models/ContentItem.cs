@@ -34,6 +34,8 @@ namespace GamMaSite.Models
 
         public DateTime? EndDate { get; set; }
 
+        public DateTime? RegistrationDeadline { get; set; }
+
         public string Location { get; set; }
 
         public string CreatedByUserId { get; set; }

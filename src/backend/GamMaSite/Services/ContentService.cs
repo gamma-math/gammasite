@@ -135,6 +135,7 @@ namespace GamMaSite.Services
                 ShowOnFrontPage = request.ShowOnFrontPage,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
+                RegistrationDeadline = ValidateRegistrationDeadline(request.Type, request.StartDate, request.RegistrationDeadline),
                 Location = request.Location,
                 CreatedByUserId = createdByUserId,
                 Created = now,
@@ -164,6 +165,7 @@ namespace GamMaSite.Services
             var status = NormalizeStatus(request.Status);
             var nextType = NormalizeType(request.Type);
             var nextMaxParticipants = ValidateMaxParticipants(request.MaxParticipants);
+            var nextRegistrationDeadline = ValidateRegistrationDeadline(request.Type, request.StartDate, request.RegistrationDeadline);
             var previousSlug = item.Slug;
             var nextSlug = Required(request.Slug, nameof(request.Slug));
             var oldPictureUrl = item.PictureUrl;
@@ -192,6 +194,7 @@ namespace GamMaSite.Services
             item.ShowOnFrontPage = request.ShowOnFrontPage;
             item.StartDate = request.StartDate;
             item.EndDate = request.EndDate;
+            item.RegistrationDeadline = nextRegistrationDeadline;
             item.Location = request.Location;
             item.Updated = now;
             item.PublishedAt = request.PublishedAt ?? (status == ContentStatuses.Published ? item.PublishedAt ?? now : null);
@@ -528,6 +531,26 @@ namespace GamMaSite.Services
             }
 
             return maxParticipants;
+        }
+
+        private static DateTime? ValidateRegistrationDeadline(string type, DateTime? startDate, DateTime? registrationDeadline)
+        {
+            if (!registrationDeadline.HasValue)
+            {
+                return null;
+            }
+
+            if (!string.Equals(type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Tilmeldingsfrist kan kun angives for begivenheder.");
+            }
+
+            if (!startDate.HasValue || registrationDeadline.Value > startDate.Value)
+            {
+                throw new ArgumentException("Tilmeldingsfristen skal være før eller lig med starttidspunktet.");
+            }
+
+            return registrationDeadline;
         }
 
         private async Task EnsureMaxParticipantsCanBeReducedAsync(ContentItem item, string nextType, int? nextMaxParticipants)

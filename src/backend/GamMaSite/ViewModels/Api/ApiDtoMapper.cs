@@ -26,6 +26,7 @@ namespace GamMaSite.ViewModels.Api
                 ShowOnFrontPage = item.ShowOnFrontPage,
                 StartDate = item.StartDate,
                 EndDate = item.EndDate,
+                RegistrationDeadline = item.RegistrationDeadline,
                 Location = item.Location,
                 CreatedByUserId = item.CreatedByUserId,
                 Created = item.Created,

@@ -77,6 +77,84 @@ public class ContentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PersistsEventRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        var start = DateTime.UtcNow.AddDays(2);
+        var deadline = start.AddHours(-2);
+
+        var item = await new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Event with deadline",
+            Slug = "event-with-deadline",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            StartDate = start,
+            RegistrationDeadline = deadline
+        }, "admin");
+
+        Assert.Equal(deadline, item.RegistrationDeadline);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsRegistrationDeadlineAfterEventStart()
+    {
+        await using var db = CreateDb();
+        var start = DateTime.UtcNow.AddDays(2);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Invalid event",
+            Slug = "invalid-registration-deadline",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            StartDate = start,
+            RegistrationDeadline = start.AddMinutes(1)
+        }, "admin"));
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsRegistrationDeadlineWithoutEventStart()
+    {
+        await using var db = CreateDb();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() => new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Invalid event",
+            Slug = "missing-event-start",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            RegistrationDeadline = DateTime.UtcNow.AddDays(1)
+        }, "admin"));
+
+        Assert.Contains("starttidspunkt", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PersistsEventRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        var start = DateTime.UtcNow.AddDays(2);
+        var item = Item("update-deadline", start);
+        db.ContentItems.Add(item);
+        await db.SaveChangesAsync();
+
+        var deadline = start.AddHours(-1);
+        var result = await new ContentService(db).UpdateAsync(item.Id, new SaveContentItemRequest
+        {
+            Title = item.Title,
+            Slug = item.Slug,
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            StartDate = start,
+            RegistrationDeadline = deadline
+        });
+
+        Assert.Equal(deadline, result.RegistrationDeadline);
+        Assert.Equal(deadline, (await db.ContentItems.FindAsync(item.Id))!.RegistrationDeadline);
+    }
+
+    [Fact]
     public async Task CreateAsync_RejectsNegativeEventCapacity()
     {
         await using var db = CreateDb();

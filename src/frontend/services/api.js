@@ -202,6 +202,7 @@ export const accountApi = {
   forgotPassword: (email) => request("/api/account/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resendEmailConfirmation: (email) => request("/api/account/resend-email-confirmation", { method: "POST", body: JSON.stringify({ email }) }),
   profile: () => request("/api/account/profile"),
+  events: () => request("/api/account/events"),
   subscriptions: () => request("/api/account/subscriptions"),
   cancelSubscription: (providerSubscriptionId) => request(`/api/account/subscriptions/${encodeURIComponent(providerSubscriptionId)}`, { method: "DELETE" }),
   updateProfile: (payload) => request("/api/account/profile", { method: "PUT", body: JSON.stringify(payload) }),
