@@ -46,6 +46,38 @@ public class EventRegistrationServiceTests
     [Theory]
     [InlineData(ContentStatuses.Draft)]
     [InlineData(ContentStatuses.Archived)]
+    public void RegistrationRules_DoNotAllowPaymentForUnpublishedEvents(string status)
+    {
+        var now = DateTime.UtcNow;
+        var eventItem = Event(status, now.AddDays(1));
+        eventItem.RegistrationDeadline = now.AddMinutes(-1);
+        var registration = new EventRegistration
+        {
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false
+        };
+
+        Assert.False(EventRegistrationRules.CanAccessEventPayment(eventItem, registration, now));
+    }
+
+    [Fact]
+    public void RegistrationRules_AllowPaymentAfterDeadlineForUnpaidParticipantOnPublishedEvent()
+    {
+        var now = DateTime.UtcNow;
+        var eventItem = Event(ContentStatuses.Published, now.AddDays(1));
+        eventItem.RegistrationDeadline = now.AddMinutes(-1);
+        var registration = new EventRegistration
+        {
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false
+        };
+
+        Assert.True(EventRegistrationRules.CanAccessEventPayment(eventItem, registration, now));
+    }
+
+    [Theory]
+    [InlineData(ContentStatuses.Draft)]
+    [InlineData(ContentStatuses.Archived)]
     public async Task RegisterAsync_RejectsUnpublishedEvent(string status)
     {
         await using var db = CreateDb();

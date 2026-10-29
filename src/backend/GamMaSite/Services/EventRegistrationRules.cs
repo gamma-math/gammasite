@@ -45,8 +45,11 @@ namespace GamMaSite.Services
 
         public static bool CanAccessEventPayment(ContentItem content, EventRegistration registration, DateTime utcNow)
         {
-            return IsRegistrationOpen(content, utcNow)
-                || (!IsEventEnded(content, utcNow) && IsUnpaidParticipant(registration));
+            return content != null
+                && string.Equals(content.Type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase)
+                && (IsRegistrationOpen(content, utcNow)
+                    || (!IsEventEnded(content, utcNow) && IsUnpaidParticipant(registration)));
         }
     }
 }
