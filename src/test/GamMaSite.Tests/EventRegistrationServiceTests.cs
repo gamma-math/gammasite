@@ -145,6 +145,27 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task DeleteAsync_AllowsAdminToRemoveRegistrationAfterEventEnd()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddMinutes(-1)));
+        var registration = new EventRegistration
+        {
+            ContentItemId = 1,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.EventRegistrations.Add(registration);
+        await db.SaveChangesAsync();
+
+        Assert.True(await new EventRegistrationService(db).DeleteAsync(1, registration.Id));
+        Assert.Empty(await db.EventRegistrations.ToListAsync());
+    }
+
+    [Fact]
     public async Task GetAccountRegistrationsAsync_ReturnsOnlyUsersEventsSortedByStartDateDescending()
     {
         await using var db = CreateDb();

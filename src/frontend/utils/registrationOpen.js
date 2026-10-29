@@ -7,6 +7,14 @@ export function isEventEnded(item, now = Date.now()) {
   return !eventEnd || new Date(eventEnd).getTime() <= now;
 }
 
+export function isEventOngoing(item, now = Date.now()) {
+  const eventStart = item?.startDate;
+  const eventEnd = item?.endDate;
+  return Boolean(eventStart && eventEnd)
+    && new Date(eventStart).getTime() <= now
+    && new Date(eventEnd).getTime() >= now;
+}
+
 export function isRegistrationClosedByDeadline(item, now = Date.now()) {
   return Boolean(item?.registrationDeadline)
     && !isEventEnded(item, now)

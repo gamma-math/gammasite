@@ -8,7 +8,7 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
-import { isEventEnded, isRegistrationClosedByDeadline, isRegistrationOpen } from "../utils/registrationOpen.js";
+import { isEventEnded, isEventOngoing, isRegistrationClosedByDeadline, isRegistrationOpen } from "../utils/registrationOpen.js";
 import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
 import { loginHref } from "../utils/authNavigation.js";
 
@@ -91,6 +91,7 @@ export function ContentDetailPage({ slug, type, user }) {
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
   const registrationOpen = isRegistrationOpen(item);
   const eventEnded = isEventEnded(item);
+  const eventOngoing = isEventOngoing(item);
   const registrationClosedByDeadline = isRegistrationClosedByDeadline(item);
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? confirmedRegistrationCount(registrations);
@@ -183,8 +184,9 @@ export function ContentDetailPage({ slug, type, user }) {
             <p className="menu-section-title">{isEvent ? "Begivenheder" : "Nyheder"}</p>
             <p className="menu-panel-lead">{isEvent ? "Se selve eventet og læs mere om programmet." : "Læs nyheden fra foreningen."}</p>
           </div>
-          {isEvent && eventEnded && <p className="menu-detail-status menu-detail-status-closed">Arrangementet er afsluttet</p>}
-          {isEvent && !eventEnded && registrationClosedByDeadline && <p className="menu-detail-status menu-detail-status-closed">Tilmeldingen er lukket</p>}
+          {isEvent && eventOngoing && <p className="menu-detail-status menu-detail-status-ongoing">Arrangementet er i gang</p>}
+          {isEvent && !eventOngoing && eventEnded && <p className="menu-detail-status menu-detail-status-closed">Arrangementet er afsluttet</p>}
+          {isEvent && !eventOngoing && !eventEnded && registrationClosedByDeadline && <p className="menu-detail-status menu-detail-status-closed">Tilmeldingen er lukket</p>}
         </div>
         <img className={`menu-detail-image ${hasImage ? "" : "content-logo-fallback"}`.trim()} src={hasImage ? item.pictureUrl : "/lib/logo_blue.png"} alt="" />
         <div className="menu-detail-body">

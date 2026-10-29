@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isEventEnded, isRegistrationClosedByDeadline, isRegistrationOpen } from "../../frontend/utils/registrationOpen.js";
+import { isEventEnded, isEventOngoing, isRegistrationClosedByDeadline, isRegistrationOpen } from "../../frontend/utils/registrationOpen.js";
 
 const now = Date.parse("2026-10-29T12:00:00Z");
 
@@ -27,6 +27,16 @@ test("reports a closed registration deadline before the event ends", () => {
   assert.equal(isRegistrationOpen(event, now), false);
   assert.equal(isRegistrationClosedByDeadline(event, now), true);
   assert.equal(isEventEnded(event, now), false);
+});
+
+test("reports an event as ongoing between its inclusive start and end times", () => {
+  const event = {
+    startDate: "2026-10-29T12:00:00Z",
+    endDate: "2026-10-29T14:00:00Z"
+  };
+
+  assert.equal(isEventOngoing(event, now), true);
+  assert.equal(isEventOngoing(event, Date.parse("2026-10-29T14:00:01Z")), false);
 });
 
 test("closes registration at the exact registration deadline", () => {

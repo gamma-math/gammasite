@@ -189,8 +189,6 @@ namespace GamMaSite.Services
                 return false;
             }
 
-            EnsureRegistrationCancellationOpen(content);
-
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.Id == registrationId);
 
