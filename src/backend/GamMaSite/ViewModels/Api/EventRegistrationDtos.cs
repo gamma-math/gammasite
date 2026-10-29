@@ -41,6 +41,23 @@ namespace GamMaSite.ViewModels.Api
         public bool IsFull { get; set; }
     }
 
+    public class AccountEventRegistrationDto
+    {
+        public int EventId { get; set; }
+
+        public string Title { get; set; }
+
+        public string Slug { get; set; }
+
+        public DateTime? StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        public string RegistrationType { get; set; }
+
+        public bool Registered { get; set; }
+    }
+
     public class SaveEventRegistrationRequest
     {
         public string RegistrationType { get; set; }

@@ -8,7 +8,7 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { contentMetaLabel, formatDate } from "../utils/format.js";
 import { htmlToText, sanitizeHtml } from "../utils/richText.js";
 import { hasPermission, permissions } from "../utils/access.js";
-import { isRegistrationOpen } from "../utils/registrationOpen.js";
+import { isEventEnded, isEventOngoing, isRegistrationClosedByDeadline, isRegistrationOpen } from "../utils/registrationOpen.js";
 import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
 import { loginHref } from "../utils/authNavigation.js";
 
@@ -90,11 +90,14 @@ export function ContentDetailPage({ slug, type, user }) {
   const editPath = `/admin/${type === "EVENT" ? "events" : "news"}/${item.id}/edit`;
   const calendarFileName = `${item.slug || "begivenhed"}.ics`;
   const registrationOpen = isRegistrationOpen(item);
+  const eventEnded = isEventEnded(item);
+  const eventOngoing = isEventOngoing(item);
+  const registrationClosedByDeadline = isRegistrationClosedByDeadline(item);
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? confirmedRegistrationCount(registrations);
   const isCapacityReached = maxParticipants != null && (capacitySummary?.isFull ?? confirmedParticipants >= maxParticipants);
   const canPayForEvent = isEvent
-    && registrationOpen
+    && !eventEnded
     && user.isAuthenticated
     && Boolean(registration)
     && registration.registered === false
@@ -181,7 +184,9 @@ export function ContentDetailPage({ slug, type, user }) {
             <p className="menu-section-title">{isEvent ? "Begivenheder" : "Nyheder"}</p>
             <p className="menu-panel-lead">{isEvent ? "Se selve eventet og læs mere om programmet." : "Læs nyheden fra foreningen."}</p>
           </div>
-          {isEvent && !registrationOpen && <p className="menu-detail-status menu-detail-status-closed">Arrangementet er afsluttet</p>}
+          {isEvent && eventOngoing && <p className="menu-detail-status menu-detail-status-ongoing">Arrangementet er i gang</p>}
+          {isEvent && !eventOngoing && eventEnded && <p className="menu-detail-status menu-detail-status-closed">Arrangementet er afsluttet</p>}
+          {isEvent && !eventOngoing && !eventEnded && registrationClosedByDeadline && <p className="menu-detail-status menu-detail-status-closed">Tilmeldingen er lukket</p>}
         </div>
         <img className={`menu-detail-image ${hasImage ? "" : "content-logo-fallback"}`.trim()} src={hasImage ? item.pictureUrl : "/lib/logo_blue.png"} alt="" />
         <div className="menu-detail-body">
@@ -199,6 +204,7 @@ export function ContentDetailPage({ slug, type, user }) {
                 {item.location && <div><strong>Sted:</strong> {item.location}</div>}
                 {item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}
                 {item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}
+                {item.registrationDeadline && <div><strong>Tilmeldingsfrist:</strong> {formatDate(item.registrationDeadline)}</div>}
                 {maxParticipants != null && <div><strong>Pladser:</strong> {confirmedParticipants}/{maxParticipants}</div>}
                 {eventRegistrationStatus && <div className="event-registration-status-line"><strong>Status:</strong> {eventRegistrationStatus}</div>}
                 {isCapacityReached && <div className="event-capacity-message">Der er ikke flere ledige pladser. Du kan skrive dig på venteliste.</div>}
@@ -235,7 +241,7 @@ export function ContentDetailPage({ slug, type, user }) {
                 ))}
               </div>
               <div className="menu-detail-footer-actions">
-                {registrationOpen && user.isAuthenticated ? (
+                {(registrationOpen || (registration && !eventEnded)) && user.isAuthenticated ? (
                   <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
                     {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
                     {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}

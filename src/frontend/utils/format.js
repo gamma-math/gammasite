@@ -61,6 +61,7 @@ export function emptyContent(type) {
     maxParticipants: null,
     startDate: "",
     endDate: "",
+    registrationDeadline: "",
     publishedAt: "",
     location: "",
     links: []

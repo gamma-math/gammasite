@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS `ContentItems` (
   `ShowOnFrontPage` tinyint NOT NULL DEFAULT 1,
   `StartDate` datetime DEFAULT NULL,
   `EndDate` datetime DEFAULT NULL,
+  `RegistrationDeadline` datetime DEFAULT NULL,
   `Location` varchar(256) DEFAULT NULL,
 
   `CreatedByUserId` varchar(128)

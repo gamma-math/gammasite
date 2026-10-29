@@ -8,7 +8,6 @@ import { attendeeInitials, attendeeName } from "../utils/avatar.js";
 import { formatDate } from "../utils/format.js";
 import { hasAnyPermission, permissions } from "../utils/access.js";
 import { sortRegistrations } from "../utils/registrationSort.js";
-import { isRegistrationOpen } from "../utils/registrationOpen.js";
 import { loginHref } from "../utils/authNavigation.js";
 
 const registrationTypes = [
@@ -195,7 +194,7 @@ export function EventRegistrationsPage({ slug, user }) {
   }
 
   const sortedRegistrations = sortRegistrations(registrations);
-  const registrationOpen = isRegistrationOpen(item);
+  const registrationsCanBeRemoved = canEditRegistrations;
   const maxParticipants = capacitySummary?.maxParticipants ?? item.maxParticipants;
   const confirmedParticipants = capacitySummary?.confirmedParticipants ?? 0;
   const registrationTableColumnCount = canEditRegistrations ? 4 : 3;
@@ -317,7 +316,7 @@ export function EventRegistrationsPage({ slug, user }) {
                       {canEditRegistrations ? (
                         <div className="menu-registration-action-group">
                           <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
-                          {registrationOpen && (
+                          {registrationsCanBeRemoved && (
                             <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                               Afmeld
                             </button>
@@ -339,7 +338,7 @@ export function EventRegistrationsPage({ slug, user }) {
                           </label>
                           <div className="menu-registration-action-group menu-registration-unregister-action">
                             <RegistrationRegisteredToggle registration={registration} onChange={requestRegisteredChange} />
-                            {registrationOpen && (
+                            {registrationsCanBeRemoved && (
                               <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => setRegistrationToRemove(registration)}>
                                 Afmeld
                               </button>

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Instagram, Menu, UserCircle } from "lucide-react";
 import {
   AccountManagePage,
+  AccountEventsPage,
   ForgotPasswordPage,
   LoginPage,
   RegisterPage,
@@ -301,6 +302,9 @@ function renderRoute(route, user, isAdmin, access) {
   }
   if (path === "/account/manage") {
     return <AccountManagePage user={user} section="profile" />;
+  }
+  if (path === "/account/events") {
+    return <AccountEventsPage user={user} />;
   }
   if (path === "/account/manage/email") {
     return <AccountManagePage user={user} section="email" />;

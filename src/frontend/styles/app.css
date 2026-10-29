@@ -813,6 +813,12 @@ img {
   background: #dc35451a;
 }
 
+.menu-detail-status-ongoing {
+  color: #176b3a;
+  background: #dff5e7;
+  border-color: #91d5aa;
+}
+
 .event-capacity-message {
   margin-top: 10px;
   color: #8f1f2d;
@@ -4085,7 +4091,14 @@ img {
   }
 
   .event-detail-schedule {
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    font-size: 0.82rem;
+  }
+
+  .event-detail-schedule > div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .event-detail-schedule strong {

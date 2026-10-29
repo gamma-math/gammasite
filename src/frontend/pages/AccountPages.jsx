@@ -6,6 +6,7 @@ import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./Memb
 import { accountApi } from "../services/api.js";
 import { financeApi } from "../services/financeApi.js";
 import { Link, navigate } from "../routes/navigation.jsx";
+import { formatDate } from "../utils/format.js";
 
 const initialRegister = {
   email: "",
@@ -23,6 +24,7 @@ const manageItems = [
   { href: "/account/manage/email", label: "Email" },
   { href: "/account/manage/password", label: "Password" },
   { href: "/account/manage/two-factor", label: "To-faktor authentication" },
+  { href: "/account/events", label: "Begivenheder" },
   { href: "/account/manage/subscriptions", label: "Mine betalingsaftaler" },
   { href: "/account/manage/finance", label: "Mine transaktioner" },
   { href: "/account/manage/personal-data", label: "Privat data" },
@@ -280,6 +282,105 @@ export function AccountManagePage({ user, section = "profile" }) {
       </section>
     </MenuLayout>
   );
+}
+
+export function AccountEventsPage({ user }) {
+  const [events, setEvents] = useState([]);
+  const [sort, setSort] = useState({ key: "startDate", direction: "desc" });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!user.isAuthenticated) {
+      return;
+    }
+
+    accountApi.events()
+      .then((result) => setEvents(Array.isArray(result) ? result : []))
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, [user.isAuthenticated]);
+
+  if (!user.isAuthenticated) {
+    return <AccountRequired />;
+  }
+
+  const sortedEvents = [...events].sort((left, right) => {
+    const leftValue = sort.key === "status"
+      ? getEventRegistrationStatus(left)
+      : left[sort.key];
+    const rightValue = sort.key === "status"
+      ? getEventRegistrationStatus(right)
+      : right[sort.key];
+    const result = sort.key === "startDate" || sort.key === "endDate"
+      ? (leftValue ? new Date(leftValue).getTime() : Number.MIN_SAFE_INTEGER) - (rightValue ? new Date(rightValue).getTime() : Number.MIN_SAFE_INTEGER)
+      : String(leftValue ?? "").localeCompare(String(rightValue ?? ""), "da-DK", { sensitivity: "base" });
+    return sort.direction === "asc" ? result : -result;
+  });
+
+  return (
+    <MenuLayout active="/account/events" title="Profil" isAuthenticated extraItems={manageItems} includeDefaultItems={false}>
+      <div className="menu-panel-header">
+        <div>
+          <p className="menu-section-title">Min konto</p>
+          <p className="menu-panel-lead menu-panel-lead-inline">Se dine tilmeldte begivenheder.</p>
+        </div>
+      </div>
+      <section className="account-manage-card">
+        {isLoading && <p className="muted">Henter begivenheder...</p>}
+        {error && <p className="status-message status-message-error">{error}</p>}
+        {!isLoading && !error && (
+          <div className="menu-table-wrap">
+            <table className="menu-member-table">
+              <thead>
+                <tr>
+                  <SortableHeader label="Titel" sortKey="title" sort={sort} setSort={setSort} />
+                  <SortableHeader label="Startdato" sortKey="startDate" sort={sort} setSort={setSort} />
+                  <SortableHeader label="Slutdato" sortKey="endDate" sort={sort} setSort={setSort} />
+                  <SortableHeader label="Status" sortKey="status" sort={sort} setSort={setSort} />
+                  <th>Event</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedEvents.map((event) => (
+                  <tr key={`${event.eventId}-${event.registrationType}`}>
+                    <td>{event.title}</td>
+                    <td>{formatDate(event.startDate)}</td>
+                    <td>{event.endDate ? formatDate(event.endDate) : ""}</td>
+                    <td>{getEventRegistrationStatus(event)}</td>
+                    <td><Link href={`/events/${encodeURIComponent(event.slug)}`}>Se event</Link></td>
+                  </tr>
+                ))}
+                {sortedEvents.length === 0 && (
+                  <tr>
+                    <td colSpan="5">Du har ingen tilmeldte begivenheder.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </MenuLayout>
+  );
+}
+
+function getEventRegistrationStatus(event) {
+  const registrationType = String(event.registrationType ?? "").toUpperCase();
+  if (event.registered && (registrationType === "ATTENDEE" || registrationType === "ORGANIZER")) {
+    return "Betalt";
+  }
+
+  if (registrationType === "WAITLISTED") {
+    return "Venteliste";
+  }
+  if (registrationType === "INTERESTED") {
+    return "Interesseret";
+  }
+  if (registrationType === "DECLINED") {
+    return "Afmeldt";
+  }
+  return "Tilmeldt";
 }
 
 function PaymentSubscriptionsPanel() {

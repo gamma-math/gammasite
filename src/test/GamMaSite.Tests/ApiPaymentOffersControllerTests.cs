@@ -52,6 +52,45 @@ public sealed class ApiPaymentOffersControllerTests
     }
 
     [Fact]
+    public async Task GetAllowsExistingUnpaidParticipantToOpenPaymentAfterRegistrationDeadline()
+    {
+        await using var db = CreateDatabase();
+        var offer = await SeedOfferAsync(db);
+        var eventItem = await db.ContentItems.SingleAsync(item => item.Id == offer.ContentItemId);
+        eventItem.StartDate = DateTime.UtcNow.AddDays(1);
+        eventItem.EndDate = DateTime.UtcNow.AddDays(1).AddHours(2);
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddMinutes(-1);
+        db.Users.Add(new SiteUser { Id = "user-with-pending-payment", UserName = "member@example.com" });
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = offer.ContentItemId!.Value,
+            UserId = "user-with-pending-payment",
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var controller = new ApiPaymentOffersController(
+            db,
+            new Mock<IStripeService>().Object,
+            new Mock<IAccessControlService>().Object);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "user-with-pending-payment")
+                }, "test"))
+            }
+        };
+
+        Assert.IsType<OkObjectResult>(await controller.Get(offer.Id, default));
+    }
+
+    [Fact]
     public async Task CheckoutReturnsBadGatewayWhenStripeCannotCreateEventSession()
     {
         await using var db = CreateDatabase();

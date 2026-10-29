@@ -47,6 +47,8 @@ namespace GamMaSite.ViewModels.Api
 
         public DateTime? EndDate { get; set; }
 
+        public DateTime? RegistrationDeadline { get; set; }
+
         public string Location { get; set; }
 
         public string CreatedByUserId { get; set; }
@@ -87,6 +89,8 @@ namespace GamMaSite.ViewModels.Api
         public DateTime? StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }
+
+        public DateTime? RegistrationDeadline { get; set; }
 
         public string Location { get; set; }
 

@@ -162,7 +162,7 @@ namespace GamMaSite.Services
                 return false;
             }
 
-            EnsureRegistrationOpen(content);
+            EnsureRegistrationCancellationOpen(content);
 
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
@@ -189,8 +189,6 @@ namespace GamMaSite.Services
                 return false;
             }
 
-            EnsureRegistrationOpen(content);
-
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.Id == registrationId);
 
@@ -209,15 +207,17 @@ namespace GamMaSite.Services
 
         private static void EnsureRegistrationOpen(ContentItem content)
         {
-            if (!string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ArgumentException("Registration is only available for published events");
-            }
-
-            var deadline = content.EndDate ?? content.StartDate;
-            if (!deadline.HasValue || deadline.Value <= DateTime.UtcNow)
+            if (!EventRegistrationRules.IsRegistrationOpen(content, DateTime.UtcNow))
             {
                 throw new ArgumentException("Registration for this event is closed");
+            }
+        }
+
+        private static void EnsureRegistrationCancellationOpen(ContentItem content)
+        {
+            if (!EventRegistrationRules.IsRegistrationCancellationOpen(content, DateTime.UtcNow))
+            {
+                throw new ArgumentException("Registration changes for this event are closed");
             }
         }
 
@@ -227,6 +227,31 @@ namespace GamMaSite.Services
                 .Include(item => item.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+        }
+
+        public async Task<IReadOnlyList<AccountEventRegistrationDto>> GetAccountRegistrationsAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Array.Empty<AccountEventRegistrationDto>();
+            }
+
+            return await _db.EventRegistrations
+                .AsNoTracking()
+                .Where(item => item.UserId == userId && item.ContentItem.Type == ContentTypes.Event)
+                .OrderByDescending(item => item.ContentItem.StartDate ?? DateTime.MinValue)
+                .ThenByDescending(item => item.Id)
+                .Select(item => new AccountEventRegistrationDto
+                {
+                    EventId = item.ContentItemId,
+                    Title = item.ContentItem.Title,
+                    Slug = item.ContentItem.Slug,
+                    StartDate = item.ContentItem.StartDate,
+                    EndDate = item.ContentItem.EndDate,
+                    RegistrationType = item.RegistrationType,
+                    Registered = item.Registered
+                })
+                .ToListAsync();
         }
 
         public async Task<EventRegistrationSummaryDto> GetSummaryAsync(int contentItemId, bool includeUnpublished = false)
