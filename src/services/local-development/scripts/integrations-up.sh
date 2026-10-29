@@ -47,7 +47,7 @@ wait_for_value() {
 }
 
 echo "Starting Stripe CLI and Cloudflare Tunnel as detached Compose services..."
-docker compose --profile integrations up -d stripe-cli tunnel
+docker compose --profile integrations up -d --force-recreate stripe-cli tunnel
 
 stripe_webhook_secret="$(wait_for_value \
     stripe-cli \
@@ -58,15 +58,23 @@ public_webhook_base_url="$(wait_for_value \
     tunnel \
     'https://[a-z0-9-]+\.trycloudflare\.com' \
     'the Cloudflare Tunnel URL')"
+public_webhook_host="${public_webhook_base_url#https://}"
 
 ensure_local_env
 update_local_env .env STRIPE_WEBHOOK_SECRET "$stripe_webhook_secret"
 update_local_env .env PUBLIC_WEBHOOK_BASE_URL "$public_webhook_base_url"
+
+allowed_hosts="${ALLOWED_HOSTS:-localhost}"
+if [[ "$allowed_hosts" != "*" && ";$allowed_hosts;" != *";$public_webhook_host;"* ]]; then
+    allowed_hosts="${allowed_hosts%;};$public_webhook_host"
+    update_local_env .env ALLOWED_HOSTS "$allowed_hosts"
+fi
 
 restart_local_app
 
 echo "Stripe CLI and Cloudflare Tunnel are running in the background."
 echo "STRIPE_WEBHOOK_SECRET was updated in the local .env."
 echo "PUBLIC_WEBHOOK_BASE_URL was updated in the local .env."
+echo "ALLOWED_HOSTS includes the current webhook tunnel host."
 echo "Vipps webhook URL: ${public_webhook_base_url%/}/api/payments/vipps/webhook"
 echo "Use 'docker compose --profile integrations ps' to check them."

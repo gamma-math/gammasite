@@ -94,7 +94,7 @@ Disse workflows ændrer ikke databasevolumes og kører ikke migrations. Start be
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Kommandoen starter Stripe CLI og Cloudflare Tunnel som permanente Compose-services, opsamler `STRIPE_WEBHOOK_SECRET` og `PUBLIC_WEBHOOK_BASE_URL`, opdaterer den lokale `.env` og genstarter kun `app`-containeren. Kommandoen afslutter derefter, mens integrationsservices fortsætter i baggrunden.
+Kommandoen genskaber Stripe CLI og Cloudflare Tunnel som permanente Compose-services, opsamler en ny `STRIPE_WEBHOOK_SECRET` og `PUBLIC_WEBHOOK_BASE_URL`, tilføjer tunnel-hostnavnet til `ALLOWED_HOSTS`, opdaterer den lokale `.env` og genstarter kun `app`-containeren. Kommandoen afslutter derefter, mens integrationsservices fortsætter i baggrunden.
 
 Hvis `STRIPE_SECRET_API_KEY` er en restricted Stripe test-key (`rk_test_...`), skal key’en have permissionen `Debugging Tools` → `Write` (`stripecli_session_write`). Uden denne permission kan Stripe CLI ikke oprette en listen-session. Brug kun en test-mode key til lokal udvikling.
 
@@ -140,6 +140,13 @@ docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh d
 ```
 
 Ved registrering eller rotation gemmer Vipps-scriptet den nye `VIPPS_WEBHOOK_SECRET` og genstarter kun `app`. Ved sletning ændres den lokale `.env` ikke. Tunnelen kører detached som en Compose-service.
+
+Hver kørsel af `integrations-up.sh` opretter en ny Cloudflare Quick Tunnel-URL. Hvis der allerede findes en Vipps-webhook, skal den derfor roteres til den nye URL bagefter. Brug kun `register`, hvis der ikke allerede findes en webhook:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+```
 
 Kontrollér eller stop integrationsservices:
 
@@ -276,7 +283,7 @@ Cloudflare Quick Tunnel startes sammen med Stripe CLI:
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Scriptet venter på Cloudflare Quick Tunnel-URL'en, gemmer den som `PUBLIC_WEBHOOK_BASE_URL` i den lokale `.env` og viser de to relevante endpoints:
+Scriptet genskaber tunnelen, venter på den nye Cloudflare Quick Tunnel-URL, gemmer den som `PUBLIC_WEBHOOK_BASE_URL` i den lokale `.env`, tilføjer hostnavnet til `ALLOWED_HOSTS` og viser de to relevante endpoints:
 
 ```text
 /api/payments/stripe/webhook
