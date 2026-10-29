@@ -256,7 +256,7 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
 CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   `Id` int NOT NULL AUTO_INCREMENT,
   `ContentItemId` int DEFAULT NULL,
-  `ContentItemScopeKey` int GENERATED ALWAYS AS (coalesce(`ContentItemId`, 0)) STORED,
+  `ContentItemScopeKey` int GENERATED ALWAYS AS (CASE WHEN `Scope` = 'MEMBERSHIP' THEN 0 ELSE NULL END) STORED,
   `Scope` varchar(32) NOT NULL DEFAULT 'EVENT',
   `Provider` varchar(32) NOT NULL,
   `OfferType` varchar(32) NOT NULL,

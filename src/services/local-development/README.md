@@ -94,7 +94,7 @@ Disse workflows ændrer ikke databasevolumes og kører ikke migrations. Start be
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Kommandoen starter Stripe CLI og Cloudflare Tunnel som permanente Compose-services, opsamler `STRIPE_WEBHOOK_SECRET` og `PUBLIC_WEBHOOK_BASE_URL`, opdaterer den lokale `.env` og genstarter kun `app`-containeren. Kommandoen afslutter derefter, mens integrationsservices fortsætter i baggrunden.
+Kommandoen genskaber Stripe CLI og Cloudflare Tunnel som permanente Compose-services, opsamler en ny `STRIPE_WEBHOOK_SECRET`, `PUBLIC_WEBHOOK_BASE_URL` og `PUBLIC_BASE_URL`, tilføjer tunnel-hostnavnet til `ALLOWED_HOSTS`, opdaterer den lokale `.env` og genskaber kun `app`-containeren. Kommandoen afslutter derefter, mens integrationsservices fortsætter i baggrunden.
 
 Hvis `STRIPE_SECRET_API_KEY` er en restricted Stripe test-key (`rk_test_...`), skal key’en have permissionen `Debugging Tools` → `Write` (`stripecli_session_write`). Uden denne permission kan Stripe CLI ikke oprette en listen-session. Brug kun en test-mode key til lokal udvikling.
 
@@ -133,7 +133,20 @@ Ved rotation:
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
 ```
 
-Vipps-scriptet gemmer den nye `VIPPS_WEBHOOK_SECRET` og genstarter kun `app`. Tunnelen kører detached som en Compose-service.
+Når den nye webhook er verificeret, kan den gamle slettes:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
+```
+
+Ved registrering eller rotation gemmer Vipps-scriptet den nye `VIPPS_WEBHOOK_SECRET` og genskaber kun `app`-containeren, så det nye secret indlæses. Ved sletning ændres den lokale `.env` ikke. Tunnelen kører detached som en Compose-service.
+
+Hver kørsel af `integrations-up.sh` opretter en ny Cloudflare Quick Tunnel-URL. Hvis der allerede findes en Vipps-webhook, skal den derfor roteres til den nye URL bagefter. Brug kun `register`, hvis der ikke allerede findes en webhook:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+```
 
 Kontrollér eller stop integrationsservices:
 
@@ -244,7 +257,7 @@ Valideringen viser kun manglende variabelnavne og statusbeskeder. Den udskriver 
 
 ## Stripe-webhooks
 
-Stripe CLI kører som en valgfri, permanent Docker Compose-service. Signing secretet er dynamisk for den aktive `stripe listen`-session; integrations-scriptet opsamler det uden at vise det, skriver det til den lokale `.env` og genstarter kun `app`-servicen.
+Stripe CLI kører som en valgfri, permanent Docker Compose-service. Signing secretet er dynamisk for den aktive `stripe listen`-session; integrations-scriptet opsamler det uden at vise det, skriver det til den lokale `.env` og genskaber kun `app`-servicen.
 
 1. Opret en test-mode restricted Stripe API key og læg den i `STRIPE_SECRET_API_KEY` i den lokale `.env`.
 2. Sørg for at GamMaSite kører med `docker compose up -d`.
@@ -270,7 +283,7 @@ Cloudflare Quick Tunnel startes sammen med Stripe CLI:
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Scriptet venter på Cloudflare Quick Tunnel-URL'en, gemmer den som `PUBLIC_WEBHOOK_BASE_URL` i den lokale `.env` og viser de to relevante endpoints:
+Scriptet genskaber tunnelen, venter på den nye Cloudflare Quick Tunnel-URL, gemmer den som både `PUBLIC_WEBHOOK_BASE_URL` og `PUBLIC_BASE_URL` i den lokale `.env`, tilføjer hostnavnet til `ALLOWED_HOSTS` og viser de to relevante endpoints:
 
 ```text
 /api/payments/stripe/webhook
@@ -278,6 +291,8 @@ Scriptet venter på Cloudflare Quick Tunnel-URL'en, gemmer den som `PUBLIC_WEBHO
 ```
 
 URL'en er midlertidig og må ikke bruges som permanent TEST- eller PROD-webhook. Tunnel-containeren skal blot fortsætte som detached Compose-service.
+
+Ved test af MobilePay-medlemskaber med automatisk fornyelse skal GamMaSite åbnes via den aktuelle `https://...trycloudflare.com`-URL. Vipps kræver, at `merchantRedirectUrl` og `merchantAgreementUrl` er offentligt tilgængelige HTTPS-adresser; integrationsscriptet bruger derfor tunnel-URL'en som `PUBLIC_BASE_URL`.
 
 ### Vipps webhook-secret
 
@@ -299,7 +314,13 @@ Ved rotation bruges det eksisterende webhook-ID. Den gamle webhook bliver med vi
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
 ```
 
-Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale `VIPPS_WEBHOOK_SECRET` ikke. Efter en vellykket registrering eller rotation genstartes `app`, så den nye secret anvendes.
+Når den nye webhook er verificeret, slettes den gamle med:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
+```
+
+Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale `VIPPS_WEBHOOK_SECRET` ikke. Efter en vellykket registrering eller rotation genskabes `app`, så det nye secret anvendes.
 
 ## Mailpit-begrænsning
 
