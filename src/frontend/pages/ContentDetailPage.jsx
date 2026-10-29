@@ -239,7 +239,7 @@ export function ContentDetailPage({ slug, type, user }) {
                 ))}
               </div>
               <div className="menu-detail-footer-actions">
-                {registrationOpen && user.isAuthenticated ? (
+                {(registrationOpen || (registration && !eventEnded)) && user.isAuthenticated ? (
                   <button className={`menu-attend-button menu-attend-button-primary ${registration ? "is-active" : ""}`} type="button" onClick={toggleRegistration}>
                     {registration ? <Trash2 size={16} /> : <UserPlus size={16} />}
                     {registration ? (isWaitlisted(registration) ? "Afmeld venteliste" : "Afmeld") : (isCapacityReached ? "Venteliste" : "Tilmeld")}

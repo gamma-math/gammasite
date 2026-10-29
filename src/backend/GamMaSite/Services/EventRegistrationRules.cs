@@ -27,6 +27,14 @@ namespace GamMaSite.Services
             return !eventEnd.HasValue || eventEnd.Value <= utcNow;
         }
 
+        public static bool IsRegistrationCancellationOpen(ContentItem content, DateTime utcNow)
+        {
+            return content != null
+                && string.Equals(content.Type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase)
+                && !IsEventEnded(content, utcNow);
+        }
+
         public static bool IsUnpaidParticipant(EventRegistration registration)
         {
             return registration != null

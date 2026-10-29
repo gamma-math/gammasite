@@ -162,7 +162,7 @@ namespace GamMaSite.Services
                 return false;
             }
 
-            EnsureRegistrationOpen(content);
+            EnsureRegistrationCancellationOpen(content);
 
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
@@ -189,7 +189,7 @@ namespace GamMaSite.Services
                 return false;
             }
 
-            EnsureRegistrationOpen(content);
+            EnsureRegistrationCancellationOpen(content);
 
             var registration = await _db.EventRegistrations
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.Id == registrationId);
@@ -212,6 +212,14 @@ namespace GamMaSite.Services
             if (!EventRegistrationRules.IsRegistrationOpen(content, DateTime.UtcNow))
             {
                 throw new ArgumentException("Registration for this event is closed");
+            }
+        }
+
+        private static void EnsureRegistrationCancellationOpen(ContentItem content)
+        {
+            if (!EventRegistrationRules.IsRegistrationCancellationOpen(content, DateTime.UtcNow))
+            {
+                throw new ArgumentException("Registration changes for this event are closed");
             }
         }
 

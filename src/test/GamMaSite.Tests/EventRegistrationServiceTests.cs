@@ -100,6 +100,51 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task UnregisterAsync_AllowsMemberToUnregisterAfterRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddMinutes(-1);
+        db.ContentItems.Add(eventItem);
+        db.EventRegistrations.Add(new EventRegistration
+        {
+            ContentItemId = 1,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        Assert.True(await new EventRegistrationService(db).UnregisterAsync(1, "user-1"));
+        Assert.Empty(await db.EventRegistrations.ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeleteAsync_AllowsAdminToRemoveRegistrationAfterRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddMinutes(-1);
+        db.ContentItems.Add(eventItem);
+        var registration = new EventRegistration
+        {
+            ContentItemId = 1,
+            UserId = "user-1",
+            RegistrationType = RegistrationTypes.Attendee,
+            Created = DateTime.UtcNow,
+            Updated = DateTime.UtcNow
+        };
+        db.EventRegistrations.Add(registration);
+        await db.SaveChangesAsync();
+
+        Assert.True(await new EventRegistrationService(db).DeleteAsync(1, registration.Id));
+        Assert.Empty(await db.EventRegistrations.ToListAsync());
+    }
+
+    [Fact]
     public async Task GetAccountRegistrationsAsync_ReturnsOnlyUsersEventsSortedByStartDateDescending()
     {
         await using var db = CreateDb();
