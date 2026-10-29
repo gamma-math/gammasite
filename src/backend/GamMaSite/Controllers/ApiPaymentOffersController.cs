@@ -626,12 +626,20 @@ namespace GamMaSite.Controllers
         [Authorize]
         public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var offer = await _db.PaymentOffers
                 .Include(item => item.ContentItem)
                 .ThenInclude(item => item.Links)
                 .FirstOrDefaultAsync(item => item.Id == id && item.IsActive, cancellationToken);
 
-            if (offer == null || !IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
+            var registration = offer?.ContentItemId == null || string.IsNullOrWhiteSpace(userId)
+                ? null
+                : await _db.EventRegistrations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId, cancellationToken);
+
+            if (offer == null || !IsEventOffer(offer) ||
+                !EventRegistrationRules.CanAccessEventPayment(offer.ContentItem, registration, DateTime.UtcNow))
             {
                 return NotFound();
             }
@@ -978,14 +986,15 @@ namespace GamMaSite.Controllers
                 return await CheckoutMembershipAsync(offer, userId, cancellationToken);
             }
 
-            if (!IsEventOffer(offer) || !IsEventPaymentOpen(offer.ContentItem))
-            {
-                return NotFound();
-            }
-
             var registration = await _db.EventRegistrations
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.ContentItemId == offer.ContentItemId && item.UserId == userId);
+
+            if (!IsEventOffer(offer) ||
+                !EventRegistrationRules.CanAccessEventPayment(offer.ContentItem, registration, DateTime.UtcNow))
+            {
+                return NotFound();
+            }
 
             if (registration == null ||
                 registration.Registered ||
@@ -2209,19 +2218,6 @@ namespace GamMaSite.Controllers
                 "YEAR" => "year",
                 _ => throw new ArgumentException("Stripe-betalinger kræver et gyldigt betalingsinterval.")
             };
-        }
-
-        private static bool IsEventPaymentOpen(ContentItem item)
-        {
-            if (item == null ||
-                !string.Equals(item.Type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(item.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            var deadline = item.EndDate ?? item.StartDate;
-            return deadline.HasValue && deadline.Value > DateTime.UtcNow;
         }
 
         private static bool IsSupportedMobilePayInterval(string interval)

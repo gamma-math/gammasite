@@ -209,13 +209,7 @@ namespace GamMaSite.Services
 
         private static void EnsureRegistrationOpen(ContentItem content)
         {
-            if (!string.Equals(content.Status, ContentStatuses.Published, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ArgumentException("Registration is only available for published events");
-            }
-
-            var deadline = content.EndDate ?? content.StartDate;
-            if (!deadline.HasValue || deadline.Value <= DateTime.UtcNow)
+            if (!EventRegistrationRules.IsRegistrationOpen(content, DateTime.UtcNow))
             {
                 throw new ArgumentException("Registration for this event is closed");
             }

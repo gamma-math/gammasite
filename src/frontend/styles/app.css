@@ -4085,7 +4085,14 @@ img {
   }
 
   .event-detail-schedule {
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    font-size: 0.82rem;
+  }
+
+  .event-detail-schedule > div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .event-detail-schedule strong {

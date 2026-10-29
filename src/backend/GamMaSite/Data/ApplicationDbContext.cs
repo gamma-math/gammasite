@@ -103,6 +103,7 @@ namespace GamMaSite.Data
                 entity.HasIndex(m => m.Status).HasDatabaseName("IX_ContentItems_Status");
                 entity.HasIndex(m => m.ShowOnFrontPage).HasDatabaseName("IX_ContentItems_ShowOnFrontPage");
                 entity.HasIndex(m => m.StartDate).HasDatabaseName("IX_ContentItems_StartDate");
+                entity.HasIndex(m => m.RegistrationDeadline).HasDatabaseName("IX_ContentItems_RegistrationDeadline");
                 entity.HasIndex(m => m.PublishedAt).HasDatabaseName("IX_ContentItems_PublishedAt");
                 entity.HasIndex(m => m.CreatedByUserId).HasDatabaseName("IX_ContentItems_CreatedByUserId");
 

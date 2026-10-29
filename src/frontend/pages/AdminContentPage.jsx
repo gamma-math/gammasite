@@ -308,6 +308,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           {type === "EVENT" && <label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Start</span><input type="datetime-local" value={toLocalInput(selected.startDate)} onChange={(event) => update("startDate", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Slut</span><input type="datetime-local" value={toLocalInput(selected.endDate)} onChange={(event) => update("endDate", event.target.value)} /></label>}
+          {type === "EVENT" && <label className="admin-field"><span>Tilmeldingsfrist</span><input type="datetime-local" value={toLocalInput(selected.registrationDeadline)} max={toLocalInput(selected.startDate) || undefined} onChange={(event) => update("registrationDeadline", event.target.value)} /></label>}
           {type === "EVENT" && <label className="admin-field"><span>Maks. antal deltagere</span><input type="number" min="0" value={selected.maxParticipants ?? ""} onChange={(event) => update("maxParticipants", event.target.value === "" ? null : Number(event.target.value))} placeholder="Ingen begrænsning" /></label>}
         </div>
         <LinkEditor key={linksEditorVersion} links={selected.links ?? []} onChange={(links) => update("links", links)} />
@@ -432,7 +433,7 @@ function ContentPreview({ item, type, onClose }) {
                   <span className="tag tag-kind">{isEvent ? "Arrangement" : "Nyhed"}</span>
                   {(item.tags ?? "").split(",").filter(Boolean).map((tag) => <span className="tag" key={tag}>{tag.trim()}</span>)}
                 </div>
-                {isEvent && <div className="event-detail-schedule">{item.location && <div><strong>Sted:</strong> {item.location}</div>}{item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}{item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}</div>}
+                {isEvent && <div className="event-detail-schedule">{item.location && <div><strong>Sted:</strong> {item.location}</div>}{item.startDate && <div><strong>Start:</strong> {formatDate(item.startDate)}</div>}{item.endDate && <div><strong>Slut:</strong> {formatDate(item.endDate)}</div>}{item.registrationDeadline && <div><strong>Tilmeldingsfrist:</strong> {formatDate(item.registrationDeadline)}</div>}</div>}
               </div>
             </div>
           </article>
@@ -685,6 +686,7 @@ function normalizeContentItem(item, type) {
     ...item,
     type: item.type ?? item.Type ?? type,
     maxParticipants: item.maxParticipants ?? item.MaxParticipants ?? null,
+    registrationDeadline: item.registrationDeadline ?? item.RegistrationDeadline ?? null,
     showOnFrontPage: item.showOnFrontPage ?? item.ShowOnFrontPage ?? true
   };
 }
@@ -707,6 +709,7 @@ function buildSavePayload(item, type) {
     maxParticipants: type === "EVENT" && item.maxParticipants !== "" && item.maxParticipants != null ? Number(item.maxParticipants) : null,
     startDate: item.startDate || null,
     endDate: item.endDate || null,
+    registrationDeadline: item.registrationDeadline || null,
     location: item.location ?? "",
     publishedAt: item.publishedAt || null,
     links: normalizeLinks(item.links)
@@ -720,6 +723,7 @@ function toLocalInput(value) {
 
   return value.slice(0, 16);
 }
+
 
 function contentSortValue(item, key) {
   if (key === "date") {

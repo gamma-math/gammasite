@@ -20,7 +20,9 @@ public class EventRegistrationServiceTests
     {
         await using var db = CreateDb();
         db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
-        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddHours(1);
+        db.ContentItems.Add(eventItem);
         await db.SaveChangesAsync();
         var service = new EventRegistrationService(db);
 
@@ -28,6 +30,16 @@ public class EventRegistrationServiceTests
 
         Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
         Assert.False(registration.Registered);
+    }
+
+    [Fact]
+    public void RegistrationRules_CloseAtExactRegistrationDeadline()
+    {
+        var deadline = DateTime.UtcNow.AddHours(1);
+        var eventItem = Event(ContentStatuses.Published, deadline.AddHours(2));
+        eventItem.RegistrationDeadline = deadline;
+
+        Assert.False(EventRegistrationRules.IsRegistrationOpen(eventItem, deadline));
     }
 
     [Theory]
@@ -54,6 +66,36 @@ public class EventRegistrationServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => new EventRegistrationService(db)
             .RegisterAsync(1, "user-1", new SaveEventRegistrationRequest()));
+    }
+
+    [Fact]
+    public async Task RegisterAsync_RejectsEventAfterRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddMinutes(-1);
+        db.ContentItems.Add(eventItem);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new EventRegistrationService(db)
+            .RegisterAsync(1, "user-1", new SaveEventRegistrationRequest()));
+    }
+
+    [Fact]
+    public async Task AddAsync_AllowsAdminRegistrationAfterRegistrationDeadline()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.RegistrationDeadline = DateTime.UtcNow.AddMinutes(-1);
+        db.ContentItems.Add(eventItem);
+        await db.SaveChangesAsync();
+
+        var registration = await new EventRegistrationService(db).AddAsync(1,
+            new AddEventRegistrationRequest { UserId = "user-1", RegistrationType = RegistrationTypes.Attendee });
+
+        Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
     }
 
     [Fact]
