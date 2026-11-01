@@ -221,7 +221,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.RegisterAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), request);
-                return Ok(registration.ToDto(await _accessControl.HasAnyPermissionAsync(User, PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit)));
+                return Ok(registration.ToDto(await _accessControl.HasAnyPermissionAsync(User, PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit), true));
             }
             catch (ArgumentException ex)
             {
@@ -241,7 +241,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.AddAsync(id, request);
-                return Ok(registration.ToDto(true));
+                return Ok(registration.ToDto(true, true));
             }
             catch (ArgumentException ex)
             {
@@ -289,7 +289,22 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetMyRegistration(int id)
         {
             var registration = await _registrationService.GetRegistrationAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier));
-            return registration == null ? NoContent() : Ok(registration.ToDto(await _accessControl.HasAnyPermissionAsync(User, PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit)));
+            return registration == null ? NoContent() : Ok(registration.ToDto(await _accessControl.HasAnyPermissionAsync(User, PermissionCodes.ContentEdit, PermissionCodes.RegistrationsEdit), true));
+        }
+
+        [HttpPut("{id:int}/registrations/me/note")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMyRegistrationNote(int id, UpdateMyEventRegistrationNoteRequest request)
+        {
+            try
+            {
+                var registration = await _registrationService.UpdateMyNoteAsync(id, User.FindFirstValue(ClaimTypes.NameIdentifier), request?.ResponseText);
+                return registration == null ? NotFound() : Ok(registration.ToDto(includeResponseText: true));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpGet("{id:int}/registrations/summary")]
@@ -306,7 +321,7 @@ namespace GamMaSite.Controllers
         {
             var registrations = await _registrationService.GetRegistrationsAsync(id);
             var includePrivateDetails = await _accessControl.CanEditRegistrationsAsync(User, id);
-            return Ok(registrations.Select(registration => registration.ToDto(includePrivateDetails)));
+            return Ok(registrations.Select(registration => registration.ToDto(includePrivateDetails, includePrivateDetails)));
         }
 
         [HttpPut("{id:int}/registrations/{registrationId:int}")]
@@ -321,7 +336,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var registration = await _registrationService.UpdateAsync(id, registrationId, request);
-                return registration == null ? NotFound() : Ok(registration.ToDto(true));
+                return registration == null ? NotFound() : Ok(registration.ToDto(true, true));
             }
             catch (ArgumentException ex)
             {

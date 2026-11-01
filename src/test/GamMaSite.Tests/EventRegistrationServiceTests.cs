@@ -34,6 +34,38 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_StoresAndUpdatesRegistrationNote()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        var registration = await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest
+        {
+            ResponseText = "Vegetarisk menu"
+        });
+        var updated = await service.UpdateMyNoteAsync(1, "user-1", "Ingen nødder");
+
+        Assert.Equal("Vegetarisk menu", registration.ResponseText);
+        Assert.Equal("Ingen nødder", updated.ResponseText);
+    }
+
+    [Fact]
+    public async Task UpdateMyNoteAsync_RejectsNotesLongerThanDatabaseColumn()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+        await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateMyNoteAsync(1, "user-1", new string('x', 1025)));
+    }
+
+    [Fact]
     public void RegistrationRules_CloseAtExactRegistrationDeadline()
     {
         var deadline = DateTime.UtcNow.AddHours(1);

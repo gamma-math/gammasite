@@ -26,6 +26,7 @@ namespace GamMaSite.Services
         };
 
         private const string CapacityReachedMessage = "Der er allerede maks antal deltagere.";
+        private const int MaxResponseTextLength = 1024;
 
         private readonly ApplicationDbContext _db;
 
@@ -73,7 +74,7 @@ namespace GamMaSite.Services
 
             registration.RegistrationType = registrationType;
             registration.Registered = false;
-            registration.ResponseText = request?.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request?.ResponseText);
             registration.Updated = now;
 
             await _db.SaveChangesAsync();
@@ -136,7 +137,7 @@ namespace GamMaSite.Services
 
             registration.RegistrationType = registrationType;
             registration.Registered = request.Registered;
-            registration.ResponseText = request.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request.ResponseText);
             registration.Updated = now;
 
             await _db.SaveChangesAsync();
@@ -227,6 +228,26 @@ namespace GamMaSite.Services
                 .Include(item => item.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+        }
+
+        public async Task<EventRegistration> UpdateMyNoteAsync(int contentItemId, string userId, string responseText)
+        {
+            var registration = await _db.EventRegistrations
+                .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+
+            if (registration == null)
+            {
+                return null;
+            }
+
+            registration.ResponseText = NormalizeResponseText(responseText);
+            registration.Updated = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return await _db.EventRegistrations
+                .Include(item => item.User)
+                .AsNoTracking()
+                .FirstAsync(item => item.Id == registration.Id);
         }
 
         public async Task<IReadOnlyList<AccountEventRegistrationDto>> GetAccountRegistrationsAsync(string userId)
@@ -324,7 +345,7 @@ namespace GamMaSite.Services
 
             registration.RegistrationType = registrationType;
             registration.Registered = registered;
-            registration.ResponseText = request?.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request?.ResponseText);
             registration.Updated = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -361,6 +382,17 @@ namespace GamMaSite.Services
             if (!AllowedRegistrationTypes.Contains(normalized))
             {
                 throw new ArgumentException($"Unsupported registration type: {registrationType}");
+            }
+
+            return normalized;
+        }
+
+        private static string NormalizeResponseText(string responseText)
+        {
+            var normalized = string.IsNullOrWhiteSpace(responseText) ? null : responseText.Trim();
+            if (normalized?.Length > MaxResponseTextLength)
+            {
+                throw new ArgumentException($"Noten må højst være {MaxResponseTextLength} tegn.");
             }
 
             return normalized;
