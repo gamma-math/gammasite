@@ -101,7 +101,7 @@ namespace GamMaSite.ViewModels.Api
             };
         }
 
-        public static EventRegistrationDto ToDto(this EventRegistration registration, bool includePrivateDetails = false)
+        public static EventRegistrationDto ToDto(this EventRegistration registration, bool includePrivateDetails = false, bool includeResponseText = false)
         {
             return new EventRegistrationDto
             {
@@ -112,7 +112,7 @@ namespace GamMaSite.ViewModels.Api
                 Email = includePrivateDetails || registration.User?.Visibility.IsVisible() == true ? registration.User?.Email : null,
                 RegistrationType = registration.RegistrationType,
                 Registered = registration.Registered,
-                ResponseText = registration.ResponseText,
+                ResponseText = includeResponseText ? registration.ResponseText : null,
                 Created = registration.Created,
                 Updated = registration.Updated
             };

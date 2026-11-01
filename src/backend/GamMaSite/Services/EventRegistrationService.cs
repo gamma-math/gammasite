@@ -8,6 +8,7 @@ using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
 {
@@ -26,12 +27,20 @@ namespace GamMaSite.Services
         };
 
         private const string CapacityReachedMessage = "Der er allerede maks antal deltagere.";
+        private const int MaxResponseTextLength = 1024;
 
         private readonly ApplicationDbContext _db;
+        private readonly ISystemEmailTemplateService _systemEmailTemplateService;
+        private readonly ILogger<EventRegistrationService> _logger;
 
-        public EventRegistrationService(ApplicationDbContext db)
+        public EventRegistrationService(
+            ApplicationDbContext db,
+            ISystemEmailTemplateService systemEmailTemplateService = null,
+            ILogger<EventRegistrationService> logger = null)
         {
             _db = db;
+            _systemEmailTemplateService = systemEmailTemplateService;
+            _logger = logger;
         }
 
         public async Task<EventRegistration> RegisterAsync(int contentItemId, string userId, SaveEventRegistrationRequest request)
@@ -73,21 +82,28 @@ namespace GamMaSite.Services
 
             registration.RegistrationType = registrationType;
             registration.Registered = false;
-            registration.ResponseText = request?.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request?.ResponseText);
             registration.Updated = now;
 
             await _db.SaveChangesAsync();
-            if (currentCountsTowardsCapacity && !CountsTowardsCapacity(registrationType))
+            var promotedRegistrationIds = currentCountsTowardsCapacity && !CountsTowardsCapacity(registrationType)
+                ? await PromoteWaitlistedAsync(content, registration.Id)
+                : Array.Empty<int>();
+            if (promotedRegistrationIds.Count > 0)
             {
-                await PromoteWaitlistedAsync(content, registration.Id);
                 await _db.SaveChangesAsync();
             }
             await CommitAsync(transaction);
 
-            return await _db.EventRegistrations
+            var savedRegistration = await _db.EventRegistrations
                 .Include(item => item.User)
                 .AsNoTracking()
                 .FirstAsync(item => item.Id == registration.Id);
+
+            await SendEventConfirmationAsync(savedRegistration, content);
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
+
+            return savedRegistration;
         }
 
         public async Task<EventRegistration> AddAsync(int contentItemId, AddEventRegistrationRequest request)
@@ -136,16 +152,20 @@ namespace GamMaSite.Services
 
             registration.RegistrationType = registrationType;
             registration.Registered = request.Registered;
-            registration.ResponseText = request.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request.ResponseText);
             registration.Updated = now;
 
             await _db.SaveChangesAsync();
-            if (currentCountsTowardsCapacity && !nextCountsTowardsCapacity)
+            var promotedRegistrationIds = currentCountsTowardsCapacity && !nextCountsTowardsCapacity
+                ? await PromoteWaitlistedAsync(content, registration.Id)
+                : Array.Empty<int>();
+            if (promotedRegistrationIds.Count > 0)
             {
-                await PromoteWaitlistedAsync(content, registration.Id);
                 await _db.SaveChangesAsync();
             }
             await CommitAsync(transaction);
+
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
 
             return await _db.EventRegistrations
                 .Include(item => item.User)
@@ -174,9 +194,13 @@ namespace GamMaSite.Services
 
             _db.EventRegistrations.Remove(registration);
             await _db.SaveChangesAsync();
-            await PromoteWaitlistedAsync(content, null);
-            await _db.SaveChangesAsync();
+            var promotedRegistrationIds = await PromoteWaitlistedAsync(content, null);
+            if (promotedRegistrationIds.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
             await CommitAsync(transaction);
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
             return true;
         }
 
@@ -199,9 +223,13 @@ namespace GamMaSite.Services
 
             _db.EventRegistrations.Remove(registration);
             await _db.SaveChangesAsync();
-            await PromoteWaitlistedAsync(content, null);
-            await _db.SaveChangesAsync();
+            var promotedRegistrationIds = await PromoteWaitlistedAsync(content, null);
+            if (promotedRegistrationIds.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
             await CommitAsync(transaction);
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
             return true;
         }
 
@@ -227,6 +255,26 @@ namespace GamMaSite.Services
                 .Include(item => item.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+        }
+
+        public async Task<EventRegistration> UpdateMyNoteAsync(int contentItemId, string userId, string responseText)
+        {
+            var registration = await _db.EventRegistrations
+                .FirstOrDefaultAsync(item => item.ContentItemId == contentItemId && item.UserId == userId);
+
+            if (registration == null)
+            {
+                return null;
+            }
+
+            registration.ResponseText = NormalizeResponseText(responseText);
+            registration.Updated = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return await _db.EventRegistrations
+                .Include(item => item.User)
+                .AsNoTracking()
+                .FirstAsync(item => item.Id == registration.Id);
         }
 
         public async Task<IReadOnlyList<AccountEventRegistrationDto>> GetAccountRegistrationsAsync(string userId)
@@ -296,9 +344,13 @@ namespace GamMaSite.Services
                 return;
             }
 
-            await PromoteWaitlistedAsync(content, null);
-            await _db.SaveChangesAsync();
+            var promotedRegistrationIds = await PromoteWaitlistedAsync(content, null);
+            if (promotedRegistrationIds.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
             await CommitAsync(transaction);
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
         }
 
         public async Task<EventRegistration> UpdateAsync(int contentItemId, int registrationId, UpdateEventRegistrationRequest request)
@@ -318,23 +370,26 @@ namespace GamMaSite.Services
             var nextCountsTowardsCapacity = CountsTowardsCapacity(registrationType);
             if (nextCountsTowardsCapacity && !currentCountsTowardsCapacity)
             {
-                var content = await _db.ContentItems.FindAsync(contentItemId);
-                await EnsureCapacityAvailableAsync(content, registration.Id);
+                var currentContent = await _db.ContentItems.FindAsync(contentItemId);
+                await EnsureCapacityAvailableAsync(currentContent, registration.Id);
             }
 
             registration.RegistrationType = registrationType;
             registration.Registered = registered;
-            registration.ResponseText = request?.ResponseText;
+            registration.ResponseText = NormalizeResponseText(request?.ResponseText);
             registration.Updated = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
-            if (currentCountsTowardsCapacity && !nextCountsTowardsCapacity)
+            var content = await _db.ContentItems.FindAsync(contentItemId);
+            var promotedRegistrationIds = currentCountsTowardsCapacity && !nextCountsTowardsCapacity
+                ? await PromoteWaitlistedAsync(content, registration.Id)
+                : Array.Empty<int>();
+            if (promotedRegistrationIds.Count > 0)
             {
-                var content = await _db.ContentItems.FindAsync(contentItemId);
-                await PromoteWaitlistedAsync(content, registration.Id);
                 await _db.SaveChangesAsync();
             }
             await CommitAsync(transaction);
+            await SendWaitlistPromotionEmailsAsync(content, promotedRegistrationIds);
 
             return await _db.EventRegistrations
                 .Include(item => item.User)
@@ -361,6 +416,17 @@ namespace GamMaSite.Services
             if (!AllowedRegistrationTypes.Contains(normalized))
             {
                 throw new ArgumentException($"Unsupported registration type: {registrationType}");
+            }
+
+            return normalized;
+        }
+
+        private static string NormalizeResponseText(string responseText)
+        {
+            var normalized = string.IsNullOrWhiteSpace(responseText) ? null : responseText.Trim();
+            if (normalized?.Length > MaxResponseTextLength)
+            {
+                throw new ArgumentException($"Noten må højst være {MaxResponseTextLength} tegn.");
             }
 
             return normalized;
@@ -420,11 +486,11 @@ namespace GamMaSite.Services
             throw new ArgumentException(CapacityReachedMessage);
         }
 
-        private async Task PromoteWaitlistedAsync(ContentItem content, int? excludedRegistrationId)
+        private async Task<IReadOnlyList<int>> PromoteWaitlistedAsync(ContentItem content, int? excludedRegistrationId)
         {
             if (content == null)
             {
-                return;
+                return Array.Empty<int>();
             }
 
             var confirmedParticipants = await _db.EventRegistrations
@@ -436,7 +502,7 @@ namespace GamMaSite.Services
                 : int.MaxValue;
             if (availableSlots <= 0)
             {
-                return;
+                return Array.Empty<int>();
             }
 
             var waitlisted = _db.EventRegistrations
@@ -456,6 +522,80 @@ namespace GamMaSite.Services
             {
                 next.RegistrationType = RegistrationTypes.Attendee;
                 next.Updated = DateTime.UtcNow;
+            }
+
+            return nextRegistrations.Select(item => item.Id).ToList();
+        }
+
+        private async Task SendEventConfirmationAsync(EventRegistration registration, ContentItem content)
+        {
+            if (_systemEmailTemplateService == null || registration?.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
+            {
+                return;
+            }
+
+            try
+            {
+                await _systemEmailTemplateService.SendEventConfirmationAsync(
+                    registration.User.Email,
+                    registration.User.Navn,
+                    content,
+                    registration.RegistrationType);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(
+                    exception,
+                    "Could not send event registration confirmation email for content item {ContentItemId}.",
+                    content.Id);
+            }
+        }
+
+        private async Task SendWaitlistPromotionEmailsAsync(ContentItem content, IReadOnlyList<int> registrationIds)
+        {
+            if (_systemEmailTemplateService == null || registrationIds == null || registrationIds.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var registrations = await _db.EventRegistrations
+                    .Include(item => item.User)
+                    .AsNoTracking()
+                    .Where(item => registrationIds.Contains(item.Id))
+                    .ToListAsync();
+
+                foreach (var registration in registrations)
+                {
+                    if (registration.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await _systemEmailTemplateService.SendWaitlistPromotionAsync(
+                            registration.User.Email,
+                            registration.User.Navn,
+                            content);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger?.LogWarning(
+                            exception,
+                            "Could not send waitlist promotion email for content item {ContentItemId} and registration {RegistrationId}.",
+                            content.Id,
+                            registration.Id);
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(
+                    exception,
+                    "Could not load registrations for waitlist promotion emails for content item {ContentItemId}.",
+                    content.Id);
             }
         }
     }

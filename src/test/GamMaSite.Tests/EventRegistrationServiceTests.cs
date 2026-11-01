@@ -6,6 +6,7 @@ using GamMaSite.Models;
 using GamMaSite.Services;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace GamMaSite.Tests;
@@ -31,6 +32,75 @@ public class EventRegistrationServiceTests
 
         Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
         Assert.False(registration.Registered);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_SendsEventConfirmationForMemberRegistration()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com", Navn = "Member" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+        emails.Setup(value => value.SendEventConfirmationAsync(
+                "user@example.com", "Member", It.IsAny<ContentItem>(), RegistrationTypes.Attendee))
+            .Returns(Task.CompletedTask);
+
+        await new EventRegistrationService(db, emails.Object).RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        emails.Verify(value => value.SendEventConfirmationAsync(
+            "user@example.com", "Member", It.IsAny<ContentItem>(), RegistrationTypes.Attendee), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_CompletesWhenEventConfirmationEmailFails()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+        emails.Setup(value => value.SendEventConfirmationAsync(
+                "user@example.com", It.IsAny<string>(), It.IsAny<ContentItem>(), RegistrationTypes.Attendee))
+            .ThrowsAsync(new InvalidOperationException("Mailgun unavailable"));
+
+        var registration = await new EventRegistrationService(db, emails.Object)
+            .RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
+        Assert.NotNull(await db.EventRegistrations.SingleOrDefaultAsync(item => item.UserId == "user-1"));
+    }
+
+    [Fact]
+    public async Task RegisterAsync_StoresAndUpdatesRegistrationNote()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+
+        var registration = await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest
+        {
+            ResponseText = "Vegetarisk menu"
+        });
+        var updated = await service.UpdateMyNoteAsync(1, "user-1", "Ingen nødder");
+
+        Assert.Equal("Vegetarisk menu", registration.ResponseText);
+        Assert.Equal("Ingen nødder", updated.ResponseText);
+    }
+
+    [Fact]
+    public async Task UpdateMyNoteAsync_RejectsNotesLongerThanDatabaseColumn()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+        await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateMyNoteAsync(1, "user-1", new string('x', 1025)));
     }
 
     [Fact]
@@ -387,6 +457,29 @@ public class EventRegistrationServiceTests
         Assert.True(result);
         Assert.Equal(RegistrationTypes.Attendee, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-2")).RegistrationType);
         Assert.Equal(RegistrationTypes.Waitlisted, (await db.EventRegistrations.SingleAsync(item => item.UserId == "user-3")).RegistrationType);
+    }
+
+    [Fact]
+    public async Task UnregisterAsync_SendsPromotionEmailToPromotedMember()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1", Email = "one@example.com" },
+            new SiteUser { Id = "user-2", UserName = "user-2", Email = "two@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1));
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Registered = true, Created = DateTime.UtcNow.AddMinutes(-1) });
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+        emails.Setup(value => value.SendWaitlistPromotionAsync(
+                "two@example.com", It.IsAny<string>(), It.IsAny<ContentItem>()))
+            .Returns(Task.CompletedTask);
+
+        await new EventRegistrationService(db, emails.Object).UnregisterAsync(1, "user-1");
+
+        emails.Verify(value => value.SendWaitlistPromotionAsync(
+            "two@example.com", It.IsAny<string>(), It.IsAny<ContentItem>()), Times.Once);
     }
 
     [Fact]

@@ -50,6 +50,33 @@ public class EmailTemplateServiceTests
         Assert.Equal("B", template.Name);
     }
 
+    [Fact]
+    public async Task UpdateAsync_PreservesSystemTypeAndKeepsRequiredSystemMailActive()
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "System confirmation",
+            Subject = "Old",
+            HtmlBody = "<p>Old</p>",
+            TemplateType = SystemEmailTemplateService.EmailConfirmation,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new EmailTemplateService(db).UpdateAsync(1, new SaveEmailTemplateRequest
+        {
+            Name = "Updated",
+            Subject = "New",
+            HtmlBody = "<p>New</p>",
+            TemplateType = "NEWSLETTER",
+            IsActive = false
+        });
+
+        Assert.Equal(SystemEmailTemplateService.EmailConfirmation, result.TemplateType);
+        Assert.True(result.IsActive);
+    }
+
     private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }
