@@ -53,6 +53,25 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_CompletesWhenEventConfirmationEmailFails()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+        emails.Setup(value => value.SendEventConfirmationAsync(
+                "user@example.com", It.IsAny<string>(), It.IsAny<ContentItem>(), RegistrationTypes.Attendee))
+            .ThrowsAsync(new InvalidOperationException("Mailgun unavailable"));
+
+        var registration = await new EventRegistrationService(db, emails.Object)
+            .RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        Assert.Equal(RegistrationTypes.Attendee, registration.RegistrationType);
+        Assert.NotNull(await db.EventRegistrations.SingleOrDefaultAsync(item => item.UserId == "user-1"));
+    }
+
+    [Fact]
     public async Task RegisterAsync_StoresAndUpdatesRegistrationNote()
     {
         await using var db = CreateDb();

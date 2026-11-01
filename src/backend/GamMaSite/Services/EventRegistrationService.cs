@@ -8,6 +8,7 @@ using GamMaSite.Models;
 using GamMaSite.ViewModels.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace GamMaSite.Services
 {
@@ -30,11 +31,16 @@ namespace GamMaSite.Services
 
         private readonly ApplicationDbContext _db;
         private readonly ISystemEmailTemplateService _systemEmailTemplateService;
+        private readonly ILogger<EventRegistrationService> _logger;
 
-        public EventRegistrationService(ApplicationDbContext db, ISystemEmailTemplateService systemEmailTemplateService = null)
+        public EventRegistrationService(
+            ApplicationDbContext db,
+            ISystemEmailTemplateService systemEmailTemplateService = null,
+            ILogger<EventRegistrationService> logger = null)
         {
             _db = db;
             _systemEmailTemplateService = systemEmailTemplateService;
+            _logger = logger;
         }
 
         public async Task<EventRegistration> RegisterAsync(int contentItemId, string userId, SaveEventRegistrationRequest request)
@@ -528,11 +534,21 @@ namespace GamMaSite.Services
                 return;
             }
 
-            await _systemEmailTemplateService.SendEventConfirmationAsync(
-                registration.User.Email,
-                registration.User.Navn,
-                content,
-                registration.RegistrationType);
+            try
+            {
+                await _systemEmailTemplateService.SendEventConfirmationAsync(
+                    registration.User.Email,
+                    registration.User.Navn,
+                    content,
+                    registration.RegistrationType);
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(
+                    exception,
+                    "Could not send event registration confirmation email for content item {ContentItemId}.",
+                    content.Id);
+            }
         }
 
         private async Task SendWaitlistPromotionEmailsAsync(ContentItem content, IReadOnlyList<int> registrationIds)
@@ -542,23 +558,44 @@ namespace GamMaSite.Services
                 return;
             }
 
-            var registrations = await _db.EventRegistrations
-                .Include(item => item.User)
-                .AsNoTracking()
-                .Where(item => registrationIds.Contains(item.Id))
-                .ToListAsync();
-
-            foreach (var registration in registrations)
+            try
             {
-                if (registration.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
-                {
-                    continue;
-                }
+                var registrations = await _db.EventRegistrations
+                    .Include(item => item.User)
+                    .AsNoTracking()
+                    .Where(item => registrationIds.Contains(item.Id))
+                    .ToListAsync();
 
-                await _systemEmailTemplateService.SendWaitlistPromotionAsync(
-                    registration.User.Email,
-                    registration.User.Navn,
-                    content);
+                foreach (var registration in registrations)
+                {
+                    if (registration.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await _systemEmailTemplateService.SendWaitlistPromotionAsync(
+                            registration.User.Email,
+                            registration.User.Navn,
+                            content);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger?.LogWarning(
+                            exception,
+                            "Could not send waitlist promotion email for content item {ContentItemId} and registration {RegistrationId}.",
+                            content.Id,
+                            registration.Id);
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(
+                    exception,
+                    "Could not load registrations for waitlist promotion emails for content item {ContentItemId}.",
+                    content.Id);
             }
         }
     }
