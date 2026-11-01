@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace GamMaSite.ViewModels.Api
 {
@@ -62,6 +63,7 @@ namespace GamMaSite.ViewModels.Api
     {
         public string RegistrationType { get; set; }
 
+        [MaxLength(1024)]
         public string ResponseText { get; set; }
     }
 
@@ -71,6 +73,7 @@ namespace GamMaSite.ViewModels.Api
 
         public bool Registered { get; set; }
 
+        [MaxLength(1024)]
         public string ResponseText { get; set; }
     }
 
@@ -82,6 +85,13 @@ namespace GamMaSite.ViewModels.Api
 
         public bool Registered { get; set; }
 
+        [MaxLength(1024)]
+        public string ResponseText { get; set; }
+    }
+
+    public class UpdateMyEventRegistrationNoteRequest
+    {
+        [MaxLength(1024)]
         public string ResponseText { get; set; }
     }
 }

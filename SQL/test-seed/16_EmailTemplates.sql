@@ -271,6 +271,143 @@ INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextB
 
 INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextBody`, `TemplateType`, `IsActive`, `Created`, `Updated`) VALUES
 (
+  'GamMa Event Reminder Template',
+  'Påmindelse om kommende GamMa-arrangement',
+  'Husk dit kommende arrangement med GamMa',
+  '<!-- GammaEmailBlockDesign eventColor="#1f78c1" newsColor="#1877F2" -->
+<!--
+  GamMa event reminder template
+  Rediger kun indholdet mellem:
+  START: EVENTS
+  END: EVENTS
+
+  Arbejdsgang:
+  1. Vælg de events, som reminder-mailen skal indeholde.
+  2. Tilpas event-blokkene med titel, tekst, knapper og links.
+  3. Send mailen manuelt fra admin.
+-->
+
+<!-- Preheader (hidden in most clients) -->
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+  Husk dit kommende arrangement med GamMa
+</div>
+
+<!-- Outer wrapper -->
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;">
+
+  <!-- Banner -->
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa banner" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:220px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+
+  <!-- MAIN CONTAINER -->
+  <div style="width:90%;max-width:720px;margin:16px auto 24px auto;background-color:#ffffff;
+              padding:20px;color:#000000;line-height:1.55;font-size:0.95rem;
+              box-shadow:0 6px 22px rgba(0,0,0,0.10);">
+
+    <p style="margin:0 0 14px;"><strong>K&aelig;re GamMa-medlem,</strong></p>
+
+    <p style="margin:0 0 18px;">
+      Dette er en venlig p&aring;mindelse om et kommende arrangement i GamMa.
+    </p>
+
+    <!-- START: EVENTS -->
+
+{{EventBlocks}}
+
+<!-- END: EVENTS -->
+
+    <p style="margin:18px 0 0;">
+      Vi gl&aelig;der os til at se dig.
+    </p>
+
+    <p style="margin:8px 0 0;">
+      Med venlig hilsen<br>
+      <strong>GamMas bestyrelse</strong>
+    </p>
+
+  </div>
+
+  <div style="height:16px;"></div>
+</div>
+
+<div style="height:1px;background-color:#e6e6e6;width:90%;max-width:720px;margin:0 auto 12px auto;"></div>
+
+<!-- Membership -->
+<div style="width:90%;max-width:720px;margin:0 auto 24px auto;color:#000000;line-height:1.45;font-size:0.9rem;">
+  <div style="padding:16px;background-color:#fffefd;border-radius:10px;border:1px solid #f1f1f1;">
+    <p style="margin:0 0 8px;font-weight:bold;">Medlemskab</p>
+    <p style="margin:0 0 12px;">
+      Deltagelse i GamMa-arrangementer kr&aelig;ver et aktivt medlemskab. P&aring;
+      <a href="https://gam-ma.dk/pay" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Betal medlemskab</a>
+      kan du altid tjekke din medlemsstatus.
+    </p>
+    <p style="margin:0 0 14px;text-align:center;">
+      <a href="https://gam-ma.dk/pay" target="_blank" style="display:inline-block;padding:9px 16px;background:#337ab7;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">
+        Betal medlemskab eller opret betalingsaftale
+      </a>
+    </p>
+    <p style="margin:0 0 10px;">
+      Er du stadig <strong>studerende</strong>, er medlemskab gratis. Det kan du angive under
+      <a href="https://gam-ma.dk/account/manage" target="_blank" style="color:#337ab7;text-decoration:none;font-weight:bold;">Profil</a>.
+    </p>
+    <p style="margin:0;text-align:center;font-size:0.75rem;">
+      &Oslash;nsker du at blive afmeldt eller udmeldt, s&aring; log ind p&aring;
+      <a href="https://gam-ma.dk/account/manage/personal-data" target="_blank" style="color:#337ab7;text-decoration:none;">Privatdata</a>
+      og klik <b>''slet''</b>.
+    </p>
+  </div>
+</div>
+
+<div style="height:1px;background-color:#e6e6e6;width:90%;max-width:720px;margin:0 auto 12px auto;"></div>
+
+<!-- Social icons -->
+<div style="width:90%;max-width:720px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;border-radius:10px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;">
+    <tbody>
+      <tr>
+        <td style="padding:10px;border:none;background:none;">
+          <a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;">
+            <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+            <div style="margin-top:6px;font-size:0.7rem;color:#000000;">LinkedIn</div>
+          </a>
+        </td>
+        <td style="padding:10px;border:none;background:none;">
+          <a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;">
+            <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+            <div style="margin-top:6px;font-size:0.7rem;color:#000000;">Instagram</div>
+          </a>
+        </td>
+        <td style="padding:10px;border:none;background:none;">
+          <a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;">
+            <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" style="display:block;margin:0 auto;border:0;height:auto;">
+            <div style="margin-top:6px;font-size:0.7rem;color:#000000;">Facebook</div>
+          </a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="height:16px;"></div>',
+  'Kære GamMa-medlem,
+
+Dette er en venlig påmindelse om et kommende arrangement i GamMa.
+
+{{EventBlocks}}
+
+Vi glæder os til at se dig.
+
+Med venlig hilsen
+GamMas bestyrelse',
+  'EVENT',
+  1,
+  '2026-11-01 12:00:00',
+  '2026-11-01 12:00:00'
+);
+
+INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextBody`, `TemplateType`, `IsActive`, `Created`, `Updated`) VALUES
+(
   'System - Opret ny bruger',
   'Bekræft din email',
   'Bekræft din GamMa-bruger',
@@ -497,4 +634,120 @@ GamMa',
   1,
   '2026-10-20 12:00:00',
   '2026-10-20 12:00:00'
+);
+
+INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextBody`, `TemplateType`, `IsActive`, `Created`, `Updated`) VALUES
+(
+  'System - Eventtilmelding',
+  '{{EventTitle}} - {{RegistrationStatus}}',
+  'Din tilmelding til {{EventTitle}}',
+  '<!-- Preheader (hidden in most clients) -->
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+
+<!-- Outer wrapper -->
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+
+  <!-- Banner -->
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa banner" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:220px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+
+  <!-- MAIN CONTAINER -->
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1>
+    <p style="margin:0 0 18px;">{{Intro}}</p>
+    <p style="margin:0 0 18px;"><strong>Arrangement:</strong> {{EventTitle}}<br><strong>Start:</strong> {{EventStartDate}}<br><strong>Slut:</strong> {{EventEndDate}}<br><strong>Status:</strong> {{RegistrationStatus}}</p>
+    <a href="{{EventUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a>
+    <p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p>
+    <p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p>
+  </div>
+
+  <div style="height:1px;background-color:#e6e6e6;width:90%;max-width:640px;margin:0 auto 12px auto;"></div>
+
+  <!-- Social icons -->
+  <div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;border-radius:10px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">LinkedIn</div></a></td>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">Instagram</div></a></td>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">Facebook</div></a></td>
+    </tr></tbody></table>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
+
+{{Intro}}
+
+Arrangement: {{EventTitle}}
+Start: {{EventStartDate}}
+Slut: {{EventEndDate}}
+Status: {{RegistrationStatus}}
+
+{{ActionText}}: {{EventUrl}}
+
+Med venlig hilsen
+GamMas bestyrelse',
+  'SYSTEM_EVENT_CONFIRMATION',
+  1,
+  '2026-11-01 12:00:00',
+  '2026-11-01 12:00:00'
+),
+(
+  'System - Ventelisteplads',
+  'Du har fået en plads til {{EventTitle}}',
+  'Du er nu tilmeldt {{EventTitle}}',
+  '<!-- Preheader (hidden in most clients) -->
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{Heading}}</div>
+
+<!-- Outer wrapper -->
+<div style="margin:0;padding:0;background-color:#eaf2fb;width:100%;font-family:Arial,sans-serif;color:#173042;">
+
+  <!-- Banner -->
+  <a href="https://gam-ma.dk/" target="_blank" style="text-decoration:none;display:block;">
+    <img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa banner" width="100%" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:220px;object-fit:contain;background-color:#ffffff;padding:16px 0;">
+  </a>
+
+  <!-- MAIN CONTAINER -->
+  <div style="width:90%;max-width:640px;margin:18px auto 22px auto;background-color:#ffffff;padding:28px 24px;line-height:1.55;font-size:15px;border:1px solid #d9e7f5;">
+    <p style="margin:0 0 12px;">Hej <strong>{{Name}}</strong></p>
+    <h1 style="margin:0 0 14px;font-size:28px;line-height:1.15;color:#10233a;">{{Heading}}</h1>
+    <p style="margin:0 0 18px;">{{Intro}}</p>
+    <p style="margin:0 0 18px;"><strong>Arrangement:</strong> {{EventTitle}}<br><strong>Start:</strong> {{EventStartDate}}<br><strong>Slut:</strong> {{EventEndDate}}<br><strong>Status:</strong> {{RegistrationStatus}}</p>
+    <a href="{{EventUrl}}" target="_blank" style="display:block;width:100%;box-sizing:border-box;text-align:center;background-color:#2485c7;color:#ffffff;text-decoration:none;padding:13px 18px;font-size:15px;font-weight:bold;">{{ActionText}}</a>
+    <p style="margin:18px 0 0;color:#4f6475;font-size:14px;">{{Note}}</p>
+    <p style="margin:18px 0 0;">Med venlig hilsen<br><strong>GamMas bestyrelse</strong></p>
+  </div>
+
+  <div style="height:1px;background-color:#e6e6e6;width:90%;max-width:640px;margin:0 auto 12px auto;"></div>
+
+  <!-- Social icons -->
+  <div style="width:90%;max-width:640px;margin:0 auto 24px auto;text-align:center;background-color:#ffffff;border-radius:10px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:none;background:none;"><tbody><tr>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.linkedin.com/company/gamma-math-ucph/" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">LinkedIn</div></a></td>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.instagram.com/gamma_ku_2100?igsh=MTFjYmk4M213djc0NA==" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">Instagram</div></a></td>
+      <td style="padding:10px;border:none;background:none;"><a href="https://www.facebook.com/share/g/1Exv7epudc/?mibextid=wwXIfr" target="_blank" style="text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" style="display:block;margin:0 auto;border:0;height:auto;"><div style="margin-top:6px;font-size:0.7rem;color:#000000;">Facebook</div></a></td>
+    </tr></tbody></table>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>',
+  'Hej {{Name}}
+
+{{Intro}}
+
+Arrangement: {{EventTitle}}
+Start: {{EventStartDate}}
+Slut: {{EventEndDate}}
+Status: {{RegistrationStatus}}
+
+{{ActionText}}: {{EventUrl}}
+
+Med venlig hilsen
+GamMas bestyrelse',
+  'SYSTEM_WAITLIST_PROMOTION',
+  1,
+  '2026-11-01 12:00:00',
+  '2026-11-01 12:00:00'
 );

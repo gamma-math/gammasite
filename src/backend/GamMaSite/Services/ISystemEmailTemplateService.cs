@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using GamMaSite.Models;
 
 namespace GamMaSite.Services
 {
@@ -28,5 +29,9 @@ namespace GamMaSite.Services
             string billingInterval,
             int? billingIntervalCount,
             string subscriptionUrl);
+
+        Task SendEventConfirmationAsync(string email, string name, ContentItem content, string registrationType);
+
+        Task SendWaitlistPromotionAsync(string email, string name, ContentItem content);
     }
 }

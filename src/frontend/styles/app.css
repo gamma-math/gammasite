@@ -825,6 +825,94 @@ img {
   font-weight: 700;
 }
 
+.event-registration-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  max-width: 620px;
+}
+
+.event-detail-schedule > .event-registration-note {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.event-registration-note label {
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.event-registration-note textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 78px;
+  padding: 10px 12px;
+  border: 1px solid var(--action-line);
+  border-radius: 10px;
+  color: var(--ink-strong);
+  background: #fff;
+  font: inherit;
+  resize: vertical;
+}
+
+.event-registration-note textarea:focus {
+  border-color: var(--action-blue);
+  outline: 2px solid #3859ef33;
+}
+
+.event-registration-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.event-registration-note-footer small {
+  color: var(--muted);
+}
+
+.event-registration-note-footer .frontpage-button {
+  width: auto;
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: .86rem;
+}
+
+.event-registration-note-content {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.menu-registration-note-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.menu-registration-note-button:hover,
+.menu-registration-note-button:focus-visible {
+  background: var(--action-soft);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .event-registration-note-footer {
+    margin-bottom: 12px;
+  }
+}
+
 .menu-detail-hero > .menu-detail-status {
   flex-shrink: 0;
 }

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { CircleMinus, CirclePlus, LogIn, Plus } from "lucide-react";
+import { CircleMinus, CirclePlus, LogIn, Plus, X } from "lucide-react";
 import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
@@ -33,6 +33,7 @@ export function EventRegistrationsPage({ slug, user }) {
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [registrationToMarkUnpaid, setRegistrationToMarkUnpaid] = useState(null);
   const [isUpdatingPaymentStatus, setIsUpdatingPaymentStatus] = useState(false);
+  const [registrationNoteToView, setRegistrationNoteToView] = useState(null);
   const [error, setError] = useState("");
   const canViewRegistrations = user.isAuthenticated;
   const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
@@ -298,6 +299,17 @@ export function EventRegistrationsPage({ slug, user }) {
                         )}
                         <span className="menu-registration-avatar">{attendeeInitials(registration)}</span>
                         <span>{attendeeName(registration)}</span>
+                        {canEditRegistrations && hasRegistrationNote(registration) && (
+                          <button
+                            className="menu-registration-note-button"
+                            type="button"
+                            aria-label={`Vis note fra ${attendeeName(registration)}`}
+                            title="Vis note"
+                            onClick={() => setRegistrationNoteToView(registration)}
+                          >
+                            🗨️
+                          </button>
+                        )}
                       </div>
                     </td>
                     {canEditRegistrations && (
@@ -384,6 +396,30 @@ export function EventRegistrationsPage({ slug, user }) {
           isBusy={isUpdatingPaymentStatus}
         />
       )}
+
+      {registrationNoteToView && (
+        <div className="admin-preview-modal-backdrop" role="presentation" onClick={() => setRegistrationNoteToView(null)}>
+          <section className="admin-recipient-modal" role="dialog" aria-modal="true" aria-label="Note" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-preview-modal-header">
+              <div>
+                <p className="menu-section-title">Note</p>
+                <h2>{attendeeName(registrationNoteToView)}</h2>
+              </div>
+              <button className="admin-preview-close" type="button" aria-label="Luk note" onClick={() => setRegistrationNoteToView(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="admin-send-confirm-body">
+              <p className="event-registration-note-content">{getRegistrationNote(registrationNoteToView)}</p>
+              <div className="menu-editor-actions">
+                <button className="frontpage-button frontpage-button-secondary" type="button" onClick={() => setRegistrationNoteToView(null)}>
+                  Luk
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </MenuLayout>
   );
 }
@@ -412,4 +448,12 @@ function registrationLabel(value) {
 function initialsFromMember(member) {
   const firstName = String(member.name || member.email || "?").trim().split(/\s+/)[0] ?? "?";
   return firstName.slice(0, 2).toUpperCase();
+}
+
+function hasRegistrationNote(registration) {
+  return Boolean(getRegistrationNote(registration).trim());
+}
+
+function getRegistrationNote(registration) {
+  return registration?.responseText ?? registration?.ResponseText ?? "";
 }

@@ -12,6 +12,8 @@ import { isEventEnded, isEventOngoing, isRegistrationClosedByDeadline, isRegistr
 import { confirmedRegistrationCount, countsTowardsCapacity, isWaitlisted } from "../utils/registrationCapacity.js";
 import { loginHref } from "../utils/authNavigation.js";
 
+const MAX_REGISTRATION_NOTE_LENGTH = 1024;
+
 /**
  * Shows a single event or news article with registration and related-link actions.
  */
@@ -24,6 +26,8 @@ export function ContentDetailPage({ slug, type, user }) {
   const [calendarHref, setCalendarHref] = useState("");
   const [showUnregisterConfirmation, setShowUnregisterConfirmation] = useState(false);
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
+  const [registrationNote, setRegistrationNote] = useState("");
+  const [isSavingRegistrationNote, setIsSavingRegistrationNote] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -49,6 +53,7 @@ export function ContentDetailPage({ slug, type, user }) {
     Promise.all(requests)
       .then(([mine, eventRegistrations, access, summary]) => {
         setRegistration(mine);
+        setRegistrationNote(getRegistrationNote(mine));
         setRegistrations(eventRegistrations);
         setEventAccess(access);
         setCapacitySummary(summary);
@@ -142,6 +147,7 @@ export function ContentDetailPage({ slug, type, user }) {
     try {
       await registrationsApi.unregister(item.id);
       setRegistration(null);
+      setRegistrationNote("");
       const [nextRegistrations, nextSummary] = await Promise.all([
         registrationsApi.list(item.id).catch(() => []),
         registrationsApi.summary(item.id).catch(() => null)
@@ -166,6 +172,7 @@ export function ContentDetailPage({ slug, type, user }) {
     try {
       const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
       setRegistration(next);
+      setRegistrationNote(getRegistrationNote(next));
       setRegistrations((current) => {
         const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
         return [...withoutCurrentUser, next];
@@ -173,6 +180,24 @@ export function ContentDetailPage({ slug, type, user }) {
       setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
     } catch (requestError) {
       setError(requestError.message);
+    }
+  }
+
+  async function saveRegistrationNote() {
+    if (!registration || isSavingRegistrationNote) {
+      return;
+    }
+
+    setIsSavingRegistrationNote(true);
+    setError("");
+    try {
+      const updated = await registrationsApi.updateMineNote(item.id, registrationNote);
+      setRegistration(updated);
+      setRegistrationNote(getRegistrationNote(updated));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsSavingRegistrationNote(false);
     }
   }
 
@@ -207,6 +232,25 @@ export function ContentDetailPage({ slug, type, user }) {
                 {item.registrationDeadline && <div><strong>Tilmeldingsfrist:</strong> {formatDate(item.registrationDeadline)}</div>}
                 {maxParticipants != null && <div><strong>Pladser:</strong> {confirmedParticipants}/{maxParticipants}</div>}
                 {eventRegistrationStatus && <div className="event-registration-status-line"><strong>Status:</strong> {eventRegistrationStatus}</div>}
+                {registration && (
+                  <div className="event-registration-note">
+                    <label htmlFor="event-registration-note">Note</label>
+                    <textarea
+                      id="event-registration-note"
+                      value={registrationNote}
+                      maxLength={MAX_REGISTRATION_NOTE_LENGTH}
+                      onChange={(event) => setRegistrationNote(event.target.value)}
+                      placeholder="Skriv fx madforbehold eller andre bemærkninger"
+                      rows="3"
+                    />
+                    <div className="event-registration-note-footer">
+                      <small>{registrationNote.length}/{MAX_REGISTRATION_NOTE_LENGTH}</small>
+                      <button className="frontpage-button frontpage-button-secondary" type="button" onClick={saveRegistrationNote} disabled={isSavingRegistrationNote}>
+                        {isSavingRegistrationNote ? "Gemmer..." : "Gem note"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {isCapacityReached && <div className="event-capacity-message">Der er ikke flere ledige pladser. Du kan skrive dig på venteliste.</div>}
               </div>
             )}
@@ -290,6 +334,10 @@ export function ContentDetailPage({ slug, type, user }) {
       )}
     </MenuLayout>
   );
+}
+
+function getRegistrationNote(registration) {
+  return registration?.responseText ?? registration?.ResponseText ?? "";
 }
 
 function shortLinkLabel(label) {
