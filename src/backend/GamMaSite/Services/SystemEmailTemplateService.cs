@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using GamMaSite.Data;
 using GamMaSite.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace GamMaSite.Services
 {
@@ -22,16 +23,20 @@ namespace GamMaSite.Services
         public const string PasswordReset = "SYSTEM_PASSWORD_RESET";
         public const string PaymentConfirmation = "SYSTEM_PAYMENT_CONFIRMATION";
         public const string PaymentRecurring = "SYSTEM_PAYMENT_RECURRING";
+        public const string EventConfirmation = "SYSTEM_EVENT_CONFIRMATION";
+        public const string WaitlistPromotion = "SYSTEM_WAITLIST_PROMOTION";
 
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);
 
         private readonly ApplicationDbContext _db;
         private readonly IEmailService _emailService;
+        private readonly string _publicBaseUrl;
 
-        public SystemEmailTemplateService(ApplicationDbContext db, IEmailService emailService)
+        public SystemEmailTemplateService(ApplicationDbContext db, IEmailService emailService, IConfiguration configuration = null)
         {
             _db = db;
             _emailService = emailService;
+            _publicBaseUrl = configuration?["PublicBaseUrl"]?.TrimEnd('/') ?? "https://gam-ma.dk";
         }
 
         public Task SendRegistrationConfirmationAsync(string email, string name, string confirmationUrl)
@@ -119,14 +124,64 @@ namespace GamMaSite.Services
             var htmlValues = values.ToDictionary(pair => pair.Key, pair => HtmlEncoder.Default.Encode(pair.Value ?? string.Empty));
             var template = await GetActiveTemplate(templateType);
 
-            var subject = template == null
-                ? $"Din betaling af {productName} hos GamMa"
-                : Render(template.Subject, values);
-            var html = template == null
-                ? BuildPaymentFallbackHtml(htmlValues, recurring)
-                : Render(template.HtmlBody, htmlValues);
+            if (template == null)
+            {
+                return;
+            }
+
+            var subject = Render(template.Subject, values);
+            var html = Render(template.HtmlBody, htmlValues);
 
             await _emailService.SendEmailAsync(email, CleanSubject(subject), html);
+        }
+
+        public async Task SendEventConfirmationAsync(string email, string name, ContentItem content, string registrationType)
+        {
+            var isWaitlisted = string.Equals(registrationType, RegistrationTypes.Waitlisted, StringComparison.OrdinalIgnoreCase);
+            await SendOptionalEventEmailAsync(EventConfirmation, email, name, content, registrationType,
+                isWaitlisted ? "Du er skrevet på venteliste til {{EventTitle}}" : "Din tilmelding til {{EventTitle}}",
+                isWaitlisted ? "Du er skrevet på venteliste" : "Din tilmelding er registreret",
+                isWaitlisted
+                    ? "Du er nu skrevet på ventelisten. Hvis der bliver en ledig plads, bliver du automatisk tilmeldt og får besked på email."
+                    : "Du er nu registreret til arrangementet.",
+                "Se arrangementet");
+        }
+
+        public async Task SendWaitlistPromotionAsync(string email, string name, ContentItem content)
+        {
+            await SendOptionalEventEmailAsync(WaitlistPromotion, email, name, content, RegistrationTypes.Attendee,
+                "Du har fået en plads til {{EventTitle}}",
+                "Du har fået en plads",
+                "En plads er blevet ledig, og du er nu tilmeldt arrangementet.",
+                "Se arrangementet");
+        }
+
+        private async Task SendOptionalEventEmailAsync(
+            string templateType,
+            string email,
+            string name,
+            ContentItem content,
+            string registrationType,
+            string fallbackSubject,
+            string fallbackHeading,
+            string fallbackIntro,
+            string fallbackActionText)
+        {
+            var template = await GetActiveTemplate(templateType);
+            if (template == null || string.IsNullOrWhiteSpace(email) || content == null)
+            {
+                return;
+            }
+
+            var values = BuildEventValues(name, email, content, registrationType, fallbackHeading, fallbackIntro, fallbackActionText);
+            var htmlValues = values.ToDictionary(pair => pair.Key, pair => HtmlEncoder.Default.Encode(pair.Value ?? string.Empty));
+            var subject = Render(template.Subject, values);
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                subject = fallbackSubject.Replace("{{EventTitle}}", content.Title ?? "arrangementet");
+            }
+
+            await _emailService.SendEmailAsync(email, CleanSubject(subject), Render(template.HtmlBody, htmlValues));
         }
 
         private async Task SendAsync(
@@ -224,6 +279,40 @@ namespace GamMaSite.Services
                 ["Note"] = string.Empty,
                 ["ActionUrl"] = subscriptionUrl ?? string.Empty,
                 ["ActionText"] = "Se din konto"
+            };
+        }
+
+        private Dictionary<string, string> BuildEventValues(
+            string name,
+            string email,
+            ContentItem content,
+            string registrationType,
+            string heading,
+            string intro,
+            string actionText)
+        {
+            var eventUrl = $"{_publicBaseUrl}/events/{Uri.EscapeDataString(content.Slug ?? string.Empty)}";
+            var status = string.Equals(registrationType, RegistrationTypes.Waitlisted, StringComparison.OrdinalIgnoreCase)
+                ? "Venteliste"
+                : "Tilmeldt";
+            var startDate = content.StartDate?.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("da-DK")) ?? string.Empty;
+            var endDate = content.EndDate?.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("da-DK")) ?? string.Empty;
+
+            return new Dictionary<string, string>
+            {
+                ["Name"] = string.IsNullOrWhiteSpace(name) ? "GamMa-medlem" : name.Trim(),
+                ["Email"] = email ?? string.Empty,
+                ["EventTitle"] = content.Title ?? string.Empty,
+                ["EventStartDate"] = startDate,
+                ["EventEndDate"] = endDate,
+                ["EventLocation"] = content.Location ?? string.Empty,
+                ["EventUrl"] = eventUrl,
+                ["RegistrationStatus"] = status,
+                ["Heading"] = heading,
+                ["Intro"] = intro,
+                ["ActionUrl"] = eventUrl,
+                ["ActionText"] = actionText,
+                ["Note"] = string.Empty
             };
         }
 

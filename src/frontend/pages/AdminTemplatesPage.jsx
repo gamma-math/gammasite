@@ -22,6 +22,17 @@ const emptyTemplate = {
   isActive: true
 };
 
+const requiredSystemTemplateTypes = new Set([
+  "SYSTEM_EMAIL_CHANGE_CONFIRMATION",
+  "SYSTEM_REGISTRATION_CONFIRMATION",
+  "SYSTEM_PASSWORD_RESET",
+  "SYSTEM_EMAIL_CONFIRMATION"
+]);
+
+function isSystemTemplate(templateType) {
+  return String(templateType ?? "").toUpperCase().startsWith("SYSTEM_");
+}
+
 /**
  * Admin overview for reusable email/message templates.
  */
@@ -166,6 +177,9 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const isNew = templateId === null;
+  const selectedTemplateType = String(selected.templateType ?? "").toUpperCase();
+  const isSystem = isSystemTemplate(selectedTemplateType);
+  const isRequiredSystem = requiredSystemTemplateTypes.has(selectedTemplateType);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -268,10 +282,15 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
           </label>
           <label className="admin-field">
             <span>Type</span>
-            <select value={selected.templateType ?? "EVENT"} onChange={(event) => update("templateType", event.target.value)}>
+            <select
+              value={selected.templateType ?? "EVENT"}
+              onChange={(event) => update("templateType", event.target.value)}
+              disabled={isSystem}
+            >
               <option value="NEWSLETTER">NEWSLETTER</option>
               <option value="EVENT">EVENT</option>
               <option value="SYSTEM">SYSTEM</option>
+              {isSystem && <option value={selected.templateType}>{selected.templateType}</option>}
             </select>
           </label>
         </div>
@@ -305,7 +324,12 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
           <textarea value={selected.textBody ?? ""} onChange={(event) => update("textBody", event.target.value)} />
         </label>
         <label className="profile-checkbox">
-          <input type="checkbox" checked={selected.isActive ?? true} onChange={(event) => update("isActive", event.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isRequiredSystem || (selected.isActive ?? true)}
+            disabled={isRequiredSystem}
+            onChange={(event) => update("isActive", event.target.checked)}
+          />
           Aktiv
         </label>
         <div className="menu-editor-actions">

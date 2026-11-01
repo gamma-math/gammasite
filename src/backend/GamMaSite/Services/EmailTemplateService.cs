@@ -60,7 +60,7 @@ namespace GamMaSite.Services
                 HtmlBody = Required(request.HtmlBody, nameof(request.HtmlBody)),
                 TextBody = request.TextBody,
                 TemplateType = Required(request.TemplateType, nameof(request.TemplateType)).ToUpperInvariant(),
-                IsActive = request.IsActive,
+                IsActive = NormalizeActive(request.TemplateType, request.IsActive),
                 Created = now,
                 Updated = now
             };
@@ -84,8 +84,13 @@ namespace GamMaSite.Services
             template.Preheader = request.Preheader;
             template.HtmlBody = Required(request.HtmlBody, nameof(request.HtmlBody));
             template.TextBody = request.TextBody;
-            template.TemplateType = Required(request.TemplateType, nameof(request.TemplateType)).ToUpperInvariant();
-            template.IsActive = request.IsActive;
+            var requestedTemplateType = Required(request.TemplateType, nameof(request.TemplateType)).ToUpperInvariant();
+            if (!SystemMailKinds.IsSystem(template.TemplateType))
+            {
+                template.TemplateType = requestedTemplateType;
+            }
+
+            template.IsActive = NormalizeActive(template.TemplateType, request.IsActive);
             template.Updated = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -147,6 +152,11 @@ namespace GamMaSite.Services
             }
 
             return value.Trim();
+        }
+
+        private static bool NormalizeActive(string templateType, bool requestedActive)
+        {
+            return SystemMailKinds.RequiresActiveTemplate(templateType) || requestedActive;
         }
     }
 }
