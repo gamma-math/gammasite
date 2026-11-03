@@ -113,6 +113,19 @@ Den samme key bruges også af GamMaSite-backenden. Giv derfor følgende mindst n
 
 `STRIPE_PUBLIC_API_KEY` er en separat publishable test-key og skal ikke have disse server-permissions. `STRIPE_WEBHOOK_SECRET` er et webhook-signing secret og er ikke en API-key.
 
+#### Stripe-testkort
+
+Til almindelig kortbetaling i den lokale Stripe-testtilstand kan Checkout gennemføres med:
+
+| Felt | Værdi |
+|---|---|
+| Kortnummer | `4242 4242 4242 4242` |
+| Udløbsdato | En valgfri fremtidig dato |
+| CVC | En valgfri gyldig CVC, eksempelvis `123` |
+| Navn på kort | Valgfrit navn |
+
+Kortet er kun et Stripe-testkort og må ikke bruges sammen med Apple Pay. Stripe understøtter ikke Apple Pay Sandbox som et fuldt simuleret betalingsmiljø. Apple Pay skal i stedet testes på en understøttet Apple-enhed med et rigtigt kort i Apple Wallet og Stripe test-nøgler.
+
 #### Vipps/MobilePay
 
 Vis først de aktive Vipps-webhooks og deres ID’er:
