@@ -692,7 +692,7 @@ function FinancePostingsPanel({ setLastUpdated }) {
               <SortableHeader label="Type" sortKey="type" sort={sort} setSort={setSort} />
               <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
               <SortableHeader label="Kilde" sortKey="sourceType" sort={sort} setSort={setSort} />
-              <SortableHeader label="Kategori" sortKey="postingGroup" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kategori" sortKey="context" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>
@@ -703,7 +703,7 @@ function FinancePostingsPanel({ setLastUpdated }) {
                 <td>{postingType(posting.amount)}</td>
                 <td>{posting.text}</td>
                 <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
-                <td>{posting.postingGroup || "—"}</td>
+                <td>{posting.context || "—"}</td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
@@ -1012,7 +1012,7 @@ function useFilteredPostings(postings, search) {
       posting.text,
       posting.sourceType,
       posting.account,
-      posting.postingGroup
+      posting.context
     ].some((value) => String(value ?? "").toLowerCase().includes(term)));
   }, [postings, search]);
 }

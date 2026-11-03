@@ -640,7 +640,7 @@ namespace GamMaSite.Services
                         ELSE 'Manuel'
                     END AS source_type,
                     COALESCE(a.main_account, '') AS account,
-                    COALESCE(pg.posting_group, '') AS posting_group
+                    COALESCE(pg.context, '') AS context
                 FROM public.posteringer p
                 LEFT JOIN public.account a ON a.id = p.account_number
                 LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
@@ -663,7 +663,7 @@ namespace GamMaSite.Services
                     Text = reader.GetString(3),
                     SourceType = reader.GetString(4),
                     Account = reader.GetString(5),
-                    PostingGroup = reader.GetString(6)
+                    Context = reader.GetString(6)
                 });
             }
 
@@ -1214,7 +1214,7 @@ namespace GamMaSite.Services
         public string Text { get; set; } = "";
         public string SourceType { get; set; } = "";
         public string Account { get; set; } = "";
-        public string PostingGroup { get; set; } = "";
+        public string Context { get; set; } = "";
     }
 
     public sealed class FinanceUserPostingsDto
