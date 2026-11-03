@@ -125,6 +125,7 @@ else
             (SELECT COUNT(*) FROM public.forecast) +
             (SELECT COUNT(*) FROM public.bank_account) +
             (SELECT COUNT(*) FROM public.mobilepay) +
+            (SELECT COUNT(*) FROM public.stripe) +
             (SELECT COUNT(*) FROM public.posteringer) +
             (SELECT COUNT(*) FROM public.import_history);')"
     if [[ "$finance_existing_rows" != "0" ]]; then

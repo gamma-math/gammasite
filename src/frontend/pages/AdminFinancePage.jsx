@@ -46,6 +46,7 @@ const filters = (s) => {
     accountId: p.get("accountId") || "",
     bankKey: p.get("bankKey") || "",
     mobilePayKey: p.get("mobilePayKey") || "",
+    stripeKey: p.get("stripeKey") || "",
     query: p.get("search") || "",
   };
 };
@@ -378,6 +379,40 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     return values;
   };
 
+  const stripeRows = (rows) => (rows || []).map((row, index) => {
+    const rowNumber = index + 2;
+    return [
+      row.id,
+      row.date,
+      row.paymentDate,
+      row.payoutDate,
+      row.description,
+      row.balanceTransactionId,
+      row.paymentIntentId,
+      row.payerName,
+      row.amount,
+      row.fee,
+      row.net,
+      row.postedAmount,
+      xlsxFormula(`K${rowNumber}-L${rowNumber}`, Number(row.net || 0) - Number(row.postedAmount || 0)),
+    ];
+  });
+  const stripeWithTotal = (rows) => {
+    const values = stripeRows(rows);
+    if (values.length) {
+      const totalRow = values.length + 2;
+      values.push([
+        "", "", "", "", "TOTAL", "", "", "",
+        xlsxFormula(`SUM(I2:I${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[8] || 0), 0)),
+        xlsxFormula(`SUM(J2:J${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[9] || 0), 0)),
+        xlsxFormula(`SUM(K2:K${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[10] || 0), 0)),
+        xlsxFormula(`SUM(L2:L${totalRow - 1})`, values.reduce((sum, row) => sum + Number(row[11] || 0), 0)),
+        xlsxFormula(`SUM(M2:M${totalRow - 1})`, values.reduce((sum, row) => sum + Number(xlsxValue(row[12]) || 0), 0)),
+      ]);
+    }
+    return values;
+  };
+
   const postingRows = (postings || []).map((row) => [
     row.id,
     row.date,
@@ -389,12 +424,15 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
     row.account,
     row.postingGroupId,
     row.postingGroup,
+    row.bankReference ? `BA-${row.bankReference}` : "",
+    row.mobilePayReference ? `MP-${row.mobilePayReference}` : "",
+    row.stripeReference ? `ST-${row.stripeReference}` : "",
     row.status,
     row.document ? xlsxHyperlink(row.document) : "",
   ]);
 
   appendXlsxSheet(workbook, "Posteringer", [
-    "ID", "Dato", "Posteringsdato", "Tekst", "Beløb", "Bruger", "Konto ID", "Konto", "Posteringsgruppe ID", "Posteringsgruppe", "Status",
+    "ID", "Dato", "Posteringsdato", "Tekst", "Beløb", "Bruger", "Konto ID", "Konto", "Posteringsgruppe ID", "Posteringsgruppe", "Bankoverførsel ID", "MobilePay ID", "Stripe ID", "Status",
     "Bilag",
   ], postingRows, new Set([4]));
   appendXlsxSheet(workbook, "Resultatopgørelse", [
@@ -409,6 +447,9 @@ function buildFinanceWorkbookXlsx({ postings, overview }) {
   appendXlsxSheet(workbook, "MobilePay", [
     "ID", "Dato", "Tekst", "transfer_ref", "transfer_date", "payment_tx_id", "payner_name", "Beløb fra MobilePay", "Bogført beløb", "Difference",
   ], mobilePayWithTotal(overview?.mobilePayTransfers), new Set([7, 8, 9]));
+  appendXlsxSheet(workbook, "Stripe", [
+    "ID", "Dato", "Payment date", "Payout date", "Description", "Balance transaction", "Payment intent", "Payer", "Amount", "Fee", "Net", "BogfÃ¸rt belÃ¸b", "Difference",
+  ], stripeWithTotal(overview?.stripeTransfers), new Set([8, 9, 10, 11, 12]));
   workbook.Workbook = {
     CalcPr: { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true },
   };
@@ -919,6 +960,109 @@ function SourceTable({ title, rows, year }) {
     </section>
   );
 }
+
+function StripeTable({ rows, year }) {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState({ key: "date", direction: "desc" });
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase();
+    return rows.filter((row) =>
+      [
+        row.date,
+        row.paymentDate,
+        row.payoutDate,
+        row.description,
+        row.payerName,
+        row.id,
+        row.balanceTransactionId,
+        row.paymentIntentId,
+        row.amount,
+        row.fee,
+        row.net,
+      ].some((value) => String(value ?? "").toLowerCase().includes(term)),
+    );
+  }, [rows, search]);
+  const sorted = useSortedMembers(filtered, sort);
+  const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  useEffect(
+    () => setPage(1),
+    [search, pageSize, sort.key, sort.direction, rows],
+  );
+
+  return (
+    <section className="finance-live-panel finance-live-pnl-panel">
+      <div className="finance-live-panel-heading">
+        <div>
+          <p className="finance-live-kicker">Seneste Stripe-betalinger</p>
+        </div>
+      </div>
+      <SearchToolbar
+        search={search}
+        setSearch={setSearch}
+        pageSize={pageSize}
+        setPageSize={setPageSize}
+        searchPlaceholder="Tekst eller reference"
+      />
+      <div className="finance-live-table-scroll">
+        <table className="finance-live-table finance-admin-source-table">
+          <thead>
+            <tr>
+              <SortableHeader label="Dato" sortKey="date" sort={sort} setSort={setSort} />
+              <SortableHeader label="Betalingsdato" sortKey="paymentDate" sort={sort} setSort={setSort} />
+              <SortableHeader label="Payoutdato" sortKey="payoutDate" sort={sort} setSort={setSort} />
+              <SortableHeader label="Tekst" sortKey="description" sort={sort} setSort={setSort} />
+              <SortableHeader label="Beløb" sortKey="amount" sort={sort} setSort={setSort} />
+              <SortableHeader label="Gebyr" sortKey="fee" sort={sort} setSort={setSort} />
+              <SortableHeader label="Netto" sortKey="net" sort={sort} setSort={setSort} />
+              <th>Reference</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {visibleItems.map((row) => (
+              <tr key={row.id}>
+                <td>{row.date || "—"}</td>
+                <td>{row.paymentDate || "—"}</td>
+                <td>{row.payoutDate || "—"}</td>
+                <td>{row.payerName ? `${row.payerName} · ` : ""}{row.description || "—"}</td>
+                <td className={cls(row.amount)}>{money(row.amount)}</td>
+                <td className={cls(-Number(row.fee || 0))}>{money(-Number(row.fee || 0))}</td>
+                <td className={cls(row.net)}>{money(row.net)}</td>
+                <td title={row.balanceTransactionId}>{row.id}</td>
+                <td>
+                  <Link
+                    className="finance-admin-table-link"
+                    href={`/admin/finance/postings?year=${year}&stripeKey=${row.sourceId}`}
+                  >
+                    Se posteringer
+                  </Link>
+                </td>
+              </tr>
+            ))}
+            {visibleItems.length === 0 && (
+              <tr>
+                <td className="finance-admin-empty" colSpan="9">
+                  Ingen Stripe-betalinger fundet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pagination
+        page={currentPage}
+        pageCount={pageCount}
+        total={filtered.length}
+        pageSize={pageSize}
+        setPage={setPage}
+      />
+    </section>
+  );
+}
+
 function GroupTable({ rows, year, isCurrentYear, previousYear }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const groups = useMemo(() => {
@@ -1026,6 +1170,7 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
     ["groups", "Posteringsgrupper"],
     ["bank", "Bankoverførelse"],
     ["mobile", "MobilePay"],
+    ["stripe", "Stripe"],
   ];
   const [year, setYear] = useState(filters(search).year),
     [data, setData] = useState(null),
@@ -1159,6 +1304,9 @@ export function FinanceAdminOverviewPage({ isAdmin, search }) {
               year={year}
             />
           )}
+          {tab === "stripe" && (
+            <StripeTable rows={data.stripeTransfers || []} year={year} />
+          )}
         </>
       )}
     </AdminLayout>
@@ -1172,6 +1320,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     [accountId, setAccountId] = useState(initial.accountId),
     [bankKey, setBankKey] = useState(initial.bankKey),
     [mobilePayKey, setMobilePayKey] = useState(initial.mobilePayKey),
+    [stripeKey, setStripeKey] = useState(initial.stripeKey),
     [query, setQuery] = useState(initial.query),
     [status, setStatus] = useState(""),
     [account, setAccount] = useState(""),
@@ -1248,7 +1397,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
   }, []);
   const load = () =>
     Promise.all([
-      financeApi.adminPostings(year, accountId, bankKey, mobilePayKey),
+      financeApi.adminPostings(year, accountId, bankKey, mobilePayKey, stripeKey),
       financeApi.adminPostingOptions(),
     ]).then(([result, editorOptions]) => {
       setData(result);
@@ -1257,7 +1406,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     });
   useEffect(() => {
     if (isAdmin) load().catch((e) => setError(e.message));
-  }, [isAdmin, year, accountId, bankKey, mobilePayKey]);
+  }, [isAdmin, year, accountId, bankKey, mobilePayKey, stripeKey]);
   useEffect(() => {
     if (!isAdmin) return;
     membersApi
@@ -1334,6 +1483,7 @@ export function FinanceAdminCashierPostingsPage({ isAdmin, search }) {
     setAccountId("");
     setBankKey("");
     setMobilePayKey("");
+    setStripeKey("");
   };
   const updateRow = (row, field, value) =>
     setRows((current) =>
@@ -1737,6 +1887,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   const [accountId, setAccountId] = useState(initial.accountId);
   const [bankKey, setBankKey] = useState(initial.bankKey);
   const [mobilePayKey, setMobilePayKey] = useState(initial.mobilePayKey);
+  const [stripeKey, setStripeKey] = useState(initial.stripeKey);
   const [query, setQuery] = useState(initial.query);
   const [status, setStatus] = useState("");
   const [account, setAccount] = useState("");
@@ -1762,10 +1913,10 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
   useEffect(() => {
     if (!isAdmin) return;
     financeApi
-      .adminPostings(year, accountId, bankKey, mobilePayKey)
+      .adminPostings(year, accountId, bankKey, mobilePayKey, stripeKey)
       .then(setData)
       .catch((requestError) => setError(requestError.message));
-  }, [isAdmin, year, accountId, bankKey, mobilePayKey]);
+  }, [isAdmin, year, accountId, bankKey, mobilePayKey, stripeKey]);
   useEffect(() => {
     if (isAdmin) membersApi.listFinance().then(setMembers).catch(() => setMembers([]));
   }, [isAdmin]);
@@ -1803,6 +1954,7 @@ export function FinanceAdminPostingsPage({ isAdmin, search }) {
     setAccountId("");
     setBankKey("");
     setMobilePayKey("");
+    setStripeKey("");
   };
   const exportRows = async () => {
     setExporting(true);
@@ -3249,6 +3401,17 @@ export function FinanceAdminPostingDetailPage({ isAdmin, canWrite = isAdmin, id 
                   readOnly
                 />
               </label>}
+              {!isNew && <label>
+                Stripe
+                <input
+                  value={
+                    posting.stripeReference
+                      ? `Stripe · ST-${posting.stripeReference}`
+                      : ""
+                  }
+                  readOnly
+                />
+              </label>}
               <label className="finance-admin-detail-field-full">
                 Posteringsdato
                 <input
@@ -3518,8 +3681,8 @@ export function FinanceAdminImportPage({ isAdmin }) {
           <li>V&aelig;lg, om posteringer skal dannes efter importen. Det kan ogs&aring; g&oslash;res senere.</li>
         </ol>
         <p>
-          Et MobilePay-match erstatter den tilsvarende bankpostering. Ved en ny k&oslash;rsel
-          bevares konto, posteringsgruppe, bruger og dokumentation.
+          Rækkefølgen er MobilePay, derefter et entydigt Stripe-payout-match og til sidst bankposteringen.
+          Ved en ny k&oslash;rsel bevares konto, posteringsgruppe, bruger og dokumentation.
         </p>
       </section>
 
@@ -3634,7 +3797,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
               />
               <span>
                 <strong>Opdatér afledte posteringer</strong>
-                <small>Et MobilePay-match erstatter den tilsvarende bankpostering.</small>
+                <small>MobilePay har førsteprioritet. Stripe bruges kun ved et entydigt payout-match på dato og samlet nettobeløb.</small>
               </span>
             </label>
             <button className="profile-button" type="submit" disabled={isImporting}>
@@ -3726,7 +3889,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
             <tbody>
               {visibleHistory.map((item) => (
                 <tr key={item.id ?? `${item.importType}-${item.importedAt}-${item.fileName}`}>
-                  <td>{item.importType === "bank_csv" ? "Bank" : "MobilePay"}</td>
+                  <td>{item.importType === "bank_csv" ? "Bank" : item.importType === "stripe_webhook" ? "Stripe" : "MobilePay"}</td>
                   <td>{item.fileName || "—"}</td>
                   <td>{formatImportedAt(item.importedAt)}</td>
                   <td>{item.rowsProcessed}</td>

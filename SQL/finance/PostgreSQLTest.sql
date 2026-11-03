@@ -116,6 +116,9 @@ CREATE TABLE IF NOT EXISTS public.stripe (
     source_id text,
     payment_intent_id text,
     description text,
+    user_id text,
+    payer_name text,
+    receipt_url text,
 
     -- false = importeret
     -- true = manuelt oprettet
@@ -210,13 +213,13 @@ CREATE TABLE IF NOT EXISTS public.posteringer (
     amount numeric(14, 2),
     bank_account_key bigint,
     mp_key bigint,
-    stripe_key bigint,
     user_id text,
     account_number text,
     posting_group_id text,
     document text,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    stripe_key bigint,
 
     CONSTRAINT posteringer_pkey PRIMARY KEY (id),
 

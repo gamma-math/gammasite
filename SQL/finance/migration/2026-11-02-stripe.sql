@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS public.stripe (
     source_id text,
     payment_intent_id text,
     description text,
+    user_id text,
+    payer_name text,
+    receipt_url text,
     is_manual boolean NOT NULL DEFAULT false,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -32,6 +35,11 @@ WHERE is_manual = false;
 
 ALTER TABLE public.posteringer
     ADD COLUMN IF NOT EXISTS stripe_key bigint;
+
+ALTER TABLE public.stripe
+    ADD COLUMN IF NOT EXISTS user_id text,
+    ADD COLUMN IF NOT EXISTS payer_name text,
+    ADD COLUMN IF NOT EXISTS receipt_url text;
 
 DO $$
 BEGIN

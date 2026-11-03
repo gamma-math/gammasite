@@ -129,7 +129,8 @@ namespace GamMaSite.Services
                 DataQuality = await ReadDataQualityAsync(connection, actualStart, actualEnd, cancellationToken),
                 PostingGroups = await ReadPostingGroupsAsync(connection, actualStart, actualEnd, previousStart, previousEnd, cancellationToken),
                 BankTransfers = await ReadSourceTransfersAsync(connection, actualStart, actualEnd, "Bank", cancellationToken),
-                MobilePayTransfers = await ReadSourceTransfersAsync(connection, actualStart, actualEnd, "MobilePay", cancellationToken)
+                MobilePayTransfers = await ReadSourceTransfersAsync(connection, actualStart, actualEnd, "MobilePay", cancellationToken),
+                StripeTransfers = await ReadStripeTransfersAsync(connection, actualStart, actualEnd, cancellationToken)
             };
         }
 
@@ -303,7 +304,7 @@ namespace GamMaSite.Services
             };
         }
 
-        public async Task<FinanceAdminPostingsDto> GetAdminPostingsAsync(int? year, string accountId, long? bankKey, long? mobilePayKey, CancellationToken cancellationToken)
+        public async Task<FinanceAdminPostingsDto> GetAdminPostingsAsync(int? year, string accountId, long? bankKey, long? mobilePayKey, long? stripeKey, CancellationToken cancellationToken)
         {
             var accountIds = (accountId ?? string.Empty)
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -329,9 +330,13 @@ namespace GamMaSite.Services
                     CONCAT_WS(' · ', NULLIF(a.main_account, ''), NULLIF(a.sub_account, ''), NULLIF(a.context, '')) AS account,
                     COALESCE(p.posting_group_id, '') AS posting_group_id,
                     CONCAT_WS(' · ', NULLIF(pg.posting_group, ''), NULLIF(pg.context, '')) AS posting_group,
+                    COALESCE(p.bank_account_key::text, '') AS bank_reference,
+                    COALESCE(p.mp_key::text, '') AS mobile_pay_reference,
+                    COALESCE(p.stripe_key::text, '') AS stripe_reference,
                     COALESCE(p.document, '') AS document,
                     CASE
                         WHEN p.mp_key IS NOT NULL THEN 'MobilePay'
+                        WHEN p.stripe_key IS NOT NULL THEN 'Stripe'
                         WHEN p.bank_account_key IS NOT NULL THEN 'Bank'
                         ELSE 'Manuel'
                     END AS source_type,
@@ -340,6 +345,7 @@ namespace GamMaSite.Services
                           OR NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NULL THEN 'Ukategoriseret'
                         WHEN p.bank_account_key IS NOT NULL
                           AND p.mp_key IS NULL
+                          AND p.stripe_key IS NULL
                           AND NULLIF(TRIM(COALESCE(p.document, '')), '') IS NULL THEN 'Mangler bilag'
                         ELSE 'Bogført'
                     END AS status
@@ -351,6 +357,7 @@ namespace GamMaSite.Services
                   AND (@account_ids IS NULL OR p.account_number = ANY(string_to_array(@account_ids, ',')))
                   AND (@bank_key IS NULL OR p.bank_account_key = @bank_key)
                   AND (@mobile_pay_key IS NULL OR p.mp_key = @mobile_pay_key)
+                  AND (@stripe_key IS NULL OR p.stripe_key = @stripe_key)
                 ORDER BY COALESCE(p.posting_date, p.date) DESC NULLS LAST, p.id DESC;", connection);
 
             AddNullableDate(command, "start_date", start);
@@ -358,6 +365,7 @@ namespace GamMaSite.Services
             AddNullableText(command, "account_ids", accountIds.Length == 0 ? null : string.Join(',', accountIds));
             AddNullableLong(command, "bank_key", bankKey);
             AddNullableLong(command, "mobile_pay_key", mobilePayKey);
+            AddNullableLong(command, "stripe_key", stripeKey);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -374,9 +382,12 @@ namespace GamMaSite.Services
                     Account = reader.GetString(7),
                     PostingGroupId = reader.IsDBNull(8) ? "" : reader.GetString(8),
                     PostingGroup = reader.GetString(9),
-                    Document = reader.GetString(10),
-                    SourceType = reader.GetString(11),
-                    Status = reader.GetString(12)
+                    BankReference = reader.GetString(10),
+                    MobilePayReference = reader.GetString(11),
+                    StripeReference = reader.GetString(12),
+                    Document = reader.GetString(13),
+                    SourceType = reader.GetString(14),
+                    Status = reader.GetString(15)
                 });
             }
 
@@ -415,13 +426,13 @@ namespace GamMaSite.Services
                 SELECT p.id, TO_CHAR(p.date, 'YYYY-MM-DD'), TO_CHAR(COALESCE(p.posting_date, p.date), 'YYYY-MM-DD'),
                        COALESCE(p.text, ''), COALESCE(p.amount, 0), COALESCE(p.user_id, ''), COALESCE(p.account_number, ''),
                        COALESCE(p.posting_group_id, ''), COALESCE(p.document, ''),
-                       CASE WHEN p.mp_key IS NOT NULL THEN 'MobilePay' WHEN p.bank_account_key IS NOT NULL THEN 'Bank' ELSE 'Manuel' END,
+                       CASE WHEN p.mp_key IS NOT NULL THEN 'MobilePay' WHEN p.stripe_key IS NOT NULL THEN 'Stripe' WHEN p.bank_account_key IS NOT NULL THEN 'Bank' ELSE 'Manuel' END,
                        CONCAT_WS(' · ', NULLIF(a.main_account, ''), NULLIF(a.sub_account, ''), NULLIF(a.context, '')),
                        CONCAT_WS(' · ', NULLIF(pg.posting_group, ''), NULLIF(pg.context, '')),
-                       COALESCE(p.bank_account_key::text, ''), COALESCE(p.mp_key::text, ''),
+                       COALESCE(p.bank_account_key::text, ''), COALESCE(p.mp_key::text, ''), COALESCE(p.stripe_key::text, ''),
                        CASE
                          WHEN NULLIF(TRIM(COALESCE(p.account_number, '')), '') IS NULL OR NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NULL THEN 'Ukategoriseret'
-                         WHEN p.bank_account_key IS NOT NULL AND p.mp_key IS NULL AND NULLIF(TRIM(COALESCE(p.document, '')), '') IS NULL THEN 'Mangler bilag'
+                         WHEN p.bank_account_key IS NOT NULL AND p.mp_key IS NULL AND p.stripe_key IS NULL AND NULLIF(TRIM(COALESCE(p.document, '')), '') IS NULL THEN 'Mangler bilag'
                          ELSE 'Bogført'
                        END
                 FROM public.posteringer p
@@ -435,7 +446,7 @@ namespace GamMaSite.Services
             {
                 Id = reader.GetString(0), Date = reader.IsDBNull(1) ? "" : reader.GetString(1), PostingDate = reader.IsDBNull(2) ? "" : reader.GetString(2),
                 Text = reader.GetString(3), Amount = reader.GetFieldValue<decimal>(4), UserId = reader.GetString(5), AccountId = reader.GetString(6), PostingGroupId = reader.GetString(7),
-                Document = reader.GetString(8), SourceType = reader.GetString(9), Account = reader.GetString(10), PostingGroup = reader.GetString(11), BankReference = reader.GetString(12), MobilePayReference = reader.GetString(13), Status = reader.GetString(14)
+                Document = reader.GetString(8), SourceType = reader.GetString(9), Account = reader.GetString(10), PostingGroup = reader.GetString(11), BankReference = reader.GetString(12), MobilePayReference = reader.GetString(13), StripeReference = reader.GetString(14), Status = reader.GetString(15)
             };
         }
 
@@ -624,6 +635,7 @@ namespace GamMaSite.Services
                     COALESCE(p.text, '') AS text,
                     CASE
                         WHEN p.mp_key IS NOT NULL THEN 'MobilePay'
+                        WHEN p.stripe_key IS NOT NULL THEN 'Stripe'
                         WHEN p.bank_account_key IS NOT NULL THEN 'Bank'
                         ELSE 'Manuel'
                     END AS source_type,
@@ -953,6 +965,57 @@ namespace GamMaSite.Services
             return result;
         }
 
+        private static async Task<IReadOnlyList<FinanceStripeTransferDto>> ReadStripeTransfersAsync(
+            NpgsqlConnection connection,
+            DateTime start,
+            DateTime end,
+            CancellationToken cancellationToken)
+        {
+            var result = new List<FinanceStripeTransferDto>();
+            await using var command = new NpgsqlCommand(@"
+                SELECT
+                    s.id,
+                    TO_CHAR(s.date, 'YYYY-MM-DD'),
+                    TO_CHAR(s.available_date, 'YYYY-MM-DD'),
+                    TO_CHAR(s.payout_date, 'YYYY-MM-DD'),
+                    COALESCE(s.description, ''),
+                    COALESCE(s.balance_transaction_id, ''),
+                    COALESCE(s.payment_intent_id, ''),
+                    COALESCE(s.payer_name, ''),
+                    COALESCE(s.amount, 0),
+                    COALESCE(s.fee, 0),
+                    COALESCE(s.net, 0),
+                    COALESCE((SELECT SUM(p.amount) FROM public.posteringer p WHERE p.stripe_key = s.id), 0)
+                FROM public.stripe s
+                WHERE s.date >= @start_date AND s.date <= @end_date
+                ORDER BY s.date DESC NULLS LAST, s.id DESC;", connection);
+            AddDate(command, "start_date", start);
+            AddDate(command, "end_date", end);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var sourceId = reader.GetInt64(0);
+                result.Add(new FinanceStripeTransferDto
+                {
+                    Id = $"ST-{sourceId}",
+                    Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    PaymentDate = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    PayoutDate = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    Description = reader.GetString(4),
+                    BalanceTransactionId = reader.GetString(5),
+                    PaymentIntentId = reader.GetString(6),
+                    PayerName = reader.GetString(7),
+                    Amount = reader.GetFieldValue<decimal>(8),
+                    Fee = reader.GetFieldValue<decimal>(9),
+                    Net = reader.GetFieldValue<decimal>(10),
+                    PostedAmount = reader.GetFieldValue<decimal>(11),
+                    SourceId = sourceId
+                });
+            }
+
+            return result;
+        }
+
         private static async Task<FinanceDataQualityDto> ReadDataQualityAsync(NpgsqlConnection connection, DateTime start, DateTime end, CancellationToken cancellationToken)
         {
             await using var command = new NpgsqlCommand(@"
@@ -1018,6 +1081,7 @@ namespace GamMaSite.Services
         public IReadOnlyList<FinancePostingGroupRowDto> PostingGroups { get; set; } = Array.Empty<FinancePostingGroupRowDto>();
         public IReadOnlyList<FinanceSourcePostingDto> BankTransfers { get; set; } = Array.Empty<FinanceSourcePostingDto>();
         public IReadOnlyList<FinanceSourcePostingDto> MobilePayTransfers { get; set; } = Array.Empty<FinanceSourcePostingDto>();
+        public IReadOnlyList<FinanceStripeTransferDto> StripeTransfers { get; set; } = Array.Empty<FinanceStripeTransferDto>();
     }
 
     public sealed class FinanceAdminBudgetsDto
@@ -1105,6 +1169,23 @@ namespace GamMaSite.Services
         public string SourceType { get; set; } = "";
     }
 
+    public sealed class FinanceStripeTransferDto
+    {
+        public string Id { get; set; } = "";
+        public string Date { get; set; } = "";
+        public string PaymentDate { get; set; } = "";
+        public string PayoutDate { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string BalanceTransactionId { get; set; } = "";
+        public string PaymentIntentId { get; set; } = "";
+        public string PayerName { get; set; } = "";
+        public decimal Amount { get; set; }
+        public decimal Fee { get; set; }
+        public decimal Net { get; set; }
+        public decimal PostedAmount { get; set; }
+        public long SourceId { get; set; }
+    }
+
     public sealed class FinanceMonthDto
     {
         public int Month { get; set; }
@@ -1154,6 +1235,9 @@ namespace GamMaSite.Services
         public string Account { get; set; } = "";
         public string PostingGroupId { get; set; } = "";
         public string PostingGroup { get; set; } = "";
+        public string BankReference { get; set; } = "";
+        public string MobilePayReference { get; set; } = "";
+        public string StripeReference { get; set; } = "";
         public string Document { get; set; } = "";
         public string SourceType { get; set; } = "";
         public string Status { get; set; } = "";
@@ -1168,7 +1252,7 @@ namespace GamMaSite.Services
     public sealed class FinanceAdminPostingDetailDto
     {
         public string Id { get; set; } = ""; public string Date { get; set; } = ""; public string PostingDate { get; set; } = ""; public string Text { get; set; } = ""; public decimal Amount { get; set; }
-        public string UserId { get; set; } = ""; public string AccountId { get; set; } = ""; public string PostingGroupId { get; set; } = ""; public string Document { get; set; } = ""; public string SourceType { get; set; } = ""; public string Account { get; set; } = ""; public string PostingGroup { get; set; } = ""; public string BankReference { get; set; } = ""; public string MobilePayReference { get; set; } = ""; public string Status { get; set; } = "";
+        public string UserId { get; set; } = ""; public string AccountId { get; set; } = ""; public string PostingGroupId { get; set; } = ""; public string Document { get; set; } = ""; public string SourceType { get; set; } = ""; public string Account { get; set; } = ""; public string PostingGroup { get; set; } = ""; public string BankReference { get; set; } = ""; public string MobilePayReference { get; set; } = ""; public string StripeReference { get; set; } = ""; public string Status { get; set; } = "";
     }
 
     public sealed class FinanceSelectOptionDto { public string Id { get; set; } = ""; public string Label { get; set; } = ""; }

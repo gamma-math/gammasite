@@ -186,7 +186,7 @@ namespace GamMaSite.Controllers
 
         [HttpGet("admin/postings")]
         [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
-        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, [FromQuery] long? stripeKey, CancellationToken cancellationToken)
         {
             var currentYear = DateTime.Today.Year;
             int? selectedYear = allYears ? null : year ?? currentYear;
@@ -195,7 +195,7 @@ namespace GamMaSite.Controllers
                 return BadRequest(new { error = "Det valgte år er ugyldigt." });
             }
 
-            return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, cancellationToken));
+            return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, stripeKey, cancellationToken));
         }
 
         [HttpGet("admin/postings/years")]

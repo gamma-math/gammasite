@@ -151,7 +151,7 @@ services:
     command:
       - listen
       - --events
-      - checkout.session.completed,checkout.session.async_payment_succeeded,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,invoice.payment_action_required
+      - checkout.session.completed,checkout.session.async_payment_succeeded,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,invoice.payment_action_required,payout.reconciliation_completed
       - --forward-to
       - http://app:8080/api/payments/stripe/webhook
 

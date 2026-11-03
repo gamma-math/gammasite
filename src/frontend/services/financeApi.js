@@ -287,6 +287,7 @@ export const financeApi = {
     accountId = "",
     bankKey = "",
     mobilePayKey = "",
+    stripeKey = "",
   ) => {
     const params = new URLSearchParams();
     if (year === null || year === undefined || year === "") {
@@ -297,6 +298,7 @@ export const financeApi = {
     if (accountId) params.set("accountId", accountId);
     if (bankKey) params.set("bankKey", bankKey);
     if (mobilePayKey) params.set("mobilePayKey", mobilePayKey);
+    if (stripeKey) params.set("stripeKey", stripeKey);
     const response = await financeFetch(
       `/api/finance/admin/postings?${params.toString()}`,
       {

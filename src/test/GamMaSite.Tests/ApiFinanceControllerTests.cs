@@ -48,7 +48,7 @@ public sealed class ApiFinanceControllerTests
     {
         var controller = Controller(new DefaultHttpContext());
 
-        var result = await controller.GetAdminPostings(1899, false, null, null, null, CancellationToken.None);
+        var result = await controller.GetAdminPostings(1899, false, null, null, null, null, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);
     }

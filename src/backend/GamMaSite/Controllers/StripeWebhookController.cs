@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -28,19 +29,22 @@ namespace GamMaSite.Controllers
         private readonly IConfiguration _configuration;
         private readonly ILogger<StripeWebhookController> _logger;
         private readonly ISystemEmailTemplateService _systemEmailTemplateService;
+        private readonly FinanceImportService _financeImportService;
 
         public StripeWebhookController(
             ApplicationDbContext db,
             IStripeService stripeService,
             IConfiguration configuration,
             ILogger<StripeWebhookController> logger,
-            ISystemEmailTemplateService systemEmailTemplateService = null)
+            ISystemEmailTemplateService systemEmailTemplateService = null,
+            FinanceImportService financeImportService = null)
         {
             _db = db;
             _stripeService = stripeService;
             _configuration = configuration;
             _logger = logger;
             _systemEmailTemplateService = systemEmailTemplateService;
+            _financeImportService = financeImportService;
         }
 
         [HttpPost("webhook")]
@@ -100,6 +104,11 @@ namespace GamMaSite.Controllers
                     case "invoice.payment_action_required":
                         await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
                         break;
+                    case "payout.reconciliation_completed":
+                        await HandlePayoutReconciliationCompletedAsync(
+                            stripeEvent.Data.Object as Payout,
+                            cancellationToken);
+                        break;
                 }
             }
             catch (InvalidOperationException exception)
@@ -109,6 +118,64 @@ namespace GamMaSite.Controllers
             }
 
             return Ok();
+        }
+
+        private async Task HandlePayoutReconciliationCompletedAsync(
+            Payout payout,
+            CancellationToken cancellationToken)
+        {
+            if (payout == null || string.IsNullOrWhiteSpace(payout.Id))
+            {
+                throw new InvalidOperationException("Stripe payout-webhooken kunne ikke læses.");
+            }
+
+            if (_financeImportService == null)
+            {
+                throw new InvalidOperationException("Finance-importservicen er ikke konfigureret.");
+            }
+
+            var transactions = await _stripeService.GetPayoutBalanceTransactionsAsync(
+                payout.Id,
+                cancellationToken);
+            if (transactions.Count == 0)
+            {
+                _logger.LogInformation(
+                    "Stripe payout {PayoutId} contained no available balance transactions.",
+                    payout.Id);
+                return;
+            }
+
+            var userIds = transactions
+                .Select(transaction => transaction.UserId)
+                .Where(userId => !string.IsNullOrWhiteSpace(userId))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var users = userIds.Length == 0
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : await _db.Users
+                    .AsNoTracking()
+                    .Where(user => userIds.Contains(user.Id))
+                    .ToDictionaryAsync(
+                        user => user.Id,
+                        user => user.Navn,
+                        StringComparer.Ordinal,
+                        cancellationToken);
+
+            var enrichedTransactions = transactions
+                .Select(transaction => transaction with
+                {
+                    PayerName = users.TryGetValue(transaction.UserId, out var name) ? name : string.Empty
+                })
+                .ToArray();
+
+            await _financeImportService.ImportStripeTransactionsAsync(
+                enrichedTransactions,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Stored {TransactionCount} Stripe balance transactions for payout {PayoutId}.",
+                enrichedTransactions.Length,
+                payout.Id);
         }
 
         private async Task HandleCheckoutCompletedAsync(

@@ -108,6 +108,8 @@ Den samme key bruges også af GamMaSite-backenden. Giv derfor følgende mindst n
 | Prices | Read + Write | Læse, oprette og opdatere priser |
 | Subscriptions | Read + Write | Læse, ændre og annullere abonnementer |
 | Invoices | Read | Vise betalingshistorik for abonnementer |
+| Balance | Read | Hente balance transactions for afstemning af payouts |
+| Payouts | Read | Hente payouten fra `payout.reconciliation_completed` |
 
 `STRIPE_PUBLIC_API_KEY` er en separat publishable test-key og skal ikke have disse server-permissions. `STRIPE_WEBHOOK_SECRET` er et webhook-signing secret og er ikke en API-key.
 
@@ -261,13 +263,15 @@ Stripe CLI kører som en valgfri, permanent Docker Compose-service. Signing secr
 
 1. Opret en test-mode restricted Stripe API key og læg den i `STRIPE_SECRET_API_KEY` i den lokale `.env`.
 2. Sørg for at GamMaSite kører med `docker compose up -d`.
+Den server-side restricted key skal have læseadgang til `Balance` (`balance_read`) og `Payouts`, fordi appen henter payoutens balance transactions efter `payout.reconciliation_completed`. `STRIPE_PUBLIC_API_KEY` bruges kun af klienten og kræver ikke disse server-permissions.
+
 3. Start Stripe CLI og tunnelen samlet i Docker:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Scriptet forwarder de eventtyper, som applikationen allerede behandler, til:
+Scriptet forwarder de eventtyper, som applikationen allerede behandler, herunder `payout.reconciliation_completed`, til:
 
 ```text
 /api/payments/stripe/webhook

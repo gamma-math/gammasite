@@ -54,7 +54,8 @@
               <li><strong>Scope:</strong> <code>Your account</code></li>
               <li><strong>Payload style:</strong> <code>Snapshot</code></li>
               <li><strong>API version:</strong> <code>2026-09-30.endive</code></li>
-              <li><strong>Events:</strong> <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code> og <code>invoice.payment_action_required</code>.</li>
+              <li><strong>Events:</strong> <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code>, <code>invoice.payment_action_required</code> og <code>payout.reconciliation_completed</code>.</li>
+              <li><strong>Server API key permissions:</strong> <code>Balance &middot; Read</code> og <code>Payouts &middot; Read</code>. De bruges til at hente payoutens balance transactions, n&aring;r <code>payout.reconciliation_completed</code> modtages.</li>
             </ul>
           </li>
           <li>Gem endpointets signing secret som <code>STRIPE_WEBHOOK_SECRET</code> i det samme GitHub Environment, som deploymentet bruger. Secret m&aring; ikke skrives i repositoryet.</li>
