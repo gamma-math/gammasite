@@ -677,6 +677,51 @@ namespace GamMaSite.Services
             };
         }
 
+        public async Task<FinanceReceiptPostingDto> GetUserPostingReceiptAsync(string userId, string postingId, CancellationToken cancellationToken)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command = new NpgsqlCommand(@"
+                SELECT
+                    p.id,
+                    TO_CHAR(p.date, 'YYYY-MM-DD') AS transaction_date,
+                    -COALESCE(p.amount, 0) AS amount,
+                    COALESCE(pg.context, '') AS context,
+                    CASE
+                        WHEN p.stripe_key IS NOT NULL THEN 'STRIPE'
+                        WHEN p.mp_key IS NOT NULL THEN 'VIPPS'
+                        WHEN p.bank_account_key IS NOT NULL THEN 'BANKOVERFØRELSE'
+                        ELSE ''
+                    END AS payment_method
+                FROM public.posteringer p
+                LEFT JOIN public.account a ON a.id = p.account_number
+                LEFT JOIN public.postering_group pg ON pg.id = p.posting_group_id
+                WHERE p.id = @posting_id
+                  AND p.user_id = @user_id
+                  AND LOWER(TRIM(COALESCE(a.main_account, ''))) <> 'drift'
+                  AND NULLIF(TRIM(COALESCE(p.account_number, '')), '') IS NOT NULL
+                  AND NULLIF(TRIM(COALESCE(p.posting_group_id, '')), '') IS NOT NULL;", connection);
+
+            AddText(command, "posting_id", postingId);
+            AddText(command, "user_id", userId);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return null;
+            }
+
+            return new FinanceReceiptPostingDto
+            {
+                Id = reader.GetString(0),
+                Date = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                Amount = reader.GetFieldValue<decimal>(2),
+                Product = reader.GetString(3),
+                PaymentMethod = reader.IsDBNull(4) ? "" : reader.GetString(4)
+            };
+        }
+
         private static async Task<FinanceSummaryDto> ReadSummaryAsync(NpgsqlConnection connection, DateTime actualStart, DateTime actualEnd, CancellationToken cancellationToken)
         {
             await using var command = new NpgsqlCommand(@"
@@ -1221,6 +1266,15 @@ namespace GamMaSite.Services
     {
         public string LastUpdated { get; set; }
         public IReadOnlyList<FinancePostingDto> Postings { get; set; } = Array.Empty<FinancePostingDto>();
+    }
+
+    public sealed class FinanceReceiptPostingDto
+    {
+        public string Id { get; set; } = "";
+        public string Date { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Product { get; set; } = "";
+        public string PaymentMethod { get; set; } = "";
     }
 
     public sealed class FinanceAdminPostingDto

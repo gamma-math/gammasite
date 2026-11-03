@@ -77,6 +77,43 @@ public class EmailTemplateServiceTests
         Assert.True(result.IsActive);
     }
 
+    [Theory]
+    [InlineData("SYSTEM_FINANCE_PAYMENT_RECEIPT")]
+    [InlineData("SYSTEM_FINANCE_REFUND_RECEIPT")]
+    public void ReceiptTemplates_AreRequiredSystemTemplates(string templateType)
+    {
+        Assert.True(SystemMailKinds.RequiresActiveTemplate(templateType));
+    }
+
+    [Theory]
+    [InlineData(SystemEmailTemplateService.FinancePaymentReceipt)]
+    [InlineData(SystemEmailTemplateService.FinanceRefundReceipt)]
+    public async Task UpdateAsync_KeepsReceiptTemplatesActive(string templateType)
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Id = 1,
+            Name = "Receipt",
+            Subject = "Receipt",
+            HtmlBody = "<p>Receipt</p>",
+            TemplateType = templateType,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new EmailTemplateService(db).UpdateAsync(1, new SaveEmailTemplateRequest
+        {
+            Name = "Updated receipt",
+            Subject = "Updated receipt",
+            HtmlBody = "<p>Updated receipt</p>",
+            TemplateType = templateType,
+            IsActive = false
+        });
+
+        Assert.True(result.IsActive);
+    }
+
     private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GamMaSite.Data;
@@ -130,7 +131,33 @@ namespace GamMaSite.Services
             };
         }
 
-        private static string Render(string template, Dictionary<string, string> values)
+        public async Task<string> RenderActiveHtmlAsync(string templateType, IReadOnlyDictionary<string, string> values)
+        {
+            var normalizedType = templateType?.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(normalizedType))
+            {
+                return null;
+            }
+
+            var template = await _db.EmailTemplates
+                .AsNoTracking()
+                .Where(item => item.TemplateType == normalizedType && item.IsActive)
+                .OrderByDescending(item => item.Updated)
+                .ThenByDescending(item => item.Id)
+                .FirstOrDefaultAsync();
+
+            if (template == null)
+            {
+                return null;
+            }
+
+            var htmlValues = (values ?? new Dictionary<string, string>())
+                .ToDictionary(pair => pair.Key, pair => HtmlEncoder.Default.Encode(pair.Value ?? string.Empty));
+
+            return Render(template.HtmlBody, htmlValues);
+        }
+
+        private static string Render(string template, IReadOnlyDictionary<string, string> values)
         {
             if (template == null)
             {
