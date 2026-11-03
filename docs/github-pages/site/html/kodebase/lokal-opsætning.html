@@ -83,20 +83,27 @@ docker compose --profile integrations logs -f stripe-cli tunnel</code></pre>
         <p>Tunnelen skal være startet med <code>scripts/integrations-up.sh</code>, før Vipps-webhooken registreres. Den eksterne webhook-URL bliver dermed:</p>
         <pre><code>${PUBLIC_WEBHOOK_BASE_URL}/api/payments/vipps/webhook</code></pre>
         <ol class="steps">
-          <li>Vis de aktive webhooks og deres ID’er:
-            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list</code></pre>
-          </li>
-          <li>Ved første registrering opret en ny webhook:
+          <li>Ved første registrering opret en ny webhook. Scriptet gemmer automatisk både <code>WEBHOOK_ID</code> og <code>VIPPS_WEBHOOK_SECRET</code> i den lokale <code>.env</code>:
             <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register</code></pre>
           </li>
-          <li>Ved rotation bruges ID’et før kolon i listen som <code>OLD_WEBHOOK_ID</code>:
+          <li>Efter en ny tunnel er startet, rotér automatisk den eksisterende webhook. Kommandoen bruger <code>WEBHOOK_ID</code> fra den lokale <code>.env</code>, registrerer og verificerer den nye webhook, gemmer de nye værdier, genstarter <code>app</code> og sletter derefter den gamle webhook:
+            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate</code></pre>
+          </li>
+          <li>Hvis <code>WEBHOOK_ID</code> ikke findes i den lokale <code>.env</code>, kan det gamle ID angives eksplicit:
             <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID</code></pre>
           </li>
-          <li>Når den nye webhook er verificeret, kan den gamle slettes:
-            <pre><code>docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID</code></pre>
-          </li>
         </ol>
-        <p>Vipps-scriptet bruger Vipps-credentials og <code>VIPPS_MSN</code> fra den lokale <code>.env</code>, gemmer den nye <code>VIPPS_WEBHOOK_SECRET</code> lokalt og genstarter kun <code>app</code>. Den gamle webhook slettes ikke automatisk.</p>
+        <p>Vipps-scriptet bruger Vipps-credentials og <code>VIPPS_MSN</code> fra den lokale <code>.env</code>. Kommandoen <code>list</code> kan stadig bruges til fejlsøgning, men er ikke længere nødvendig i den normale registrerings- eller rotationsproces.</p>
+        <p>Du kan alternativt gøre dette manuelet:</p>
+        <pre><code># Vis aktive webhooks og deres ID'er
+            docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
+
+            # Rotér med et eksplicit gammelt webhook-ID
+            docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+
+            # Slet et specifikt webhook-ID
+            docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
+        </code></pre>
       </section>
 
       <section class="section">

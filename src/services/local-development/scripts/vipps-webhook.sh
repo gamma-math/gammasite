@@ -28,7 +28,7 @@ usage() {
     echo "Usage:"
     echo "  ./scripts/vipps-webhook.sh list"
     echo "  ./scripts/vipps-webhook.sh register [--url PUBLIC_WEBHOOK_URL]"
-    echo "  ./scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID [--url PUBLIC_WEBHOOK_URL]"
+    echo "  ./scripts/vipps-webhook.sh rotate [OLD_WEBHOOK_ID] [--url PUBLIC_WEBHOOK_URL]"
     echo "  ./scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID"
 }
 
@@ -51,9 +51,14 @@ old_webhook_id=""
 webhook_url="${VIPPS_WEBHOOK_URL:-}"
 
 if [[ "$operation" == "rotate" || "$operation" == "delete" ]]; then
-    old_webhook_id="${1:-}"
-    shift || true
+    if [[ "$operation" == "rotate" && ( -z "${1:-}" || "${1:-}" == "--url" ) ]]; then
+        old_webhook_id="${WEBHOOK_ID:-}"
+    else
+        old_webhook_id="${1:-}"
+        shift || true
+    fi
     if [[ -z "$old_webhook_id" ]]; then
+        echo "No old webhook ID was supplied and WEBHOOK_ID is not set in .env." >&2
         usage >&2
         exit 2
     fi
@@ -124,6 +129,8 @@ fi
 
 if ! docker compose "${compose_args[@]}" >"$log_file" 2>&1; then
     echo "Vipps webhook operation failed. Check Vipps credentials, permissions and the public URL." >&2
+    echo "Vipps operation output:" >&2
+    tail -n 60 "$log_file" >&2
     echo "No local webhook secret was changed." >&2
     exit 1
 fi
@@ -133,18 +140,36 @@ if [[ "$operation" == "delete" ]]; then
     exit 0
 fi
 
+webhook_id="$(sed -nE 's/.*(Webhook registered|Replacement webhook registered):[[:space:]]*([^[:space:]]+).*/\2/p' "$log_file" | tail -n 1 || true)"
 webhook_secret="$(sed -nE 's/.*VIPPS_WEBHOOK_SECRET:[[:space:]]*([^[:space:]]+).*/\1/p' "$log_file" | tail -n 1 || true)"
-if [[ -z "$webhook_secret" ]]; then
-    echo "Vipps CLI completed without returning a webhook secret. No local webhook secret was changed." >&2
+if [[ -z "$webhook_id" || -z "$webhook_secret" ]]; then
+    echo "Vipps CLI completed without returning both webhook ID and secret. No local webhook configuration was changed." >&2
     exit 1
 fi
 
 ensure_local_env
 update_local_env .env VIPPS_WEBHOOK_SECRET "$webhook_secret"
+update_local_env .env WEBHOOK_ID "$webhook_id"
 restart_local_app
 
 echo "Vipps webhook was ${operation}ed for: $webhook_url"
-echo "VIPPS_WEBHOOK_SECRET was updated in the local .env and the app container was restarted."
+echo "WEBHOOK_ID and VIPPS_WEBHOOK_SECRET were updated in the local .env and the app container was restarted."
 if [[ "$operation" == "rotate" ]]; then
-    echo "Keep the old webhook until the replacement has been verified, then delete it through the existing Vipps CLI."
+    delete_args=(
+        -f "$VIPPS_COMPOSE_FILE"
+        --profile manual
+        run
+        --rm
+        --build
+        "${vipps_credentials_args[@]}"
+        -e "VIPPS_OLD_WEBHOOK_ID=$old_webhook_id"
+        delete-webhook
+    )
+
+    if ! docker compose "${delete_args[@]}" >/dev/null 2>&1; then
+        echo "The new Vipps webhook was registered and saved, but the old webhook could not be deleted: $old_webhook_id" >&2
+        exit 1
+    fi
+
+    echo "The old Vipps webhook was deleted: $old_webhook_id"
 fi

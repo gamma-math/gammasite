@@ -128,39 +128,38 @@ Kortet er kun et Stripe-testkort og må ikke bruges sammen med Apple Pay. Stripe
 
 #### Vipps/MobilePay
 
-Vis først de aktive Vipps-webhooks og deres ID’er:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
-```
-
-Kopiér ID’et før kolon (`:`) på den webhook, der skal udskiftes, og brug det som `OLD_WEBHOOK_ID`:
-
-Når kommandoen køres via `local-development`, bruges Vipps-credentials og `VIPPS_MSN` fra denne lokale `.env`. Den separate [Vipps Compose-opsætning](../vipps/docker-compose.yml) har fortsat sin egen `.env`, men den overskrives ikke af denne lokale wrapper.
+Registrér en Vipps-webhook og gem automatisk både ID og secret i den lokale `.env`:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register
 ```
 
-Ved rotation:
+Når kommandoen køres via `local-development`, bruges Vipps-credentials og `VIPPS_MSN` fra denne lokale `.env`. Den separate [Vipps Compose-opsætning](../vipps/docker-compose.yml) har fortsat sin egen `.env`, men den overskrives ikke af denne lokale wrapper.
 
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
-```
-
-Når den nye webhook er verificeret, kan den gamle slettes:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
-```
-
-Ved registrering eller rotation gemmer Vipps-scriptet den nye `VIPPS_WEBHOOK_SECRET` og genskaber kun `app`-containeren, så det nye secret indlæses. Ved sletning ændres den lokale `.env` ikke. Tunnelen kører detached som en Compose-service.
-
-Hver kørsel af `integrations-up.sh` opretter en ny Cloudflare Quick Tunnel-URL. Hvis der allerede findes en Vipps-webhook, skal den derfor roteres til den nye URL bagefter. Brug kun `register`, hvis der ikke allerede findes en webhook:
+Aktive Vipps-webhooks kan stadig vises med:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
+```
+
+Ved rotation bruges automatisk `WEBHOOK_ID` fra den lokale `.env`:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
+```
+
+Rotation registrerer og verificerer den nye webhook, gemmer det nye `WEBHOOK_ID` og `VIPPS_WEBHOOK_SECRET`, genstarter `app` og sletter derefter den gamle webhook. Et gammelt ID kan stadig angives eksplicit:
+
+```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+```
+
+Ved registrering eller rotation opdaterer Vipps-scriptet den lokale `.env` og genskaber `app`, så det nye secret indlæses. Tunnelen kører detached som en Compose-service.
+
+Hver kørsel af `integrations-up.sh` opretter en ny Cloudflare Quick Tunnel-URL. Hvis der allerede findes en Vipps-webhook, skal den derfor roteres til den nye URL bagefter:
+
+```bash
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
 ```
 
 Kontrollér eller stop integrationsservices:
@@ -313,7 +312,7 @@ Ved test af MobilePay-medlemskaber med automatisk fornyelse skal GamMaSite åbne
 
 ### Vipps webhook-secret
 
-Når integrationsprofilen kører, kan en ny Vipps-webhook registreres og secretet gemmes automatisk i den lokale `.env`:
+Når integrationsprofilen kører, kan en ny Vipps-webhook registreres, og både ID og secret gemmes automatisk i den lokale `.env`:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register
@@ -325,19 +324,13 @@ Det svarer til URL'en `${PUBLIC_WEBHOOK_BASE_URL}/api/payments/vipps/webhook`. E
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register --url https://example.test/api/payments/vipps/webhook
 ```
 
-Ved rotation bruges det eksisterende webhook-ID. Den gamle webhook bliver med vilje ikke slettet automatisk:
+Ved rotation bruges det eksisterende `WEBHOOK_ID`, medmindre et gammelt ID angives eksplicit. Den nye webhook registreres og verificeres først; derefter slettes den gamle automatisk:
 
 ```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
+docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
 ```
 
-Når den nye webhook er verificeret, slettes den gamle med:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh delete OLD_WEBHOOK_ID
-```
-
-Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale `VIPPS_WEBHOOK_SECRET` ikke. Efter en vellykket registrering eller rotation genskabes `app`, så det nye secret anvendes.
+Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale webhook-konfiguration ikke. Efter en vellykket registrering eller rotation genskabes `app`, så det nye secret anvendes.
 
 ## Mailpit-begrænsning
 
