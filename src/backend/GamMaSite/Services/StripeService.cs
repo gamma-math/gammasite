@@ -92,6 +92,18 @@ namespace GamMaSite.Services
 
     public class StripeService : IStripeService
     {
+        public static bool IsPaymentTransaction(string transactionType, string reportingCategory)
+        {
+            if (!string.IsNullOrWhiteSpace(reportingCategory))
+            {
+                return string.Equals(reportingCategory, "charge", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(reportingCategory, "payment", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return string.Equals(transactionType, "charge", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(transactionType, "payment", StringComparison.OrdinalIgnoreCase);
+        }
+
         public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null)
         {
             Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata, idempotencyKey);
@@ -141,7 +153,8 @@ namespace GamMaSite.Services
                 if (transaction == null ||
                     string.IsNullOrWhiteSpace(transaction.Id) ||
                     transaction.AvailableOn == default ||
-                    !string.Equals(transaction.Status, "available", StringComparison.OrdinalIgnoreCase))
+                    !string.Equals(transaction.Status, "available", StringComparison.OrdinalIgnoreCase) ||
+                    !IsPaymentTransaction(transaction.Type, transaction.ReportingCategory))
                 {
                     continue;
                 }
@@ -150,13 +163,14 @@ namespace GamMaSite.Services
                 var userId = string.Empty;
                 var description = transaction.Description;
                 var receiptUrl = string.Empty;
+                Charge charge = null;
                 if (!string.IsNullOrWhiteSpace(transaction.SourceId))
                 {
                     try
                     {
                         if (transaction.SourceId.StartsWith("ch_", StringComparison.Ordinal))
                         {
-                            var charge = await new ChargeService().GetAsync(transaction.SourceId, cancellationToken: cancellationToken);
+                            charge = await new ChargeService().GetAsync(transaction.SourceId, cancellationToken: cancellationToken);
                             paymentIntentId = charge?.PaymentIntentId ?? string.Empty;
                             description = charge?.Description ?? description;
                             receiptUrl = charge?.ReceiptUrl ?? string.Empty;
@@ -177,7 +191,7 @@ namespace GamMaSite.Services
                                 ?? description;
                             if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
                             {
-                                var charge = await new ChargeService().GetAsync(
+                                charge = await new ChargeService().GetAsync(
                                     paymentIntent.LatestChargeId,
                                     cancellationToken: cancellationToken);
                                 receiptUrl = charge?.ReceiptUrl ?? string.Empty;
@@ -189,6 +203,13 @@ namespace GamMaSite.Services
                         // The balance transaction remains useful even if its source
                         // object cannot be expanded with the current API key.
                     }
+                }
+
+                if (IsFullyRefundedBeforePayout(
+                    charge,
+                    payout.Created))
+                {
+                    continue;
                 }
 
                 result.Add(new StripeBalanceTransaction(
@@ -212,6 +233,26 @@ namespace GamMaSite.Services
             }
 
             return result;
+        }
+
+        private static bool IsFullyRefundedBeforePayout(
+            Charge charge,
+            DateTime payoutCreated)
+        {
+            if (charge == null || charge.Amount <= 0 || charge.Refunds?.Data == null)
+            {
+                return false;
+            }
+
+            var refundedAmount = charge.Refunds.Data
+                .Where(refund =>
+                    refund != null &&
+                    string.Equals(refund.Status, "succeeded", StringComparison.OrdinalIgnoreCase) &&
+                    refund.Created != default &&
+                    refund.Created <= payoutCreated)
+                .Sum(refund => refund.Amount);
+
+            return refundedAmount >= charge.Amount;
         }
 
         public async Task<Product> GetProductAsync(string id)
