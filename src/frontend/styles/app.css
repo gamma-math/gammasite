@@ -3756,11 +3756,6 @@ img {
   font-weight: 800;
 }
 
-.account-finance-source.is-mobilepay {
-  background: rgba(31, 157, 104, 0.12);
-  color: #08775a;
-}
-
 @media (max-width: 620px) {
   .account-finance-last-updated {
     text-align: left;
