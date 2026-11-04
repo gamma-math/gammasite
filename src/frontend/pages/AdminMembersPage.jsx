@@ -55,7 +55,7 @@ export function AdminMembersPage({ isAdmin }) {
     });
   }
 
-  const filtered = useFilteredMembers(members, search, ["name", "occupation", "email", "phoneNumber", "status", "membershipPaidAt", "createdAt", "hasActiveSubscription"]);
+  const filtered = useFilteredMembers(members, search, ["id", "name", "occupation", "email", "phoneNumber", "status", "membershipPaidAt", "createdAt", "hasActiveSubscription"]);
   const sorted = useSortedMembers(filtered, sort);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
 
