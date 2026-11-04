@@ -443,6 +443,7 @@ namespace GamMaSite.Services
                 {
                     Payment = new InvoicePaymentPaymentOptions
                     {
+                        Type = "payment_intent",
                         PaymentIntent = paymentIntentId
                     },
                     Limit = 10
