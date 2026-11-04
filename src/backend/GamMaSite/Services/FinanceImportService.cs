@@ -435,10 +435,13 @@ namespace GamMaSite.Services
                         END AS text,
                         CASE WHEN m.id IS NULL THEN b.amount ELSE m.amount END AS amount,
                         b.id AS bank_account_key,
-                        m.id AS mp_key
+                        m.id AS mp_key,
+                        CASE WHEN m.id IS NULL THEN NULL ELSE NULLIF(TRIM(lookup.user_id), '') END AS user_id
                     FROM public.bank_account b
                     LEFT JOIN public.mobilepay m
                       ON NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
+                    LEFT JOIN public.mobilepay_reference_lookup lookup
+                      ON lookup.merchant_reference = NULLIF(TRIM(m.merchant_reference), '')
                     WHERE b.is_manual = false
                       AND (m.id IS NOT NULL OR NOT EXISTS (
                           SELECT 1
@@ -458,8 +461,8 @@ namespace GamMaSite.Services
                       ))
                 )
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, created_at, updated_at)
-                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, created_at, updated_at)
+                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM derived
                 ON CONFLICT (id) DO NOTHING
                 RETURNING id;", connection, transaction))
@@ -471,6 +474,24 @@ namespace GamMaSite.Services
                     if (reader.GetString(0).StartsWith("MP-", StringComparison.Ordinal)) result.MobilePayPostings++;
                     else result.BankPostings++;
                 }
+            }
+
+            // A MobilePay reference may have been enriched after the original
+            // derived posting was created. Fill the user ID without overwriting
+            // an existing manual assignment.
+            await using (var updateMobilePayUsers = new NpgsqlCommand(@"
+                UPDATE public.posteringer p
+                SET user_id = lookup.user_id,
+                    updated_at = CURRENT_TIMESTAMP
+                FROM public.mobilepay m
+                JOIN public.mobilepay_reference_lookup lookup
+                  ON lookup.merchant_reference = NULLIF(TRIM(m.merchant_reference), '')
+                WHERE p.id = CONCAT('MP-', m.id::text)
+                  AND p.mp_key = m.id
+                  AND p.user_id IS NULL
+                  AND NULLIF(TRIM(lookup.user_id), '') IS NOT NULL;", connection, transaction))
+            {
+                await updateMobilePayUsers.ExecuteNonQueryAsync(cancellationToken);
             }
 
             // If a later MobilePay import matches an earlier bank import, remove the
