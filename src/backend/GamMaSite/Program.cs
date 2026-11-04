@@ -113,7 +113,6 @@ builder.Services.AddScoped<IContentMediaService, ContentMediaService>();
 builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ISystemEmailTemplateService, SystemEmailTemplateService>();
-builder.Services.AddScoped<IReceiptPdfService, PlaywrightReceiptPdfService>();
 builder.Services.AddScoped<FinanceReportService>();
 builder.Services.AddScoped<IFinanceMobilePayReferenceService, FinanceMobilePayReferenceService>();
 builder.Services.AddScoped<FinanceImportService>();

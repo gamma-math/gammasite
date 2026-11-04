@@ -154,20 +154,6 @@ jobs:
           path: .\TestResults
       - name: Restore NuGet packages
         run: dotnet restore -r $env:RUNTIME $env:CS_PROJ
-      - name: Install Playwright Chromium browser
-        shell: pwsh
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: '0'
-        run: |
-          dotnet build $env:CS_PROJ --no-restore --runtime $env:RUNTIME --configuration $env:CONFIGURATION --self-contained true
-          $playwrightScript = Join-Path $env:GITHUB_WORKSPACE 'src\backend\GamMaSite\bin\Release\net10.0\win-x86\playwright.ps1'
-          if (-not (Test-Path -LiteralPath $playwrightScript)) {
-            throw "Playwright install script was not generated: $playwrightScript"
-          }
-          & $playwrightScript install chromium
-          if ($LASTEXITCODE -ne 0) {
-            throw "Playwright Chromium installation failed with exit code $LASTEXITCODE"
-          }
       - name: Build and release app
         run: >
           dotnet msbuild $env:CS_PROJ

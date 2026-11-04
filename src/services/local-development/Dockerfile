@@ -71,21 +71,13 @@ RUN dotnet publish src/backend/GamMaSite/GamMaSite.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates curl gnupg wget \
-    && wget --quiet --output-document=- https://dl.google.com/linux/linux_signing_key.pub \
-        | gpg --dearmor --output /usr/share/keyrings/google-chrome.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
-        > /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install --yes --no-install-recommends google-chrome-stable \
+    && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=backend-build /app/publish .
 
 ENV ASPNETCORE_URLS=http://+:8080
-ENV Pdf__BaseUrl=http://127.0.0.1:8080
-ENV Pdf__ChromiumExecutablePath=/usr/bin/google-chrome
 EXPOSE 8080
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=12 \
