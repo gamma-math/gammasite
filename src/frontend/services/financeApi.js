@@ -56,7 +56,7 @@ export const financeApi = {
     const url = `/api/finance/postings/${encodeURIComponent(postingId)}/receipt`;
     const previewWindow = window.open(url, "_blank");
     if (!previewWindow) {
-      throw new Error("Kvitteringspreviewet kunne ikke åbnes. Tillad pop op-vinduer, og prøv igen.");
+      throw new Error("Kvitteringen kunne ikke åbnes. Tillad pop op-vinduer, og prøv igen.");
     }
   },
   adminOverview: async (year) => {

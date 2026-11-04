@@ -25,17 +25,20 @@ namespace GamMaSite.Controllers
         private readonly FinanceImportService _financeImportService;
         private readonly ApplicationDbContext _db;
         private readonly IEmailTemplateService _emailTemplateService;
+        private readonly IReceiptPdfService _receiptPdfService;
 
         public ApiFinanceController(
             FinanceReportService financeReportService,
             FinanceImportService financeImportService,
             ApplicationDbContext db,
-            IEmailTemplateService emailTemplateService)
+            IEmailTemplateService emailTemplateService,
+            IReceiptPdfService receiptPdfService)
         {
             _financeReportService = financeReportService;
             _financeImportService = financeImportService;
             _db = db;
             _emailTemplateService = emailTemplateService;
+            _receiptPdfService = receiptPdfService;
         }
 
         [HttpGet("overview")]
@@ -107,7 +110,8 @@ namespace GamMaSite.Controllers
                 ["Amount"] = displayAmount.ToString("N2", CultureInfo.GetCultureInfo("da-DK")) + " kr.",
                 ["TransactionType"] = isPayment ? "Betaling" : "Refusion",
                 ["CompanyName"] = "Alumneforeningen GamMa",
-                ["CompanyCvr"] = "34637768"
+                ["CompanyCvr"] = "34637768",
+                ["PdfUrl"] = $"/api/finance/postings/{Uri.EscapeDataString(posting.Id)}/receipt/pdf"
             };
             var html = await _emailTemplateService.RenderActiveHtmlAsync(templateType, values);
             if (html == null)
@@ -116,6 +120,64 @@ namespace GamMaSite.Controllers
             }
 
             return Content(html, "text/html; charset=utf-8");
+        }
+
+        [HttpGet("postings/{id}/receipt/pdf")]
+        public async Task<IActionResult> DownloadPostingReceipt(string id, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _db.Users.AsNoTracking().SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var posting = await _financeReportService.GetUserPostingReceiptAsync(userId, id, cancellationToken);
+            if (posting == null)
+            {
+                return NotFound();
+            }
+
+            var isPayment = posting.Amount < 0;
+            var displayAmount = isPayment ? Math.Abs(posting.Amount) : -Math.Abs(posting.Amount);
+            var templateType = isPayment
+                ? SystemEmailTemplateService.FinancePaymentReceipt
+                : SystemEmailTemplateService.FinanceRefundReceipt;
+            var values = new Dictionary<string, string>
+            {
+                ["UserId"] = user.Id,
+                ["UserName"] = user.Navn ?? "",
+                ["UserEmail"] = user.Email ?? "",
+                ["PostingId"] = posting.Id,
+                ["Date"] = posting.Date,
+                ["Product"] = posting.Product,
+                ["PaymentMethod"] = posting.PaymentMethod,
+                ["Amount"] = displayAmount.ToString("N2", CultureInfo.GetCultureInfo("da-DK")) + " kr.",
+                ["TransactionType"] = isPayment ? "Betaling" : "Refusion",
+                ["CompanyName"] = "Alumneforeningen GamMa",
+                ["CompanyCvr"] = "34637768",
+                ["PdfUrl"] = $"/api/finance/postings/{Uri.EscapeDataString(posting.Id)}/receipt/pdf"
+            };
+            var html = await _emailTemplateService.RenderActiveHtmlAsync(templateType, values);
+            if (html == null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Kvitteringsskabelonen mangler eller er inaktiv." });
+            }
+
+            try
+            {
+                var pdf = await _receiptPdfService.RenderAsync(html, cancellationToken);
+                return File(pdf, "application/pdf", $"GamMa-kvittering-{posting.Id}.pdf");
+            }
+            catch (InvalidOperationException exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = exception.Message });
+            }
         }
 
         [HttpGet("admin/overview")]

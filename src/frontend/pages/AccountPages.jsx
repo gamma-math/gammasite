@@ -724,10 +724,10 @@ function FinancePostingsPanel({ setLastUpdated }) {
                     type="button"
                     onClick={() => openReceiptPreview(posting.id)}
                     disabled={previewingReceiptId === posting.id}
-                    title="Forhåndsvis kvittering"
+                    title="Åbn kvittering"
                   >
                     <Eye size={15} aria-hidden="true" />
-                    <span>{previewingReceiptId === posting.id ? "Åbner..." : "Forhåndsvis"}</span>
+                    <span>{previewingReceiptId === posting.id ? "Åbner..." : "Kvittering"}</span>
                   </button>
                 </td>
               </tr>
