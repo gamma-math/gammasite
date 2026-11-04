@@ -353,7 +353,7 @@ namespace GamMaSite.Services
             foreach (var row in rows)
             {
                 var sql = overwriteExisting ? @"
-                    INSERT INTO public.stripe
+                    INSERT INTO public.stripe AS existing
                         (balance_transaction_id, payout_id, date, available_date, payout_date,
                          amount, fee, net, currency, transaction_type, reporting_category,
                          source_id, payment_intent_id, description, user_id, payer_name, receipt_url,
@@ -365,22 +365,22 @@ namespace GamMaSite.Services
                          false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT (balance_transaction_id) WHERE is_manual = false
                     DO UPDATE SET
-                        payout_id = EXCLUDED.payout_id,
-                        date = EXCLUDED.date,
-                        available_date = EXCLUDED.available_date,
-                        payout_date = EXCLUDED.payout_date,
-                        amount = EXCLUDED.amount,
-                        fee = EXCLUDED.fee,
-                        net = EXCLUDED.net,
-                        currency = EXCLUDED.currency,
-                        transaction_type = EXCLUDED.transaction_type,
-                        reporting_category = EXCLUDED.reporting_category,
-                        source_id = EXCLUDED.source_id,
-                        payment_intent_id = EXCLUDED.payment_intent_id,
-                        description = EXCLUDED.description,
-                        user_id = EXCLUDED.user_id,
-                        payer_name = EXCLUDED.payer_name,
-                        receipt_url = EXCLUDED.receipt_url,
+                        payout_id = COALESCE(EXCLUDED.payout_id, existing.payout_id),
+                        date = COALESCE(EXCLUDED.date, existing.date),
+                        available_date = COALESCE(EXCLUDED.available_date, existing.available_date),
+                        payout_date = COALESCE(EXCLUDED.payout_date, existing.payout_date),
+                        amount = COALESCE(EXCLUDED.amount, existing.amount),
+                        fee = COALESCE(EXCLUDED.fee, existing.fee),
+                        net = COALESCE(EXCLUDED.net, existing.net),
+                        currency = COALESCE(EXCLUDED.currency, existing.currency),
+                        transaction_type = COALESCE(EXCLUDED.transaction_type, existing.transaction_type),
+                        reporting_category = COALESCE(EXCLUDED.reporting_category, existing.reporting_category),
+                        source_id = COALESCE(EXCLUDED.source_id, existing.source_id),
+                        payment_intent_id = COALESCE(EXCLUDED.payment_intent_id, existing.payment_intent_id),
+                        description = COALESCE(EXCLUDED.description, existing.description),
+                        user_id = COALESCE(EXCLUDED.user_id, existing.user_id),
+                        payer_name = COALESCE(EXCLUDED.payer_name, existing.payer_name),
+                        receipt_url = COALESCE(EXCLUDED.receipt_url, existing.receipt_url),
                         updated_at = CURRENT_TIMESTAMP
                     RETURNING (xmax = 0);" : @"
                     INSERT INTO public.stripe
