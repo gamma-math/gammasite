@@ -415,16 +415,30 @@ namespace GamMaSite.Controllers
 
         [HttpPost("admin/import/stripe")]
         [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
-        public async Task<IActionResult> ImportStripeData(CancellationToken cancellationToken)
+        public async Task<IActionResult> ImportStripeData(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            CancellationToken cancellationToken)
         {
             if (_stripeService == null)
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Stripe-servicen er ikke konfigureret." });
             }
 
+            var currentYear = DateTime.Today.Year;
+            var createdFrom = (startDate ?? new DateTime(currentYear, 1, 1)).Date;
+            var createdTo = (endDate ?? new DateTime(currentYear, 12, 31)).Date;
+            if (createdTo < createdFrom)
+            {
+                return BadRequest(new { error = "Slutdatoen skal være den samme som eller efter startdatoen." });
+            }
+
             try
             {
-                var rows = await _stripeService.GetAvailablePaymentBalanceTransactionsAsync(cancellationToken);
+                var rows = await _stripeService.GetAvailablePaymentBalanceTransactionsAsync(
+                    DateTime.SpecifyKind(createdFrom, DateTimeKind.Utc),
+                    DateTime.SpecifyKind(createdTo.AddDays(1), DateTimeKind.Utc),
+                    cancellationToken);
                 var result = await _financeImportService.ImportStripeTransactionsFromApiAsync(rows, cancellationToken);
                 return Ok(result);
             }

@@ -24,6 +24,8 @@ namespace GamMaSite.Services
             CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            DateTime createdFrom,
+            DateTime createdToExclusive,
             CancellationToken cancellationToken = default);
 
         Task<Product[]> GetAllProductsAsync();
@@ -192,6 +194,14 @@ namespace GamMaSite.Services
                             description = MetadataValue(paymentIntent?.Metadata, "ProductName")
                                 ?? paymentIntent?.Description
                                 ?? description;
+                            if (string.IsNullOrWhiteSpace(userId))
+                            {
+                                var recurringMetadata = await ResolveRecurringPaymentMetadataAsync(
+                                    paymentIntentId,
+                                    cancellationToken);
+                                userId = recurringMetadata.UserId ?? string.Empty;
+                                description = recurringMetadata.ProductName ?? description;
+                            }
                             if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
                             {
                                 charge = await new ChargeService().GetAsync(
@@ -239,13 +249,20 @@ namespace GamMaSite.Services
         }
 
         public async Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            DateTime createdFrom,
+            DateTime createdToExclusive,
             CancellationToken cancellationToken = default)
         {
             var balanceTransactions = new BalanceTransactionService();
             var transactions = new List<BalanceTransaction>();
             var transactionOptions = new BalanceTransactionListOptions
             {
-                Limit = 100
+                Limit = 100,
+                Created = new DateRangeOptions
+                {
+                    GreaterThanOrEqual = createdFrom,
+                    LessThan = createdToExclusive
+                }
             };
 
             await foreach (var transaction in balanceTransactions.ListAutoPagingAsync(transactionOptions).WithCancellation(cancellationToken))
@@ -273,7 +290,15 @@ namespace GamMaSite.Services
                 .ToHashSet(StringComparer.Ordinal);
             var payoutByTransactionId = new Dictionary<string, Payout>(StringComparer.Ordinal);
             var payoutService = new PayoutService();
-            var payoutOptions = new PayoutListOptions { Limit = 100 };
+            var payoutOptions = new PayoutListOptions
+            {
+                Limit = 100,
+                Created = new DateRangeOptions
+                {
+                    GreaterThanOrEqual = createdFrom,
+                    LessThan = createdToExclusive
+                }
+            };
 
             await foreach (var payout in payoutService.ListAutoPagingAsync(payoutOptions).WithCancellation(cancellationToken))
             {
@@ -353,6 +378,14 @@ namespace GamMaSite.Services
                         description = MetadataValue(paymentIntent?.Metadata, "ProductName")
                             ?? paymentIntent?.Description
                             ?? description;
+                        if (string.IsNullOrWhiteSpace(userId))
+                        {
+                            var recurringMetadata = await ResolveRecurringPaymentMetadataAsync(
+                                paymentIntentId,
+                                cancellationToken);
+                            userId = recurringMetadata.UserId ?? string.Empty;
+                            description = recurringMetadata.ProductName ?? description;
+                        }
                         if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
                         {
                             charge = await new ChargeService().GetAsync(
@@ -392,6 +425,53 @@ namespace GamMaSite.Services
                 userId,
                 string.Empty,
                 receiptUrl);
+        }
+
+        private sealed record RecurringPaymentMetadata(string UserId, string ProductName);
+
+        private static async Task<RecurringPaymentMetadata> ResolveRecurringPaymentMetadataAsync(
+            string paymentIntentId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+            {
+                return new RecurringPaymentMetadata(null, null);
+            }
+
+            var invoicePayments = await new InvoicePaymentService().ListAsync(
+                new InvoicePaymentListOptions
+                {
+                    Payment = new InvoicePaymentPaymentOptions
+                    {
+                        PaymentIntent = paymentIntentId
+                    },
+                    Limit = 10
+                },
+                cancellationToken: cancellationToken);
+            var invoicePayment = invoicePayments?.Data?.FirstOrDefault(payment =>
+                !string.IsNullOrWhiteSpace(payment?.InvoiceId));
+            if (invoicePayment == null)
+            {
+                return new RecurringPaymentMetadata(null, null);
+            }
+
+            var invoice = await new InvoiceService().GetAsync(
+                invoicePayment.InvoiceId,
+                cancellationToken: cancellationToken);
+            var subscriptionDetails = invoice?.Parent?.SubscriptionDetails;
+            var subscription = subscriptionDetails?.Subscription;
+            if (subscription == null && !string.IsNullOrWhiteSpace(subscriptionDetails?.SubscriptionId))
+            {
+                subscription = await new SubscriptionService().GetAsync(
+                    subscriptionDetails.SubscriptionId,
+                    cancellationToken: cancellationToken);
+            }
+
+            return new RecurringPaymentMetadata(
+                MetadataValue(subscription?.Metadata, "GamMaUserId")
+                    ?? MetadataValue(subscriptionDetails?.Metadata, "GamMaUserId"),
+                MetadataValue(subscription?.Metadata, "ProductName")
+                    ?? MetadataValue(subscriptionDetails?.Metadata, "ProductName"));
         }
 
         private static bool IsFullyRefundedBeforePayout(

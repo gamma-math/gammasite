@@ -51,6 +51,9 @@ const filters = (s) => {
   };
 };
 
+const stripeImportDate = (year, month, day) =>
+  `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
 function usePostingYears(isAdmin) {
   const [years, setYears] = useState([]);
 
@@ -3511,6 +3514,14 @@ export function FinanceAdminImportPage({ isAdmin }) {
   const [result, setResult] = useState(null);
   const [stripeImportResult, setStripeImportResult] = useState(null);
   const [stripeError, setStripeError] = useState("");
+  const [stripeStartDate, setStripeStartDate] = useState(() => {
+    const year = new Date().getFullYear();
+    return stripeImportDate(year, 1, 1);
+  });
+  const [stripeEndDate, setStripeEndDate] = useState(() => {
+    const year = new Date().getFullYear();
+    return stripeImportDate(year, 12, 31);
+  });
   const [postingSyncResult, setPostingSyncResult] = useState(null);
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -3611,12 +3622,26 @@ export function FinanceAdminImportPage({ isAdmin }) {
   };
 
   const importStripeData = async () => {
+    if (!stripeStartDate || !stripeEndDate) {
+      setStripeError("V&aelig;lg b&aring;de en startdato og en slutdato.");
+      return;
+    }
+    if (stripeEndDate < stripeStartDate) {
+      setStripeError("Slutdatoen skal v&aelig;re den samme som eller efter startdatoen.");
+      return;
+    }
+
     setIsImporting(true);
     setError("");
     setStripeError("");
     setStripeImportResult(null);
     try {
-      setStripeImportResult(await financeApi.importStripeData());
+      setStripeImportResult(
+        await financeApi.importStripeData({
+          startDate: stripeStartDate,
+          endDate: stripeEndDate,
+        }),
+      );
       await loadHistory();
     } catch (stripeError) {
       setStripeError(stripeError.message);
@@ -3810,6 +3835,24 @@ export function FinanceAdminImportPage({ isAdmin }) {
             <p>
               Eksisterende transaktioner identificeres med Stripe-transaktions-ID. Webhook-data har forrang og kan senere berige r&aelig;kken.
             </p>
+            <div className="finance-import-date-range">
+              <label>
+                <span>Fra</span>
+                <input
+                  type="date"
+                  value={stripeStartDate}
+                  onChange={(event) => setStripeStartDate(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Til</span>
+                <input
+                  type="date"
+                  value={stripeEndDate}
+                  onChange={(event) => setStripeEndDate(event.target.value)}
+                />
+              </label>
+            </div>
             <div className="finance-import-card-actions">
               <button
                 className="profile-button finance-import-file-button"

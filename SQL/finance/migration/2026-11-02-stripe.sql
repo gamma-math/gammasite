@@ -58,4 +58,10 @@ BEGIN
     END IF;
 END $$;
 
+-- Keep the existing finance roles in sync with the new source table.
+GRANT USAGE ON SCHEMA public TO gamma_finance_read, gamma_finance_write;
+GRANT SELECT ON TABLE public.stripe TO gamma_finance_read;
+GRANT INSERT, UPDATE, DELETE ON TABLE public.stripe TO gamma_finance_write;
+GRANT USAGE, SELECT ON SEQUENCE public.stripe_id_seq TO gamma_finance_read, gamma_finance_write;
+
 COMMIT;
