@@ -253,7 +253,7 @@ namespace GamMaSite.Controllers
 
             await HandleSubscriptionAsync(
                 subscription,
-                new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed),
+                new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed, false),
                 cancellationToken,
                 webhookId,
                 webhookAt);
@@ -375,7 +375,8 @@ namespace GamMaSite.Controllers
                 new SubscriptionContext(
                     userId,
                     paymentConfirmed ? session.Created.ToUniversalTime() : null,
-                    paymentConfirmed),
+                    paymentConfirmed,
+                    false),
                 cancellationToken,
                 webhookId,
                 webhookAt);
@@ -660,6 +661,7 @@ namespace GamMaSite.Controllers
             var paymentDate = context?.LastPaidAt ?? DateTime.UtcNow;
             var previousPaymentDate = record?.LastPaidAt;
             var shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                context?.SendPaymentEmail == true &&
                 (!previousPaymentDate.HasValue || previousPaymentDate.Value < paymentDate);
 
             if (record == null)
@@ -725,6 +727,7 @@ namespace GamMaSite.Controllers
 
                 previousPaymentDate = record.LastPaidAt;
                 shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                    context?.SendPaymentEmail == true &&
                     (!previousPaymentDate.HasValue || previousPaymentDate.Value < paymentDate);
                 ApplySubscriptionState(record);
                 await _db.SaveChangesAsync(cancellationToken);
@@ -745,6 +748,7 @@ namespace GamMaSite.Controllers
             }
 
             if (context?.MarkUserAsPaid == true &&
+                context?.SendPaymentEmail == true &&
                 !string.IsNullOrWhiteSpace(record.UserId) &&
                 shouldSendPaymentEmail)
             {
@@ -956,6 +960,10 @@ namespace GamMaSite.Controllers
             return metadata != null && metadata.TryGetValue(key, out var value) ? value : null;
         }
 
-        private sealed record SubscriptionContext(string UserId, DateTime? LastPaidAt, bool MarkUserAsPaid = false);
+        private sealed record SubscriptionContext(
+            string UserId,
+            DateTime? LastPaidAt,
+            bool MarkUserAsPaid = false,
+            bool SendPaymentEmail = true);
     }
 }
