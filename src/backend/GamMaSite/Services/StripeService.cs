@@ -23,6 +23,9 @@ namespace GamMaSite.Services
             string payoutId,
             CancellationToken cancellationToken = default);
 
+        Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            CancellationToken cancellationToken = default);
+
         Task<Product[]> GetAllProductsAsync();
 
         Task<Product> GetProductAsync(string id);
@@ -233,6 +236,162 @@ namespace GamMaSite.Services
             }
 
             return result;
+        }
+
+        public async Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var balanceTransactions = new BalanceTransactionService();
+            var transactions = new List<BalanceTransaction>();
+            var transactionOptions = new BalanceTransactionListOptions
+            {
+                Limit = 100
+            };
+
+            await foreach (var transaction in balanceTransactions.ListAutoPagingAsync(transactionOptions).WithCancellation(cancellationToken))
+            {
+                if (transaction != null &&
+                    !string.IsNullOrWhiteSpace(transaction.Id) &&
+                    transaction.AvailableOn != default &&
+                    string.Equals(transaction.Status, "available", StringComparison.OrdinalIgnoreCase) &&
+                    IsPaymentTransaction(transaction.Type, transaction.ReportingCategory))
+                {
+                    transactions.Add(transaction);
+                }
+            }
+
+            if (transactions.Count == 0)
+            {
+                return Array.Empty<StripeBalanceTransaction>();
+            }
+
+            // A balance transaction does not carry its payout ID when it is
+            // listed globally. Build the mapping from the payout-specific
+            // balance transaction endpoint where Stripe does expose it.
+            var transactionIds = transactions
+                .Select(transaction => transaction.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            var payoutByTransactionId = new Dictionary<string, Payout>(StringComparer.Ordinal);
+            var payoutService = new PayoutService();
+            var payoutOptions = new PayoutListOptions { Limit = 100 };
+
+            await foreach (var payout in payoutService.ListAutoPagingAsync(payoutOptions).WithCancellation(cancellationToken))
+            {
+                if (payout == null || string.IsNullOrWhiteSpace(payout.Id))
+                {
+                    continue;
+                }
+
+                var payoutTransactions = new BalanceTransactionListOptions
+                {
+                    Payout = payout.Id,
+                    Limit = 100
+                };
+                await foreach (var payoutTransaction in balanceTransactions.ListAutoPagingAsync(payoutTransactions).WithCancellation(cancellationToken))
+                {
+                    if (payoutTransaction != null && transactionIds.Contains(payoutTransaction.Id))
+                    {
+                        payoutByTransactionId[payoutTransaction.Id] = payout;
+                    }
+                }
+            }
+
+            var result = new List<StripeBalanceTransaction>(transactions.Count);
+            foreach (var transaction in transactions)
+            {
+                payoutByTransactionId.TryGetValue(transaction.Id, out var payout);
+                var mapped = await MapBalanceTransactionAsync(
+                    transaction,
+                    payout?.Id,
+                    payout?.Created,
+                    transaction.AvailableOn,
+                    cancellationToken);
+                if (mapped != null)
+                {
+                    result.Add(mapped);
+                }
+            }
+
+            return result;
+        }
+
+        private static async Task<StripeBalanceTransaction> MapBalanceTransactionAsync(
+            BalanceTransaction transaction,
+            string payoutId,
+            DateTime? payoutCreated,
+            DateTime payoutDate,
+            CancellationToken cancellationToken)
+        {
+            var paymentIntentId = string.Empty;
+            var userId = string.Empty;
+            var description = transaction.Description;
+            var receiptUrl = string.Empty;
+            Charge charge = null;
+
+            if (!string.IsNullOrWhiteSpace(transaction.SourceId))
+            {
+                try
+                {
+                    if (transaction.SourceId.StartsWith("ch_", StringComparison.Ordinal))
+                    {
+                        charge = await new ChargeService().GetAsync(transaction.SourceId, cancellationToken: cancellationToken);
+                        paymentIntentId = charge?.PaymentIntentId ?? string.Empty;
+                        description = charge?.Description ?? description;
+                        receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                    }
+                    else if (transaction.SourceId.StartsWith("pi_", StringComparison.Ordinal))
+                    {
+                        paymentIntentId = transaction.SourceId;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(paymentIntentId))
+                    {
+                        var paymentIntent = await new PaymentIntentService().GetAsync(
+                            paymentIntentId,
+                            cancellationToken: cancellationToken);
+                        userId = MetadataValue(paymentIntent?.Metadata, "GamMaUserId") ?? string.Empty;
+                        description = MetadataValue(paymentIntent?.Metadata, "ProductName")
+                            ?? paymentIntent?.Description
+                            ?? description;
+                        if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
+                        {
+                            charge = await new ChargeService().GetAsync(
+                                paymentIntent.LatestChargeId,
+                                cancellationToken: cancellationToken);
+                            receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                        }
+                    }
+                }
+                catch (StripeException)
+                {
+                    // The balance transaction remains useful even if its source
+                    // object cannot be expanded with the current API key.
+                }
+            }
+
+            if (payoutCreated.HasValue && IsFullyRefundedBeforePayout(charge, payoutCreated.Value))
+            {
+                return null;
+            }
+
+            return new StripeBalanceTransaction(
+                transaction.Id,
+                payoutId,
+                transaction.Created,
+                transaction.AvailableOn,
+                payoutDate,
+                ToMajorAmount(transaction.Amount),
+                ToMajorAmount(transaction.Fee),
+                ToMajorAmount(transaction.Net),
+                transaction.Currency,
+                transaction.Type,
+                transaction.ReportingCategory,
+                transaction.SourceId,
+                paymentIntentId,
+                description,
+                userId,
+                string.Empty,
+                receiptUrl);
         }
 
         private static bool IsFullyRefundedBeforePayout(

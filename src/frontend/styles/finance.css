@@ -1286,6 +1286,12 @@
 
 .finance-import-file-validation-error {
   color: #b42318;
+  font-weight: 700;
+}
+
+.finance-import-file-validation-success {
+  color: #087f3f;
+  font-weight: 700;
 }
 
 .finance-import-sync-option {

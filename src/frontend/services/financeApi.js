@@ -114,6 +114,18 @@ export const financeApi = {
     if (!response.ok) throw new Error("Importhistorikken kunne ikke hentes.");
     return response.json();
   },
+  importStripeData: async () => {
+    const response = await financeFetch("/api/finance/admin/import/stripe", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Stripe-data kunne ikke hentes.");
+    return payload;
+  },
   generateImportPostings: async () => {
     const response = await financeFetch("/api/finance/admin/import/postings", {
       method: "POST",

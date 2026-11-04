@@ -133,6 +133,15 @@ docker compose logs -f mysql finance-postgres</code></pre>
       </section>
 
       <section class="section">
+        <h2>7. K&#248;r frontend- og backend-tests</h2>
+        <p>Frontend- og backend-tests kan k&#248;res som separate Docker-services. De starter ikke ved almindelig <code>docker compose up</code> og kr&#230;ver ikke Stripe eller de lokale databaser.</p>
+        <p>K&#248;r frontend-tests:</p>
+        <pre><code>docker compose --profile tests run --rm --build frontend-tests</code></pre>
+        <p>K&#248;r backend-tests:</p>
+        <pre><code>docker compose --profile tests run --rm --build backend-tests</code></pre>
+      </section>
+
+      <section class="section">
         <h2>Lokale adresser</h2>
         <table class="table">
           <thead><tr><th>Service</th><th>Adresse</th></tr></thead>

@@ -229,7 +229,7 @@ namespace GamMaSite.Services
             await connection.OpenAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-            var result = await UpsertStripeRowsAsync(connection, transaction, rows, cancellationToken);
+            var result = await UpsertStripeRowsAsync(connection, transaction, rows, true, cancellationToken);
             await SaveHistoryAsync(
                 connection,
                 transaction,
@@ -237,6 +237,33 @@ namespace GamMaSite.Services
                 rows[0].PayoutId,
                 result,
                 "Stripe balance transactions imported from payout webhook.",
+                cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+
+        public async Task<FinanceImportBatchDto> ImportStripeTransactionsFromApiAsync(
+            IReadOnlyList<StripeBalanceTransaction> rows,
+            CancellationToken cancellationToken)
+        {
+            if (rows == null || rows.Count == 0)
+            {
+                return new FinanceImportBatchDto();
+            }
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+            var result = await UpsertStripeRowsAsync(connection, transaction, rows, false, cancellationToken);
+            await SaveHistoryAsync(
+                connection,
+                transaction,
+                "stripe_api",
+                "Stripe API",
+                result,
+                "Stripe balance transactions loaded from the Stripe API.",
                 cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
@@ -303,7 +330,14 @@ namespace GamMaSite.Services
                 command.Parameters.Add("merchant_reference", NpgsqlDbType.Text).Value = DbText(row.MerchantReference);
                 command.Parameters.Add("source_product", NpgsqlDbType.Text).Value = DbText(row.SourceProduct);
                 var inserted = (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
-                if (inserted) result.RowsInserted++; else result.RowsUpdated++;
+                if (inserted)
+                {
+                    result.RowsInserted++;
+                }
+                else
+                {
+                    result.RowsUpdated++;
+                }
             }
             return result;
         }
@@ -312,12 +346,13 @@ namespace GamMaSite.Services
             NpgsqlConnection connection,
             NpgsqlTransaction transaction,
             IReadOnlyList<StripeBalanceTransaction> rows,
+            bool overwriteExisting,
             CancellationToken cancellationToken)
         {
             var result = new FinanceImportBatchDto { RowsProcessed = rows.Count };
             foreach (var row in rows)
             {
-                await using var command = new NpgsqlCommand(@"
+                var sql = overwriteExisting ? @"
                     INSERT INTO public.stripe
                         (balance_transaction_id, payout_id, date, available_date, payout_date,
                          amount, fee, net, currency, transaction_type, reporting_category,
@@ -347,7 +382,26 @@ namespace GamMaSite.Services
                         payer_name = EXCLUDED.payer_name,
                         receipt_url = EXCLUDED.receipt_url,
                         updated_at = CURRENT_TIMESTAMP
-                    RETURNING (xmax = 0);", connection, transaction);
+                    RETURNING (xmax = 0);" : @"
+                    INSERT INTO public.stripe
+                        (balance_transaction_id, payout_id, date, available_date, payout_date,
+                         amount, fee, net, currency, transaction_type, reporting_category,
+                         source_id, payment_intent_id, description, user_id, payer_name, receipt_url,
+                         is_manual, created_at, updated_at)
+                    SELECT
+                        @balance_transaction_id, @payout_id, @date, @available_date, @payout_date,
+                        @amount, @fee, @net, @currency, @transaction_type, @reporting_category,
+                        @source_id, @payment_intent_id, @description, @user_id, @payer_name, @receipt_url,
+                        false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM public.stripe existing
+                        WHERE existing.balance_transaction_id = @balance_transaction_id
+                    )
+                    ON CONFLICT (balance_transaction_id) WHERE is_manual = false DO NOTHING
+                    RETURNING (xmax = 0);";
+
+                await using var command = new NpgsqlCommand(sql, connection, transaction);
                 command.Parameters.Add("balance_transaction_id", NpgsqlDbType.Text).Value = row.BalanceTransactionId;
                 command.Parameters.Add("payout_id", NpgsqlDbType.Text).Value = DbText(row.PayoutId);
                 command.Parameters.Add("date", NpgsqlDbType.Date).Value = row.Date.Date;
@@ -366,7 +420,14 @@ namespace GamMaSite.Services
                 command.Parameters.Add("payer_name", NpgsqlDbType.Text).Value = DbText(row.PayerName);
                 command.Parameters.Add("receipt_url", NpgsqlDbType.Text).Value = DbText(row.ReceiptUrl);
                 var inserted = (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
-                if (inserted) result.RowsInserted++; else result.RowsUpdated++;
+                if (inserted)
+                {
+                    result.RowsInserted++;
+                }
+                else if (overwriteExisting)
+                {
+                    result.RowsUpdated++;
+                }
             }
             return result;
         }

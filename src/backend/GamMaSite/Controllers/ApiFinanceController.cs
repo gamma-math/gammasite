@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
 
 namespace GamMaSite.Controllers
 {
@@ -26,19 +27,22 @@ namespace GamMaSite.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IReceiptPdfService _receiptPdfService;
+        private readonly IStripeService _stripeService;
 
         public ApiFinanceController(
             FinanceReportService financeReportService,
             FinanceImportService financeImportService,
             ApplicationDbContext db,
             IEmailTemplateService emailTemplateService,
-            IReceiptPdfService receiptPdfService)
+            IReceiptPdfService receiptPdfService,
+            IStripeService stripeService = null)
         {
             _financeReportService = financeReportService;
             _financeImportService = financeImportService;
             _db = db;
             _emailTemplateService = emailTemplateService;
             _receiptPdfService = receiptPdfService;
+            _stripeService = stripeService;
         }
 
         [HttpGet("overview")]
@@ -407,6 +411,31 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GenerateImportPostings(CancellationToken cancellationToken)
         {
             return Ok(await _financeImportService.GenerateDerivedPostingsAsync(cancellationToken));
+        }
+
+        [HttpPost("admin/import/stripe")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
+        public async Task<IActionResult> ImportStripeData(CancellationToken cancellationToken)
+        {
+            if (_stripeService == null)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Stripe-servicen er ikke konfigureret." });
+            }
+
+            try
+            {
+                var rows = await _stripeService.GetAvailablePaymentBalanceTransactionsAsync(cancellationToken);
+                var result = await _financeImportService.ImportStripeTransactionsFromApiAsync(rows, cancellationToken);
+                return Ok(result);
+            }
+            catch (StripeException exception)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    error = "Stripe-data kunne ikke hentes.",
+                    detail = exception.StripeError?.Message ?? exception.Message
+                });
+            }
         }
 
         [HttpGet("admin/import/templates/{source}")]

@@ -112,6 +112,30 @@ services:
       - ../../..:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
 
+  frontend-tests:
+    profiles: ["tests"]
+    image: gammasite-local-development-frontend-tests:latest
+    build:
+      context: ../../..
+      dockerfile: src/services/local-development/Dockerfile
+      target: frontend-tests
+    working_dir: /workspace/src/frontend
+    command: ["npm", "test"]
+    environment:
+      NODE_ENV: test
+
+  backend-tests:
+    profiles: ["tests"]
+    image: gammasite-local-development-backend-tests:latest
+    build:
+      context: ../../..
+      dockerfile: src/services/local-development/Dockerfile
+      target: backend-tests
+    working_dir: /src
+    command: ["dotnet", "test", "src/test/GamMaSite.Tests/GamMaSite.Tests.csproj", "--no-restore"]
+    environment:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
   seed:
     profiles: ["tools"]
     image: gammasite-local-development-seed:latest

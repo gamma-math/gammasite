@@ -194,6 +194,29 @@ docker compose --profile tools run --rm --build tools scripts/validate.sh
 docker compose logs -f app
 ```
 
+### Test frontend og backend
+
+Testene kan køres som separate one-shot Docker-services. De starter ikke ved almindelig `docker compose up` og kræver ikke, at Stripe, Vipps eller de lokale databaser kører.
+
+Kør frontend-tests:
+
+```powershell
+docker compose --profile tests run --rm --build frontend-tests
+```
+
+Kør backend-tests:
+
+```powershell
+docker compose --profile tests run --rm --build backend-tests
+```
+
+Kør begge testpakker efter hinanden:
+
+```powershell
+docker compose --profile tests run --rm --build frontend-tests
+docker compose --profile tests run --rm --build backend-tests
+```
+
 ### 4. Andre almindelige situationer
 
 Start eksisterende containere igen uden rebuild:

@@ -3509,6 +3509,8 @@ export function FinanceAdminImportPage({ isAdmin }) {
   const [historyPageSize, setHistoryPageSize] = useState(10);
   const [historyPage, setHistoryPage] = useState(1);
   const [result, setResult] = useState(null);
+  const [stripeImportResult, setStripeImportResult] = useState(null);
+  const [stripeError, setStripeError] = useState("");
   const [postingSyncResult, setPostingSyncResult] = useState(null);
   const [error, setError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -3557,7 +3559,6 @@ export function FinanceAdminImportPage({ isAdmin }) {
         ...current,
         [kind]: { status: "invalid", error: validationError.message },
       }));
-      setError(validationError.message);
     }
   };
 
@@ -3573,7 +3574,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
     }
     const invalidValidation = Object.values(fileValidation).find((item) => item.status === "invalid");
     if (invalidValidation) {
-      setError(invalidValidation.error);
+      setError("");
       return;
     }
     setIsImporting(true);
@@ -3606,6 +3607,21 @@ export function FinanceAdminImportPage({ isAdmin }) {
       setError(postingError.message);
     } finally {
       setIsGeneratingPostings(false);
+    }
+  };
+
+  const importStripeData = async () => {
+    setIsImporting(true);
+    setError("");
+    setStripeError("");
+    setStripeImportResult(null);
+    try {
+      setStripeImportResult(await financeApi.importStripeData());
+      await loadHistory();
+    } catch (stripeError) {
+      setStripeError(stripeError.message);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -3674,11 +3690,12 @@ export function FinanceAdminImportPage({ isAdmin }) {
 
       <section className="finance-import-introduction">
         <p className="finance-live-kicker">S&aring;dan dannes posteringer</p>
-        <h2>Tre trin</h2>
+        <h2>Fire trin</h2>
         <ol>
-          <li>Upload CSV for bank.</li>
+          <li>Upload CSV for banken.</li>
           <li>Upload CSV for MobilePay.</li>
-          <li>V&aelig;lg, om posteringer skal dannes efter importen. Det kan ogs&aring; g&oslash;res senere.</li>
+          <li>Indlæs tilgængelige Stripe-transaktioner fra Stripe API.</li>
+          <li>Vælg, om posteringer skal dannes efter importen. Det kan også gøres senere.</li>
         </ol>
         <p>
           Rækkefølgen er MobilePay, derefter et entydigt Stripe-payout-match og til sidst bankposteringen.
@@ -3689,7 +3706,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
       <form className="finance-import-form" onSubmit={submit}>
         <section className="finance-import-upload-grid">
           <article className="finance-import-file-card">
-            <p className="finance-live-kicker">Bankkontoudtog</p>
+            <p className="finance-live-kicker">Trin 1</p>
             <h2>Bank CSV</h2>
             <p className="finance-import-fields-label">Påkrævede kolonner</p>
             <ul className="finance-import-field-list">
@@ -3735,7 +3752,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
           </article>
 
           <article className="finance-import-file-card">
-            <p className="finance-live-kicker">MobilePay-transaktioner</p>
+            <p className="finance-live-kicker">Trin 2</p>
             <h2>MobilePay CSV</h2>
             <p className="finance-import-fields-label">Påkrævede kolonner</p>
             <ul className="finance-import-field-list">
@@ -3786,8 +3803,37 @@ export function FinanceAdminImportPage({ isAdmin }) {
             )}
           </article>
 
-          <aside className="finance-import-submit-card">
+          <article className="finance-import-file-card finance-import-stripe-card">
             <p className="finance-live-kicker">Trin 3</p>
+            <h2>Stripe-betalinger</h2>
+              <p>Hent tilg&aelig;ngelige betalingstransaktioner fra Stripe API.</p>
+            <p>
+              Eksisterende transaktioner identificeres med Stripe-transaktions-ID. Webhook-data har forrang og kan senere berige r&aelig;kken.
+            </p>
+            <div className="finance-import-card-actions">
+              <button
+                className="profile-button finance-import-file-button"
+                type="button"
+                onClick={importStripeData}
+                disabled={isImporting}
+              >
+                {isImporting ? "Indlæser Stripe-data..." : "Indlæs Stripe Data"}
+              </button>
+            </div>
+            {stripeError && (
+              <p className="finance-import-file-validation finance-import-file-validation-error" role="alert">
+                {stripeError}
+              </p>
+            )}
+            {stripeImportResult && (
+              <p className="finance-import-file-validation finance-import-file-validation-success" aria-live="polite">
+                Stripe: {stripeImportResult.rowsProcessed} behandlet · {stripeImportResult.rowsInserted} nye transaktioner indlæst.
+              </p>
+            )}
+          </article>
+
+          <aside className="finance-import-submit-card">
+            <p className="finance-live-kicker">Trin 4</p>
             <h2>Importér data</h2>
             <label className="finance-import-sync-option">
               <input
@@ -3889,7 +3935,7 @@ export function FinanceAdminImportPage({ isAdmin }) {
             <tbody>
               {visibleHistory.map((item) => (
                 <tr key={item.id ?? `${item.importType}-${item.importedAt}-${item.fileName}`}>
-                  <td>{item.importType === "bank_csv" ? "Bank" : item.importType === "stripe_webhook" ? "Stripe" : "MobilePay"}</td>
+                  <td>{item.importType === "bank_csv" ? "Bank" : item.importType === "stripe_webhook" || item.importType === "stripe_api" ? "Stripe" : "MobilePay"}</td>
                   <td>{item.fileName || "—"}</td>
                   <td>{formatImportedAt(item.importedAt)}</td>
                   <td>{item.rowsProcessed}</td>
