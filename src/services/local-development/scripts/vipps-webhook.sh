@@ -150,6 +150,12 @@ fi
 ensure_local_env
 update_local_env .env VIPPS_WEBHOOK_SECRET "$webhook_secret"
 update_local_env .env WEBHOOK_ID "$webhook_id"
+
+# Compose gives exported shell variables precedence over values read from .env.
+# Keep the current shell environment in sync so the recreated app receives the
+# newly registered webhook secret instead of the stale value loaded above.
+export VIPPS_WEBHOOK_SECRET="$webhook_secret"
+
 restart_local_app
 
 echo "Vipps webhook was ${operation}ed for: $webhook_url"
