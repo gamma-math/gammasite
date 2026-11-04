@@ -126,6 +126,10 @@ export function AdminMembersPage({ isAdmin }) {
                       <td colSpan="6">
                         <dl className="menu-member-details">
                           <div>
+                            <dt>Bruger ID</dt>
+                            <dd>{member.id}</dd>
+                          </div>
+                          <div>
                             <dt>Beskæftigelse</dt>
                             <dd>{member.occupation || ""}</dd>
                           </div>
