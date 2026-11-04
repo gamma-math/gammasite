@@ -1,11 +1,13 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
 namespace GamMaSite.Services
@@ -14,13 +16,16 @@ namespace GamMaSite.Services
     {
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<PlaywrightReceiptPdfService> _logger;
 
         public PlaywrightReceiptPdfService(
             IConfiguration configuration,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            ILogger<PlaywrightReceiptPdfService> logger)
         {
             _configuration = configuration;
             _environment = environment;
+            _logger = logger;
         }
 
         public async Task<byte[]> RenderAsync(string html, CancellationToken cancellationToken)
@@ -30,57 +35,68 @@ namespace GamMaSite.Services
                 throw new ArgumentException("Receipt HTML is required.", nameof(html));
             }
 
-            var playwright = await Playwright.CreateAsync();
             try
             {
-                var launchOptions = new BrowserTypeLaunchOptions
-                {
-                    Headless = true,
-                    ExecutablePath = ResolveChromiumExecutablePath(),
-                    Args = new[] { "--no-sandbox", "--disable-dev-shm-usage" }
-                };
-
-                await using var browser = await playwright.Chromium.LaunchAsync(launchOptions);
-                var page = await browser.NewPageAsync(new BrowserNewPageOptions
-                {
-                    ViewportSize = new ViewportSize { Width = 794, Height = 1123 }
-                });
+                var playwright = await Playwright.CreateAsync();
                 try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var document = AddBaseUrl(InlineLocalLogo(html));
-                    await page.SetContentAsync(document, new PageSetContentOptions
-                    {
-                        WaitUntil = WaitUntilState.NetworkIdle,
-                        Timeout = 30_000
-                    });
-                    await page.WaitForFunctionAsync(
-                        "() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0)",
-                        new PageWaitForFunctionOptions { Timeout = 10_000 });
-                    await page.EmulateMediaAsync(new PageEmulateMediaOptions { Media = Media.Print });
+                    var executablePath = ResolveChromiumExecutablePath();
+                    _logger.LogDebug("Rendering receipt PDF with Chromium executable: {ExecutablePath}", executablePath ?? "Playwright bundled browser");
 
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return await page.PdfAsync(new PagePdfOptions
+                    var launchOptions = new BrowserTypeLaunchOptions
                     {
-                        Format = "A4",
-                        PrintBackground = true,
-                        PreferCSSPageSize = true
+                        Headless = true,
+                        ExecutablePath = executablePath,
+                        Args = new[] { "--no-sandbox", "--disable-dev-shm-usage" }
+                    };
+
+                    await using var browser = await playwright.Chromium.LaunchAsync(launchOptions);
+                    var page = await browser.NewPageAsync(new BrowserNewPageOptions
+                    {
+                        ViewportSize = new ViewportSize { Width = 794, Height = 1123 }
                     });
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var document = AddBaseUrl(InlineLocalLogo(html));
+                        await page.SetContentAsync(document, new PageSetContentOptions
+                        {
+                            WaitUntil = WaitUntilState.NetworkIdle,
+                            Timeout = 30_000
+                        });
+                        await page.WaitForFunctionAsync(
+                            "() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0)",
+                            new PageWaitForFunctionOptions { Timeout = 10_000 });
+                        await page.EmulateMediaAsync(new PageEmulateMediaOptions { Media = Media.Print });
+
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return await page.PdfAsync(new PagePdfOptions
+                        {
+                            Format = "A4",
+                            PrintBackground = true,
+                            PreferCSSPageSize = true
+                        });
+                    }
+                    finally
+                    {
+                        await page.CloseAsync();
+                    }
                 }
                 finally
                 {
-                    await page.CloseAsync();
+                    playwright.Dispose();
                 }
             }
-            catch (PlaywrightException exception)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                throw new InvalidOperationException(
-                    "PDF-rendering er ikke tilgængelig. Kontrollér, at Chromium er installeret.",
-                    exception);
+                throw;
             }
-            finally
+            catch (Exception exception)
             {
-                playwright.Dispose();
+                _logger.LogError(exception, "Receipt PDF rendering failed.");
+                throw new InvalidOperationException(
+                    "PDF-rendering er ikke tilgængelig. Kontrollér, at Chromium er installeret i deployet.",
+                    exception);
             }
         }
 
@@ -135,7 +151,9 @@ namespace GamMaSite.Services
                 {
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Google", "Chrome", "Application", "chrome.exe"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Google", "Chrome", "Application", "chrome.exe"),
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "Application", "chrome.exe")
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "Application", "chrome.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "Edge", "Application", "msedge.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "Edge", "Application", "msedge.exe")
                 }
                 : new[] { "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome" };
 
@@ -144,6 +162,25 @@ namespace GamMaSite.Services
                 if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
                 {
                     return candidate;
+                }
+            }
+
+            var bundledBrowserRoot = Path.Combine(
+                _environment.ContentRootPath,
+                ".playwright",
+                "package",
+                ".local-browsers");
+            if (Directory.Exists(bundledBrowserRoot))
+            {
+                var bundledExecutableName = OperatingSystem.IsWindows() ? "chrome.exe" : "chrome";
+                var bundledExecutable = Directory.EnumerateFiles(
+                        bundledBrowserRoot,
+                        bundledExecutableName,
+                        SearchOption.AllDirectories)
+                    .FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(bundledExecutable))
+                {
+                    return bundledExecutable;
                 }
             }
 

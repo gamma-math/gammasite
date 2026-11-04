@@ -42,4 +42,16 @@
     <Folder Include="wwwroot\js\thirdparty\" />
   </ItemGroup>
 
+  <Target Name="CopyPlaywrightBrowsersToPublishDirectory" AfterTargets="Publish">
+    <ItemGroup>
+      <PlaywrightBrowserFiles Include="$(OutputPath).playwright\package\.local-browsers\**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(PublishDir).playwright\package\.local-browsers" Condition="'@(PlaywrightBrowserFiles)' != ''" />
+    <Copy
+      SourceFiles="@(PlaywrightBrowserFiles)"
+      DestinationFiles="@(PlaywrightBrowserFiles->'$(PublishDir).playwright\package\.local-browsers\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(PlaywrightBrowserFiles)' != ''" />
+  </Target>
+
 </Project>
