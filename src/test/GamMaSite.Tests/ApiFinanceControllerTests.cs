@@ -34,16 +34,6 @@ public sealed class ApiFinanceControllerTests
     }
 
     [Fact]
-    public async Task DownloadPostingReceipt_RejectsAnonymousUser()
-    {
-        var controller = Controller(new DefaultHttpContext());
-
-        var result = await controller.DownloadPostingReceipt("P-1001", CancellationToken.None);
-
-        Assert.IsType<UnauthorizedResult>(result);
-    }
-
-    [Fact]
     public async Task GetOverview_RejectsUnsupportedHistoricalYear()
     {
         var context = new DefaultHttpContext { User = TestDoubles.User("user-1") };
@@ -153,7 +143,7 @@ public sealed class ApiFinanceControllerTests
 
     private static ApiFinanceController Controller(HttpContext context)
     {
-        return new ApiFinanceController(FinanceTestHelpers.ReportService(), FinanceTestHelpers.ImportService(), null!, null!, null!)
+        return new ApiFinanceController(FinanceTestHelpers.ReportService(), FinanceTestHelpers.ImportService(), null!, null!, null)
         {
             ControllerContext = new ControllerContext { HttpContext = context }
         };

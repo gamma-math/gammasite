@@ -1139,7 +1139,7 @@ GamMas bestyrelse',
 <body>
   <main class="receipt-page">
     <div class="receipt-actions">
-      <button type="button" onclick="window.location.href=''{{PdfUrl}}''">Gem</button>
+      <button type="button" onclick="window.print()">Gem som PDF</button>
     </div>
 
     <img class="receipt-logo" src="/lib/logo_blue.png" alt="GamMa">
@@ -1329,7 +1329,7 @@ GamMas bestyrelse',
 <body>
   <main class="receipt-page">
     <div class="receipt-actions">
-      <button type="button" onclick="window.location.href=''{{PdfUrl}}''">Gem</button>
+      <button type="button" onclick="window.print()">Gem som PDF</button>
     </div>
 
     <img class="receipt-logo" src="/lib/logo_blue.png" alt="GamMa">
