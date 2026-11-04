@@ -21,5 +21,7 @@ namespace GamMaSite.Services
         Task<bool> DeleteAsync(int id);
 
         Task<EmailTemplatePreviewDto> PreviewAsync(int id, PreviewEmailTemplateRequest request);
+
+        Task<string> RenderActiveHtmlAsync(string templateType, IReadOnlyDictionary<string, string> values);
     }
 }

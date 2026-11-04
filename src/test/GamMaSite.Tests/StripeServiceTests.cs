@@ -11,6 +11,23 @@ namespace GamMaSite.Tests;
 public class StripeServiceTests
 {
     [Theory]
+    [InlineData("charge", "charge", true)]
+    [InlineData("payment", "payment", true)]
+    [InlineData("stripe_fee", "stripe_fee", false)]
+    [InlineData("refund", "refund", false)]
+    [InlineData("charge", "stripe_fee", false)]
+    [InlineData("charge", "", true)]
+    public void IsPaymentTransaction_OnlyAcceptsPaymentCategories(
+        string transactionType,
+        string reportingCategory,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            StripeService.IsPaymentTransaction(transactionType, reportingCategory));
+    }
+
+    [Theory]
     [InlineData("paid", true)]
     [InlineData("no_payment_required", true)]
     [InlineData("unpaid", false)]

@@ -54,12 +54,34 @@
               <li><strong>Scope:</strong> <code>Your account</code></li>
               <li><strong>Payload style:</strong> <code>Snapshot</code></li>
               <li><strong>API version:</strong> <code>2026-09-30.endive</code></li>
-              <li><strong>Events:</strong> <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code> og <code>invoice.payment_action_required</code>.</li>
+              <li><strong>Events:</strong> <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>customer.subscription.created</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code>, <code>invoice.payment_action_required</code> og <code>payout.reconciliation_completed</code>.</li>
+              <li><strong>Minimum permissions for <code>STRIPE_SECRET_API_KEY</code>:</strong>
+                <ul>
+                  <li><code>Checkout Sessions &middot; Write</code> for at oprette og hente Checkout Sessions.</li>
+                  <li><code>Products &middot; Write</code> og <code>Prices &middot; Write</code> for at oprette, hente, opdatere og deaktivere betalingsprodukter.</li>
+                  <li><code>Subscriptions &middot; Write</code> for at hente, opdatere og annullere abonnementer.</li>
+                  <li><code>Invoices &middot; Read</code>, <code>Payment Intents &middot; Read</code> og <code>Charges &middot; Read</code> for betalings- og abonnementsoplysninger.</li>
+                  <li><code>Balance &middot; Read</code> og <code>Payouts &middot; Read</code> for at hente payoutens balance transactions, n&aring;r <code>payout.reconciliation_completed</code> modtages.</li>
+                </ul>
+              </li>
             </ul>
           </li>
           <li>Gem endpointets signing secret som <code>STRIPE_WEBHOOK_SECRET</code> i det samme GitHub Environment, som deploymentet bruger. Secret m&aring; ikke skrives i repositoryet.</li>
           <li>Send en test event fra Stripe, og kontroll&eacute;r HTTP 2xx, applikationslog og at den forventede betaling eller betalingsaftale opdateres.</li>
         </ol>
+        <p class="muted"><code>STRIPE_PUBLIC_API_KEY</code> er en publishable key til klienten og har ikke serverrettigheder. <code>STRIPE_WEBHOOK_SECRET</code> er webhookens signing secret og er heller ikke en API-key; den skal blot matche det valgte Stripe-endpoint.</p>
+        <h3>Testkort i Stripe test mode</h3>
+        <p>Til almindelig kortbetaling i lokal udvikling kan Stripe Checkout gennemf&oslash;res med f&oslash;lgende testkort:</p>
+        <table class="table">
+          <thead><tr><th>Felt</th><th>V&aelig;rdi</th></tr></thead>
+          <tbody>
+            <tr><td>Kortnummer</td><td><code>4242 4242 4242 4242</code></td></tr>
+            <tr><td>Udl&oslash;bsdato</td><td>En valgfri fremtidig dato</td></tr>
+            <tr><td>CVC</td><td>En valgfri gyldig CVC, eksempelvis <code>123</code></td></tr>
+            <tr><td>Navn p&aring; kort</td><td>Valgfrit navn</td></tr>
+          </tbody>
+        </table>
+        <p class="muted">Testkortet skal bruges som almindelig kortbetaling. Det skal ikke indtastes i Apple Pay. Stripe underst&oslash;tter ikke Apple Pay Sandbox som et fuldt simuleret betalingsmilj&oslash;; Apple Pay skal testes p&aring; en underst&oslash;ttet Apple-enhed med et rigtigt kort i Apple Wallet og Stripe test-n&oslash;gler.</p>
         <p>Stripe beskriver dashboard- og API-oprettelse af webhook endpoints i <a href="https://docs.stripe.com/api/webhook_endpoints" target="_blank" rel="noreferrer">Stripe Webhook Endpoints</a>.</p>
       </section>
 

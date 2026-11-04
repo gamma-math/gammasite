@@ -1012,6 +1012,387 @@ GamMas bestyrelse',
   1,
   '2026-11-01 12:00:00',
   '2026-11-01 12:00:00'
+),
+(
+  'System - Betalingskvittering',
+  'Betalingskvittering fra GamMa',
+  'Betalingskvittering for {{Product}}',
+  '<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Betalingskvittering</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eaf2fb;
+      color: #10233a;
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+    }
+    .receipt-page {
+      width: 90%;
+      max-width: 720px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 42px 32px;
+      background: #ffffff;
+      border: 1px solid #cfe0ef;
+    }
+    .receipt-logo {
+      display: block;
+      width: 220px;
+      height: auto;
+      margin: 0 auto 34px;
+    }
+    .receipt-actions {
+      margin-bottom: 22px;
+      text-align: right;
+    }
+    .receipt-actions button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #1f78c1;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .receipt-type {
+      display: block;
+      margin-bottom: 12px;
+      color: #10233a;
+      font-weight: bold;
+    }
+    .receipt-page h1 {
+      margin: 0 0 22px;
+      font-size: 36px;
+      line-height: 1.1;
+    }
+    .receipt-meta {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #cfe0ef;
+    }
+    .receipt-meta strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #5c7085;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .receipt-box {
+      overflow: hidden;
+      margin-bottom: 18px;
+      border: 1px solid #cfe0ef;
+      border-radius: 7px;
+    }
+    .receipt-box h2 {
+      margin: 0;
+      padding: 10px 14px;
+      background: #eaf2fb;
+      font-size: 16px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 14px;
+    }
+    .receipt-total {
+      color: #10233a;
+      background: #d9eafa;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .receipt-section {
+      margin-top: 24px;
+    }
+    .receipt-section p {
+      margin: 4px 0;
+    }
+    .receipt-footer {
+      margin-top: 48px;
+    }
+    .receipt-footer strong {
+      font-size: 17px;
+    }
+    @media print {
+      body { background: #ffffff; }
+      .receipt-page {
+        width: 100%;
+        max-width: none;
+        padding: 28mm 20mm;
+        border: 0;
+      }
+      .receipt-actions { display: none; }
+      .receipt-logo { margin-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="receipt-page">
+    <div class="receipt-actions">
+      <button type="button" onclick="window.location.href=''{{PdfUrl}}''">Gem</button>
+    </div>
+
+    <img class="receipt-logo" src="/lib/logo_blue.png" alt="GamMa">
+
+    <p class="receipt-type">Betaling</p>
+    <div class="receipt-meta">
+      <div>
+        <strong>Ordre ID</strong>
+        {{PostingId}}
+      </div>
+      <div>
+        <strong>Dato</strong>
+        {{Date}}
+      </div>
+      <div>
+        <strong>Betalingsmetode</strong>
+        {{PaymentMethod}}
+      </div>
+    </div>
+
+    <div class="receipt-box">
+      <h2>Produkt <span style="float: right;">Pris</span></h2>
+      <div class="receipt-row">
+        <span>{{Product}}</span>
+        <strong>{{Amount}}</strong>
+      </div>
+      <div class="receipt-row receipt-total">
+        <span>I alt</span>
+        <span>{{Amount}}</span>
+      </div>
+    </div>
+
+    <div class="receipt-box receipt-section">
+      <h2>Betaler</h2>
+      <div style="padding: 12px 14px;">
+        <p><strong>{{UserName}}</strong></p>
+        <p>{{UserEmail}}</p>
+        <p>Bruger ID: {{UserId}}</p>
+      </div>
+    </div>
+
+    <div class="receipt-box receipt-section">
+      <h2>Virksomhed</h2>
+      <div style="padding: 12px 14px;">
+        <p>{{CompanyName}}</p>
+        <p>CVR-nr.: {{CompanyCvr}}</p>
+      </div>
+    </div>
+
+    <div class="receipt-footer">
+      Tak for din betaling.<br>
+      Med venlig hilsen<br>
+      <strong>GamMa</strong>
+    </div>
+  </main>
+</body>
+</html>',
+  'Betalingskvittering\n\nOrdre ID: {{PostingId}}\nDato: {{Date}}\nProdukt: {{Product}}\nPris: {{Amount}}\nBetaler: {{UserName}}\n{{UserEmail}}\nBruger ID: {{UserId}}',
+  'SYSTEM_FINANCE_PAYMENT_RECEIPT',
+  1,
+  '2026-11-03 12:00:00',
+  '2026-11-03 12:00:00'
+),
+(
+  'System - Refusionskvittering',
+  'Refusionskvittering fra GamMa',
+  'Refusionskvittering for {{Product}}',
+  '<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Refusionskvittering</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eaf2fb;
+      color: #10233a;
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+    }
+    .receipt-page {
+      width: 90%;
+      max-width: 720px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 42px 32px;
+      background: #ffffff;
+      border: 1px solid #cfe0ef;
+    }
+    .receipt-logo {
+      display: block;
+      width: 220px;
+      height: auto;
+      margin: 0 auto 34px;
+    }
+    .receipt-actions {
+      margin-bottom: 22px;
+      text-align: right;
+    }
+    .receipt-actions button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #1f78c1;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .receipt-type {
+      display: block;
+      margin-bottom: 12px;
+      color: #10233a;
+      font-weight: bold;
+    }
+    .receipt-page h1 {
+      margin: 0 0 22px;
+      font-size: 36px;
+      line-height: 1.1;
+    }
+    .receipt-meta {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid #cfe0ef;
+    }
+    .receipt-meta strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #5c7085;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .receipt-box {
+      overflow: hidden;
+      margin-bottom: 18px;
+      border: 1px solid #cfe0ef;
+      border-radius: 7px;
+    }
+    .receipt-box h2 {
+      margin: 0;
+      padding: 10px 14px;
+      background: #eaf2fb;
+      font-size: 16px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 14px;
+    }
+    .receipt-total {
+      color: #10233a;
+      background: #d9eafa;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .receipt-section {
+      margin-top: 24px;
+    }
+    .receipt-section p {
+      margin: 4px 0;
+    }
+    .receipt-footer {
+      margin-top: 48px;
+    }
+    .receipt-footer strong {
+      font-size: 17px;
+    }
+    @media print {
+      body { background: #ffffff; }
+      .receipt-page {
+        width: 100%;
+        max-width: none;
+        padding: 28mm 20mm;
+        border: 0;
+      }
+      .receipt-actions { display: none; }
+      .receipt-logo { margin-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="receipt-page">
+    <div class="receipt-actions">
+      <button type="button" onclick="window.location.href=''{{PdfUrl}}''">Gem</button>
+    </div>
+
+    <img class="receipt-logo" src="/lib/logo_blue.png" alt="GamMa">
+
+    <p class="receipt-type">Refusion</p>
+
+    <div class="receipt-meta">
+      <div>
+        <strong>Ordre ID</strong>
+        {{PostingId}}
+      </div>
+      <div>
+        <strong>Dato</strong>
+        {{Date}}
+      </div>
+      <div>
+        <strong>Betalingsmetode</strong>
+        {{PaymentMethod}}
+      </div>
+    </div>
+
+    <div class="receipt-box">
+      <h2>Produkt <span style="float: right;">Pris</span></h2>
+      <div class="receipt-row">
+        <span>{{Product}}</span>
+        <strong>{{Amount}}</strong>
+      </div>
+      <div class="receipt-row receipt-total">
+        <span>I alt</span>
+        <span>{{Amount}}</span>
+      </div>
+    </div>
+
+    <div class="receipt-box receipt-section">
+      <h2>Betaler</h2>
+      <div style="padding: 12px 14px;">
+        <p><strong>{{UserName}}</strong></p>
+        <p>{{UserEmail}}</p>
+        <p>Bruger ID: {{UserId}}</p>
+      </div>
+    </div>
+
+    <div class="receipt-box receipt-section">
+      <h2>Virksomhed</h2>
+      <div style="padding: 12px 14px;">
+        <p>{{CompanyName}}</p>
+        <p>CVR-nr.: {{CompanyCvr}}</p>
+      </div>
+    </div>
+
+    <div class="receipt-footer">
+      Bel&oslash;bet er refunderet.<br>
+      Med venlig hilsen<br>
+      <strong>GamMa</strong>
+    </div>
+  </main>
+</body>
+</html>',
+  'Refusionskvittering\n\nOrdre ID: {{PostingId}}\nDato: {{Date}}\nProdukt: {{Product}}\nPris: {{Amount}}\nBetaler: {{UserName}}\n{{UserEmail}}\nBruger ID: {{UserId}}',
+  'SYSTEM_FINANCE_REFUND_RECEIPT',
+  1,
+  '2026-11-03 12:00:00',
+  '2026-11-03 12:00:00'
 );
 SET FOREIGN_KEY_CHECKS=1;
 

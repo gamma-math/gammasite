@@ -13,7 +13,7 @@ using NpgsqlTypes;
 namespace GamMaSite.Services
 {
     /// <summary>
-    /// Imports raw bank and MobilePay exports. Source records are kept separate
+    /// Imports raw bank, MobilePay and Stripe source data. Source records are kept separate
     /// from derived ledger entries so categorisation is never overwritten by an import.
     /// </summary>
     public sealed class FinanceImportService
@@ -202,7 +202,7 @@ namespace GamMaSite.Services
         }
 
         /// <summary>
-        /// Creates or refreshes automatic postings from the raw bank and MobilePay
+        /// Creates or refreshes automatic postings from the raw bank, MobilePay and Stripe
         /// tables without requiring another CSV upload.
         /// </summary>
         public async Task<FinancePostingSyncDto> GenerateDerivedPostingsAsync(CancellationToken cancellationToken)
@@ -212,6 +212,60 @@ namespace GamMaSite.Services
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
             var result = await SyncDerivedPostingsAsync(connection, transaction, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+
+        public async Task<FinanceImportBatchDto> ImportStripeTransactionsAsync(
+            IReadOnlyList<StripeBalanceTransaction> rows,
+            CancellationToken cancellationToken)
+        {
+            if (rows == null || rows.Count == 0)
+            {
+                return new FinanceImportBatchDto();
+            }
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+            var result = await UpsertStripeRowsAsync(connection, transaction, rows, true, cancellationToken);
+            await SaveHistoryAsync(
+                connection,
+                transaction,
+                "stripe_webhook",
+                rows[0].PayoutId,
+                result,
+                "Stripe balance transactions imported from payout webhook.",
+                cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+
+        public async Task<FinanceImportBatchDto> ImportStripeTransactionsFromApiAsync(
+            IReadOnlyList<StripeBalanceTransaction> rows,
+            CancellationToken cancellationToken)
+        {
+            if (rows == null || rows.Count == 0)
+            {
+                return new FinanceImportBatchDto();
+            }
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+            var result = await UpsertStripeRowsAsync(connection, transaction, rows, false, cancellationToken);
+            await SaveHistoryAsync(
+                connection,
+                transaction,
+                "stripe_api",
+                "Stripe API",
+                result,
+                "Stripe balance transactions loaded from the Stripe API.",
+                cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
             return result;
         }
@@ -276,7 +330,104 @@ namespace GamMaSite.Services
                 command.Parameters.Add("merchant_reference", NpgsqlDbType.Text).Value = DbText(row.MerchantReference);
                 command.Parameters.Add("source_product", NpgsqlDbType.Text).Value = DbText(row.SourceProduct);
                 var inserted = (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
-                if (inserted) result.RowsInserted++; else result.RowsUpdated++;
+                if (inserted)
+                {
+                    result.RowsInserted++;
+                }
+                else
+                {
+                    result.RowsUpdated++;
+                }
+            }
+            return result;
+        }
+
+        private static async Task<FinanceImportBatchDto> UpsertStripeRowsAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            IReadOnlyList<StripeBalanceTransaction> rows,
+            bool overwriteExisting,
+            CancellationToken cancellationToken)
+        {
+            var result = new FinanceImportBatchDto { RowsProcessed = rows.Count };
+            foreach (var row in rows)
+            {
+                var sql = overwriteExisting ? @"
+                    INSERT INTO public.stripe AS existing
+                        (balance_transaction_id, payout_id, date, available_date, payout_date,
+                         amount, fee, net, currency, transaction_type, reporting_category,
+                         source_id, payment_intent_id, description, user_id, payer_name, receipt_url,
+                         is_manual, created_at, updated_at)
+                    VALUES
+                        (@balance_transaction_id, @payout_id, @date, @available_date, @payout_date,
+                         @amount, @fee, @net, @currency, @transaction_type, @reporting_category,
+                         @source_id, @payment_intent_id, @description, @user_id, @payer_name, @receipt_url,
+                         false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (balance_transaction_id) WHERE is_manual = false
+                    DO UPDATE SET
+                        payout_id = COALESCE(EXCLUDED.payout_id, existing.payout_id),
+                        date = COALESCE(EXCLUDED.date, existing.date),
+                        available_date = COALESCE(EXCLUDED.available_date, existing.available_date),
+                        payout_date = COALESCE(EXCLUDED.payout_date, existing.payout_date),
+                        amount = COALESCE(EXCLUDED.amount, existing.amount),
+                        fee = COALESCE(EXCLUDED.fee, existing.fee),
+                        net = COALESCE(EXCLUDED.net, existing.net),
+                        currency = COALESCE(EXCLUDED.currency, existing.currency),
+                        transaction_type = COALESCE(EXCLUDED.transaction_type, existing.transaction_type),
+                        reporting_category = COALESCE(EXCLUDED.reporting_category, existing.reporting_category),
+                        source_id = COALESCE(EXCLUDED.source_id, existing.source_id),
+                        payment_intent_id = COALESCE(EXCLUDED.payment_intent_id, existing.payment_intent_id),
+                        description = COALESCE(EXCLUDED.description, existing.description),
+                        user_id = COALESCE(EXCLUDED.user_id, existing.user_id),
+                        payer_name = COALESCE(EXCLUDED.payer_name, existing.payer_name),
+                        receipt_url = COALESCE(EXCLUDED.receipt_url, existing.receipt_url),
+                        updated_at = CURRENT_TIMESTAMP
+                    RETURNING (xmax = 0);" : @"
+                    INSERT INTO public.stripe
+                        (balance_transaction_id, payout_id, date, available_date, payout_date,
+                         amount, fee, net, currency, transaction_type, reporting_category,
+                         source_id, payment_intent_id, description, user_id, payer_name, receipt_url,
+                         is_manual, created_at, updated_at)
+                    SELECT
+                        @balance_transaction_id, @payout_id, @date, @available_date, @payout_date,
+                        @amount, @fee, @net, @currency, @transaction_type, @reporting_category,
+                        @source_id, @payment_intent_id, @description, @user_id, @payer_name, @receipt_url,
+                        false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM public.stripe existing
+                        WHERE existing.balance_transaction_id = @balance_transaction_id
+                    )
+                    ON CONFLICT (balance_transaction_id) WHERE is_manual = false DO NOTHING
+                    RETURNING (xmax = 0);";
+
+                await using var command = new NpgsqlCommand(sql, connection, transaction);
+                command.Parameters.Add("balance_transaction_id", NpgsqlDbType.Text).Value = row.BalanceTransactionId;
+                command.Parameters.Add("payout_id", NpgsqlDbType.Text).Value = DbText(row.PayoutId);
+                command.Parameters.Add("date", NpgsqlDbType.Date).Value = row.Date.Date;
+                command.Parameters.Add("available_date", NpgsqlDbType.Date).Value = row.AvailableDate.Date;
+                command.Parameters.Add("payout_date", NpgsqlDbType.Date).Value = row.PayoutDate?.Date ?? (object)DBNull.Value;
+                command.Parameters.Add("amount", NpgsqlDbType.Numeric).Value = row.Amount;
+                command.Parameters.Add("fee", NpgsqlDbType.Numeric).Value = row.Fee;
+                command.Parameters.Add("net", NpgsqlDbType.Numeric).Value = row.Net;
+                command.Parameters.Add("currency", NpgsqlDbType.Text).Value = DbText(row.Currency);
+                command.Parameters.Add("transaction_type", NpgsqlDbType.Text).Value = DbText(row.TransactionType);
+                command.Parameters.Add("reporting_category", NpgsqlDbType.Text).Value = DbText(row.ReportingCategory);
+                command.Parameters.Add("source_id", NpgsqlDbType.Text).Value = DbText(row.SourceId);
+                command.Parameters.Add("payment_intent_id", NpgsqlDbType.Text).Value = DbText(row.PaymentIntentId);
+                command.Parameters.Add("description", NpgsqlDbType.Text).Value = DbText(row.Description);
+                command.Parameters.Add("user_id", NpgsqlDbType.Text).Value = DbText(row.UserId);
+                command.Parameters.Add("payer_name", NpgsqlDbType.Text).Value = DbText(row.PayerName);
+                command.Parameters.Add("receipt_url", NpgsqlDbType.Text).Value = DbText(row.ReceiptUrl);
+                var inserted = (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
+                if (inserted)
+                {
+                    result.RowsInserted++;
+                }
+                else if (overwriteExisting)
+                {
+                    result.RowsUpdated++;
+                }
             }
             return result;
         }
@@ -319,6 +470,8 @@ namespace GamMaSite.Services
         {
             var result = new FinancePostingSyncDto();
 
+            await SyncStripeDerivedPostingsAsync(connection, transaction, result, cancellationToken);
+
             // A matching MobilePay line supersedes the bank line. Existing
             // postings are deliberately left unchanged and skipped.
             await using (var command = new NpgsqlCommand(@"
@@ -343,15 +496,34 @@ namespace GamMaSite.Services
                         END AS text,
                         CASE WHEN m.id IS NULL THEN b.amount ELSE m.amount END AS amount,
                         b.id AS bank_account_key,
-                        m.id AS mp_key
+                        m.id AS mp_key,
+                        CASE WHEN m.id IS NULL THEN NULL ELSE NULLIF(TRIM(lookup.user_id), '') END AS user_id
                     FROM public.bank_account b
                     LEFT JOIN public.mobilepay m
                       ON NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
+                    LEFT JOIN public.mobilepay_reference_lookup lookup
+                      ON lookup.merchant_reference = NULLIF(TRIM(m.merchant_reference), '')
                     WHERE b.is_manual = false
+                      AND (m.id IS NOT NULL OR NOT EXISTS (
+                          SELECT 1
+                          FROM public.stripe s
+                          WHERE s.is_manual = false
+                            AND s.payout_date = b.date
+                            AND NULLIF(TRIM(s.payout_id), '') IS NOT NULL
+                            AND b.text ILIKE '%STRIPE%'
+                          GROUP BY s.payout_id, s.payout_date, s.currency
+                          HAVING SUM(s.net) = b.amount
+                             AND (SELECT COUNT(*)
+                                  FROM public.bank_account b2
+                                  WHERE b2.is_manual = false
+                                    AND b2.date = b.date
+                                    AND b2.amount = b.amount
+                                    AND b2.text ILIKE '%STRIPE%') = 1
+                      ))
                 )
                 INSERT INTO public.posteringer
-                    (id, date, posting_date, text, amount, bank_account_key, mp_key, created_at, updated_at)
-                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    (id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, created_at, updated_at)
+                SELECT id, date, posting_date, text, amount, bank_account_key, mp_key, user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM derived
                 ON CONFLICT (id) DO NOTHING
                 RETURNING id;", connection, transaction))
@@ -363,6 +535,24 @@ namespace GamMaSite.Services
                     if (reader.GetString(0).StartsWith("MP-", StringComparison.Ordinal)) result.MobilePayPostings++;
                     else result.BankPostings++;
                 }
+            }
+
+            // A MobilePay reference may have been enriched after the original
+            // derived posting was created. Fill the user ID without overwriting
+            // an existing manual assignment.
+            await using (var updateMobilePayUsers = new NpgsqlCommand(@"
+                UPDATE public.posteringer p
+                SET user_id = lookup.user_id,
+                    updated_at = CURRENT_TIMESTAMP
+                FROM public.mobilepay m
+                JOIN public.mobilepay_reference_lookup lookup
+                  ON lookup.merchant_reference = NULLIF(TRIM(m.merchant_reference), '')
+                WHERE p.id = CONCAT('MP-', m.id::text)
+                  AND p.mp_key = m.id
+                  AND p.user_id IS NULL
+                  AND NULLIF(TRIM(lookup.user_id), '') IS NOT NULL;", connection, transaction))
+            {
+                await updateMobilePayUsers.ExecuteNonQueryAsync(cancellationToken);
             }
 
             // If a later MobilePay import matches an earlier bank import, remove the
@@ -411,11 +601,11 @@ namespace GamMaSite.Services
                       )
                       OR p.text = CONCAT_WS(' · ', CONCAT('MobilePay: ', COALESCE(m.transaction_type, '')), NULLIF(m.message, ''), NULLIF(m.payner_name, ''))
                   )
-                  AND p.user_id IS NULL
                   AND p.account_number IS NULL
                   AND p.posting_group_id IS NULL
                   AND p.document IS NULL
-                  AND NOT EXISTS (
+                   AND p.user_id IS NULL
+                   AND NOT EXISTS (
                     SELECT 1 FROM public.bank_account b
                     WHERE NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
                   );", connection, transaction))
@@ -423,7 +613,225 @@ namespace GamMaSite.Services
                 result.Removed += await removeMobilePay.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            await RemoveObsoleteStripePostingsAsync(connection, transaction, result, cancellationToken);
+            await RemoveObsoleteStripeBankPostingsAsync(connection, transaction, result, cancellationToken);
+
             return result;
+        }
+
+        private static async Task SyncStripeDerivedPostingsAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            FinancePostingSyncDto result,
+            CancellationToken cancellationToken)
+        {
+            await using var command = new NpgsqlCommand(@"
+                WITH stripe_payouts AS (
+                    SELECT payout_id, payout_date, currency, SUM(net) AS net
+                    FROM public.stripe
+                    WHERE is_manual = false
+                      AND NULLIF(TRIM(payout_id), '') IS NOT NULL
+                      AND payout_date IS NOT NULL
+                    GROUP BY payout_id, payout_date, currency
+                ),
+                stripe_candidates AS (
+                    SELECT
+                        sp.payout_id,
+                        b.id AS bank_account_key,
+                        COUNT(*) OVER (PARTITION BY sp.payout_id, sp.payout_date, sp.currency) AS payout_match_count,
+                        COUNT(*) OVER (PARTITION BY b.id) AS bank_match_count
+                    FROM stripe_payouts sp
+                    JOIN public.bank_account b
+                      ON b.is_manual = false
+                     AND b.date = sp.payout_date
+                     AND b.amount = sp.net
+                     AND b.text ILIKE '%STRIPE%'
+                ),
+                stripe_matches AS (
+                    SELECT payout_id, bank_account_key
+                    FROM stripe_candidates
+                    WHERE payout_match_count = 1
+                      AND bank_match_count = 1
+                ),
+                derived AS (
+                    SELECT
+                        CONCAT('ST-', s.id::text) AS id,
+                        s.date,
+                        s.date AS posting_date,
+                        CONCAT_WS(
+                            ' - ',
+                            'Stripe: Amount',
+                            COALESCE(NULLIF(TRIM(s.payer_name), ''), NULLIF(TRIM(s.user_id), ''), 'Unknown'),
+                            NULLIF(TRIM(s.description), '')
+                        ) AS text,
+                        s.amount,
+                        sm.bank_account_key,
+                        s.user_id,
+                        s.id AS stripe_key,
+                        s.receipt_url AS document
+                    FROM public.stripe s
+                    JOIN stripe_matches sm ON sm.payout_id = s.payout_id
+                    WHERE s.is_manual = false
+                      AND s.amount <> 0
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM public.mobilepay m
+                          JOIN public.bank_account b
+                            ON NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
+                          WHERE b.id = sm.bank_account_key
+                      )
+
+                    UNION ALL
+
+                    SELECT
+                        CONCAT('ST-', s.id::text, '-FEE') AS id,
+                        s.date,
+                        s.date AS posting_date,
+                        CONCAT_WS(
+                            ' - ',
+                            'Stripe: Fee',
+                            COALESCE(NULLIF(TRIM(s.payer_name), ''), NULLIF(TRIM(s.user_id), ''), 'Unknown'),
+                            NULLIF(TRIM(s.description), '')
+                        ) AS text,
+                        -s.fee AS amount,
+                        sm.bank_account_key,
+                        s.user_id,
+                        s.id AS stripe_key,
+                        s.receipt_url AS document
+                    FROM public.stripe s
+                    JOIN stripe_matches sm ON sm.payout_id = s.payout_id
+                    WHERE s.is_manual = false
+                      AND s.fee <> 0
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM public.mobilepay m
+                          JOIN public.bank_account b
+                            ON NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
+                          WHERE b.id = sm.bank_account_key
+                      )
+                )
+                INSERT INTO public.posteringer
+                    (id, date, posting_date, text, amount, bank_account_key, user_id, stripe_key, document, created_at, updated_at)
+                SELECT id, date, posting_date, text, amount, bank_account_key, user_id, stripe_key, document, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                FROM derived
+                ON CONFLICT (id) DO UPDATE
+                    SET document = EXCLUDED.document
+                    WHERE public.posteringer.document IS NULL
+                      AND EXCLUDED.document IS NOT NULL
+                RETURNING id;", connection, transaction);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                result.Created++;
+                result.StripePostings++;
+            }
+        }
+
+        private static async Task RemoveObsoleteStripePostingsAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            FinancePostingSyncDto result,
+            CancellationToken cancellationToken)
+        {
+            await using var command = new NpgsqlCommand(@"
+                WITH stripe_payouts AS (
+                    SELECT payout_id, payout_date, currency, SUM(net) AS net
+                    FROM public.stripe
+                    WHERE is_manual = false
+                      AND NULLIF(TRIM(payout_id), '') IS NOT NULL
+                      AND payout_date IS NOT NULL
+                    GROUP BY payout_id, payout_date, currency
+                ), stripe_candidates AS (
+                    SELECT sp.payout_id, b.id AS bank_account_key,
+                           COUNT(*) OVER (PARTITION BY sp.payout_id, sp.payout_date, sp.currency) AS payout_match_count,
+                           COUNT(*) OVER (PARTITION BY b.id) AS bank_match_count
+                    FROM stripe_payouts sp
+                    JOIN public.bank_account b
+                      ON b.is_manual = false AND b.date = sp.payout_date
+                     AND b.amount = sp.net AND b.text ILIKE '%STRIPE%'
+                ), stripe_matches AS (
+                    SELECT payout_id, bank_account_key
+                    FROM stripe_candidates
+                    WHERE payout_match_count = 1 AND bank_match_count = 1
+                )
+                DELETE FROM public.posteringer p
+                WHERE p.id LIKE 'ST-%'
+                  AND p.stripe_key IS NOT NULL
+                  AND p.account_number IS NULL
+                  AND p.posting_group_id IS NULL
+                  AND (
+                      p.document IS NULL
+                      OR EXISTS (
+                          SELECT 1
+                          FROM public.stripe s
+                          WHERE s.id = p.stripe_key
+                            AND NULLIF(TRIM(p.document), '') = NULLIF(TRIM(s.receipt_url), '')
+                      )
+                  )
+                  AND (
+                      NOT EXISTS (
+                          SELECT 1
+                          FROM public.stripe s
+                          JOIN stripe_matches sm ON sm.payout_id = s.payout_id
+                          WHERE s.id = p.stripe_key
+                            AND s.is_manual = false
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM public.bank_account b
+                          JOIN public.mobilepay m
+                            ON NULLIF(TRIM(m.transfer_ref), '') = NULLIF(TRIM(b.text), '')
+                          WHERE b.id = p.bank_account_key
+                      )
+                  )
+                  ;", connection, transaction);
+            result.Removed += await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private static async Task RemoveObsoleteStripeBankPostingsAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            FinancePostingSyncDto result,
+            CancellationToken cancellationToken)
+        {
+            await using var command = new NpgsqlCommand(@"
+                WITH stripe_payouts AS (
+                    SELECT payout_id, payout_date, currency, SUM(net) AS net
+                    FROM public.stripe
+                    WHERE is_manual = false
+                      AND NULLIF(TRIM(payout_id), '') IS NOT NULL
+                      AND payout_date IS NOT NULL
+                    GROUP BY payout_id, payout_date, currency
+                ), stripe_candidates AS (
+                    SELECT sp.payout_id, b.id AS bank_account_key,
+                           COUNT(*) OVER (PARTITION BY sp.payout_id, sp.payout_date, sp.currency) AS payout_match_count,
+                           COUNT(*) OVER (PARTITION BY b.id) AS bank_match_count
+                    FROM stripe_payouts sp
+                    JOIN public.bank_account b
+                      ON b.is_manual = false AND b.date = sp.payout_date
+                     AND b.amount = sp.net AND b.text ILIKE '%STRIPE%'
+                ), stripe_matches AS (
+                    SELECT payout_id, bank_account_key
+                    FROM stripe_candidates
+                    WHERE payout_match_count = 1 AND bank_match_count = 1
+                )
+                DELETE FROM public.posteringer p
+                USING public.bank_account b
+                WHERE p.id = CONCAT('BA-', b.id::text)
+                  AND p.bank_account_key = b.id
+                  AND p.mp_key IS NULL
+                  AND p.stripe_key IS NULL
+                  AND p.date = b.date
+                  AND p.posting_date = b.date
+                  AND p.text = CONCAT('Bank: ', COALESCE(b.text, ''))
+                  AND p.amount = b.amount
+                  AND p.user_id IS NULL
+                  AND p.account_number IS NULL
+                  AND p.posting_group_id IS NULL
+                  AND p.document IS NULL
+                  AND EXISTS (SELECT 1 FROM stripe_matches sm WHERE sm.bank_account_key = b.id);", connection, transaction);
+            result.Removed += await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         private static async Task SaveHistoryAsync(
@@ -755,6 +1163,7 @@ namespace GamMaSite.Services
         public int Removed { get; set; }
         public int BankPostings { get; set; }
         public int MobilePayPostings { get; set; }
+        public int StripePostings { get; set; }
     }
 
     public sealed class FinanceImportHistoryDto

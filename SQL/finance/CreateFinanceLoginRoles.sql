@@ -42,6 +42,7 @@ ALTER TABLE public.bank_account DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.forecast DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mobilepay DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mobilepay_reference_lookup DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stripe DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postering_group DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.posteringer DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.import_history DISABLE ROW LEVEL SECURITY;
@@ -51,6 +52,7 @@ REVOKE ALL ON TABLE
     public.bank_account,
     public.mobilepay,
     public.mobilepay_reference_lookup,
+    public.stripe,
     public.postering_group,
     public.forecast,
     public.posteringer,
@@ -60,6 +62,7 @@ FROM PUBLIC;
 REVOKE ALL ON SEQUENCE
     public.bank_account_id_seq,
     public.mobilepay_id_seq,
+    public.stripe_id_seq,
     public.import_history_id_seq
 FROM PUBLIC;
 
@@ -78,6 +81,7 @@ GRANT SELECT ON TABLE
     public.bank_account,
     public.mobilepay,
     public.mobilepay_reference_lookup,
+    public.stripe,
     public.postering_group,
     public.forecast,
     public.posteringer,
@@ -86,6 +90,7 @@ TO gamma_finance_read;
 GRANT USAGE, SELECT ON SEQUENCE
     public.bank_account_id_seq,
     public.mobilepay_id_seq,
+    public.stripe_id_seq,
     public.import_history_id_seq
 TO gamma_finance_read;
 
@@ -95,6 +100,7 @@ GRANT INSERT, UPDATE, DELETE ON TABLE
     public.bank_account,
     public.mobilepay,
     public.mobilepay_reference_lookup,
+    public.stripe,
     public.postering_group,
     public.forecast,
     public.posteringer,
@@ -103,6 +109,7 @@ TO gamma_finance_write;
 GRANT USAGE, SELECT ON SEQUENCE
     public.bank_account_id_seq,
     public.mobilepay_id_seq,
+    public.stripe_id_seq,
     public.import_history_id_seq
 TO gamma_finance_write;
 

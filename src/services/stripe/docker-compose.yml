@@ -1,0 +1,6 @@
+services:
+  stripe:
+    build: .
+    env_file: .env
+    profiles: ["manual"]
+
