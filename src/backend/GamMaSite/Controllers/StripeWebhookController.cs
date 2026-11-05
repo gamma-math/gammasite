@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -28,19 +29,22 @@ namespace GamMaSite.Controllers
         private readonly IConfiguration _configuration;
         private readonly ILogger<StripeWebhookController> _logger;
         private readonly ISystemEmailTemplateService _systemEmailTemplateService;
+        private readonly FinanceImportService _financeImportService;
 
         public StripeWebhookController(
             ApplicationDbContext db,
             IStripeService stripeService,
             IConfiguration configuration,
             ILogger<StripeWebhookController> logger,
-            ISystemEmailTemplateService systemEmailTemplateService = null)
+            ISystemEmailTemplateService systemEmailTemplateService = null,
+            FinanceImportService financeImportService = null)
         {
             _db = db;
             _stripeService = stripeService;
             _configuration = configuration;
             _logger = logger;
             _systemEmailTemplateService = systemEmailTemplateService;
+            _financeImportService = financeImportService;
         }
 
         [HttpPost("webhook")]
@@ -100,6 +104,11 @@ namespace GamMaSite.Controllers
                     case "invoice.payment_action_required":
                         await HandleInvoicePaymentFailedAsync(stripeEvent.Data.Object as Invoice, cancellationToken, webhookId, webhookAt);
                         break;
+                    case "payout.reconciliation_completed":
+                        await HandlePayoutReconciliationCompletedAsync(
+                            stripeEvent.Data.Object as Payout,
+                            cancellationToken);
+                        break;
                 }
             }
             catch (InvalidOperationException exception)
@@ -109,6 +118,64 @@ namespace GamMaSite.Controllers
             }
 
             return Ok();
+        }
+
+        private async Task HandlePayoutReconciliationCompletedAsync(
+            Payout payout,
+            CancellationToken cancellationToken)
+        {
+            if (payout == null || string.IsNullOrWhiteSpace(payout.Id))
+            {
+                throw new InvalidOperationException("Stripe payout-webhooken kunne ikke læses.");
+            }
+
+            if (_financeImportService == null)
+            {
+                throw new InvalidOperationException("Finance-importservicen er ikke konfigureret.");
+            }
+
+            var transactions = await _stripeService.GetPayoutBalanceTransactionsAsync(
+                payout.Id,
+                cancellationToken);
+            if (transactions.Count == 0)
+            {
+                _logger.LogInformation(
+                    "Stripe payout {PayoutId} contained no available balance transactions.",
+                    payout.Id);
+                return;
+            }
+
+            var userIds = transactions
+                .Select(transaction => transaction.UserId)
+                .Where(userId => !string.IsNullOrWhiteSpace(userId))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var users = userIds.Length == 0
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : await _db.Users
+                    .AsNoTracking()
+                    .Where(user => userIds.Contains(user.Id))
+                    .ToDictionaryAsync(
+                        user => user.Id,
+                        user => user.Navn,
+                        StringComparer.Ordinal,
+                        cancellationToken);
+
+            var enrichedTransactions = transactions
+                .Select(transaction => transaction with
+                {
+                    PayerName = users.TryGetValue(transaction.UserId, out var name) ? name : string.Empty
+                })
+                .ToArray();
+
+            await _financeImportService.ImportStripeTransactionsAsync(
+                enrichedTransactions,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Stored {TransactionCount} Stripe balance transactions for payout {PayoutId}.",
+                enrichedTransactions.Length,
+                payout.Id);
         }
 
         private async Task HandleCheckoutCompletedAsync(
@@ -186,7 +253,7 @@ namespace GamMaSite.Controllers
 
             await HandleSubscriptionAsync(
                 subscription,
-                new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed),
+                new SubscriptionContext(userId, initialPaymentAt, paymentConfirmed, false),
                 cancellationToken,
                 webhookId,
                 webhookAt);
@@ -308,7 +375,8 @@ namespace GamMaSite.Controllers
                 new SubscriptionContext(
                     userId,
                     paymentConfirmed ? session.Created.ToUniversalTime() : null,
-                    paymentConfirmed),
+                    paymentConfirmed,
+                    false),
                 cancellationToken,
                 webhookId,
                 webhookAt);
@@ -593,6 +661,7 @@ namespace GamMaSite.Controllers
             var paymentDate = context?.LastPaidAt ?? DateTime.UtcNow;
             var previousPaymentDate = record?.LastPaidAt;
             var shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                context?.SendPaymentEmail == true &&
                 (!previousPaymentDate.HasValue || previousPaymentDate.Value < paymentDate);
 
             if (record == null)
@@ -658,6 +727,7 @@ namespace GamMaSite.Controllers
 
                 previousPaymentDate = record.LastPaidAt;
                 shouldSendPaymentEmail = context?.MarkUserAsPaid == true &&
+                    context?.SendPaymentEmail == true &&
                     (!previousPaymentDate.HasValue || previousPaymentDate.Value < paymentDate);
                 ApplySubscriptionState(record);
                 await _db.SaveChangesAsync(cancellationToken);
@@ -678,6 +748,7 @@ namespace GamMaSite.Controllers
             }
 
             if (context?.MarkUserAsPaid == true &&
+                context?.SendPaymentEmail == true &&
                 !string.IsNullOrWhiteSpace(record.UserId) &&
                 shouldSendPaymentEmail)
             {
@@ -889,6 +960,10 @@ namespace GamMaSite.Controllers
             return metadata != null && metadata.TryGetValue(key, out var value) ? value : null;
         }
 
-        private sealed record SubscriptionContext(string UserId, DateTime? LastPaidAt, bool MarkUserAsPaid = false);
+        private sealed record SubscriptionContext(
+            string UserId,
+            DateTime? LastPaidAt,
+            bool MarkUserAsPaid = false,
+            bool SendPaymentEmail = true);
     }
 }

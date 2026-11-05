@@ -274,7 +274,8 @@ public sealed class StripeWebhookControllerTests
         stripe.Setup(value => value.GetProductAsync(MembershipProductId))
             .ReturnsAsync(new Product { Id = MembershipProductId, Name = "Kontingent" });
 
-        var controller = CreateController(db, stripe.Object);
+        var email = new Mock<ISystemEmailTemplateService>();
+        var controller = CreateController(db, stripe.Object, email.Object);
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var payload = $"{{\"id\":\"evt_subscription\",\"object\":\"event\",\"created\":{created},\"data\":{{\"object\":{{\"id\":\"cs_subscription\",\"object\":\"checkout.session\",\"mode\":\"subscription\",\"payment_status\":\"paid\",\"subscription\":\"sub_test\",\"client_reference_id\":\"user-1\",\"created\":{created},\"metadata\":{{\"Product\":\"{MembershipProductId}\"}}}}}},\"livemode\":false,\"type\":\"checkout.session.completed\"}}";
         SetRequest(controller, payload, Sign(payload));
@@ -294,6 +295,7 @@ public sealed class StripeWebhookControllerTests
         var user = await db.Users.SingleAsync(item => item.Id == "user-1");
         Assert.Equal(UserStatus.BETALT, user.Status);
         Assert.NotEqual(default, user.KontingentDato);
+        email.VerifyNoOtherCalls();
 
         SetRequest(controller, payload, Sign(payload));
         var duplicateResult = await controller.Receive(default);

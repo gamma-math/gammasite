@@ -65,11 +65,22 @@ update_local_env .env STRIPE_WEBHOOK_SECRET "$stripe_webhook_secret"
 update_local_env .env PUBLIC_WEBHOOK_BASE_URL "$public_webhook_base_url"
 update_local_env .env PUBLIC_BASE_URL "$public_webhook_base_url"
 
+# Keep the current shell environment in sync with the values written above.
+# The app is recreated below by a nested Compose command, where exported
+# variables take precedence over values read from .env.
+export STRIPE_WEBHOOK_SECRET="$stripe_webhook_secret"
+export PUBLIC_WEBHOOK_BASE_URL="$public_webhook_base_url"
+export PUBLIC_BASE_URL="$public_webhook_base_url"
+
 allowed_hosts="${ALLOWED_HOSTS:-localhost}"
+if [[ "$allowed_hosts" != "*" && ";$allowed_hosts;" != *";app;"* ]]; then
+    allowed_hosts="${allowed_hosts%;};app"
+fi
 if [[ "$allowed_hosts" != "*" && ";$allowed_hosts;" != *";$public_webhook_host;"* ]]; then
     allowed_hosts="${allowed_hosts%;};$public_webhook_host"
-    update_local_env .env ALLOWED_HOSTS "$allowed_hosts"
 fi
+update_local_env .env ALLOWED_HOSTS "$allowed_hosts"
+export ALLOWED_HOSTS="$allowed_hosts"
 
 restart_local_app
 

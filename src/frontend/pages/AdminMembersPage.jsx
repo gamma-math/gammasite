@@ -55,7 +55,7 @@ export function AdminMembersPage({ isAdmin }) {
     });
   }
 
-  const filtered = useFilteredMembers(members, search, ["name", "occupation", "email", "phoneNumber", "status", "membershipPaidAt", "createdAt", "hasActiveSubscription"]);
+  const filtered = useFilteredMembers(members, search, ["id", "name", "occupation", "email", "phoneNumber", "status", "membershipPaidAt", "createdAt", "hasActiveSubscription"]);
   const sorted = useSortedMembers(filtered, sort);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
 
@@ -125,6 +125,10 @@ export function AdminMembersPage({ isAdmin }) {
                       <td></td>
                       <td colSpan="6">
                         <dl className="menu-member-details">
+                          <div>
+                            <dt>Bruger ID</dt>
+                            <dd>{member.id}</dd>
+                          </div>
                           <div>
                             <dt>Beskæftigelse</dt>
                             <dd>{member.occupation || ""}</dd>

@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
+using GamMaSite.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
@@ -18,6 +19,16 @@ public sealed class ApiFinanceControllerTests
         var controller = Controller(new DefaultHttpContext());
 
         var result = await controller.GetOverview(null, CancellationToken.None);
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public async Task PreviewPostingReceipt_RejectsAnonymousUser()
+    {
+        var controller = Controller(new DefaultHttpContext());
+
+        var result = await controller.PreviewPostingReceipt("P-1001", CancellationToken.None);
 
         Assert.IsType<UnauthorizedResult>(result);
     }
@@ -48,7 +59,7 @@ public sealed class ApiFinanceControllerTests
     {
         var controller = Controller(new DefaultHttpContext());
 
-        var result = await controller.GetAdminPostings(1899, false, null, null, null, CancellationToken.None);
+        var result = await controller.GetAdminPostings(1899, false, null, null, null, null, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -132,7 +143,7 @@ public sealed class ApiFinanceControllerTests
 
     private static ApiFinanceController Controller(HttpContext context)
     {
-        return new ApiFinanceController(FinanceTestHelpers.ReportService(), FinanceTestHelpers.ImportService())
+        return new ApiFinanceController(FinanceTestHelpers.ReportService(), FinanceTestHelpers.ImportService(), null!, null!, null)
         {
             ControllerContext = new ControllerContext { HttpContext = context }
         };

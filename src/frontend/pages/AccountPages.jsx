@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
+import { Eye, KeyRound, Mail, Save, Trash2, UserCircle } from "lucide-react";
 import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Pagination, SearchToolbar, SortableHeader, usePagedItems } from "./MembersPage.jsx";
@@ -610,9 +610,22 @@ function FinancePostingsPanel({ setLastUpdated }) {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [isTableExpanded, setIsTableExpanded] = useState(false);
+  const [previewingReceiptId, setPreviewingReceiptId] = useState("");
   const filtered = useFilteredPostings(postings, search);
   const sorted = useMemo(() => sortPostings(filtered, sort), [filtered, sort]);
   const { currentPage, pageCount, visibleItems } = usePagedItems(sorted, page, pageSize);
+
+  const openReceiptPreview = (postingId) => {
+    setPreviewingReceiptId(postingId);
+    setError("");
+    try {
+      financeApi.openReceiptPreview(postingId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPreviewingReceiptId("");
+    }
+  };
 
   useEffect(() => {
     if (!isTableExpanded) return undefined;
@@ -692,7 +705,8 @@ function FinancePostingsPanel({ setLastUpdated }) {
               <SortableHeader label="Type" sortKey="type" sort={sort} setSort={setSort} />
               <SortableHeader label="Tekst" sortKey="text" sort={sort} setSort={setSort} />
               <SortableHeader label="Kilde" sortKey="sourceType" sort={sort} setSort={setSort} />
-              <SortableHeader label="Kategori" sortKey="postingGroup" sort={sort} setSort={setSort} />
+              <SortableHeader label="Kategori" sortKey="context" sort={sort} setSort={setSort} />
+              <th>Kvittering</th>
             </tr>
           </thead>
           <tbody>
@@ -703,12 +717,24 @@ function FinancePostingsPanel({ setLastUpdated }) {
                 <td>{postingType(posting.amount)}</td>
                 <td>{posting.text}</td>
                 <td><span className={`account-finance-source ${posting.sourceType === "MobilePay" ? "is-mobilepay" : "is-bank"}`}>{posting.sourceType}</span></td>
-                <td>{posting.postingGroup || "—"}</td>
+                <td>{posting.context || "—"}</td>
+                <td>
+                  <button
+                    className="account-finance-receipt-button"
+                    type="button"
+                    onClick={() => openReceiptPreview(posting.id)}
+                    disabled={previewingReceiptId === posting.id}
+                    title="Åbn kvittering"
+                  >
+                    <Eye size={15} aria-hidden="true" />
+                    <span>{previewingReceiptId === posting.id ? "Åbner..." : "Kvittering"}</span>
+                  </button>
+                </td>
               </tr>
             ))}
             {visibleItems.length === 0 && (
               <tr>
-                <td colSpan="6">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
+                <td colSpan="7">{postings.length === 0 ? "Der er ingen transaktioner knyttet til din bruger endnu." : "Ingen transaktioner matcher søgningen."}</td>
               </tr>
             )}
           </tbody>
@@ -1012,7 +1038,7 @@ function useFilteredPostings(postings, search) {
       posting.text,
       posting.sourceType,
       posting.account,
-      posting.postingGroup
+      posting.context
     ].some((value) => String(value ?? "").toLowerCase().includes(term)));
   }, [postings, search]);
 }

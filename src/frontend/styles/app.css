@@ -3727,6 +3727,31 @@ img {
   min-width: 900px;
 }
 
+.account-finance-receipt-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #d6deec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink-strong);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-finance-receipt-button:hover:not(:disabled) {
+  border-color: #337ab7;
+  color: #337ab7;
+}
+
+.account-finance-receipt-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .account-finance-table th:nth-child(2),
 .account-finance-table td:nth-child(2) {
   text-align: right;
@@ -3754,11 +3779,6 @@ img {
   color: #53627a;
   font-size: 0.9rem;
   font-weight: 800;
-}
-
-.account-finance-source.is-mobilepay {
-  background: rgba(31, 157, 104, 0.12);
-  color: #08775a;
 }
 
 @media (max-width: 620px) {

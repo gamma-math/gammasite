@@ -52,6 +52,13 @@ export const financeApi = {
 
     return response.json();
   },
+  openReceiptPreview: (postingId) => {
+    const url = `/api/finance/postings/${encodeURIComponent(postingId)}/receipt`;
+    const previewWindow = window.open(url, "_blank");
+    if (!previewWindow) {
+      throw new Error("Kvitteringen kunne ikke åbnes. Tillad pop op-vinduer, og prøv igen.");
+    }
+  },
   adminOverview: async (year) => {
     const response = await financeFetch(
       `/api/finance/admin/overview?year=${encodeURIComponent(year)}`,
@@ -106,6 +113,25 @@ export const financeApi = {
     });
     if (!response.ok) throw new Error("Importhistorikken kunne ikke hentes.");
     return response.json();
+  },
+  importStripeData: async ({ startDate, endDate } = {}) => {
+    const query = new URLSearchParams();
+    if (startDate) query.set("startDate", startDate);
+    if (endDate) query.set("endDate", endDate);
+    const queryString = query.toString();
+    const response = await financeFetch(
+      `/api/finance/admin/import/stripe${queryString ? `?${queryString}` : ""}`,
+      {
+      method: "POST",
+      credentials: "same-origin",
+      },
+    );
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Stripe-data kunne ikke hentes.");
+    return payload;
   },
   generateImportPostings: async () => {
     const response = await financeFetch("/api/finance/admin/import/postings", {
@@ -287,6 +313,7 @@ export const financeApi = {
     accountId = "",
     bankKey = "",
     mobilePayKey = "",
+    stripeKey = "",
   ) => {
     const params = new URLSearchParams();
     if (year === null || year === undefined || year === "") {
@@ -297,6 +324,7 @@ export const financeApi = {
     if (accountId) params.set("accountId", accountId);
     if (bankKey) params.set("bankKey", bankKey);
     if (mobilePayKey) params.set("mobilePayKey", mobilePayKey);
+    if (stripeKey) params.set("stripeKey", stripeKey);
     const response = await financeFetch(
       `/api/finance/admin/postings?${params.toString()}`,
       {

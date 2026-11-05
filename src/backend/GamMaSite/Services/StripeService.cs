@@ -3,6 +3,7 @@ using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GamMaSite.Services
@@ -17,6 +18,15 @@ namespace GamMaSite.Services
         bool IsPaymentComplete(Session session);
 
         Task<Session> GetSessionAsync(string sessionId);
+
+        Task<IReadOnlyList<StripeBalanceTransaction>> GetPayoutBalanceTransactionsAsync(
+            string payoutId,
+            CancellationToken cancellationToken = default);
+
+        Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            DateTime createdFrom,
+            DateTime createdToExclusive,
+            CancellationToken cancellationToken = default);
 
         Task<Product[]> GetAllProductsAsync();
 
@@ -66,8 +76,39 @@ namespace GamMaSite.Services
         DateTime? DueAt,
         DateTime? PaidAt);
 
+    public sealed record StripeBalanceTransaction(
+        string BalanceTransactionId,
+        string PayoutId,
+        DateTime Date,
+        DateTime AvailableDate,
+        DateTime? PayoutDate,
+        decimal Amount,
+        decimal Fee,
+        decimal Net,
+        string Currency,
+        string TransactionType,
+        string ReportingCategory,
+        string SourceId,
+        string PaymentIntentId,
+        string Description,
+        string UserId,
+        string PayerName,
+        string ReceiptUrl);
+
     public class StripeService : IStripeService
     {
+        public static bool IsPaymentTransaction(string transactionType, string reportingCategory)
+        {
+            if (!string.IsNullOrWhiteSpace(reportingCategory))
+            {
+                return string.Equals(reportingCategory, "charge", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(reportingCategory, "payment", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return string.Equals(transactionType, "charge", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(transactionType, "payment", StringComparison.OrdinalIgnoreCase);
+        }
+
         public string StartPayment(Product product, Price price, string user, string successUrl, string cancelUrl, string mode = "payment", IDictionary<string, string> metadata = null, string idempotencyKey = null)
         {
             Session session = GetCreateSession(price.Id, product.Id, product.Name, user, successUrl, cancelUrl, mode, metadata, idempotencyKey);
@@ -92,6 +133,366 @@ namespace GamMaSite.Services
             {
                 return null;
             }
+        }
+
+        public async Task<IReadOnlyList<StripeBalanceTransaction>> GetPayoutBalanceTransactionsAsync(
+            string payoutId,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(payoutId))
+            {
+                return Array.Empty<StripeBalanceTransaction>();
+            }
+
+            var payout = await new PayoutService().GetAsync(payoutId, cancellationToken: cancellationToken);
+            var balanceTransactions = new BalanceTransactionService();
+            var options = new BalanceTransactionListOptions
+            {
+                Payout = payoutId,
+                Limit = 100
+            };
+            var result = new List<StripeBalanceTransaction>();
+
+            await foreach (var transaction in balanceTransactions.ListAutoPagingAsync(options).WithCancellation(cancellationToken))
+            {
+                if (transaction == null ||
+                    string.IsNullOrWhiteSpace(transaction.Id) ||
+                    transaction.AvailableOn == default ||
+                    !string.Equals(transaction.Status, "available", StringComparison.OrdinalIgnoreCase) ||
+                    !IsPaymentTransaction(transaction.Type, transaction.ReportingCategory))
+                {
+                    continue;
+                }
+
+                var paymentIntentId = string.Empty;
+                var userId = string.Empty;
+                var description = transaction.Description;
+                var receiptUrl = string.Empty;
+                Charge charge = null;
+                if (!string.IsNullOrWhiteSpace(transaction.SourceId))
+                {
+                    try
+                    {
+                        if (transaction.SourceId.StartsWith("ch_", StringComparison.Ordinal))
+                        {
+                            charge = await new ChargeService().GetAsync(transaction.SourceId, cancellationToken: cancellationToken);
+                            paymentIntentId = charge?.PaymentIntentId ?? string.Empty;
+                            description = charge?.Description ?? description;
+                            receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                        }
+                        else if (transaction.SourceId.StartsWith("pi_", StringComparison.Ordinal))
+                        {
+                            paymentIntentId = transaction.SourceId;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(paymentIntentId))
+                        {
+                            var paymentIntent = await new PaymentIntentService().GetAsync(
+                                paymentIntentId,
+                                cancellationToken: cancellationToken);
+                            userId = MetadataValue(paymentIntent?.Metadata, "GamMaUserId") ?? string.Empty;
+                            description = MetadataValue(paymentIntent?.Metadata, "ProductName")
+                                ?? paymentIntent?.Description
+                                ?? description;
+                            if (string.IsNullOrWhiteSpace(userId))
+                            {
+                                var recurringMetadata = await ResolveRecurringPaymentMetadataAsync(
+                                    paymentIntentId,
+                                    cancellationToken);
+                                userId = recurringMetadata.UserId ?? string.Empty;
+                                description = recurringMetadata.ProductName ?? description;
+                            }
+                            if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
+                            {
+                                charge = await new ChargeService().GetAsync(
+                                    paymentIntent.LatestChargeId,
+                                    cancellationToken: cancellationToken);
+                                receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                            }
+                        }
+                    }
+                    catch (StripeException)
+                    {
+                        // The balance transaction remains useful even if its source
+                        // object cannot be expanded with the current API key.
+                    }
+                }
+
+                if (IsFullyRefundedBeforePayout(
+                    charge,
+                    payout.Created))
+                {
+                    continue;
+                }
+
+                result.Add(new StripeBalanceTransaction(
+                    transaction.Id,
+                    payoutId,
+                    transaction.Created,
+                    transaction.AvailableOn,
+                    payout?.ArrivalDate,
+                    ToMajorAmount(transaction.Amount),
+                    ToMajorAmount(transaction.Fee),
+                    ToMajorAmount(transaction.Net),
+                    transaction.Currency,
+                    transaction.Type,
+                    transaction.ReportingCategory,
+                    transaction.SourceId,
+                    paymentIntentId,
+                    description,
+                    userId,
+                    string.Empty,
+                    receiptUrl));
+            }
+
+            return result;
+        }
+
+        public async Task<IReadOnlyList<StripeBalanceTransaction>> GetAvailablePaymentBalanceTransactionsAsync(
+            DateTime createdFrom,
+            DateTime createdToExclusive,
+            CancellationToken cancellationToken = default)
+        {
+            var balanceTransactions = new BalanceTransactionService();
+            var transactions = new List<BalanceTransaction>();
+            var transactionOptions = new BalanceTransactionListOptions
+            {
+                Limit = 100,
+                Created = new DateRangeOptions
+                {
+                    GreaterThanOrEqual = createdFrom,
+                    LessThan = createdToExclusive
+                }
+            };
+
+            await foreach (var transaction in balanceTransactions.ListAutoPagingAsync(transactionOptions).WithCancellation(cancellationToken))
+            {
+                if (transaction != null &&
+                    !string.IsNullOrWhiteSpace(transaction.Id) &&
+                    transaction.AvailableOn != default &&
+                    string.Equals(transaction.Status, "available", StringComparison.OrdinalIgnoreCase) &&
+                    IsPaymentTransaction(transaction.Type, transaction.ReportingCategory))
+                {
+                    transactions.Add(transaction);
+                }
+            }
+
+            if (transactions.Count == 0)
+            {
+                return Array.Empty<StripeBalanceTransaction>();
+            }
+
+            // A balance transaction does not carry its payout ID when it is
+            // listed globally. Build the mapping from the payout-specific
+            // balance transaction endpoint where Stripe does expose it.
+            var transactionIds = transactions
+                .Select(transaction => transaction.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            var payoutByTransactionId = new Dictionary<string, Payout>(StringComparer.Ordinal);
+            var payoutService = new PayoutService();
+            var payoutOptions = new PayoutListOptions
+            {
+                Limit = 100,
+                Created = new DateRangeOptions
+                {
+                    GreaterThanOrEqual = createdFrom,
+                    LessThan = createdToExclusive
+                }
+            };
+
+            await foreach (var payout in payoutService.ListAutoPagingAsync(payoutOptions).WithCancellation(cancellationToken))
+            {
+                if (payout == null || string.IsNullOrWhiteSpace(payout.Id))
+                {
+                    continue;
+                }
+
+                var payoutTransactions = new BalanceTransactionListOptions
+                {
+                    Payout = payout.Id,
+                    Limit = 100
+                };
+                await foreach (var payoutTransaction in balanceTransactions.ListAutoPagingAsync(payoutTransactions).WithCancellation(cancellationToken))
+                {
+                    if (payoutTransaction != null && transactionIds.Contains(payoutTransaction.Id))
+                    {
+                        payoutByTransactionId[payoutTransaction.Id] = payout;
+                    }
+                }
+            }
+
+            var result = new List<StripeBalanceTransaction>(transactions.Count);
+            foreach (var transaction in transactions)
+            {
+                payoutByTransactionId.TryGetValue(transaction.Id, out var payout);
+                var mapped = await MapBalanceTransactionAsync(
+                    transaction,
+                    payout?.Id,
+                    payout?.Created,
+                    transaction.AvailableOn,
+                    cancellationToken);
+                if (mapped != null)
+                {
+                    result.Add(mapped);
+                }
+            }
+
+            return result;
+        }
+
+        private static async Task<StripeBalanceTransaction> MapBalanceTransactionAsync(
+            BalanceTransaction transaction,
+            string payoutId,
+            DateTime? payoutCreated,
+            DateTime payoutDate,
+            CancellationToken cancellationToken)
+        {
+            var paymentIntentId = string.Empty;
+            var userId = string.Empty;
+            var description = transaction.Description;
+            var receiptUrl = string.Empty;
+            Charge charge = null;
+
+            if (!string.IsNullOrWhiteSpace(transaction.SourceId))
+            {
+                try
+                {
+                    if (transaction.SourceId.StartsWith("ch_", StringComparison.Ordinal))
+                    {
+                        charge = await new ChargeService().GetAsync(transaction.SourceId, cancellationToken: cancellationToken);
+                        paymentIntentId = charge?.PaymentIntentId ?? string.Empty;
+                        description = charge?.Description ?? description;
+                        receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                    }
+                    else if (transaction.SourceId.StartsWith("pi_", StringComparison.Ordinal))
+                    {
+                        paymentIntentId = transaction.SourceId;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(paymentIntentId))
+                    {
+                        var paymentIntent = await new PaymentIntentService().GetAsync(
+                            paymentIntentId,
+                            cancellationToken: cancellationToken);
+                        userId = MetadataValue(paymentIntent?.Metadata, "GamMaUserId") ?? string.Empty;
+                        description = MetadataValue(paymentIntent?.Metadata, "ProductName")
+                            ?? paymentIntent?.Description
+                            ?? description;
+                        if (string.IsNullOrWhiteSpace(userId))
+                        {
+                            var recurringMetadata = await ResolveRecurringPaymentMetadataAsync(
+                                paymentIntentId,
+                                cancellationToken);
+                            userId = recurringMetadata.UserId ?? string.Empty;
+                            description = recurringMetadata.ProductName ?? description;
+                        }
+                        if (string.IsNullOrWhiteSpace(receiptUrl) && !string.IsNullOrWhiteSpace(paymentIntent?.LatestChargeId))
+                        {
+                            charge = await new ChargeService().GetAsync(
+                                paymentIntent.LatestChargeId,
+                                cancellationToken: cancellationToken);
+                            receiptUrl = charge?.ReceiptUrl ?? string.Empty;
+                        }
+                    }
+                }
+                catch (StripeException)
+                {
+                    // The balance transaction remains useful even if its source
+                    // object cannot be expanded with the current API key.
+                }
+            }
+
+            if (payoutCreated.HasValue && IsFullyRefundedBeforePayout(charge, payoutCreated.Value))
+            {
+                return null;
+            }
+
+            return new StripeBalanceTransaction(
+                transaction.Id,
+                payoutId,
+                transaction.Created,
+                transaction.AvailableOn,
+                payoutDate,
+                ToMajorAmount(transaction.Amount),
+                ToMajorAmount(transaction.Fee),
+                ToMajorAmount(transaction.Net),
+                transaction.Currency,
+                transaction.Type,
+                transaction.ReportingCategory,
+                transaction.SourceId,
+                paymentIntentId,
+                description,
+                userId,
+                string.Empty,
+                receiptUrl);
+        }
+
+        private sealed record RecurringPaymentMetadata(string UserId, string ProductName);
+
+        private static async Task<RecurringPaymentMetadata> ResolveRecurringPaymentMetadataAsync(
+            string paymentIntentId,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+            {
+                return new RecurringPaymentMetadata(null, null);
+            }
+
+            var invoicePayments = await new InvoicePaymentService().ListAsync(
+                new InvoicePaymentListOptions
+                {
+                    Payment = new InvoicePaymentPaymentOptions
+                    {
+                        Type = "payment_intent",
+                        PaymentIntent = paymentIntentId
+                    },
+                    Limit = 10
+                },
+                cancellationToken: cancellationToken);
+            var invoicePayment = invoicePayments?.Data?.FirstOrDefault(payment =>
+                !string.IsNullOrWhiteSpace(payment?.InvoiceId));
+            if (invoicePayment == null)
+            {
+                return new RecurringPaymentMetadata(null, null);
+            }
+
+            var invoice = await new InvoiceService().GetAsync(
+                invoicePayment.InvoiceId,
+                cancellationToken: cancellationToken);
+            var subscriptionDetails = invoice?.Parent?.SubscriptionDetails;
+            var subscription = subscriptionDetails?.Subscription;
+            if (subscription == null && !string.IsNullOrWhiteSpace(subscriptionDetails?.SubscriptionId))
+            {
+                subscription = await new SubscriptionService().GetAsync(
+                    subscriptionDetails.SubscriptionId,
+                    cancellationToken: cancellationToken);
+            }
+
+            return new RecurringPaymentMetadata(
+                MetadataValue(subscription?.Metadata, "GamMaUserId")
+                    ?? MetadataValue(subscriptionDetails?.Metadata, "GamMaUserId"),
+                MetadataValue(subscription?.Metadata, "ProductName")
+                    ?? MetadataValue(subscriptionDetails?.Metadata, "ProductName"));
+        }
+
+        private static bool IsFullyRefundedBeforePayout(
+            Charge charge,
+            DateTime payoutCreated)
+        {
+            if (charge == null || charge.Amount <= 0 || charge.Refunds?.Data == null)
+            {
+                return false;
+            }
+
+            var refundedAmount = charge.Refunds.Data
+                .Where(refund =>
+                    refund != null &&
+                    string.Equals(refund.Status, "succeeded", StringComparison.OrdinalIgnoreCase) &&
+                    refund.Created != default &&
+                    refund.Created <= payoutCreated)
+                .Sum(refund => refund.Amount);
+
+            return refundedAmount >= charge.Amount;
         }
 
         public async Task<Product> GetProductAsync(string id)
@@ -476,6 +877,13 @@ namespace GamMaSite.Services
                 Metadata = sessionMetadata,
                 ClientReferenceId = user,
                 Mode = mode,
+                PaymentIntentData = string.Equals(mode, "payment", StringComparison.OrdinalIgnoreCase)
+                    ? new SessionPaymentIntentDataOptions
+                    {
+                        Description = productName,
+                        Metadata = new Dictionary<string, string>(sessionMetadata)
+                    }
+                    : null,
                 SubscriptionData = string.Equals(mode, "subscription", StringComparison.OrdinalIgnoreCase)
                     ? new SessionSubscriptionDataOptions
                     {
@@ -505,6 +913,11 @@ namespace GamMaSite.Services
 
             return new SessionService().Create(options, requestOptions);
         }
+
+        private static decimal ToMajorAmount(long amountMinor) => amountMinor / 100m;
+
+        private static string MetadataValue(IDictionary<string, string> metadata, string key) =>
+            metadata != null && metadata.TryGetValue(key, out var value) ? value : null;
 
     }
 }

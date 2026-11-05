@@ -26,7 +26,9 @@ const requiredSystemTemplateTypes = new Set([
   "SYSTEM_EMAIL_CHANGE_CONFIRMATION",
   "SYSTEM_REGISTRATION_CONFIRMATION",
   "SYSTEM_PASSWORD_RESET",
-  "SYSTEM_EMAIL_CONFIRMATION"
+  "SYSTEM_EMAIL_CONFIRMATION",
+  "SYSTEM_FINANCE_PAYMENT_RECEIPT",
+  "SYSTEM_FINANCE_REFUND_RECEIPT"
 ]);
 
 function isSystemTemplate(templateType) {
@@ -177,7 +179,7 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const isNew = templateId === null;
-  const selectedTemplateType = String(selected.templateType ?? "").toUpperCase();
+  const selectedTemplateType = String(selected.templateType ?? "").trim().toUpperCase();
   const isSystem = isSystemTemplate(selectedTemplateType);
   const isRequiredSystem = requiredSystemTemplateTypes.has(selectedTemplateType);
 

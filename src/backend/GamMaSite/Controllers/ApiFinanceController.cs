@@ -1,13 +1,18 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Security.Claims;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Services;
+using GamMaSite.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Stripe;
 
 namespace GamMaSite.Controllers
 {
@@ -19,11 +24,22 @@ namespace GamMaSite.Controllers
     {
         private readonly FinanceReportService _financeReportService;
         private readonly FinanceImportService _financeImportService;
+        private readonly ApplicationDbContext _db;
+        private readonly IEmailTemplateService _emailTemplateService;
+        private readonly IStripeService _stripeService;
 
-        public ApiFinanceController(FinanceReportService financeReportService, FinanceImportService financeImportService)
+        public ApiFinanceController(
+            FinanceReportService financeReportService,
+            FinanceImportService financeImportService,
+            ApplicationDbContext db,
+            IEmailTemplateService emailTemplateService,
+            IStripeService stripeService = null)
         {
             _financeReportService = financeReportService;
             _financeImportService = financeImportService;
+            _db = db;
+            _emailTemplateService = emailTemplateService;
+            _stripeService = stripeService;
         }
 
         [HttpGet("overview")]
@@ -55,6 +71,55 @@ namespace GamMaSite.Controllers
             }
 
             return Ok(await _financeReportService.GetUserPostingsAsync(userId, cancellationToken));
+        }
+
+        [HttpGet("postings/{id}/receipt")]
+        public async Task<IActionResult> PreviewPostingReceipt(string id, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _db.Users.AsNoTracking().SingleOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var posting = await _financeReportService.GetUserPostingReceiptAsync(userId, id, cancellationToken);
+            if (posting == null)
+            {
+                return NotFound();
+            }
+
+            var isPayment = posting.Amount < 0;
+            var displayAmount = isPayment ? Math.Abs(posting.Amount) : -Math.Abs(posting.Amount);
+            var templateType = isPayment
+                ? SystemEmailTemplateService.FinancePaymentReceipt
+                : SystemEmailTemplateService.FinanceRefundReceipt;
+            var values = new Dictionary<string, string>
+            {
+                ["UserId"] = user.Id,
+                ["UserName"] = user.Navn ?? "",
+                ["UserEmail"] = user.Email ?? "",
+                ["PostingId"] = posting.Id,
+                ["Date"] = posting.Date,
+                ["Product"] = posting.Product,
+                ["PaymentMethod"] = posting.PaymentMethod,
+                ["Amount"] = displayAmount.ToString("N2", CultureInfo.GetCultureInfo("da-DK")) + " kr.",
+                ["TransactionType"] = isPayment ? "Betaling" : "Refusion",
+                ["CompanyName"] = "Alumneforeningen GamMa",
+                ["CompanyCvr"] = "34637768"
+            };
+            var html = await _emailTemplateService.RenderActiveHtmlAsync(templateType, values);
+            if (html == null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Kvitteringsskabelonen mangler eller er inaktiv." });
+            }
+
+            return Content(html, "text/html; charset=utf-8");
         }
 
         [HttpGet("admin/overview")]
@@ -186,7 +251,7 @@ namespace GamMaSite.Controllers
 
         [HttpGet("admin/postings")]
         [Authorize(Policy = PermissionPolicies.FinanceViewAll)]
-        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAdminPostings([FromQuery] int? year, [FromQuery] bool allYears, [FromQuery] string accountId, [FromQuery] long? bankKey, [FromQuery] long? mobilePayKey, [FromQuery] long? stripeKey, CancellationToken cancellationToken)
         {
             var currentYear = DateTime.Today.Year;
             int? selectedYear = allYears ? null : year ?? currentYear;
@@ -195,7 +260,7 @@ namespace GamMaSite.Controllers
                 return BadRequest(new { error = "Det valgte år er ugyldigt." });
             }
 
-            return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, cancellationToken));
+            return Ok(await _financeReportService.GetAdminPostingsAsync(selectedYear, accountId, bankKey, mobilePayKey, stripeKey, cancellationToken));
         }
 
         [HttpGet("admin/postings/years")]
@@ -284,6 +349,45 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GenerateImportPostings(CancellationToken cancellationToken)
         {
             return Ok(await _financeImportService.GenerateDerivedPostingsAsync(cancellationToken));
+        }
+
+        [HttpPost("admin/import/stripe")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
+        public async Task<IActionResult> ImportStripeData(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            CancellationToken cancellationToken)
+        {
+            if (_stripeService == null)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Stripe-servicen er ikke konfigureret." });
+            }
+
+            var currentYear = DateTime.Today.Year;
+            var createdFrom = (startDate ?? new DateTime(currentYear, 1, 1)).Date;
+            var createdTo = (endDate ?? new DateTime(currentYear, 12, 31)).Date;
+            if (createdTo < createdFrom)
+            {
+                return BadRequest(new { error = "Slutdatoen skal være den samme som eller efter startdatoen." });
+            }
+
+            try
+            {
+                var rows = await _stripeService.GetAvailablePaymentBalanceTransactionsAsync(
+                    DateTime.SpecifyKind(createdFrom, DateTimeKind.Utc),
+                    DateTime.SpecifyKind(createdTo.AddDays(1), DateTimeKind.Utc),
+                    cancellationToken);
+                var result = await _financeImportService.ImportStripeTransactionsFromApiAsync(rows, cancellationToken);
+                return Ok(result);
+            }
+            catch (StripeException exception)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    error = "Stripe-data kunne ikke hentes.",
+                    detail = exception.StripeError?.Message ?? exception.Message
+                });
+            }
         }
 
         [HttpGet("admin/import/templates/{source}")]

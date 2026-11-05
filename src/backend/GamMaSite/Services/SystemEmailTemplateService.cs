@@ -25,6 +25,8 @@ namespace GamMaSite.Services
         public const string PaymentRecurring = "SYSTEM_PAYMENT_RECURRING";
         public const string EventConfirmation = "SYSTEM_EVENT_CONFIRMATION";
         public const string WaitlistPromotion = "SYSTEM_WAITLIST_PROMOTION";
+        public const string FinancePaymentReceipt = "SYSTEM_FINANCE_PAYMENT_RECEIPT";
+        public const string FinanceRefundReceipt = "SYSTEM_FINANCE_REFUND_RECEIPT";
 
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);
 
