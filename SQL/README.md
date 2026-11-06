@@ -1,40 +1,19 @@
-# SQL
+# SQL compatibility files
 
-This folder contains database schema scripts, views, and test seed data for GamMaSite.
+The canonical database schema definitions are now maintained under
+[`src/database/`](../src/database/). This folder is retained temporarily for
+legacy SQL files and compatibility with existing database tooling.
 
-## Structure
+New schema changes should be made in:
 
-Only tracked project folders/files are listed here:
+- [`src/database/mysql/`](../src/database/mysql/)
+- [`src/database/postgres/`](../src/database/postgres/)
 
-```text
-SQL/
-|-- test-seed/                     Ordered seed scripts for Identity, content, registrations, and templates.
-|-- migrations/                    One-time schema changes for existing databases.
-|-- views/                         SQL view definitions.
-|-- AspNetMysql.sql                Main database schema script.
-`-- AspNetMysql.test.sql           Test/staging database schema script.
-```
+Test seed data is maintained separately under:
 
-## Seed Data
+- [`src/database/seeds/mysql/test/`](../src/database/seeds/mysql/test/)
+- [`src/database/seeds/postgres/test/`](../src/database/seeds/postgres/test/)
 
-The test seed scripts are ordered by numeric prefix and can be run individually or through:
-
-```text
-SQL/test-seed/00_seed_all.sql
-```
-
-Current content-related seed scripts include:
-
-* `13_ContentItems.sql`
-* `14_ContentLinks.sql`
-* `15_EventRegistrations.sql`
-* `16_EmailTemplates.sql`
-
-Run schema/table scripts before seed scripts. Insert parent data before dependent data, for example `ContentItems` before `ContentLinks` and `EventRegistrations`.
-
-## Notes
-
-* The seed data is intended for local/test environments, not production user data.
-* Keep scripts idempotent where practical so they can be re-run safely during test setup.
-* Avoid documenting or relying on local-only database exports that are not tracked in Git.
-* Apply files in `SQL/migrations/` once to existing databases when a schema change is introduced; new databases receive the same shape from the main schema scripts.
+Do not place production database backups or real user data in this repository.
+Backups should be stored externally with appropriate retention and access
+controls.

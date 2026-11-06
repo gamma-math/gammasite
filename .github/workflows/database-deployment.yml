@@ -1,0 +1,69 @@
+name: Database schema management
+run-name: Database ${{ inputs.action }} for ${{ inputs.database }} in ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      database:
+        description: Database to inspect or deploy
+        required: true
+        default: mysql
+        type: choice
+        options:
+          - mysql
+          - postgres
+      environment:
+        description: Target environment
+        required: true
+        default: TEST
+        type: choice
+        options:
+          - TEST
+          - PROD
+      action:
+        description: Operation to run
+        required: true
+        default: plan
+        type: choice
+        options:
+          - diff
+          - validate
+          - plan
+          - deploy
+
+permissions:
+  contents: read
+
+jobs:
+  schema-management:
+    name: ${{ inputs.action }} ${{ inputs.database }} in ${{ inputs.environment }}
+    runs-on: windows-2025
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Check-out repository
+        uses: actions/checkout@v4
+      - name: Add Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install database tooling
+        run: python -m pip install --disable-pip-version-check -r src/database/requirements.txt
+      - name: Run schema operation
+        shell: pwsh
+        env:
+          DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          DBMANAGER_POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $database = '${{ inputs.database }}'
+          $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
+          $action = '${{ inputs.action }}'
+          if ($action -eq 'deploy') {
+            python src/database/scripts/cli.py plan --db $database --env $targetEnvironment
+            $arguments = @('src/database/scripts/cli.py', 'deploy', '--db', $database, '--env', $targetEnvironment, '--confirm', '--allow-risk')
+            if ($targetEnvironment -eq 'prod') {
+              $arguments += '--confirm-production'
+            }
+            python @arguments
+          } else {
+            python src/database/scripts/cli.py $action --db $database --env $targetEnvironment
+          }

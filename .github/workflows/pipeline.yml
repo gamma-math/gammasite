@@ -33,6 +33,10 @@ jobs:
     steps:
       - name: Check-out repository
         uses: actions/checkout@v4
+      - name: Add Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
       - name: Show deployment target
         run: 'Write-Host "Deployment target: $env:DEPLOY_ENVIRONMENT"'
         env:
@@ -54,6 +58,7 @@ jobs:
           WD_PASSWORD: ${{ secrets.WD_PASSWORD }}
           SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
           CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          FINANCE_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
           MAILGUN_HOST: ${{ secrets.MAILGUN_HOST }}
           MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
           MAILGUN_MAIL: ${{ secrets.MAILGUN_MAIL }}
@@ -78,6 +83,7 @@ jobs:
             'WD_PASSWORD',
             'SITE_DOMAIN',
             'CONNECTION_STRING',
+            'FINANCE_CONNECTION_STRING',
             'MAILGUN_HOST',
             'MAILGUN_API_KEY',
             'MAILGUN_MAIL',
@@ -102,6 +108,17 @@ jobs:
               throw "Missing required deployment setting: $name"
             }
           }
+      - name: Install database tooling
+        run: python -m pip install --disable-pip-version-check -r src/database/requirements.txt
+      - name: Validate database schemas
+        shell: pwsh
+        env:
+          DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          DBMANAGER_POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
+          python src/database/scripts/cli.py validate --db mysql --env $targetEnvironment
+          python src/database/scripts/cli.py validate --db postgres --env $targetEnvironment
       - name: Variable substitutions
         uses: microsoft/variable-substitution@v1
         with:
