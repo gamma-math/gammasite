@@ -328,6 +328,9 @@ ON public.posteringer(date);
 CREATE INDEX IF NOT EXISTS ix_posteringer_posting_date
 ON public.posteringer(posting_date);
 
+CREATE INDEX IF NOT EXISTS ix_posteringer_stripe_key
+ON public.posteringer(stripe_key);
+
 -- =========================================================
 -- 9. IMPORT HISTORY
 -- =========================================================
@@ -459,3 +462,51 @@ DROP TRIGGER IF EXISTS posteringer_set_updated_at ON public.posteringer;
 CREATE TRIGGER posteringer_set_updated_at BEFORE UPDATE ON public.posteringer FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS import_history_set_updated_at ON public.import_history;
 CREATE TRIGGER import_history_set_updated_at BEFORE UPDATE ON public.import_history FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- =========================================================
+-- 10. PRIVILEGES / DEFAULT PRIVILEGES
+-- =========================================================
+-- These roles are expected to exist in the target PostgreSQL/Neon database.
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO gamma_finance_read;
+GRANT USAGE ON SCHEMA public TO gamma_finance_write;
+
+GRANT SELECT ON TABLE public.account TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.account TO gamma_finance_write;
+GRANT SELECT ON TABLE public.bank_account TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.bank_account TO gamma_finance_write;
+GRANT SELECT, USAGE ON SEQUENCE public.bank_account_id_seq TO gamma_finance_read;
+GRANT SELECT, USAGE ON SEQUENCE public.bank_account_id_seq TO gamma_finance_write;
+GRANT SELECT ON TABLE public.forecast TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.forecast TO gamma_finance_write;
+GRANT SELECT ON TABLE public.import_history TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.import_history TO gamma_finance_write;
+GRANT SELECT, USAGE ON SEQUENCE public.import_history_id_seq TO gamma_finance_read;
+GRANT SELECT, USAGE ON SEQUENCE public.import_history_id_seq TO gamma_finance_write;
+GRANT SELECT ON TABLE public.mobilepay TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.mobilepay TO gamma_finance_write;
+GRANT SELECT, USAGE ON SEQUENCE public.mobilepay_id_seq TO gamma_finance_read;
+GRANT SELECT, USAGE ON SEQUENCE public.mobilepay_id_seq TO gamma_finance_write;
+GRANT SELECT ON TABLE public.mobilepay_reference_lookup TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.mobilepay_reference_lookup TO gamma_finance_write;
+GRANT SELECT ON TABLE public.postering_group TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.postering_group TO gamma_finance_write;
+GRANT SELECT ON TABLE public.posteringer TO gamma_finance_read;
+GRANT INSERT, DELETE, UPDATE ON TABLE public.posteringer TO gamma_finance_write;
+GRANT SELECT ON TABLE public.stripe TO gamma_finance_read;
+GRANT SELECT, INSERT, DELETE, UPDATE ON TABLE public.stripe TO gamma_finance_write;
+GRANT SELECT, USAGE ON SEQUENCE public.stripe_id_seq TO gamma_finance_read;
+GRANT SELECT, USAGE ON SEQUENCE public.stripe_id_seq TO gamma_finance_write;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public
+  GRANT ALL ON SEQUENCES TO neon_superuser WITH GRANT OPTION;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+  GRANT SELECT, USAGE ON SEQUENCES TO gamma_finance_read;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+  GRANT SELECT, USAGE ON SEQUENCES TO gamma_finance_write;
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public
+  GRANT ALL ON TABLES TO neon_superuser WITH GRANT OPTION;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+  GRANT SELECT ON TABLES TO gamma_finance_read;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public
+  GRANT INSERT, DELETE, UPDATE ON TABLES TO gamma_finance_write;

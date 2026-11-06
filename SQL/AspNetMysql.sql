@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `Permissions` (
   `Description` varchar(512) DEFAULT NULL,
   PRIMARY KEY (`Id`),
   UNIQUE KEY `UX_Permissions_Code` (`Code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `RolePermissions` (
   `RoleId` varchar(128) NOT NULL,
@@ -38,13 +38,13 @@ CREATE TABLE IF NOT EXISTS `RolePermissions` (
 
 DROP TABLE IF EXISTS `AspNetRoleClaims`;
 CREATE TABLE `AspNetRoleClaims` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `ClaimType` longtext,
   `ClaimValue` longtext,
   `RoleId` varchar(127) NOT NULL,
   PRIMARY KEY (`Id`),
   KEY `IX_AspNetRoleClaims_RoleId` (`RoleId`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 -- --------------------------------------------------------
 
 --
@@ -52,14 +52,14 @@ CREATE TABLE `AspNetRoleClaims` (
 --
 
 CREATE TABLE IF NOT EXISTS AspNetUserClaims (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Id` int NOT NULL AUTO_INCREMENT,
   `UserId` varchar(128) NOT NULL,
   `ClaimType` longtext,
   `ClaimValue` longtext,
   PRIMARY KEY (`Id`),
   UNIQUE KEY `Id` (`Id`),
   KEY `UserId` (`UserId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1 ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 
 -- --------------------------------------------------------
 
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS AspNetUserLogins (
   `UserId` varchar(128) NOT NULL,
   PRIMARY KEY (`LoginProvider`,`ProviderKey`,`UserId`),
   KEY `ApplicationUser_Logins` (`UserId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS AspNetUserRoles (
   `RoleId` varchar(128) NOT NULL,
   PRIMARY KEY (`UserId`,`RoleId`),
   KEY `IdentityRole_Users` (`RoleId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -99,29 +99,29 @@ CREATE TABLE IF NOT EXISTS AspNetUsers (
   `Id` varchar(128) NOT NULL,
   `ConcurrencyStamp` varchar(256) DEFAULT NULL,
   `Email` varchar(256) DEFAULT NULL,
-  `EmailConfirmed` tinyint(1) NOT NULL,
+  `EmailConfirmed` tinyint NOT NULL,
   `PasswordHash` longtext,
   `SecurityStamp` longtext,
   `PhoneNumber` longtext,
-  `PhoneNumberConfirmed` tinyint(1) NOT NULL,
-  `TwoFactorEnabled` tinyint(1) NOT NULL,
+  `PhoneNumberConfirmed` tinyint NOT NULL,
+  `TwoFactorEnabled` tinyint NOT NULL,
   `LockoutEndDateUtc` datetime DEFAULT NULL,
-  `LockoutEnabled` tinyint(1) NOT NULL,
-  `AccessFailedCount` int(11) NOT NULL,
+  `LockoutEnabled` tinyint NOT NULL,
+  `AccessFailedCount` int NOT NULL,
   `UserName` varchar(256) NOT NULL,
   `LockoutEnd` datetime DEFAULT NULL,
   `NormalizedEmail` varchar(256) DEFAULT NULL,
   `NormalizedUserName` varchar(256) DEFAULT NULL,
   `Navn` varchar(256) NOT NULL,
   `Adresse` mediumtext,
-  `Status` int(11) NOT NULL DEFAULT '0',
-  `Visibility` int(11) NOT NULL DEFAULT '1',
-  `Aargang` int(11) NOT NULL,
+  `Status` int NOT NULL DEFAULT '0',
+  `Visibility` int NOT NULL DEFAULT '1',
+  `Aargang` int NOT NULL,
   `Beskaeftigelse` longtext,
   `KontingentDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `OprettetDato` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS AspNetUserTokens (
 Name varchar(127) NOT NULL,
 Value longtext,
 CONSTRAINT PK_AspNetUserTokens PRIMARY KEY (UserId, LoginProvider, Name)
-);
+)
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 CREATE TABLE IF NOT EXISTS Keys (
@@ -148,7 +149,8 @@ CREATE TABLE IF NOT EXISTS Keys (
 `DataProtected` INTEGER NOT NULL,
 `Data` longtext NOT NULL,
 CONSTRAINT PK_Keys PRIMARY KEY (Id)
-);
+)
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE `PersistedGrants` (
     `Key` varchar(128) NOT NULL,
@@ -162,7 +164,8 @@ CREATE TABLE `PersistedGrants` (
     `ConsumedTime` text NULL,
     `Data` text NOT NULL,
     CONSTRAINT PK_PersistedGrants PRIMARY KEY (`Key`)
-);
+)
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE `DeviceCodes` (
 `UserCode` varchar(128) NOT NULL,
@@ -175,12 +178,14 @@ CREATE TABLE `DeviceCodes` (
 `Expiration` TEXT NOT NULL,
 `Data` TEXT NOT NULL,
 CONSTRAINT PK_DeviceCodes PRIMARY KEY (`UserCode`)
-);
+)
+ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE `__EFMigrationsHistory` (
   `MigrationId` text NOT NULL,
   `ProductVersion` text NOT NULL,
-  PRIMARY KEY (`MigrationId`(255)));
+  PRIMARY KEY (`MigrationId`(255))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 --
 -- Content tables for news, events, registrations and email templates
@@ -246,7 +251,7 @@ CREATE TABLE IF NOT EXISTS `ContentLinks` (
   CONSTRAINT `FK_ContentLinks_ContentItems_ContentItemId`
     FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
     ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -282,7 +287,7 @@ CREATE TABLE IF NOT EXISTS `PaymentOffers` (
   CONSTRAINT `FK_PaymentOffers_ContentItems_ContentItemId`
     FOREIGN KEY (`ContentItemId`) REFERENCES `ContentItems` (`Id`)
     ON DELETE RESTRICT ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -380,7 +385,7 @@ CREATE TABLE IF NOT EXISTS `EmailTemplates` (
   PRIMARY KEY (`Id`),
   KEY `IX_EmailTemplates_TemplateType` (`TemplateType`),
   KEY `IX_EmailTemplates_IsActive` (`IsActive`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Constraints for dumped tables
@@ -404,3 +409,16 @@ ALTER TABLE AspNetUserLogins
 ALTER TABLE AspNetUserRoles
   ADD CONSTRAINT `ApplicationUser_Roles` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   ADD CONSTRAINT `IdentityRole_Users` FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`) ON DELETE CASCADE ON UPDATE NO ACTION;
+
+DROP VIEW IF EXISTS `UserOverview`;
+CREATE OR REPLACE VIEW `UserOverview` AS
+SELECT
+  `AspNetUsers`.`Id` AS `Id`,
+  `AspNetUsers`.`Email` AS `Email`,
+  `AspNetUsers`.`PhoneNumber` AS `PhoneNumber`,
+  `AspNetUsers`.`Navn` AS `Navn`,
+  `AspNetUsers`.`Aargang` AS `Aargang`,
+  `AspNetUsers`.`Status` AS `Status`,
+  `AspNetUsers`.`KontingentDato` AS `KontingentDato`,
+  `AspNetUsers`.`Beskaeftigelse` AS `Beskaeftigelse`
+FROM `AspNetUsers`;
