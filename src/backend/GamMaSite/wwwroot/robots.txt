@@ -1,0 +1,18 @@
+User-agent: *
+
+# API endpoints are not public SEO pages.
+Disallow: /api/
+
+# Admin area.
+Disallow: /admin/
+
+# Login, registration, and user account pages.
+Disallow: /account/
+Disallow: /Identity/
+
+# Payment and checkout flows.
+Disallow: /pay/
+Disallow: /events/*/pay/
+
+# Protected event administration pages.
+Disallow: /events/*/registrations
