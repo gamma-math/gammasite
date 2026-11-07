@@ -18,7 +18,7 @@ need Git for Windows for the documented workflows.
 
 Run the commands from this directory:
 
-```bash
+```powershell
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
@@ -33,7 +33,7 @@ Local endpoints:
 
 - GamMaSite: `http://localhost:5000`
 - MySQL: `localhost:3306`
-- Finance PostgreSQL: `localhost:5433`
+- Finance PostgreSQL: `localhost:${FINANCE_POSTGRES_PORT}` (5433 by default)
 
 Set `MYSQL_PORT` or `FINANCE_POSTGRES_PORT` in `.env` if either port is already
 in use. Internal application connections continue to use Compose service names
@@ -80,12 +80,25 @@ docker compose down
 
 Use the shared schema-management service for local validation and deployment:
 
-```bash
-python -m src.services.database validate --db mysql --env local
-python -m src.services.database validate --db postgres --env local
-python -m src.services.database plan --db mysql --env local
-python -m src.services.database deploy --db mysql --env local --confirm
+```powershell
+& .\scripts\validate-schema.ps1
 ```
+
+The wrapper starts the local database containers, loads the local `.env` file,
+and validates both schemas through the shared database service. It never uses
+Test or Production connection strings.
+
+For individual schema operations, call the shared database service directly:
+
+```powershell
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database validate --db mysql --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database validate --db postgres --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database plan --db mysql --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database deploy --db mysql --env local --confirm
+```
+
+From Git Bash or another Bash shell, run `bash scripts/validate-schema.sh`
+from this directory.
 
 The same implementation is used by GitHub Actions. Production deployment
 requires an additional explicit production confirmation.
@@ -159,8 +172,8 @@ Common issues:
 
 - If Docker reports that `dockerDesktopLinuxEngine` cannot be found, start
   Docker Desktop and verify that the Linux engine is running.
-- If port `3306` or `5433` is unavailable, change `MYSQL_PORT` or
-  `FINANCE_POSTGRES_PORT` in `.env`.
+- If port `3306` or the configured `FINANCE_POSTGRES_PORT` is unavailable,
+  change `MYSQL_PORT` or `FINANCE_POSTGRES_PORT` in `.env`.
 - If a database is unhealthy, inspect `docker compose logs mysql` or
   `docker compose logs finance-postgres`.
 - If the application does not start, inspect `docker compose logs app`; it

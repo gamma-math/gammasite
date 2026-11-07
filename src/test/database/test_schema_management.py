@@ -65,6 +65,12 @@ class SchemaComparisonTests(unittest.TestCase):
         self.assertTrue(diff.is_match)
         self.assertTrue(plan.is_empty)
 
+    def test_mysql_view_database_qualification_is_format_only(self) -> None:
+        desired = _schema_with_view("SELECT `Example`.`id` FROM `Example`")
+        actual = _schema_with_view("select `gammasite_local`.`Example`.`id` from `gammasite_local`.`Example`")
+        diff = compare_schemas(desired, actual)
+        self.assertTrue(diff.is_match)
+
     def test_incompatible_column_change_is_blocked(self) -> None:
         desired = _schema_with_column("id", data_type="bigint")
         actual = _schema_with_column("id", data_type="text")
@@ -126,6 +132,14 @@ def _schema_with_column(name: str | None = None, data_type: str = "text") -> Sch
     return schema
 
 
+def _schema_with_view(definition: str) -> SchemaDefinition:
+    schema = SchemaDefinition("mysql")
+    from src.database.scripts.schema_reader import ViewDefinition
+
+    schema.views["ExampleView"] = ViewDefinition("ExampleView", None, definition, "")
+    return schema
+
+
 class _FakeConnection:
     def __init__(self) -> None:
         self.executed: list[str] = []
@@ -153,4 +167,3 @@ class _FakeCursor:
 
 if __name__ == "__main__":
     unittest.main()
-

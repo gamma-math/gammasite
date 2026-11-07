@@ -13,6 +13,7 @@ import re
 from typing import Any, Iterable
 
 
+
 @dataclass(frozen=True)
 class ColumnDefinition:
     name: str
@@ -196,6 +197,7 @@ def normalize_sql(value: str) -> str:
     normalized = (value or "").strip().rstrip(";")
     # MySQL metadata omits dump-file backticks from identifiers.
     normalized = re.sub(r"`([^`]*)`", r"\1", normalized)
+    normalized = re.sub(r"\s*,\s*", ",", normalized)
     return re.sub(r"\s+", " ", normalized).lower()
 
 
@@ -493,7 +495,9 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
     tables = query_rows(connection, """
         SELECT TABLE_NAME AS table_name
         FROM information_schema.tables
-        WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
+        WHERE table_schema = DATABASE()
+          AND table_type = 'BASE TABLE'
+          AND TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
         ORDER BY TABLE_NAME
     """)
     columns = query_rows(connection, """
@@ -502,6 +506,7 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
                COLUMN_DEFAULT AS column_default, EXTRA AS extra
         FROM information_schema.columns
         WHERE table_schema = DATABASE()
+          AND TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
         ORDER BY TABLE_NAME, ORDINAL_POSITION
     """)
     for row in tables:
@@ -527,6 +532,7 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
                COLUMN_NAME AS column_name
         FROM information_schema.statistics
         WHERE table_schema = DATABASE()
+          AND TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
         ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
     """)
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -561,6 +567,7 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
          AND rc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
         WHERE tc.CONSTRAINT_SCHEMA = DATABASE()
           AND tc.CONSTRAINT_TYPE IN ('PRIMARY KEY', 'FOREIGN KEY')
+          AND tc.TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
         ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_NAME, kcu.ORDINAL_POSITION
     """)
     _add_mysql_constraints(schema, constraint_rows)
@@ -580,7 +587,9 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
     for row in query_rows(connection, """
         SELECT table_name
         FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+          AND table_name NOT IN ('local_development_seed_runs')
         ORDER BY table_name
     """):
         name = str(row["table_name"])
@@ -592,6 +601,7 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
                is_nullable, column_default, is_identity
         FROM information_schema.columns
         WHERE table_schema = 'public'
+          AND table_name NOT IN ('local_development_seed_runs')
         ORDER BY table_name, ordinal_position
     """):
         table = schema.tables.get(table_key("public", str(row["table_name"])))
@@ -608,13 +618,30 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
         table.columns[column.name] = column
 
     for row in query_rows(connection, """
-        SELECT indexname, tablename, indexdef
-        FROM pg_indexes
-        WHERE schemaname = 'public'
+        SELECT index_class.relname AS indexname,
+               table_class.relname AS tablename,
+               pg_get_indexdef(index_class.oid) AS indexdef,
+               index_info.indisprimary AS is_primary
+        FROM pg_index index_info
+        JOIN pg_class index_class ON index_class.oid = index_info.indexrelid
+        JOIN pg_class table_class ON table_class.oid = index_info.indrelid
+        JOIN pg_namespace namespace_info ON namespace_info.oid = table_class.relnamespace
+        WHERE namespace_info.nspname = 'public'
+          AND table_class.relname NOT IN ('local_development_seed_runs')
     """):
         parsed = _parse_create_index(str(row["indexdef"]), "postgres")
         if parsed is None:
             continue
+        if bool(row.get("is_primary")):
+            parsed = IndexDefinition(
+                name=parsed.name,
+                table=parsed.table,
+                columns=parsed.columns,
+                unique=True,
+                primary=True,
+                where=parsed.where,
+                sql=parsed.sql,
+            )
         schema.indexes[parsed.name_key] = parsed
 
     for row in query_rows(connection, """
@@ -624,7 +651,9 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
         FROM pg_constraint con
         JOIN pg_class c ON c.oid = con.conrelid
         JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public' AND con.contype IN ('p', 'f')
+        WHERE n.nspname = 'public'
+          AND c.relname NOT IN ('local_development_seed_runs')
+          AND con.contype IN ('p', 'f')
     """):
         kind = "primary" if row["constraint_type"] == "p" else "foreign"
         constraint = ConstraintDefinition(
@@ -694,6 +723,7 @@ def normalize_type(value: str) -> str:
     normalized = normalized.replace("character varying", "varchar")
     normalized = normalized.replace("integer", "int")
     normalized = normalized.replace("double precision", "double")
+    normalized = normalized.replace("tinyint(1)", "tinyint")
     return normalized
 
 
@@ -721,8 +751,15 @@ def _extract_default(rest: str) -> str | None:
     if not match:
         return None
     value = match.group(1).strip()
-    value = re.split(r"\s+(?:ON\s+UPDATE|COMMENT)\b", value, maxsplit=1, flags=re.IGNORECASE)[0]
-    return value.strip()
+    value = re.split(
+        r"\s+(?:NOT\s+NULL|NULL|ON\s+UPDATE|COMMENT|COLLATE|CONSTRAINT)\b",
+        value,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip()
+    if value.upper() == "NULL":
+        return None
+    return value
 
 
 def _clean_index_column(value: str) -> str:

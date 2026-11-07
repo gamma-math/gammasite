@@ -209,7 +209,7 @@ def connect(settings: ConnectionSettings, read_only: bool = False) -> Any:
             import pymysql
         except ImportError as exc:  # pragma: no cover - depends on installation
             raise ConnectionConfigurationError(
-                "PyMySQL is required for MySQL. Install src/database/requirements.txt."
+                "PyMySQL is required for MySQL. Install src/services/database/requirements.txt."
             ) from exc
 
         kwargs: dict[str, Any] = {
@@ -228,7 +228,7 @@ def connect(settings: ConnectionSettings, read_only: bool = False) -> Any:
             import psycopg
         except ImportError as exc:  # pragma: no cover - depends on installation
             raise ConnectionConfigurationError(
-                "psycopg is required for PostgreSQL. Install src/database/requirements.txt."
+                "psycopg is required for PostgreSQL. Install src/services/database/requirements.txt."
             ) from exc
         connection = psycopg.connect(settings.conninfo)
 

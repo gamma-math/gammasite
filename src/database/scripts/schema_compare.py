@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any
 
 from .schema_reader import (
@@ -192,7 +193,10 @@ def _compare_constraints(result: SchemaDiff, desired: SchemaDefinition, actual: 
     for key in sorted(desired.constraints.keys() & actual.constraints.keys()):
         expected = desired.constraints[key]
         current = actual.constraints[key]
-        if expected.kind != current.kind or normalize_sql(expected.definition) != normalize_sql(current.definition):
+        if expected.kind != current.kind or _normalize_constraint_definition(
+            expected.definition,
+            desired.database,
+        ) != _normalize_constraint_definition(current.definition, desired.database):
             result.differences.append(
                 SchemaDifference(
                     "constraint",
@@ -215,7 +219,10 @@ def _compare_views(result: SchemaDiff, desired: SchemaDefinition, actual: Schema
     for key in sorted(desired.views.keys() & actual.views.keys()):
         expected = desired.views[key]
         current = actual.views[key]
-        if normalize_sql(expected.definition) != normalize_sql(current.definition):
+        if _normalize_view_definition(expected.definition, desired.database) != _normalize_view_definition(
+            current.definition,
+            desired.database,
+        ):
             result.differences.append(
                 SchemaDifference(
                     "view",
@@ -234,4 +241,38 @@ def _column_change_detail(expected: ColumnDefinition, current: ColumnDefinition)
         f"actual type={current.data_type}, nullable={current.nullable}, "
         f"default={current.default!r}, auto_increment={current.auto_increment}"
     )
+
+
+def _normalize_constraint_definition(definition: str, database: str) -> str:
+    """Normalize metadata formatting without hiding structural differences."""
+
+    normalized = normalize_sql(definition)
+    if database == "mysql":
+        # MySQL dump files may keep an index prefix length in a primary key,
+        # while information_schema reports only the underlying column.
+        normalized = re.sub(r"\b([a-z_][a-z0-9_]*)\(\d+\)", r"\1", normalized)
+    if database == "postgres":
+        # pg_get_constraintdef omits the public schema for same-schema refs.
+        normalized = normalized.replace("public.", "")
+    return normalized
+
+
+def _normalize_view_definition(definition: str, database: str) -> str:
+    """Normalize harmless database qualification added by metadata providers."""
+
+    normalized = normalize_sql(definition)
+    if database == "mysql":
+        # information_schema.views may qualify every column as database.table,
+        # while the source definition intentionally uses the current database.
+        normalized = re.sub(
+            r"\b[a-z_][a-z0-9_]*\.([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\b",
+            r"\1.\2",
+            normalized,
+        )
+        normalized = re.sub(
+            r"\b(from|join)\s+[a-z_][a-z0-9_]*\.([a-z_][a-z0-9_]*)\b",
+            r"\1 \2",
+            normalized,
+        )
+    return normalized
 
