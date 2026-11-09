@@ -329,6 +329,9 @@ def _normalize_constraint_definition(definition: str, database: str) -> str:
     if database == "postgres":
         # pg_get_constraintdef omits the public schema for same-schema refs.
         normalized = normalized.replace("public.", "")
+        # pg_get_constraintdef prefixes CHECK expressions with CHECK, while
+        # the dump parser stores only the expression body.
+        normalized = re.sub(r"^check\s+", "", normalized)
     return normalized
 
 
@@ -375,5 +378,12 @@ def _normalize_trigger_definition(trigger: TriggerDefinition, database: str) -> 
     normalized = normalize_sql(trigger.definition)
     if database == "postgres":
         normalized = normalized.replace('"public".', "public.")
+        # pg_get_triggerdef may omit the public schema for a same-schema
+        # trigger function. Canonicalize only unqualified function calls.
+        normalized = re.sub(
+            r"(\bexecute\s+(?:function|procedure)\s+)(?![a-z_][a-z0-9_$]*\.)",
+            r"\1public.",
+            normalized,
+        )
     return normalized
 

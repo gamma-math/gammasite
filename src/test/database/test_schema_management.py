@@ -16,6 +16,7 @@ from src.database.scripts.schema_deploy import (
 )
 from src.database.scripts.schema_reader import (
     ColumnDefinition,
+    ConstraintDefinition,
     SchemaDefinition,
     TableDefinition,
     parse_schema,
@@ -169,6 +170,50 @@ class SchemaComparisonTests(unittest.TestCase):
 
         self.assertTrue(diff.has_blocking_changes)
         self.assertTrue(any(difference.category == "index" for difference in diff.differences))
+
+    def test_postgres_check_metadata_wrapper_matches_source_definition(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE TABLE public.Example (value integer NOT NULL);
+            ALTER TABLE public.Example
+                ADD CONSTRAINT example_value_check CHECK ((value >= 0));
+            """,
+            "postgres",
+        )
+        actual = parse_schema(
+            "CREATE TABLE public.Example (value integer NOT NULL);",
+            "postgres",
+        )
+        actual.constraints["public.Example.example_value_check"] = ConstraintDefinition(
+            "example_value_check",
+            "public.Example",
+            "check",
+            "CHECK ((value >= 0))",
+        )
+
+        self.assertTrue(compare_schemas(desired, actual).is_match)
+
+    def test_postgres_unqualified_trigger_function_matches_public_function(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE TABLE public.Example (id integer);
+            CREATE TRIGGER example_updated
+                BEFORE UPDATE ON public.Example
+                FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+            """,
+            "postgres",
+        )
+        actual = parse_schema(
+            """
+            CREATE TABLE public.Example (id integer);
+            CREATE TRIGGER example_updated
+                BEFORE UPDATE ON public.Example
+                FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+            """,
+            "postgres",
+        )
+
+        self.assertTrue(compare_schemas(desired, actual).is_match)
 
     def test_matching_schemas_have_empty_idempotent_plan(self) -> None:
         schema = _schema_with_column("new_column")
