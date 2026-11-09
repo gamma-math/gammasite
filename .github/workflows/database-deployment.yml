@@ -30,25 +30,102 @@ on:
           - validate
           - plan
           - deploy
+      confirm_deployment:
+        description: Confirm that a deploy operation may execute SQL
+        required: false
+        default: false
+        type: boolean
+      allow_risk:
+        description: Allow indexes, constraints and view changes during deploy
+        required: false
+        default: false
+        type: boolean
+      confirm_production:
+        description: Confirm that this deploy is intended for production
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+
+concurrency:
+  group: database-schema-${{ inputs.database }}-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   schema-management:
     name: ${{ inputs.action }} ${{ inputs.database }} in ${{ inputs.environment }}
     runs-on: windows-2025
     environment: ${{ inputs.environment }}
+    timeout-minutes: 15
     steps:
       - name: Check-out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Add Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
+          cache: pip
+          cache-dependency-path: src/services/database/requirements.txt
+      - name: Validate deployment settings
+        shell: pwsh
+        env:
+          TARGET_DATABASE: ${{ inputs.database }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          TARGET_ACTION: ${{ inputs.action }}
+          MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $schemaPath = switch ($env:TARGET_DATABASE) {
+            'mysql' { 'src/database/mysql/gam_ma_dk_db.sql' }
+            'postgres' { 'src/database/postgres/finance.sql' }
+            default { throw "Unsupported database selection: $env:TARGET_DATABASE" }
+          }
+
+          if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
+            throw "Schema Source of Truth is missing: $schemaPath"
+          }
+
+          $connection = if ($env:TARGET_DATABASE -eq 'mysql') {
+            $env:MYSQL_CONNECTION_STRING
+          } else {
+            $env:POSTGRES_CONNECTION_STRING
+          }
+
+          if ([string]::IsNullOrWhiteSpace($connection)) {
+            $secretName = if ($env:TARGET_DATABASE -eq 'mysql') { 'CONNECTION_STRING' } else { 'FINANCE_CONNECTION_STRING' }
+            throw "Missing required database secret: $secretName"
+          }
+
+          if ($env:TARGET_ACTION -eq 'deploy' -and '${{ inputs.confirm_deployment }}' -ne 'true') {
+            throw 'Deploy requires the confirm_deployment checkbox.'
+          }
+
+          if ($env:TARGET_ACTION -eq 'deploy' -and $env:TARGET_ENVIRONMENT -eq 'PROD' -and '${{ inputs.confirm_production }}' -ne 'true') {
+            throw 'Production deploy requires the confirm_production checkbox.'
+          }
+
+          if ($env:TARGET_ACTION -ne 'deploy' -and '${{ inputs.allow_risk }}' -eq 'true') {
+            throw 'allow_risk can only be selected for deploy.'
+          }
+
+          Write-Host "Validated $env:TARGET_ACTION for $env:TARGET_DATABASE in $env:TARGET_ENVIRONMENT."
+          Write-Host "Using schema Source of Truth: $schemaPath"
       - name: Install database tooling
-        run: python -m pip install --disable-pip-version-check -r src/services/database/requirements.txt
-      - name: Run schema operation
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -r src/services/database/requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify database tooling
+        shell: pwsh
+        run: |
+          python -c "import psycopg, pymysql; print('Database drivers are installed.')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src/database/scripts/cli.py --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Generate deployment plan
+        if: ${{ inputs.action == 'deploy' }}
         shell: pwsh
         env:
           DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
@@ -56,14 +133,51 @@ jobs:
         run: |
           $database = '${{ inputs.database }}'
           $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
-          $action = '${{ inputs.action }}'
-          if ($action -eq 'deploy') {
-            python src/database/scripts/cli.py plan --db $database --env $targetEnvironment
-            $arguments = @('src/database/scripts/cli.py', 'deploy', '--db', $database, '--env', $targetEnvironment, '--confirm', '--allow-risk')
-            if ($targetEnvironment -eq 'prod') {
-              $arguments += '--confirm-production'
-            }
-            python @arguments
-          } else {
-            python src/database/scripts/cli.py $action --db $database --env $targetEnvironment
+          python src/database/scripts/cli.py plan --db $database --env $targetEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Deploy database schema
+        if: ${{ inputs.action == 'deploy' }}
+        shell: pwsh
+        env:
+          DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          DBMANAGER_POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $database = '${{ inputs.database }}'
+          $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
+          $arguments = @(
+            'src/database/scripts/cli.py',
+            'deploy',
+            '--db', $database,
+            '--env', $targetEnvironment,
+            '--confirm'
+          )
+          if ('${{ inputs.allow_risk }}' -eq 'true') {
+            $arguments += '--allow-risk'
           }
+          if ($targetEnvironment -eq 'prod') {
+            $arguments += '--confirm-production'
+          }
+          & python @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run schema operation
+        if: ${{ inputs.action != 'deploy' }}
+        shell: pwsh
+        env:
+          DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          DBMANAGER_POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $database = '${{ inputs.database }}'
+          $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
+          & python src/database/scripts/cli.py '${{ inputs.action }}' --db $database --env $targetEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate deployed schema
+        if: ${{ inputs.action == 'deploy' }}
+        shell: pwsh
+        env:
+          DBMANAGER_MYSQL_CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          DBMANAGER_POSTGRES_CONNECTION_STRING: ${{ secrets.FINANCE_CONNECTION_STRING }}
+        run: |
+          $database = '${{ inputs.database }}'
+          $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
+          & python src/database/scripts/cli.py validate --db $database --env $targetEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

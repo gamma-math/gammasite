@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Deploy Database &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.database">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Teknik &middot; database-deployment.yml</p>
+      <h1>Deploy Database</h1>
+      <p class="lead">Manuelt GitHub Actions-workflow til at sammenligne, validere, planl&aelig;gge og deploye databaseskemaer for GamMaSite.</p>
+
+      <ol class="steps">
+        <li>&Aring;bn <strong>Actions</strong> i GitHub, og v&aelig;lg <strong>Database schema management</strong>.</li>
+        <li>V&aelig;lg <strong>database</strong>: <code>mysql</code> for applikationsdatabasen hos Simply eller <code>postgres</code> for Finance-databasen hos Neon.</li>
+        <li>V&aelig;lg <strong>environment</strong>: <code>TEST</code> eller <code>PROD</code>. Workflowet bruger det valgte GitHub Environment og dets secrets.</li>
+        <li>V&aelig;lg en handling: <code>diff</code>, <code>validate</code>, <code>plan</code> eller <code>deploy</code>.</li>
+        <li>Ved et deploy kontrollerer workflowet indstillingerne, installerer database-driverne, viser planen, udf&oslash;rer den godkendte &aelig;ndring og validerer derefter skemaet igen.</li>
+      </ol>
+
+      <div class="callout callout--warning">
+        <p><strong>Start altid med <code>diff</code> eller <code>plan</code>.</strong> Brug f&oslash;rst <code>deploy</code>, n&aring;r planen er genneml&aelig;st, og den valgte database og det valgte environment er korrekte.</p>
+      </div>
+
+      <section class="section">
+        <h2>Schema Source of Truth</h2>
+        <p>Workflowet sammenligner den valgte database med de versionsstyrede SQL-definitioner i repositoryet.</p>
+        <table class="table">
+          <thead><tr><th>Database</th><th>Lokal definition</th><th>GitHub Secret</th></tr></thead>
+          <tbody>
+            <tr><td>MySQL</td><td><code>src/database/mysql/gam_ma_dk_db.sql</code></td><td><code>CONNECTION_STRING</code></td></tr>
+            <tr><td>PostgreSQL Finance</td><td><code>src/database/postgres/finance.sql</code></td><td><code>FINANCE_CONNECTION_STRING</code></td></tr>
+          </tbody>
+        </table>
+        <p>Secrets vises ikke i workflow-loggen. CLI'en skriver kun en redacted forbindelsesbeskrivelse uden password.</p>
+      </section>
+
+      <section class="section">
+        <h2>Handlinger</h2>
+        <table class="table">
+          <thead><tr><th>Handling</th><th>Form&aring;l</th><th>&AElig;ndrer databasen?</th><th>Succes</th></tr></thead>
+          <tbody>
+            <tr><td><code>diff</code></td><td>Viser forskelle mellem SQL-definitionen og den aktuelle database.</td><td>Nej</td><td><code>0</code> hvis skemaet matcher, ellers <code>1</code></td></tr>
+            <tr><td><code>validate</code></td><td>Kontrollerer tabeller, kolonner, indexes, constraints og views.</td><td>Nej</td><td><code>0</code> hvis skemaet matcher, ellers <code>1</code></td></tr>
+            <tr><td><code>plan</code></td><td>Genererer den SQL-plan, som et deploy ville udf&oslash;re.</td><td>Nej</td><td><code>0</code></td></tr>
+            <tr><td><code>deploy</code></td><td>Viser f&oslash;rst planen, udf&oslash;rer sikre &aelig;ndringer og validerer resultatet.</td><td>Ja</td><td><code>0</code> hvis deploy og efterf&oslash;lgende validering lykkes</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Deploy-godkendelser</h2>
+        <p>Workflowet har tre deploy-relaterede checkboxes i <strong>Run workflow</strong>. De bruges ved valg af <code>deploy</code>:</p>
+        <table class="table">
+          <thead><tr><th>Checkbox</th><th>Hvorn&aring;r skal den v&aelig;re valgt?</th></tr></thead>
+          <tbody>
+            <tr><td><code>confirm_deployment</code></td><td>Altid ved deploy. Bekr&aelig;fter, at workflowet m&aring; udf&oslash;re SQL.</td></tr>
+            <tr><td><code>allow_risk</code></td><td>Kun hvis planen indeholder indexes, constraints eller views, som CLI'en markerer som risikable.</td></tr>
+            <tr><td><code>confirm_production</code></td><td>Kun ved deploy til <code>PROD</code>. Bekr&aelig;fter eksplicit production-milj&oslash;et.</td></tr>
+          </tbody>
+        </table>
+        <p>GitHub Environment <code>PROD</code> b&oslash;r desuden v&aelig;re konfigureret med required reviewers og eventuelle branch restrictions.</p>
+      </section>
+
+      <section class="section">
+        <h2>Workflowets runs</h2>
+        <ol class="steps">
+          <li><strong>Check-out repository:</strong> henter SQL Source of Truth og CLI-koden.</li>
+          <li><strong>Add Python:</strong> klarg&oslash;r Python 3.13 og pip-cache.</li>
+          <li><strong>Validate deployment settings:</strong> kontrollerer valgt schema-fil, relevant secret og deploy-godkendelser.</li>
+          <li><strong>Install database tooling:</strong> installerer <code>PyMySQL</code> og <code>psycopg</code>.</li>
+          <li><strong>Verify database tooling:</strong> kontrollerer driverne og CLI'ens help-output.</li>
+          <li><strong>Generate deployment plan:</strong> k&oslash;rer kun ved deploy og skriver planen uden database&aelig;ndringer.</li>
+          <li><strong>Deploy database schema:</strong> k&oslash;rer kun efter de n&oslash;dvendige checkboxes.</li>
+          <li><strong>Validate deployed schema:</strong> k&oslash;rer efter deploy og stopper workflowet ved en afvigelse.</li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <h2>Sikkerhedsregler</h2>
+        <ul>
+          <li>Workflowet sletter ikke automatisk tabeller, kolonner eller data.</li>
+          <li>Destruktive, tvetydige eller inkompatible &aelig;ndringer blokeres og skal h&aring;ndteres separat.</li>
+          <li>Read-only handlinger bruger en read-only databasesession.</li>
+          <li>Deploys til samme database og environment k&oslash;rer ikke parallelt.</li>
+          <li>Website-workflowet <a href="../kodebase/pipeline.html">Build and deploy</a> validerer skemaerne, men &aelig;ndrer ikke databaserne.</li>
+        </ul>
+      </section>
+
+      <div class="callout callout--danger">
+        <p><strong>Kontroll&eacute;r altid environment.</strong> Et deploy til <code>PROD</code> bruger de production secrets, som er konfigureret p&aring; GitHub Environment. Del aldrig connection strings eller passwords i issues, logs eller dokumentationen.</p>
+      </div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

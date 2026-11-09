@@ -205,6 +205,14 @@ def normalize_value(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
+    # PostgreSQL metadata may add an implicit type cast to string defaults,
+    # while the source definition leaves the same literal uncast.
+    text = re.sub(
+        r"('(?:''|[^'])*')::[a-z_][a-z0-9_]*(?:\s+[a-z_][a-z0-9_]*)?(?:\[\])?",
+        r"\1",
+        text,
+        flags=re.IGNORECASE,
+    )
     if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
         text = text[1:-1]
     return normalize_sql(text)
@@ -464,7 +472,12 @@ def _parse_constraint_action(
     primary = re.match(r"^PRIMARY\s+KEY\s*\((?P<columns>.+)\)", body, re.IGNORECASE | re.DOTALL)
     if primary:
         columns = tuple(_clean_index_column(value) for value in split_top_level(primary.group("columns")))
-        index_name = constraint_name or "PRIMARY"
+        # PostgreSQL assigns an inline primary key the conventional
+        # ``<table>_pkey`` name. Normalize the local definition to that name
+        # so it compares with the live metadata after deployment.
+        index_name = constraint_name or (
+            f"{table.rsplit('.', 1)[-1]}_pkey" if database == "postgres" else "PRIMARY"
+        )
         index = IndexDefinition(index_name, table, columns, unique=True, primary=True, sql=statement + ";")
         schema.indexes[index.name_key] = index
         constraint = ConstraintDefinition(index_name, table, "primary", primary.group(0), statement + ";")

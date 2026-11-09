@@ -118,7 +118,9 @@ jobs:
         run: |
           $targetEnvironment = if ('${{ inputs.environment }}' -eq 'PROD') { 'prod' } else { 'test' }
           python src/database/scripts/cli.py validate --db mysql --env $targetEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python src/database/scripts/cli.py validate --db postgres --env $targetEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Variable substitutions
         uses: microsoft/variable-substitution@v1
         with:

@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any
 
 from .schema_compare import SchemaDiff
-from .schema_reader import SchemaDefinition, quote_identifier
+from .schema_reader import (
+    SchemaDefinition,
+    find_matching_parenthesis,
+    quote_identifier,
+)
 
 
 class DeploymentBlocked(RuntimeError):
@@ -49,10 +54,18 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
         for difference in diff.differences
         if difference.category == "table" and difference.detail == "Missing table"
     }
+    inlined_primary_keys: set[str] = set()
     for key in sorted(missing_tables):
         table = desired.tables[key]
+        create_sql, primary_was_inlined = _create_table_sql(table, desired)
+        if primary_was_inlined:
+            inlined_primary_keys.update(
+                constraint.name_key
+                for constraint in desired.constraints.values()
+                if constraint.table == key and constraint.kind == "primary"
+            )
         plan.statements.append(
-            PlannedStatement(table.create_sql, f"create missing table {key}")
+            PlannedStatement(create_sql, f"create missing table {key}")
         )
 
     for difference in diff.differences:
@@ -80,6 +93,8 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
     for difference in diff.differences:
         if difference.category == "index" and difference.detail == "Missing index":
             index = desired.indexes[difference.subject]
+            if difference.subject in inlined_primary_keys:
+                continue
             if index.primary and f"{index.table}.{index.name}" in primary_constraints:
                 continue
             plan.statements.append(
@@ -90,16 +105,28 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
                 )
             )
 
-    for difference in diff.differences:
-        if difference.category == "constraint" and difference.detail.startswith("Missing "):
-            constraint = desired.constraints[difference.subject]
-            plan.statements.append(
-                PlannedStatement(
-                    constraint.sql,
-                    f"add missing {constraint.kind} constraint {difference.subject}",
-                    difference.requires_confirmation,
-                )
+    missing_constraints = [
+        difference
+        for difference in diff.differences
+        if difference.category == "constraint" and difference.detail.startswith("Missing ")
+    ]
+    for difference in sorted(
+        missing_constraints,
+        key=lambda item: (
+            0 if desired.constraints[item.subject].kind == "primary" else 1,
+            item.subject,
+        ),
+    ):
+        if difference.subject in inlined_primary_keys:
+            continue
+        constraint = desired.constraints[difference.subject]
+        plan.statements.append(
+            PlannedStatement(
+                constraint.sql,
+                f"add missing {constraint.kind} constraint {difference.subject}",
+                difference.requires_confirmation,
             )
+        )
 
     for difference in diff.differences:
         if difference.category == "view" and difference.detail in {"Missing view", "View definition differs"}:
@@ -113,6 +140,97 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
             )
 
     return plan
+
+
+def _create_table_sql(table: Any, desired: SchemaDefinition) -> tuple[str, bool]:
+    """Make new tables complete and valid at their initial CREATE step.
+
+    MySQL requires an AUTO_INCREMENT column to be indexed when the table is
+    created. The source schema stores primary keys in later ALTER TABLE
+    statements, so the primary key must be moved into CREATE TABLE for a new
+    table. The returned boolean identifies a primary key that must not be
+    emitted a second time by the rest of the deployment plan. PostgreSQL
+    identity definitions are handled similarly because they are represented as
+    later ALTER statements in the source dump.
+    """
+
+    primary_inline = _table_has_inline_primary_key(table)
+
+    if desired.database == "postgres":
+        return _postgres_create_table_sql(table), primary_inline
+
+    if desired.database != "mysql":
+        return table.create_sql, primary_inline
+
+    if not any(column.auto_increment for column in table.columns.values()):
+        return table.create_sql, primary_inline
+
+    primary = desired.indexes.get(f"{table.key}.PRIMARY")
+    if primary is None or not primary.primary or not primary.columns:
+        return table.create_sql, primary_inline
+
+    create_sql = table.create_sql
+    open_paren = create_sql.find("(")
+    if open_paren < 0:
+        return create_sql, False
+    close_paren = find_matching_parenthesis(create_sql, open_paren)
+    table_body = create_sql[open_paren + 1 : close_paren]
+
+    # Keep source definitions that already contain an inline primary key
+    # unchanged, while still suppressing the duplicate ALTER TABLE statement.
+    if primary_inline:
+        return create_sql, True
+
+    primary_columns = ", ".join(quote_identifier(column) for column in primary.columns)
+    return (
+        create_sql[:close_paren].rstrip()
+        + f",\n  PRIMARY KEY ({primary_columns})\n"
+        + create_sql[close_paren:],
+        True,
+    )
+
+
+def _table_has_inline_primary_key(table: Any) -> bool:
+    """Return whether a table's CREATE body already declares a primary key."""
+
+    create_sql = table.create_sql
+    open_paren = create_sql.find("(")
+    if open_paren < 0:
+        return False
+    close_paren = find_matching_parenthesis(create_sql, open_paren)
+    table_body = create_sql[open_paren + 1 : close_paren]
+    return re.search(r"\bPRIMARY\s+KEY\b", table_body, re.IGNORECASE) is not None
+
+
+def _postgres_create_table_sql(table: Any) -> str:
+    """Inline identity definitions that the source dump stores as ALTER SQL."""
+
+    create_sql = table.create_sql
+    open_paren = create_sql.find("(")
+    if open_paren < 0:
+        return create_sql
+    close_paren = find_matching_parenthesis(create_sql, open_paren)
+    table_body = create_sql[open_paren + 1 : close_paren]
+
+    for column in table.columns.values():
+        if not column.auto_increment or re.search(
+            r"\bGENERATED\s+BY\s+DEFAULT\s+AS\s+IDENTITY\b",
+            column.sql,
+            re.IGNORECASE,
+        ):
+            continue
+        identity_sql = re.sub(
+            r"\bNOT\s+NULL\b",
+            "GENERATED BY DEFAULT AS IDENTITY NOT NULL",
+            column.sql,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if identity_sql == column.sql:
+            identity_sql = f"{column.sql} GENERATED BY DEFAULT AS IDENTITY"
+        table_body = table_body.replace(column.sql, identity_sql, 1)
+
+    return create_sql[:open_paren + 1] + table_body + create_sql[close_paren:]
 
 
 def execute_plan(
