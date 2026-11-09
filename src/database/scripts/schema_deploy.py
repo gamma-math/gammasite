@@ -88,6 +88,10 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
     for difference in diff.differences:
         if difference.category != "column" or difference.detail != "Missing column":
             continue
+        if not difference.safe:
+            # Keep unsafe additions visible in the blocked plan, but never
+            # produce executable SQL for a required column without a default.
+            continue
         table_key, column_name = difference.subject.rsplit(".", 1)
         table = desired.tables[table_key]
         column = table.columns[column_name]

@@ -21,6 +21,10 @@ else
     exit 2
 fi
 
+# The documented commands are launched from this service directory, but the
+# Python package lives at the repository root. Make that import root explicit.
+cd "$REPO_ROOT"
+
 export DBMANAGER_MYSQL_LOCAL_CONNECTION_STRING="Server=127.0.0.1;Port=${MYSQL_PORT:-3306};Database=${MYSQL_DATABASE:-gammasite_local};User=${MYSQL_APP_USER:-gammasite_app};Password=${MYSQL_APP_PASSWORD:-change-me-local};"
 export DBMANAGER_POSTGRES_LOCAL_CONNECTION_STRING="Host=127.0.0.1;Port=${FINANCE_POSTGRES_PORT:-5433};Database=${FINANCE_POSTGRES_DB:-gamma_finance_local};Username=gamma_finance_write;Password=${FINANCE_WRITE_PASSWORD:-change-me-local-finance-write};"
 

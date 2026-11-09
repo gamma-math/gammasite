@@ -50,6 +50,10 @@ if (-not (Test-Path -LiteralPath $python)) {
     throw "Database service virtual environment is missing. Run: py -m venv src/services/database/.venv"
 }
 
+# The documented commands are launched from this service directory, but the
+# Python package lives at the repository root. Make that import root explicit.
+Set-Location -LiteralPath $repoRoot
+
 $mysqlPort = Get-Setting "MYSQL_PORT" "3306"
 $mysqlDatabase = Get-Setting "MYSQL_DATABASE" "gammasite_local"
 $mysqlUser = Get-Setting "MYSQL_APP_USER" "gammasite_app"

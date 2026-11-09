@@ -22,6 +22,7 @@ class ColumnDefinition:
     default: str | None
     auto_increment: bool
     sql: str
+    generation_expression: str | None = None
 
     @property
     def signature(self) -> tuple[Any, ...]:
@@ -30,6 +31,7 @@ class ColumnDefinition:
             self.nullable,
             None if self.auto_increment else normalize_value(self.default),
             self.auto_increment,
+            normalize_sql(self.generation_expression or ""),
         )
 
 
@@ -411,6 +413,7 @@ def _parse_table_entry(entry: str, table: TableDefinition, schema: SchemaDefinit
         default=default,
         auto_increment=bool(re.search(r"\b(?:AUTO_INCREMENT|GENERATED\s+BY\s+DEFAULT\s+AS\s+IDENTITY)\b", rest, re.IGNORECASE)),
         sql=entry,
+        generation_expression=_extract_generation_expression(rest),
     )
     table.columns[name] = column
 
@@ -516,6 +519,7 @@ def _parse_alter_table(statement: str, schema: SchemaDefinition, database: str) 
                 default=column.default,
                 auto_increment=True,
                 sql=column.sql,
+                generation_expression=column.generation_expression,
             )
         return
     for action in split_top_level(match.group("actions")):
@@ -609,7 +613,8 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
     columns = query_rows(connection, """
         SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name,
                COLUMN_TYPE AS column_type, IS_NULLABLE AS is_nullable,
-               COLUMN_DEFAULT AS column_default, EXTRA AS extra
+               COLUMN_DEFAULT AS column_default, EXTRA AS extra,
+               GENERATION_EXPRESSION AS generation_expression
         FROM information_schema.columns
         WHERE table_schema = DATABASE()
           AND TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
@@ -629,6 +634,11 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
             default=None if row["column_default"] is None else str(row["column_default"]),
             auto_increment="auto_increment" in str(row["extra"]).lower(),
             sql="",
+            generation_expression=(
+                None
+                if row.get("generation_expression") in (None, "")
+                else str(row["generation_expression"])
+            ),
         )
         schema.tables[table_name].columns[column.name] = column
 
@@ -928,6 +938,18 @@ def _extract_default(rest: str) -> str | None:
     if value.upper() == "NULL":
         return None
     return value
+
+
+def _extract_generation_expression(rest: str) -> str | None:
+    """Extract a MySQL generated-column expression without losing its syntax."""
+
+    match = re.search(
+        r"\bGENERATED\s+ALWAYS\s+AS\s*(?P<expression>\(.*\))"
+        r"(?:\s+(?:VIRTUAL|STORED))?\s*$",
+        rest,
+        re.IGNORECASE | re.DOTALL,
+    )
+    return match.group("expression").strip() if match else None
 
 
 def _clean_index_column(value: str) -> str:

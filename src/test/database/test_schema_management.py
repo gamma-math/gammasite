@@ -34,6 +34,9 @@ class SchemaReaderTests(unittest.TestCase):
         self.assertIn("AspNetUsers", schema.tables)
         self.assertTrue(schema.tables["AspNetUsers"].columns["Id"].auto_increment is False)
         self.assertEqual(("MigrationId",), schema.indexes["__EFMigrationsHistory.PRIMARY"].columns)
+        generated = schema.tables["PaymentOffers"].columns["ContentItemScopeKey"]
+        self.assertIsNotNone(generated.generation_expression)
+        self.assertIn("case when", (generated.generation_expression or "").lower())
 
     def test_repository_postgres_schema_is_readable(self) -> None:
         schema = read_schema_file(ROOT / "src/database/postgres/finance.sql", "postgres")
@@ -96,6 +99,44 @@ class SchemaComparisonTests(unittest.TestCase):
         self.assertFalse(diff.has_blocking_changes)
         plan = build_plan(desired, diff)
         self.assertIn("ADD COLUMN", plan.statements[0].sql)
+
+    def test_missing_required_column_without_default_is_blocked(self) -> None:
+        desired = parse_schema(
+            "CREATE TABLE public.Example (id int NOT NULL, required text NOT NULL);",
+            "postgres",
+        )
+        actual = parse_schema(
+            "CREATE TABLE public.Example (id int NOT NULL);",
+            "postgres",
+        )
+
+        diff = compare_schemas(desired, actual)
+        plan = build_plan(desired, diff)
+
+        self.assertTrue(diff.has_blocking_changes)
+        self.assertTrue(plan.blocked_reasons)
+        self.assertFalse(plan.statements)
+
+    def test_generated_column_expression_is_part_of_column_signature(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE TABLE `Example` (
+                `Scope` varchar(32) NOT NULL,
+                `ScopeKey` int GENERATED ALWAYS AS ((case when (`Scope` = 'MEMBERSHIP') then 0 else NULL end)) STORED
+            );
+            """,
+            "mysql",
+        )
+        actual = parse_schema(
+            "CREATE TABLE `Example` (`Scope` varchar(32) NOT NULL, `ScopeKey` int);",
+            "mysql",
+        )
+
+        diff = compare_schemas(desired, actual)
+
+        self.assertTrue(diff.has_blocking_changes)
+        self.assertTrue(any(difference.category == "column" for difference in diff.differences))
+        self.assertIn("generated=", format_details(diff))
 
     def test_matching_schemas_have_empty_idempotent_plan(self) -> None:
         schema = _schema_with_column("new_column")

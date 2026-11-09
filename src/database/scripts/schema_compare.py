@@ -117,12 +117,17 @@ def format_diff(diff: SchemaDiff) -> str:
 
 def _compare_columns(result: SchemaDiff, desired: TableDefinition, actual: TableDefinition) -> None:
     for name in sorted(desired.columns.keys() - actual.columns.keys()):
+        column = desired.columns[name]
+        # Adding a nullable column or a column with a default preserves existing
+        # rows. A required column without a default cannot be added safely when
+        # the table already contains data, so deployment must stop for review.
+        safe_addition = column.nullable or column.default is not None
         result.differences.append(
             SchemaDifference(
                 "column",
                 f"{desired.key}.{name}",
                 "Missing column",
-                safe=True,
+                safe=safe_addition,
             )
         )
     for name in sorted(actual.columns.keys() - desired.columns.keys()):
@@ -305,9 +310,11 @@ def _compare_triggers(result: SchemaDiff, desired: SchemaDefinition, actual: Sch
 def _column_change_detail(expected: ColumnDefinition, current: ColumnDefinition) -> str:
     return (
         f"expected type={expected.data_type}, nullable={expected.nullable}, "
-        f"default={expected.default!r}, auto_increment={expected.auto_increment}; "
+        f"default={expected.default!r}, auto_increment={expected.auto_increment}, "
+        f"generated={expected.generation_expression!r}; "
         f"actual type={current.data_type}, nullable={current.nullable}, "
-        f"default={current.default!r}, auto_increment={current.auto_increment}"
+        f"default={current.default!r}, auto_increment={current.auto_increment}, "
+        f"generated={current.generation_expression!r}"
     )
 
 
