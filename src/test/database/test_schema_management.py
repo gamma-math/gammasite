@@ -19,6 +19,7 @@ from src.database.scripts.schema_reader import (
     SchemaDefinition,
     TableDefinition,
     parse_schema,
+    read_database_schema,
     read_schema_file,
 )
 
@@ -37,6 +38,15 @@ class SchemaReaderTests(unittest.TestCase):
         generated = schema.tables["PaymentOffers"].columns["ContentItemScopeKey"]
         self.assertIsNotNone(generated.generation_expression)
         self.assertIn("case when", (generated.generation_expression or "").lower())
+
+    def test_mysql_live_generated_column_uses_show_create_definition(self) -> None:
+        schema = read_database_schema(_FakeMySqlMetadataConnection(), "mysql")
+        generated = schema.tables["PaymentOffers"].columns["ContentItemScopeKey"]
+
+        self.assertEqual(
+            "((case when (`Scope` = _utf8mb4'MEMBERSHIP') then 0 else NULL end))",
+            generated.generation_expression,
+        )
 
     def test_repository_postgres_schema_is_readable(self) -> None:
         schema = read_schema_file(ROOT / "src/database/postgres/finance.sql", "postgres")
@@ -137,6 +147,28 @@ class SchemaComparisonTests(unittest.TestCase):
         self.assertTrue(diff.has_blocking_changes)
         self.assertTrue(any(difference.category == "column" for difference in diff.differences))
         self.assertIn("generated=", format_details(diff))
+
+    def test_postgres_nulls_not_distinct_is_part_of_index_signature(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE TABLE public.Example (value text);
+            CREATE UNIQUE INDEX example_value_key
+                ON public.Example (value) NULLS NOT DISTINCT;
+            """,
+            "postgres",
+        )
+        actual = parse_schema(
+            """
+            CREATE TABLE public.Example (value text);
+            CREATE UNIQUE INDEX example_value_key ON public.Example (value);
+            """,
+            "postgres",
+        )
+
+        diff = compare_schemas(desired, actual)
+
+        self.assertTrue(diff.has_blocking_changes)
+        self.assertTrue(any(difference.category == "index" for difference in diff.differences))
 
     def test_matching_schemas_have_empty_idempotent_plan(self) -> None:
         schema = _schema_with_column("new_column")
@@ -439,6 +471,66 @@ class _FailingMySqlCursor:
         if self.connection.execute_count == self.connection.fail_on:
             raise RuntimeError("simulated MySQL DDL failure")
         self.connection.executed.append(sql)
+
+    def close(self) -> None:
+        pass
+
+
+class _FakeMySqlMetadataConnection:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    def cursor(self) -> "_FakeMySqlMetadataCursor":
+        return _FakeMySqlMetadataCursor(self)
+
+
+class _FakeMySqlMetadataCursor:
+    def __init__(self, connection: _FakeMySqlMetadataConnection) -> None:
+        self.connection = connection
+        self.sql = ""
+
+    def execute(self, sql: str) -> None:
+        self.sql = sql
+        self.connection.queries.append(sql)
+
+    def fetchall(self) -> list[dict[str, object]]:
+        if self.sql.startswith("SHOW CREATE TABLE"):
+            return [
+                {
+                    "Table": "PaymentOffers",
+                    "Create Table": (
+                        "CREATE TABLE `PaymentOffers` ("
+                        "`Scope` varchar(32) NOT NULL, "
+                        "`ContentItemScopeKey` int GENERATED ALWAYS AS "
+                        "((case when (`Scope` = _utf8mb4'MEMBERSHIP') then 0 else NULL end)) STORED"
+                        ")"
+                    ),
+                }
+            ]
+        if "information_schema.tables" in self.sql:
+            return [{"table_name": "PaymentOffers"}]
+        if "information_schema.columns" in self.sql:
+            return [
+                {
+                    "table_name": "PaymentOffers",
+                    "column_name": "Scope",
+                    "column_type": "varchar(32)",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                    "extra": "",
+                    "generation_expression": None,
+                },
+                {
+                    "table_name": "PaymentOffers",
+                    "column_name": "ContentItemScopeKey",
+                    "column_type": "int",
+                    "is_nullable": "YES",
+                    "column_default": None,
+                    "extra": "STORED GENERATED",
+                    "generation_expression": "(case when (`Scope` = _latin1\\'MEMBERSHIP\\') then 0 else NULL end)",
+                },
+            ]
+        return []
 
     def close(self) -> None:
         pass

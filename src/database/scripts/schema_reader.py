@@ -7,7 +7,7 @@ PostgreSQL source files and reports constructs it cannot safely interpret.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 import re
 from typing import Any, Iterable
@@ -56,6 +56,7 @@ class IndexDefinition:
     primary: bool = False
     where: str | None = None
     sql: str = ""
+    nulls_not_distinct: bool = False
 
     @property
     def signature(self) -> tuple[Any, ...]:
@@ -65,6 +66,7 @@ class IndexDefinition:
             self.unique,
             self.primary,
             normalize_sql(self.where or ""),
+            self.nulls_not_distinct,
         )
 
     @property
@@ -484,7 +486,9 @@ def _parse_create_index(statement: str, database: str) -> IndexDefinition | None
         return None
     close_paren = find_matching_parenthesis(tail, open_paren)
     columns = tuple(_clean_index_column(column) for column in split_top_level(tail[open_paren + 1 : close_paren]))
-    where_match = re.search(r"\bWHERE\s+(.+)$", tail[close_paren + 1 :], re.IGNORECASE | re.DOTALL)
+    index_options = tail[close_paren + 1 :]
+    where_match = re.search(r"\bWHERE\s+(.+)$", index_options, re.IGNORECASE | re.DOTALL)
+    before_where = index_options[: where_match.start()] if where_match else index_options
     return IndexDefinition(
         name=unquote_identifier(match.group("name")),
         table=table,
@@ -493,6 +497,9 @@ def _parse_create_index(statement: str, database: str) -> IndexDefinition | None
         primary=False,
         where=where_match.group(1).strip() if where_match else None,
         sql=statement + ";",
+        nulls_not_distinct=bool(
+            re.search(r"\bNULLS\s+NOT\s+DISTINCT\b", before_where, re.IGNORECASE)
+        ),
     )
 
 
@@ -642,6 +649,28 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
         )
         schema.tables[table_name].columns[column.name] = column
 
+    generated_tables = {
+        str(row["table_name"])
+        for row in columns
+        if "generated" in str(row.get("extra", "")).lower()
+    }
+    for table_name in generated_tables:
+        create_sql = _read_mysql_create_table(connection, table_name)
+        if not create_sql:
+            continue
+        parsed = parse_schema(create_sql, "mysql")
+        parsed_table = parsed.tables.get(table_name)
+        if parsed_table is None:
+            continue
+        table = schema.tables[table_name]
+        for column_name, column in list(table.columns.items()):
+            parsed_column = parsed_table.columns.get(column_name)
+            if column.generation_expression is not None and parsed_column is not None:
+                table.columns[column_name] = replace(
+                    column,
+                    generation_expression=parsed_column.generation_expression,
+                )
+
     index_rows = query_rows(connection, """
         SELECT TABLE_NAME AS table_name, INDEX_NAME AS index_name,
                NON_UNIQUE AS non_unique, SEQ_IN_INDEX AS sequence_number,
@@ -718,6 +747,18 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
     return schema
 
 
+def _read_mysql_create_table(connection: Any, table_name: str) -> str | None:
+    """Read authoritative MySQL DDL for generated-column expressions."""
+
+    rows = query_rows(connection, f"SHOW CREATE TABLE {quote_identifier(table_name)}")
+    if not rows:
+        return None
+    for key, value in rows[0].items():
+        if str(key).lower().startswith("create"):
+            return str(value)
+    return None
+
+
 def _read_postgres_schema(connection: Any) -> SchemaDefinition:
     schema = SchemaDefinition(database="postgres")
     for row in query_rows(connection, """
@@ -777,6 +818,7 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
                 primary=True,
                 where=parsed.where,
                 sql=parsed.sql,
+                nulls_not_distinct=parsed.nulls_not_distinct,
             )
         schema.indexes[parsed.name_key] = parsed
 
