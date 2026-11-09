@@ -1,1 +1,120 @@
-<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Database · GamMaSite</title><link rel="stylesheet" href="../../css/styles.css"></head><body data-root="../" data-page="code.sql"><header id="site-header" class="site-header"></header><div class="docs-layout"><aside id="sidebar" class="sidebar"></aside><main class="content"><p class="eyebrow">Kode · src/database/</p><p class="lead">Indeholder source-of-truth databaseskemaer, schema-værktøjer og test-seeds. MySQL- og PostgreSQL-definitionerne ligger under <code>src/database/</code>, mens testdata holdes separat under <code>src/database/seeds/</code>.</p><p>Database-servicens CLI bruger schema-definitionerne til sammenligning, validering og sikre, additive deployment-planer. Seed-data og databasescripts må ikke bruges som kilde til offentliggørelse af rigtige oplysninger.</p></main></div><footer class="footer">GamMaSite dokumentation</footer><script src="../../js/app.js"></script></body></html>
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Database &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.sql">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; src/database/</p>
+      <h1>Database og schema-v&aelig;rkt&oslash;jer</h1>
+      <p class="lead">Databaselaget best&aring;r af to source-of-truth-skemaer, en f&aelig;lles Python-baseret schema-management CLI, test-seeds og et separat script til PostgreSQL-roller. MySQL gemmer den prim&aelig;re GamMaSite-data; PostgreSQL er den dedikerede Finance-database.</p>
+
+      <section class="section">
+        <h2>Arkitektur</h2>
+        <p>SQL-filerne i <code>src/database/</code> beskriver den &oslash;nskede databasestruktur. De er ikke kun installationsscripts: schema-v&aelig;rkt&oslash;jet l&aelig;ser dem, sammenligner dem med live metadata og bruger dem til at danne en sikker, additiv deployment-plan.</p>
+        <table class="table">
+          <thead><tr><th>Modul</th><th>Ansvar</th><th>Vigtige egenskaber</th></tr></thead>
+          <tbody>
+            <tr><td><code>mysql/gam_ma_dk_db.sql</code></td><td>Source of truth for den prim&aelig;re GamMaSite-database.</td><td>ASP.NET Identity, indhold, tilmeldinger, e-mailtemplates, betalinger og rettigheder.</td></tr>
+            <tr><td><code>postgres/finance.sql</code></td><td>Source of truth for Finance-databasen.</td><td>Konti, bankdata, MobilePay, Stripe, posteringsgrupper, posteringer, budget/forecast og importhistorik.</td></tr>
+            <tr><td><code>postgres/operations/CreateFinanceLoginRoles.sql</code></td><td>Opretter Finance-databasens l&aelig;se- og skrive-roller.</td><td>Rolle- og tabelprivilegier holdes eksplicitte; passwords leveres ved k&oslash;rsel og m&aring; ikke committes.</td></tr>
+            <tr><td><code>scripts/</code></td><td>F&aelig;lles schema-l&aelig;sning, sammenligning, forbindelse og deployment.</td><td>Samme implementation bruges lokalt og i GitHub Actions.</td></tr>
+            <tr><td><code>seeds/mysql/test/</code> og <code>seeds/postgres/test/</code></td><td>Deterministiske testdata til lokale og isolerede testdatabaser.</td><td>Indl&aelig;ses eksplicit; normal Compose-opstart seed-er ikke automatisk.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>MySQL-skemaet</h2>
+        <p>MySQL-skemaet er applikationens prim&aelig;re relationelle database. Tabellenavnene f&oslash;lger i h&oslash;j grad ASP.NET Identity og GamMaSite-dom&aelig;net:</p>
+        <table class="table">
+          <thead><tr><th>Omr&aring;de</th><th>Tabeller</th><th>Form&aring;l</th></tr></thead>
+          <tbody>
+            <tr><td>Identity og tokens</td><td><code>AspNetUsers</code>, <code>AspNetRoles</code>, <code>AspNetUserRoles</code>, <code>AspNetUserClaims</code>, <code>AspNetRoleClaims</code>, <code>AspNetUserLogins</code>, <code>AspNetUserTokens</code></td><td>Brugere, roller, claims, eksterne logins, tokens og Identity-relaterede rettigheder.</td></tr>
+            <tr><td>Indhold</td><td><code>ContentItems</code>, <code>ContentLinks</code></td><td>Events, nyheder og andre indholdselementer med tilknyttede links og metadata.</td></tr>
+            <tr><td>Tilmeldinger</td><td><code>EventRegistrations</code></td><td>Medlemmers tilmeldinger, statusser, svar og relationer til indholdselementer.</td></tr>
+            <tr><td>Kommunikation</td><td><code>EmailTemplates</code></td><td>Skabeloner til systemets e-mailflows og administrative meddelelser.</td></tr>
+            <tr><td>Betalinger</td><td><code>PaymentOffers</code>, <code>PaymentSubscriptions</code></td><td>Tilbud, abonnementer og betalingsstatus for medlems- og betalingsflows.</td></tr>
+            <tr><td>Adgangskontrol</td><td><code>Permissions</code>, <code>RolePermissions</code></td><td>Applikationens permission-model ud over de almindelige Identity-roller.</td></tr>
+            <tr><td>OAuth og EF</td><td><code>DeviceCodes</code>, <code>Keys</code>, <code>PersistedGrants</code>, <code>__EFMigrationsHistory</code></td><td>Tokens/keys til autentifikation og historik for Entity Framework-migrationer.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>PostgreSQL Finance-skemaet</h2>
+        <p>Finance er isoleret i PostgreSQL, fordi import, afstemning og rapportering har andre datamodeller end webappens Identity- og indholdsdata. Backendens Finance-services bruger Npgsql; browseren har ingen direkte databaseforbindelse.</p>
+        <table class="table">
+          <thead><tr><th>Modul</th><th>Tabeller</th><th>Form&aring;l</th></tr></thead>
+          <tbody>
+            <tr><td>Kontoplan</td><td><code>account</code>, <code>postering_group</code></td><td>Konti og posteringsgrupper, som bruges til klassifikation og rapportering.</td></tr>
+            <tr><td>Budget og forecast</td><td><code>forecast</code></td><td>&Aring;rsbaserede budget- og forecastv&aelig;rdier knyttet til konti og posteringsgrupper.</td></tr>
+            <tr><td>Bankimport</td><td><code>bank_account</code>, <code>posteringer</code></td><td>Bankkonti, importerede bankn&oslash;gler og de afledte eller manuelle posteringer.</td></tr>
+            <tr><td>MobilePay</td><td><code>mobilepay</code>, <code>mobilepay_reference_lookup</code></td><td>MobilePay-transaktioner og opslag, der knytter referencer til medlemmer eller betalinger.</td></tr>
+            <tr><td>Stripe</td><td><code>stripe</code></td><td>Stripe-transaktioner, fees, netbel&oslash;b og kildereferencer til import og afstemning.</td></tr>
+            <tr><td>Importspor</td><td><code>import_history</code></td><td>Historik over importer, statusser og tidspunkt, s&aring; gentagelser kan opdages og forklares.</td></tr>
+            <tr><td>Databasefunktioner</td><td><code>set_updated_at()</code> og <code>*_set_updated_at</code>-triggers</td><td>Holder opdateringstidspunkter konsistente p&aring; relevante Finance-tabeller.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Python-modulerne</h2>
+        <p>Schema-management-koden er samlet i <code>src/database/scripts/</code> og eksponeres som <code>python -m src.services.database</code> eller direkte via <code>src/database/scripts/cli.py</code>.</p>
+        <table class="table">
+          <thead><tr><th>Modul</th><th>Ansvar</th></tr></thead>
+          <tbody>
+            <tr><td><code>cli.py</code></td><td>CLI-entrypoint med kommandoerne <code>diff</code>, <code>validate</code>, <code>plan</code> og <code>deploy</code>.</td></tr>
+            <tr><td><code>connections.py</code></td><td>Finder og parser databaseforbindelser, underst&oslash;tter .NET connection strings og database-URL'er, skjuler passwords i logning og opretter read-only sessioner til kontrolkommandoer.</td></tr>
+            <tr><td><code>schema_reader.py</code></td><td>Parser source SQL og l&aelig;ser metadata fra MySQL/PostgreSQL, herunder tabeller, kolonner, constraints, views, funktioner, triggers og indexes.</td></tr>
+            <tr><td><code>schema_compare.py</code></td><td>Sammenligner &oslash;nsket schema med live metadata og rapporterer forskelle uden at &aelig;ndre databasen.</td></tr>
+            <tr><td><code>schema_deploy.py</code></td><td>Danner og udf&oslash;rer additive planer. Destruktive eller risikable &aelig;ndringer blokeres eller kr&aelig;ver eksplicit <code>--allow-risk</code>.</td></tr>
+            <tr><td><code>src/services/database/</code></td><td>Service-wrapper, requirements og lokal virtuel Python-environment omkring den f&aelig;lles implementation; det er ikke et parallelt schema-system.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Arbejdsgang</h2>
+        <ol class="steps">
+          <li>Redig&eacute;r den relevante SQL Source of Truth og opdat&eacute;r eventuelle test-seeds eller rolle-grants, hvis datamodellen &aelig;ndres.</li>
+          <li>K&oslash;r <code>validate</code> for at se, om en live database matcher source-filen. Kommandoen bruger en read-only session.</li>
+          <li>K&oslash;r <code>plan</code> for at se de SQL-statements, som en additiv &aelig;ndring vil generere, uden at udf&oslash;re dem.</li>
+          <li>K&oslash;r kun <code>deploy --confirm</code>, n&aring;r planen er gennemg&aring;et. Produktion kr&aelig;ver desuden <code>--confirm-production</code>.</li>
+          <li>Efter deployment sammenlignes schemaet igen. PostgreSQL k&oslash;rer deployment i &eacute;n transaktion; MySQL-DDL committes statement for statement og kan derfor kr&aelig;ve manuel oprydning efter en delvis fejl.</li>
+        </ol>
+        <pre><code>python -m src.services.database validate --db mysql --env local
+python -m src.services.database validate --db postgres --env local
+python -m src.services.database plan --db mysql --env test
+python -m src.services.database deploy --db mysql --env local --confirm</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>Lokal Docker-integration</h2>
+        <p><a href="lokal-opsætning.html">Den lokale Compose-stack</a> starter MySQL-servicen, Finance PostgreSQL og appen. Schema-v&aelig;rkt&oslash;jerne kan k&oslash;re fra v&aelig;rtsmaskinen med den lokale virtuelle environment eller i <code>tools</code>-containeren. Compose bruger interne servicenavne mellem containere; fra v&aelig;rten er MySQL normalt tilg&aelig;ngelig p&aring; port 3306 og Finance PostgreSQL p&aring; port 5433.</p>
+        <p>Seed-containeren indl&aelig;ser kun testdata eksplicit og skal bruges mod tomme, lokale databaser. <code>docker compose down -v</code> sletter lokale database- og media-volumes og m&aring; derfor ikke bruges som almindelig stopkommando.</p>
+        <p>GitHub Actions installerer de samme Python-drivere og k&oslash;rer schema-validering mod Test eller Produktion f&oslash;r database-deployment. Connection strings kommer fra secrets/environment variables; credentials m&aring; ikke l&aelig;gges i SQL-filer, <code>.env</code> eller dokumentationen.</p>
+      </section>
+
+      <section class="section">
+        <h2>Sikkerhedsregler</h2>
+        <ul>
+          <li>Brug <code>diff</code>, <code>validate</code> og <code>plan</code> f&oslash;r enhver deployment.</li>
+          <li>CLI'en genererer ikke automatisk <code>DROP TABLE</code>, <code>DROP COLUMN</code> eller data-migrationslogik.</li>
+          <li>Indexes, constraints, views, functions og triggers kan kr&aelig;ve <code>--allow-risk</code> og skal vurderes manuelt.</li>
+          <li>Finance-roller og grants er eksplicitte. Tilf&oslash;jes en ny Finance-tabel eller sequence, skal rolle-scriptet vurderes og opdateres samtidig.</li>
+          <li>Test-seeds m&aring; kun bruges i lokale eller isolerede testdatabaser; de er ikke en backup eller produktionsmigration.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

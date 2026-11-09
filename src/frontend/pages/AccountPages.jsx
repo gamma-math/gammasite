@@ -67,8 +67,8 @@ export function LoginPage() {
   return (
     <AuthCard title="Log ind" subtitle="Indtast dine login-oplysninger.">
       <form className="account-form" onSubmit={submit}>
-        <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
-        <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="current-password" required />
+        <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required hideRequiredIndicator />
+        <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="current-password" required hideRequiredIndicator />
         <label className="account-checkbox">
           <input type="checkbox" checked={form.rememberMe} onChange={(event) => setForm({ ...form, rememberMe: event.target.checked })} />
           <span>Husk mig?</span>
@@ -119,12 +119,12 @@ export function RegisterPage() {
   return (
     <AuthCard title="Opret ny bruger" wide>
       <form className="account-form account-form-compact" onSubmit={submit}>
-        <Field label="Email*" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
-        <Field label="Password*" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="new-password" required />
-        <Field label="Bekræft password*" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
-        <Field label="Navn*" value={form.navn} onChange={(value) => setForm({ ...form, navn: value })} autoComplete="name" required />
-        <Field label="Telefonnummer*" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} autoComplete="tel" required />
-        <Field label="Årgang* (start på studiet)" type="number" value={form.aargang} onChange={(value) => setForm({ ...form, aargang: value })} required />
+        <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} autoComplete="username" required />
+        <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} autoComplete="new-password" required />
+        <Field label="Bekræft password" type="password" value={form.confirmPassword} onChange={(value) => setForm({ ...form, confirmPassword: value })} autoComplete="new-password" required />
+        <Field label="Navn" value={form.navn} onChange={(value) => setForm({ ...form, navn: value })} autoComplete="name" required />
+        <Field label="Telefonnummer" type="tel" value={form.phoneNumber} onChange={(value) => setForm({ ...form, phoneNumber: value })} autoComplete="tel" required />
+        <Field label="Årgang" requiredNote=" (start på studiet)" type="number" value={form.aargang} onChange={(value) => setForm({ ...form, aargang: value })} required />
         <Field label="Beskæftigelse" value={form.beskaeftigelse} onChange={(value) => setForm({ ...form, beskaeftigelse: value })} autoComplete="organization-title" />
         <Field label="Adresse" value={form.adresse} onChange={(value) => setForm({ ...form, adresse: value })} />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Opretter..." : "Tilmeld"}</button>
@@ -932,7 +932,7 @@ function EmailActionPage({ title, subtitle, buttonLabel, submit }) {
   return (
     <AuthCard title={title} subtitle={subtitle}>
       <form className="account-form" onSubmit={onSubmit}>
-        <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="username" required />
+        <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="username" required hideRequiredIndicator />
         <button className="profile-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sender..." : buttonLabel}</button>
         <Status message={message} error={error} />
       </form>
@@ -1066,12 +1066,12 @@ function comparePostingValues(left, right, key) {
   return String(left ?? "").localeCompare(String(right ?? ""), "da-DK", { sensitivity: "base" });
 }
 
-function Field({ name, label, value, onChange, type = "text", disabled = false, required = false, error = "", ...props }) {
+function Field({ name, label, value, onChange, type = "text", disabled = false, required = false, hideRequiredIndicator = false, requiredNote = "", error = "", ...props }) {
   const errorId = name ? name + "-error" : undefined;
 
   return (
     <label className={"account-field" + (error ? " has-error" : "")}>
-      <span>{label}{required && <span aria-hidden="true"> *</span>}</span>
+      <span>{label}{required && !hideRequiredIndicator && <span aria-hidden="true">*</span>}{requiredNote}</span>
       <input id={name} name={name} type={type} value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled} required={required} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} placeholder={label} {...props} />
       {error && <small id={errorId} className="account-field-error">{error}</small>}
     </label>

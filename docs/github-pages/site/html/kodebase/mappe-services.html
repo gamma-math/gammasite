@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Services &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.services">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; src/services/</p>
+      <h1>Services og integrationsv&aelig;rkt&oslash;jer</h1>
+      <p class="lead">Hj&aelig;lpeprogrammer og lokal infrastruktur, som underst&oslash;tter backend, databaser, betalinger og udvikling. Services-mappen indeholder ikke selve webapplikationen; den samler v&aelig;rkt&oslash;jer, der k&oslash;rer ved siden af den.</p>
+
+      <section class="section">
+        <h2>Moduler</h2>
+        <table class="table">
+          <thead><tr><th>Modul</th><th>Form&aring;l</th><th>Driftsform</th></tr></thead>
+          <tbody>
+            <tr><td><code>database/</code></td><td>Python-CLI, som genbruger <code>src/database/scripts/</code> til diff, validate, plan og deploy af MySQL- og Finance PostgreSQL-schemaer.</td><td>Lokal Python eller GitHub Actions</td></tr>
+            <tr><td><code>local-development/</code></td><td>Docker Compose-stack med MySQL, Finance PostgreSQL, app, test-containere, seeds og lokale integrationsprofiler.</td><td>Docker Compose</td></tr>
+            <tr><td><code>stripe/</code></td><td>Selvst&aelig;ndigt Python-v&aelig;rkt&oslash;j til Stripe API-opslag, payout-lister og payout-transaktioner.</td><td>Lokal Python eller Docker</td></tr>
+            <tr><td><code>vipps/</code></td><td>CLI til MobilePay/Vipps-betalinger, recurring-aftaler og webhook-registrering, herunder rotation og sletning.</td><td>Lokal Python eller Docker</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Sammenh&aelig;ng med resten af projektet</h2>
+        <ul>
+          <li><code>database/</code> og <code>src/database/</code> deler schema-implementeringen, s&aring; CLI'en ikke bliver en separat Source of Truth.</li>
+          <li><code>local-development/</code> starter den lokale applikation og databaserne med de samme database- og integrationsgr&aelig;nseflader, som applikationen bruger.</li>
+          <li><code>stripe/</code> og <code>vipps/</code> er manuelle integrationsv&aelig;rkt&oslash;jer. De erstatter ikke backendens betalingsflows eller webhook-endpoints.</li>
+          <li>Lokale secrets skal ligge i de respektive <code>.env</code>-filer eller i Compose-overrides og m&aring; ikke committes.</li>
+        </ul>
+        <p>Den praktiske opstart af Compose-milj&oslash;et er beskrevet i <a href="lokal-opsætning.html">Lokal ops&aelig;tning</a>. Testene for de to eksterne helper-services er samlet p&aring; siden <a href="mappe-service-tests.html">Service-tests</a>.</p>
+      </section>
+
+      <section class="section">
+        <h2>Vigtige lokale profiler</h2>
+        <table class="table">
+          <thead><tr><th>Profil</th><th>Indhold</th></tr></thead>
+          <tbody>
+            <tr><td><code>tools</code></td><td>Schema-validering, seeds og integrationsscripts.</td></tr>
+            <tr><td><code>tests</code></td><td>Frontend- og backend-tests som engangscontainere.</td></tr>
+            <tr><td><code>integrations</code></td><td>Stripe CLI og Cloudflare-tunnel til lokale webhook-tests.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>
