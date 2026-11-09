@@ -120,7 +120,10 @@ def parse_connection_string(
     }
     for key, val in normalized.items():
         if key in option_aliases:
-            options[option_aliases[key]] = val
+            option_name = option_aliases[key]
+            if database == "postgres" and option_name in {"sslmode", "channel_binding"}:
+                val = _normalize_postgres_option(option_name, val)
+            options[option_name] = val
 
     return ConnectionSettings(
         database=database,
@@ -295,6 +298,20 @@ def _strip_quotes(value: str) -> str:
 def _quote_conninfo(value: str) -> str:
     if not value or re.search(r"\s|'", value):
         return "'" + value.replace("'", "\\'") + "'"
+    return value
+
+
+def _normalize_postgres_option(name: str, value: str) -> str:
+    """Normalize .NET PostgreSQL option spelling to libpq values."""
+
+    normalized = value.strip().lower().replace("_", "-")
+    if name == "sslmode":
+        return {
+            "verifyfull": "verify-full",
+            "verifyca": "verify-ca",
+        }.get(normalized, normalized)
+    if name == "channel_binding":
+        return normalized
     return value
 
 

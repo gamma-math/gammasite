@@ -109,8 +109,10 @@ class ConnectionTests(unittest.TestCase):
             "FINANCE_CONNECTION_STRING",
         )
         self.assertEqual("finance.example", settings.host)
-        self.assertEqual("verifyfull", settings.options["sslmode"].lower())
-        self.assertEqual("require", settings.options["channel_binding"].lower())
+        self.assertEqual("verify-full", settings.options["sslmode"])
+        self.assertEqual("require", settings.options["channel_binding"])
+        self.assertIn("sslmode=verify-full", settings.conninfo)
+        self.assertIn("channel_binding=require", settings.conninfo)
         self.assertNotIn("secret", settings.redacted)
 
     def test_mysql_dotnet_connection_string(self) -> None:
