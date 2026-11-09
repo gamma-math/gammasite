@@ -1,12 +1,12 @@
 -- Creates the two login roles used by the GamMaSite finance backend.
--- Run this as the database owner after PostgreSQLTest.sql:
+-- Run this as the database owner after finance.sql:
 --
 --   psql -v finance_read_password='...' -v finance_write_password='...' \
---     -f SQL/finance/CreateFinanceLoginRoles.sql <neon connection options>
+--     -f src/database/postgres/operations/CreateFinanceLoginRoles.sql <connection options>
 --
 -- Do not commit production passwords. The roles themselves and their table
--- privileges are defined in this script; PostgreSQLTest.sql defines the
--- finance tables that are granted below.
+-- privileges are defined in this script; finance.sql defines the finance
+-- tables that are granted below.
 
 \if :{?finance_read_password}
 \else

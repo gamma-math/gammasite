@@ -1,168 +1,151 @@
-# Lokal Docker-udvikling
+# Local Docker development
 
-Dette setup starter GamMaSite med de to databaser, som applikationen bruger:
+This setup runs GamMaSite with MySQL, Finance PostgreSQL and the existing
+backend/frontend application.
 
-- MySQL 8 til Identity, content, events, betalinger og øvrige GamMaSite-data.
-- PostgreSQL 16 til Finance-databasen.
-- GamMaSite-backenden, som bygger og serverer den eksisterende React/Vite-frontend.
+Helper commands are collected in [`scripts/`](./scripts/), and PostgreSQL
+initialization files are in [`postgres-init/`](./postgres-init/).
 
-Alle nye filer til dette setup ligger i denne mappe. Compose bruger repository-roden som build context, så frontend- og backendkoden bliver i deres eksisterende mapper.
+## Requirements
 
-Runner-kommandoerne ligger samlet i [scripts](./scripts/). Docker-specifikke PostgreSQL-initfiler ligger separat i [postgres-init](./postgres-init/). Den fælles hjælpeimage bygges som `local-tools`-target i [Dockerfile](./Dockerfile), så lokaludviklingen kun har én Dockerfile.
+- Docker Engine or Docker Desktop with Compose v2.
+- Vipps credentials only when Vipps webhooks must be registered or rotated.
 
-## Forudsætninger
+All helper and integration scripts can run inside Docker. Windows users do not
+need Git for Windows for the documented workflows.
 
-- Docker Engine eller Docker Desktop med Compose v2.
-- Vipps-credentials, hvis Vipps-webhooks skal registreres eller roteres.
+## Quick start
 
-Alle hjælpe- og integrationsscripts kan køres inde i Docker. På Windows er det derfor ikke nødvendigt at åbne Git for Windows. Linux kan bruge de tilsvarende `docker compose --profile tools run ...`-kommandoer direkte.
+Run the commands from this directory:
 
-Scripts kan køres direkte gennem Compose. Fra denne mappe er den korte form:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/validate.sh
-```
-
-Seed køres som en dedikeret engangsservice:
-
-```bash
-docker compose --profile tools run --rm --build seed
-```
-
-`tools`-servicen monterer repositoryet og Docker-socketen, så scripts kan styre de øvrige Compose-services. Det er en lokal udviklingsfunktion og bør kun køres med en betroet checkout.
-
-## Første opsætning
-
-Kør fra repository-roden:
-
-```bash
-cd src/services/local-development
-```
-
-Der er ikke krav om at kopiere `.env.example` til `.env`. Compose-filen har lokale standardvaerdier for database- og portkonfigurationen, saa standardstacken kan bygges og startes direkte. `.env` er fortsat en valgfri, git-ignoreret override-fil til lokale credentials og integrationer. Brug kun lokale testcredentials; indsaet ikke produktionssecrets.
-
-Kontrollér konfigurationen uden at starte containere:
-
-```bash
+```powershell
 docker compose config --quiet
-```
-
-`.env.example` er dokumentation for alle understøttede variabelnavne. Stripe- og Vipps-secrets skal ikke udfyldes her; de genereres af integrationsscripts og gemmes kun i den lokale `.env`.
-
-## Step-by-step guide
-
-Alle kommandoer nedenfor køres fra `src/services/local-development/`.
-
-### 1. Første gang
-
-Start databaserne, byg backend/frontend-image og start hjemmesiden:
-
-```bash
 docker compose up -d --build
-```
-
-Kontrollér derefter status og forbindelser:
-
-```bash
 docker compose ps
 docker compose --profile tools run --rm --build tools scripts/validate.sh
 ```
 
-Hvis der skal bruges testdata, og databaserne er helt tomme, køres seed eksplicit:
+The Compose file provides local defaults, so copying `.env.example` to `.env`
+is optional. Use `.env` for local overrides and test credentials only; never
+put production secrets in it.
+
+Local endpoints:
+
+- GamMaSite: `http://localhost:5000`
+- MySQL: `localhost:3306`
+- Finance PostgreSQL: `localhost:${FINANCE_POSTGRES_PORT}` (5433 by default)
+
+Set `MYSQL_PORT` or `FINANCE_POSTGRES_PORT` in `.env` if either port is already
+in use. Internal application connections continue to use Compose service names
+and container ports.
+
+## Test data
+
+Test data is never loaded during normal startup. Run the seed service only when
+the local databases are empty:
 
 ```bash
 docker compose --profile tools run --rm --build seed
 ```
 
-Seed-servicen kører inde i Docker med databaseklienterne til MySQL og PostgreSQL. Den registrerer, hvis seed allerede er kørt, og afviser databaser, hvor relevante seed-tabeller allerede indeholder data. Den er derfor ikke en del af den almindelige opstart.
+The seed service checks whether seeding has already been recorded and refuses
+to seed relevant tables that already contain data. It also normalizes relevant
+local MySQL tables to `utf8mb4_general_ci` before seeding.
 
-Før seed harmoniserer servicen de lokale MySQL-tabeller til `utf8mb4_general_ci`, så joins kan sammenlignes korrekt på MySQL 8.
+Seed source files:
 
-Hvis hjælpe-imaget allerede er bygget, kan man også køre seed-servicen direkte:
+- [`src/database/seeds/mysql/test/`](../../database/seeds/mysql/test/)
+- [`src/database/seeds/postgres/test/`](../../database/seeds/postgres/test/)
+
+Schema source-of-truth files:
+
+- [`src/database/mysql/gam_ma_dk_db.sql`](../../database/mysql/gam_ma_dk_db.sql)
+- [`src/database/postgres/finance.sql`](../../database/postgres/finance.sql)
+
+The seed service is a one-shot container and does not create a permanent
+service.
+
+## Database lifecycle and safety
+
+Schema initialization scripts run automatically only when a database volume is
+created for the first time. Rebuilding the application image does not recreate
+database volumes. Do not use `docker compose down -v` unless all local database
+and media data may be deleted.
+
+Stop the stack without deleting volumes:
 
 ```bash
-docker compose --profile tools run --rm seed
+docker compose down
 ```
 
-Seed køres direkte som Compose-engangsservice med kommandoen ovenfor.
+Use the shared schema-management service for local validation and deployment:
 
-### 2. Start Stripe CLI og webhook-tunnel uden åbne terminaler
+```powershell
+& .\scripts\validate-schema.ps1
+```
 
-Disse workflows ændrer ikke databasevolumes og kører ikke migrations. Start begge integrationsservices detached med én kommando:
+The wrapper starts the local database containers, loads the local `.env` file,
+and validates both schemas through the shared database service. It never uses
+Test or Production connection strings.
+
+For individual schema operations, call the shared database service directly:
+
+```powershell
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database validate --db mysql --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database validate --db postgres --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database plan --db mysql --env local
+& .\src\services\database\.venv\Scripts\python.exe -m src.services.database deploy --db mysql --env local --confirm
+```
+
+From Git Bash or another Bash shell, run `bash scripts/validate-schema.sh`
+from this directory.
+
+The same implementation is used by GitHub Actions. Production deployment
+requires an additional explicit production confirmation.
+
+## Rebuild and test the application
+
+Rebuild only the application when database containers are already running:
+
+```bash
+docker compose up -d --build --no-deps app
+```
+
+For a clean application image:
+
+```bash
+docker compose build --no-cache app
+docker compose up -d --no-deps app
+```
+
+Run frontend and backend tests as one-shot services:
+
+```powershell
+docker compose --profile tests run --rm --build frontend-tests
+docker compose --profile tests run --rm --build backend-tests
+```
+
+## Stripe and Vipps integrations
+
+The standard startup does not require external integrations. Start Stripe CLI
+and the Cloudflare Quick Tunnel only when needed:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
 ```
 
-Kommandoen genskaber Stripe CLI og Cloudflare Tunnel som permanente Compose-services, opsamler en ny `STRIPE_WEBHOOK_SECRET`, `PUBLIC_WEBHOOK_BASE_URL` og `PUBLIC_BASE_URL`, tilføjer tunnel-hostnavnet til `ALLOWED_HOSTS`, opdaterer den lokale `.env` og genskaber kun `app`-containeren. Kommandoen afslutter derefter, mens integrationsservices fortsætter i baggrunden.
+This updates the local `.env` with the active Stripe webhook secret, tunnel URL
+and allowed host, then recreates only the application container. The tunnel URL
+is temporary and must not be used as a permanent Test or Production webhook.
 
-Hvis `STRIPE_SECRET_API_KEY` er en restricted Stripe test-key (`rk_test_...`), skal key’en have permissionen `Debugging Tools` → `Write` (`stripecli_session_write`). Uden denne permission kan Stripe CLI ikke oprette en listen-session. Brug kun en test-mode key til lokal udvikling.
-
-Den samme key bruges også af GamMaSite-backenden. Giv derfor følgende mindst nødvendige permissions:
-
-| Stripe resource | Permission | Bruges til |
-|---|---|---|
-| Debugging Tools | Write | Stripe CLI `listen` og generering af webhook-sessionen |
-| Checkout Sessions | Read + Write | Oprette og hente Checkout Sessions |
-| Products | Read + Write | Læse, oprette og aktivere/deaktivere produkter |
-| Prices | Read + Write | Læse, oprette og opdatere priser |
-| Subscriptions | Read + Write | Læse, ændre og annullere abonnementer |
-| Invoices | Read | Vise betalingshistorik for abonnementer |
-| Balance | Read | Hente balance transactions for afstemning af payouts |
-| Payouts | Read | Hente payouten fra `payout.reconciliation_completed` |
-
-`STRIPE_PUBLIC_API_KEY` er en separat publishable test-key og skal ikke have disse server-permissions. `STRIPE_WEBHOOK_SECRET` er et webhook-signing secret og er ikke en API-key.
-
-#### Stripe-testkort
-
-Til almindelig kortbetaling i den lokale Stripe-testtilstand kan Checkout gennemføres med:
-
-| Felt | Værdi |
-|---|---|
-| Kortnummer | `4242 4242 4242 4242` |
-| Udløbsdato | En valgfri fremtidig dato |
-| CVC | En valgfri gyldig CVC, eksempelvis `123` |
-| Navn på kort | Valgfrit navn |
-
-Kortet er kun et Stripe-testkort og må ikke bruges sammen med Apple Pay. Stripe understøtter ikke Apple Pay Sandbox som et fuldt simuleret betalingsmiljø. Apple Pay skal i stedet testes på en understøttet Apple-enhed med et rigtigt kort i Apple Wallet og Stripe test-nøgler.
-
-#### Vipps/MobilePay
-
-Registrér en Vipps-webhook og gem automatisk både ID og secret i den lokale `.env`:
+Register or rotate a Vipps webhook with:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register
-```
-
-Når kommandoen køres via `local-development`, bruges Vipps-credentials og `VIPPS_MSN` fra denne lokale `.env`. Den separate [Vipps Compose-opsætning](../vipps/docker-compose.yml) har fortsat sin egen `.env`, men den overskrives ikke af denne lokale wrapper.
-
-Aktive Vipps-webhooks kan stadig vises med:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh list
-```
-
-Ved rotation bruges automatisk `WEBHOOK_ID` fra den lokale `.env`:
-
-```bash
 docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
 ```
 
-Rotation registrerer og verificerer den nye webhook, gemmer det nye `WEBHOOK_ID` og `VIPPS_WEBHOOK_SECRET`, genstarter `app` og sletter derefter den gamle webhook. Et gammelt ID kan stadig angives eksplicit:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate OLD_WEBHOOK_ID
-```
-
-Ved registrering eller rotation opdaterer Vipps-scriptet den lokale `.env` og genskaber `app`, så det nye secret indlæses. Tunnelen kører detached som en Compose-service.
-
-Hver kørsel af `integrations-up.sh` opretter en ny Cloudflare Quick Tunnel-URL. Hvis der allerede findes en Vipps-webhook, skal den derfor roteres til den nye URL bagefter:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
-```
-
-Kontrollér eller stop integrationsservices:
+Inspect or stop integration services with:
 
 ```bash
 docker compose --profile integrations ps
@@ -170,219 +153,37 @@ docker compose --profile integrations logs -f stripe-cli tunnel
 docker compose --profile integrations stop stripe-cli tunnel
 ```
 
-### 3. Genbyg kun frontend og backend
+Use Stripe test keys and Vipps test credentials only. The server-side Stripe
+key needs the permissions required by the application and Stripe CLI; the
+publishable key does not need server permissions.
 
-Hvis databaserne allerede kører, og der kun er ændret i applikationskode eller frontend, bruges:
+## Validation and troubleshooting
 
-```bash
-docker compose up -d --build --no-deps app
-```
-
-Det bygger Docker-imaget igen og genopretter kun `app`. MySQL- og PostgreSQL-containere eller volumes opdateres ikke.
-
-Ved behov for et helt nyt image uden Docker-cache:
-
-```bash
-docker compose build --no-cache app
-docker compose up -d --no-deps app
-```
-
-Kontrollér efterfølgende:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/validate.sh
-docker compose logs -f app
-```
-
-### Test frontend og backend
-
-Testene kan køres som separate one-shot Docker-services. De starter ikke ved almindelig `docker compose up` og kræver ikke, at Stripe, Vipps eller de lokale databaser kører.
-
-Kør frontend-tests:
-
-```powershell
-docker compose --profile tests run --rm --build frontend-tests
-```
-
-Kør backend-tests:
-
-```powershell
-docker compose --profile tests run --rm --build backend-tests
-```
-
-Kør begge testpakker efter hinanden:
-
-```powershell
-docker compose --profile tests run --rm --build frontend-tests
-docker compose --profile tests run --rm --build backend-tests
-```
-
-### 4. Andre almindelige situationer
-
-Start eksisterende containere igen uden rebuild:
-
-```bash
-docker compose up -d
-```
-
-Genstart kun hjemmesiden uden rebuild:
-
-```bash
-docker compose restart app
-```
-
-Se status og logs:
-
-```bash
-docker compose ps
-docker compose logs -f app
-docker compose logs -f mysql finance-postgres
-```
-
-Kør en engangskommando i app-imaget uden at beholde containeren:
-
-```bash
-docker compose run --rm --no-deps app <kommando>
-```
-
-Hvis database-schema eller seed-filer ændres, er en app-rebuild ikke nok. Init-SQL-filerne køres kun automatisk, når et database-volume oprettes første gang. Der er ikke fundet EF Core migrationsfiler i projektet, så databaseændringer skal fortsat håndteres som en særskilt, gennemgået SQL-ændring. Brug ikke `down -v` for at tvinge en ændring igennem.
-
-Stop stacken uden at slette database- eller medievolumes:
-
-```bash
-docker compose down
-```
-
-Der findes med vilje ingen automatisk reset-kommando. Brug ikke `docker compose down -v`, medmindre alle lokale data med vilje skal slettes.
-
-## Lokale adresser
-
-- GamMaSite: `http://localhost:5000`
-- MySQL: `localhost:3306`
-- Finance PostgreSQL: `localhost:5433`
-
-Portene kan ændres i `.env`. Databaseportene bindes kun til loopback-interfacet.
-
-## Databaseinitialisering
-
-MySQL initialiseres første gang det nye named volume er tomt med [SQL/AspNetMysql.test.sql](../../../SQL/AspNetMysql.test.sql). Finance PostgreSQL initialiseres første gang med [SQL/finance/PostgreSQLTest.sql](../../../SQL/finance/PostgreSQLTest.sql), lokale database-roller og de eksisterende Finance-rettigheder.
-
-De eksisterende databaseprojekter under `Documents/DB` blev inspiceret, men deres Windows-specifikke datafoldere bindes ikke ind i dette setup. Det gør løsningen Linux-kompatibel og sikrer, at eksisterende databasevolumes ikke overskrives. Compose opretter isolerede volumes med navnene:
-
-- `gammasite-local-development-mysql-data`
-- `gammasite-local-development-finance-data`
-- `gammasite-local-development-content-media`
-
-Der blev ikke fundet EF Core migrationsfiler i repositoryets backend. Derfor bruger dette setup de eksisterende SQL-schemafiler ved første initialisering; det opfinder ikke migrationsfiler eller kører dem automatisk.
-
-Testdata køres kun ved eksplicit brug af `--seed` eller den separate Compose-seed-service og kommer fra:
-
-- `SQL/test-seed/00_seed_all.sql`
-- `SQL/finance/test-seed/00_gamma_finance_seed.sql`
-
-Seed-servicen bruger det fælles `local-tools`-target i [Dockerfile](./Dockerfile) og læser seed-filerne fra repository-mountet. Den opretter ikke en permanent container.
-
-## Validering
-
-Når stacken kører, kontrollerer følgende kommando Compose-konfiguration, container-health, MySQL, PostgreSQL og den lokale HTTP-adresse:
+Run the local validation script whenever the stack is running:
 
 ```bash
 docker compose --profile tools run --rm --build tools scripts/validate.sh
 ```
 
-Valideringen viser kun manglende variabelnavne og statusbeskeder. Den udskriver ikke secret-værdier, passwords eller connection strings.
+It checks Compose configuration, container health, database connectivity and
+the local HTTP endpoint without printing secrets or connection strings.
 
-## Stripe-webhooks
+Common issues:
 
-Stripe CLI kører som en valgfri, permanent Docker Compose-service. Signing secretet er dynamisk for den aktive `stripe listen`-session; integrations-scriptet opsamler det uden at vise det, skriver det til den lokale `.env` og genskaber kun `app`-servicen.
+- If Docker reports that `dockerDesktopLinuxEngine` cannot be found, start
+  Docker Desktop and verify that the Linux engine is running.
+- If port `3306` or the configured `FINANCE_POSTGRES_PORT` is unavailable,
+  change `MYSQL_PORT` or `FINANCE_POSTGRES_PORT` in `.env`.
+- If a database is unhealthy, inspect `docker compose logs mysql` or
+  `docker compose logs finance-postgres`.
+- If the application does not start, inspect `docker compose logs app`; it
+  waits for both database health checks.
+- If MySQL reports a collation conflict during seeding, verify that the seed
+  tables are empty. The seed service performs the required local normalization;
+  database volumes do not need to be deleted.
+- If a webhook is unauthorized, verify the local secret, registered URL and
+  the status of the integration containers.
 
-1. Opret en test-mode restricted Stripe API key og læg den i `STRIPE_SECRET_API_KEY` i den lokale `.env`.
-2. Sørg for at GamMaSite kører med `docker compose up -d`.
-Den server-side restricted key skal have læseadgang til `Balance` (`balance_read`) og `Payouts`, fordi appen henter payoutens balance transactions efter `payout.reconciliation_completed`. `STRIPE_PUBLIC_API_KEY` bruges kun af klienten og kræver ikke disse server-permissions.
-
-3. Start Stripe CLI og tunnelen samlet i Docker:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
-```
-
-Scriptet forwarder de eventtyper, som applikationen allerede behandler, herunder `payout.reconciliation_completed`, til:
-
-```text
-/api/payments/stripe/webhook
-```
-
-Der oprettes ikke eksterne webhook endpoints af dette setup. Secretet gælder kun, så længe den aktuelle Stripe CLI-service kører; kør integrations-scriptet igen, hvis servicen eller sessionen oprettes på ny.
-
-## Webhook-tunnel og MobilePay
-
-Cloudflare Quick Tunnel startes sammen med Stripe CLI:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/integrations-up.sh
-```
-
-Scriptet genskaber tunnelen, venter på den nye Cloudflare Quick Tunnel-URL, gemmer den som både `PUBLIC_WEBHOOK_BASE_URL` og `PUBLIC_BASE_URL` i den lokale `.env`, tilføjer hostnavnet til `ALLOWED_HOSTS` og viser de to relevante endpoints:
-
-```text
-/api/payments/stripe/webhook
-/api/payments/vipps/webhook
-```
-
-URL'en er midlertidig og må ikke bruges som permanent TEST- eller PROD-webhook. Tunnel-containeren skal blot fortsætte som detached Compose-service.
-
-Ved test af MobilePay-medlemskaber med automatisk fornyelse skal GamMaSite åbnes via den aktuelle `https://...trycloudflare.com`-URL. Vipps kræver, at `merchantRedirectUrl` og `merchantAgreementUrl` er offentligt tilgængelige HTTPS-adresser; integrationsscriptet bruger derfor tunnel-URL'en som `PUBLIC_BASE_URL`.
-
-### Vipps webhook-secret
-
-Når integrationsprofilen kører, kan en ny Vipps-webhook registreres, og både ID og secret gemmes automatisk i den lokale `.env`:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register
-```
-
-Det svarer til URL'en `${PUBLIC_WEBHOOK_BASE_URL}/api/payments/vipps/webhook`. En anden URL kan gives eksplicit:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh register --url https://example.test/api/payments/vipps/webhook
-```
-
-Ved rotation bruges det eksisterende `WEBHOOK_ID`, medmindre et gammelt ID angives eksplicit. Den nye webhook registreres og verificeres først; derefter slettes den gamle automatisk:
-
-```bash
-docker compose --profile tools run --rm --build tools scripts/vipps-webhook.sh rotate
-```
-
-Wrapperen genbruger Vipps-værktøjet og [Vipps README](../vipps/README.md) for credentials. Den sender ikke secretet til terminalen; ved fejl ændres den lokale webhook-konfiguration ikke. Efter en vellykket registrering eller rotation genskabes `app`, så det nye secret anvendes.
-
-## Mailpit-begrænsning
-
-Mailpit er ikke startet i dette setup, fordi den nuværende [EmailService](../../backend/GamMaSite/Services/EmailService.cs) sender direkte til Mailguns HTTP-API. Den kan derfor ikke bruge Mailpit som SMTP-server via eksisterende miljøvariabler alene.
-
-For at understøtte Mailpit kræves en separat applikationsændring, eksempelvis en SMTP-baseret sender eller en konfigurerbar mail-provider. Det ligger uden for denne runner-opgave og er ikke udført.
-
-## Valgfri integrationsprofil
-
-Standardopstarten starter kun MySQL, Finance PostgreSQL og GamMaSite. Hjælpeimage, Stripe CLI, Vipps-webhookregistrering og tunnel startes separat, så eksterne integrationer ikke er nødvendige for almindelig lokal udvikling.
-
-Compose indeholder desuden en valgfri `integrations`-profil for Stripe CLI og en Cloudflare Quick Tunnel:
-
-```bash
-docker compose --profile integrations up -d stripe-cli tunnel
-docker compose --profile integrations ps
-docker compose --profile integrations stop stripe-cli tunnel
-```
-
-Denne profil er valgfri og kræver ingen ændring af kontoindstillinger. En administreret Cloudflare Tunnel med token eller domæne skal konfigureres manuelt af brugeren og er ikke en del af standardopsætningen.
-
-## Almindelige fejl
-
-- `unable to get image ... dockerDesktopLinuxEngine ... The system cannot find the file specified`: Docker CLI'en er installeret, men Docker Desktop's Linux-engine kører ikke. Start Docker Desktop, vent til status viser, at engine er startet, og kontrollér derefter med `docker info`, at både Client og Server vises uden fejl. Sørg også for, at Docker Desktop bruger Linux-containere. Kør derefter `docker compose up -d --build` igen.
-- `Missing .env.example`: kontrollér at du står i `src/services/local-development/` og at runner-filerne er komplette. `.env` er valgfri ved standardopstart.
-- `ports are not available` for `5433` eller `3306`: porten bruges allerede af en lokal PostgreSQL-/MySQL-installation eller en anden service. Sæt eksempelvis `FINANCE_POSTGRES_PORT=5434` eller `MYSQL_PORT=3307` i den lokale `.env`, og start derefter stacken igen. Appens interne forbindelser bruger fortsat Compose-servicenavnene og containerportene `5432`/`3306`.
-- En database er ikke healthy: kør `docker compose logs mysql` eller `docker compose logs finance-postgres`.
-- GamMaSite starter ikke: kontrollér `docker compose logs app`; appen venter på begge database-healthchecks.
-- `ERROR 1267 ... Illegal mix of collations` under seed: kontrollér først, at databasen kun indeholder de forventede tomme seed-tabeller. Seed-servicen harmoniserer relevante lokale MySQL-tabeller automatisk; ingen databasevolumes skal slettes for at rette en collation-fejl.
-- HTTP-check fejler: kontrollér `APP_PORT` og `docker compose logs app`.
-- Stripe webhook returnerer fejl: kontrollér `docker compose --profile integrations logs stripe-cli`, API-key-permissions og at `STRIPE_WEBHOOK_SECRET` svarer til den aktive CLI-session.
-- MobilePay-webhooken returnerer unauthorized: kontrollér den lokale `VIPPS_WEBHOOK_SECRET`, den registrerede URL og `docker compose --profile integrations ps tunnel`.
+Mailpit is not included because the current email service sends directly to
+Mailgun's HTTP API. Supporting Mailpit would require a configurable SMTP
+provider and is outside this local runner.

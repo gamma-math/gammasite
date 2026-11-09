@@ -7,7 +7,7 @@ set -euo pipefail
 : "${FINANCE_POSTGRES_HOST:=finance-postgres}"
 : "${FINANCE_POSTGRES_DB:?FINANCE_POSTGRES_DB is required}"
 : "${FINANCE_POSTGRES_ADMIN_PASSWORD:?FINANCE_POSTGRES_ADMIN_PASSWORD is required}"
-: "${SQL_ROOT:=/workspace/SQL}"
+: "${DATABASE_ROOT:=/workspace/src/database}"
 
 mysql_cmd() {
     MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb \
@@ -102,7 +102,7 @@ else
     SET FOREIGN_KEY_CHECKS=1;
 SQL
 
-    mysql_cmd < "$SQL_ROOT/test-seed/00_seed_all.sql"
+    mysql_cmd < "$DATABASE_ROOT/seeds/mysql/test/00_seed_all.sql"
     mysql_cmd -e "INSERT INTO LocalDevelopmentSeedRuns (SeedName) VALUES ('gammasite-test-seed');"
     echo "GamMaSite test seed completed."
 fi
@@ -133,7 +133,7 @@ else
         exit 7
     fi
 
-    postgres_cmd --set ON_ERROR_STOP=1 --file="$SQL_ROOT/finance/test-seed/00_gamma_finance_seed.sql" >/dev/null
+    postgres_cmd --set ON_ERROR_STOP=1 --file="$DATABASE_ROOT/seeds/postgres/test/00_gamma_finance_seed.sql" >/dev/null
     postgres_cmd --set ON_ERROR_STOP=1 --command "INSERT INTO public.local_development_seed_runs (seed_name) VALUES ('gamma-finance-test-seed');" >/dev/null
     echo "Finance test seed completed."
 fi

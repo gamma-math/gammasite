@@ -14,8 +14,8 @@ services:
       - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - gammasite_local_mysql_data:/var/lib/mysql
-      - ../../../SQL/AspNetMysql.test.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ../../../SQL/test-seed:/seed/mysql:ro
+      - ../../../src/database/mysql/gam_ma_dk_db.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../../../src/database/seeds/mysql/test:/seed/mysql:ro
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
@@ -42,9 +42,9 @@ services:
     volumes:
       - gammasite_local_finance_data:/var/lib/postgresql/data
       - ./postgres-init/00-roles.sh:/docker-entrypoint-initdb.d/00-roles.sh:ro
-      - ../../../SQL/finance/PostgreSQLTest.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../../../src/database/postgres/finance.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./postgres-init/02-access.sh:/docker-entrypoint-initdb.d/02-access.sh:ro
-      - ../../../SQL/finance/test-seed:/seed/finance:ro
+      - ../../../src/database/seeds/postgres/test:/seed/finance:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
       interval: 5s
@@ -160,7 +160,7 @@ services:
       FINANCE_POSTGRES_HOST: finance-postgres
       FINANCE_POSTGRES_DB: ${FINANCE_POSTGRES_DB:-gamma_finance_local}
       FINANCE_POSTGRES_ADMIN_PASSWORD: ${FINANCE_POSTGRES_ADMIN_PASSWORD:-change-me-local-finance-admin}
-      SQL_ROOT: /workspace/SQL
+      DATABASE_ROOT: /workspace/src/database
 
   stripe-cli:
     profiles: ["integrations"]

@@ -22,13 +22,14 @@ const links = [
   ["Pages", "systemer/pages.html", "pages"],
   ["Lokal opsætning", "kodebase/lokal-opsætning.html", "code.setup"],
   ["Deploy Hjemmesiden", "kodebase/pipeline.html", "code.pipeline"],
+  ["Deploy Database", "systemer/deploy-database.html", "code.database"],
   ["Webhooks", "kodebase/webhooks.html", "code.webhooks"],
   ["GitHub Pages", "kodebase/github-pages.html", "code.pages"],
   ["Kodestruktur", "kodebase/struktur.html", "code.structure"],
   [".github/", "kodebase/mappe-github.html", "code.github"],
   [".vscode/", "kodebase/mappe-vscode.html", "code.vscode"],
   ["docs/", "kodebase/mappe-docs.html", "code.docs"],
-  ["SQL/", "kodebase/mappe-sql.html", "code.sql"],
+  ["src/database/", "kodebase/mappe-sql.html", "code.sql"],
   ["src/backend/GamMaSite/", "kodebase/mappe-backend.html", "code.backend"],
   ["src/frontend/", "kodebase/mappe-frontend.html", "code.frontend"],
   ["src/test/GamMaSite.Tests/", "kodebase/mappe-backend-tests.html", "code.backend-tests"],
@@ -38,7 +39,7 @@ const links = [
 const groups = [
   ["QA-vejledninger", ["qa", "qa.events", "qa.prices", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
   ["Finans", ["finance", "finance.postings", "finance.groups", "finance.export", "finance.import", "finance.budgets"]],
-  ["Teknik", ["systems", "pages", "code.setup", "code.pipeline", "code.webhooks", "code.pages", "code.incident"]],
+  ["Teknik", ["systems", "pages", "code.setup", "code.pipeline", "code.database", "code.webhooks", "code.pages", "code.incident"]],
   ["Kodestruktur", ["code.structure", "code.github", "code.vscode", "code.docs", "code.sql", "code.backend", "code.frontend", "code.backend-tests", "code.frontend-tests"]]
 ];
 
