@@ -7,7 +7,13 @@ import unittest
 
 from src.database.scripts.connections import parse_connection_string
 from src.database.scripts.schema_compare import compare_schemas
-from src.database.scripts.schema_deploy import build_plan, execute_plan
+from src.database.scripts.schema_deploy import (
+    DeploymentExecutionError,
+    DeploymentPlan,
+    PlannedStatement,
+    build_plan,
+    execute_plan,
+)
 from src.database.scripts.schema_reader import (
     ColumnDefinition,
     SchemaDefinition,
@@ -33,8 +39,12 @@ class SchemaReaderTests(unittest.TestCase):
         schema = read_schema_file(ROOT / "src/database/postgres/finance.sql", "postgres")
         self.assertEqual(9, len(schema.tables))
         self.assertEqual(25, len(schema.indexes))
+        self.assertEqual(1, len(schema.functions))
+        self.assertEqual(8, len(schema.triggers))
+        self.assertIn("public.set_updated_at()", schema.functions)
         self.assertIn("public.posteringer.ix_posteringer_stripe_key", schema.indexes)
         self.assertTrue(schema.tables["public.bank_account"].columns["id"].auto_increment)
+        self.assertEqual(3, sum(constraint.kind == "check" for constraint in schema.constraints.values()))
 
     def test_function_body_semicolons_do_not_split_schema(self) -> None:
         schema = parse_schema(
@@ -42,10 +52,27 @@ class SchemaReaderTests(unittest.TestCase):
             CREATE OR REPLACE FUNCTION public.touch() RETURNS trigger
             LANGUAGE plpgsql AS $$ BEGIN NEW.value = 1; RETURN NEW; END; $$;
             CREATE TABLE public.example (id bigint NOT NULL);
+            CREATE TRIGGER example_touch BEFORE UPDATE ON public.example
+            FOR EACH ROW EXECUTE FUNCTION public.touch();
             """,
             "postgres",
         )
         self.assertEqual(["public.example"], sorted(schema.tables))
+        self.assertIn("public.touch()", schema.functions)
+        self.assertIn("public.example.example_touch", schema.triggers)
+
+    def test_check_constraints_are_parsed(self) -> None:
+        schema = parse_schema(
+            """
+            CREATE TABLE public.example (value integer NOT NULL);
+            ALTER TABLE public.example
+                ADD CONSTRAINT example_value_check CHECK (value >= 0);
+            """,
+            "postgres",
+        )
+        constraint = schema.constraints["public.example.example_value_check"]
+        self.assertEqual("check", constraint.kind)
+        self.assertEqual("(value >= 0)", constraint.definition)
 
 
 class SchemaComparisonTests(unittest.TestCase):
@@ -98,6 +125,25 @@ class SchemaComparisonTests(unittest.TestCase):
         plan = build_plan(desired, diff)
         self.assertTrue(plan.blocked_reasons)
         self.assertNotIn("DROP", " ".join(statement.sql for statement in plan.statements).upper())
+
+    def test_missing_check_constraint_is_planned_as_confirmed_addition(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE TABLE public.example (value integer NOT NULL);
+            ALTER TABLE public.example
+                ADD CONSTRAINT example_value_check CHECK (value >= 0);
+            """,
+            "postgres",
+        )
+        actual = parse_schema("CREATE TABLE public.example (value integer NOT NULL);", "postgres")
+
+        diff = compare_schemas(desired, actual)
+        plan = build_plan(desired, diff)
+
+        self.assertIn("Missing check constraint", format_details(diff))
+        check_statement = next(statement for statement in plan.statements if "check constraint" in statement.reason)
+        self.assertTrue(check_statement.requires_confirmation)
+        self.assertIn("ADD CONSTRAINT example_value_check CHECK", check_statement.sql)
 
 
 class ConnectionTests(unittest.TestCase):
@@ -225,6 +271,28 @@ class DeploymentSafetyTests(unittest.TestCase):
             desired.constraints,
         )
 
+    def test_postgres_functions_are_created_before_triggers(self) -> None:
+        desired = parse_schema(
+            """
+            CREATE OR REPLACE FUNCTION public.touch() RETURNS trigger
+            LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
+            CREATE TABLE public.example (id bigint NOT NULL);
+            CREATE TRIGGER example_touch BEFORE UPDATE ON public.example
+            FOR EACH ROW EXECUTE FUNCTION public.touch();
+            """,
+            "postgres",
+        )
+        plan = build_plan(desired, compare_schemas(desired, SchemaDefinition("postgres")))
+        function_position = next(
+            index for index, statement in enumerate(plan.statements) if "FUNCTION" in statement.sql
+        )
+        trigger_position = next(
+            index for index, statement in enumerate(plan.statements) if "TRIGGER" in statement.sql
+        )
+        self.assertLess(function_position, trigger_position)
+        self.assertTrue(plan.statements[function_position].requires_confirmation)
+        self.assertTrue(plan.statements[trigger_position].requires_confirmation)
+
     def test_deploy_requires_explicit_confirmation(self) -> None:
         desired = _schema_with_column("new_column")
         actual = _schema_with_column()
@@ -232,6 +300,25 @@ class DeploymentSafetyTests(unittest.TestCase):
         with self.assertRaises(Exception):
             execute_plan(_FakeConnection(), plan)
         self.assertEqual([], _FakeConnection().executed)
+
+    def test_mysql_failure_reports_non_transactional_partial_deployment(self) -> None:
+        plan = DeploymentPlan(
+            "mysql",
+            [
+                PlannedStatement("CREATE TABLE first_table (id int);", "first"),
+                PlannedStatement("CREATE TABLE second_table (id int);", "second"),
+            ],
+        )
+        connection = _FailingMySqlConnection(fail_on=2)
+
+        with self.assertRaises(DeploymentExecutionError) as context:
+            execute_plan(connection, plan, confirm=True)
+
+        self.assertEqual(["CREATE TABLE first_table (id int);"], connection.executed)
+        self.assertEqual(1, connection.commit_count)
+        self.assertEqual(0, connection.rollback_count)
+        self.assertIn("non-transactional", str(context.exception))
+        self.assertIn("after 1 of 2 statements", str(context.exception))
 
 
 def _schema_with_column(name: str | None = None, data_type: str = "text") -> SchemaDefinition:
@@ -250,6 +337,13 @@ def _schema_with_view(definition: str) -> SchemaDefinition:
 
     schema.views["ExampleView"] = ViewDefinition("ExampleView", None, definition, "")
     return schema
+
+
+def format_details(diff: object) -> str:
+    return "\n".join(
+        f"{difference.detail} {difference.subject}"
+        for difference in getattr(diff, "differences", [])
+    )
 
 
 class _FakeConnection:
@@ -271,6 +365,38 @@ class _FakeCursor:
         self.connection = connection
 
     def execute(self, sql: str) -> None:
+        self.connection.executed.append(sql)
+
+    def close(self) -> None:
+        pass
+
+
+class _FailingMySqlConnection:
+    def __init__(self, fail_on: int) -> None:
+        self.fail_on = fail_on
+        self.executed: list[str] = []
+        self.execute_count = 0
+        self.commit_count = 0
+        self.rollback_count = 0
+
+    def cursor(self) -> "_FailingMySqlCursor":
+        return _FailingMySqlCursor(self)
+
+    def commit(self) -> None:
+        self.commit_count += 1
+
+    def rollback(self) -> None:
+        self.rollback_count += 1
+
+
+class _FailingMySqlCursor:
+    def __init__(self, connection: _FailingMySqlConnection) -> None:
+        self.connection = connection
+
+    def execute(self, sql: str) -> None:
+        self.connection.execute_count += 1
+        if self.connection.execute_count == self.connection.fail_on:
+            raise RuntimeError("simulated MySQL DDL failure")
         self.connection.executed.append(sql)
 
     def close(self) -> None:

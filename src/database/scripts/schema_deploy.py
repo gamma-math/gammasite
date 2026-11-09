@@ -18,6 +18,10 @@ class DeploymentBlocked(RuntimeError):
     """Raised when a deployment would be destructive, ambiguous or unapproved."""
 
 
+class DeploymentExecutionError(RuntimeError):
+    """Raised when execution fails after one or more statements were attempted."""
+
+
 @dataclass(frozen=True)
 class PlannedStatement:
     sql: str
@@ -48,6 +52,19 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
         plan.blocked_reasons.append(
             f"{difference.category} {difference.subject}: {difference.detail}"
         )
+
+    # PostgreSQL triggers depend on their functions. Emit routines before any
+    # trigger statements, while still refusing to replace changed routines.
+    for difference in diff.differences:
+        if difference.category == "function" and difference.detail == "Missing function":
+            function = desired.functions[difference.subject]
+            plan.statements.append(
+                PlannedStatement(
+                    function.sql,
+                    f"create missing function {difference.subject}",
+                    difference.requires_confirmation,
+                )
+            )
 
     missing_tables = {
         difference.subject
@@ -135,6 +152,17 @@ def build_plan(desired: SchemaDefinition, diff: SchemaDiff) -> DeploymentPlan:
                 PlannedStatement(
                     view.sql,
                     f"create/update view {difference.subject}",
+                    difference.requires_confirmation,
+                )
+            )
+
+    for difference in diff.differences:
+        if difference.category == "trigger" and difference.detail == "Missing trigger":
+            trigger = desired.triggers[difference.subject]
+            plan.statements.append(
+                PlannedStatement(
+                    trigger.sql,
+                    f"create missing trigger {difference.subject}",
                     difference.requires_confirmation,
                 )
             )
@@ -251,16 +279,32 @@ def execute_plan(
         raise DeploymentBlocked("Deployment requires --confirm. No SQL was executed.")
     if plan.requires_confirmation and not allow_risky:
         raise DeploymentBlocked(
-            "Deployment contains indexes, constraints or views requiring "
+            "Deployment contains indexes, constraints, views, functions or triggers requiring "
             "--allow-risk. No SQL was executed."
         )
 
     cursor = connection.cursor()
+    executed_count = 0
     try:
         for statement in plan.statements:
             cursor.execute(statement.sql)
-        connection.commit()
-    except Exception:
+            executed_count += 1
+            if plan.database == "mysql":
+                # MySQL implicitly commits most DDL. A rollback here would
+                # falsely suggest that earlier CREATE/ALTER statements were
+                # undone, so commit each successful statement and report the
+                # applied prefix if a later statement fails.
+                connection.commit()
+        if plan.database != "mysql":
+            connection.commit()
+    except Exception as error:
+        if plan.database == "mysql":
+            raise DeploymentExecutionError(
+                f"MySQL deployment failed after {executed_count} of "
+                f"{len(plan.statements)} statements. MySQL DDL is "
+                "non-transactional; earlier statements may already be "
+                "committed. Run validate before retrying."
+            ) from error
         connection.rollback()
         raise
     finally:

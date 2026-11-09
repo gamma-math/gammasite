@@ -99,6 +99,32 @@ class ViewDefinition:
         return table_key(self.schema, self.name)
 
 
+@dataclass(frozen=True)
+class FunctionDefinition:
+    name: str
+    schema: str | None
+    arguments: str
+    definition: str
+    sql: str = ""
+
+    @property
+    def key(self) -> str:
+        return f"{table_key(self.schema, self.name)}({normalize_sql(self.arguments)})"
+
+
+@dataclass(frozen=True)
+class TriggerDefinition:
+    name: str
+    schema: str | None
+    table: str
+    definition: str
+    sql: str = ""
+
+    @property
+    def key(self) -> str:
+        return f"{self.table}.{self.name}"
+
+
 @dataclass
 class SchemaDefinition:
     database: str
@@ -106,6 +132,8 @@ class SchemaDefinition:
     indexes: dict[str, IndexDefinition] = field(default_factory=dict)
     constraints: dict[str, ConstraintDefinition] = field(default_factory=dict)
     views: dict[str, ViewDefinition] = field(default_factory=dict)
+    functions: dict[str, FunctionDefinition] = field(default_factory=dict)
+    triggers: dict[str, TriggerDefinition] = field(default_factory=dict)
 
 
 def read_schema_file(path: str | Path, database: str) -> SchemaDefinition:
@@ -116,7 +144,7 @@ def read_schema_file(path: str | Path, database: str) -> SchemaDefinition:
 
 
 def parse_schema(sql: str, database: str) -> SchemaDefinition:
-    """Parse tables, columns, indexes, constraints and views from SQL text."""
+    """Parse the supported schema objects from SQL text."""
 
     database = database.lower()
     if database not in {"mysql", "postgres"}:
@@ -127,6 +155,17 @@ def parse_schema(sql: str, database: str) -> SchemaDefinition:
         normalized = statement.strip()
         if not normalized:
             continue
+
+        if database == "postgres":
+            function = _parse_function(normalized, database)
+            if function:
+                schema.functions[function.key] = function
+                continue
+
+            trigger = _parse_trigger(normalized, database)
+            if trigger:
+                schema.triggers[trigger.key] = trigger
+                continue
 
         table_match = _CREATE_TABLE_RE.match(normalized)
         if table_match:
@@ -384,6 +423,48 @@ def _parse_view(statement: str, database: str) -> ViewDefinition | None:
     return ViewDefinition(view_name, view_schema, match.group("body").strip(), statement + ";")
 
 
+def _parse_function(statement: str, database: str) -> FunctionDefinition | None:
+    match = re.match(
+        rf"^CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?P<name>{_TABLE_NAME})\s*",
+        statement,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    open_paren = statement.find("(", match.end())
+    if open_paren < 0:
+        return None
+    close_paren = find_matching_parenthesis(statement, open_paren)
+    function_schema, function_name = split_table_name(match.group("name"), database)
+    arguments = statement[open_paren + 1 : close_paren].strip()
+    return FunctionDefinition(
+        name=function_name,
+        schema=function_schema,
+        arguments=arguments,
+        definition=statement,
+        sql=statement + ";",
+    )
+
+
+def _parse_trigger(statement: str, database: str) -> TriggerDefinition | None:
+    match = re.match(
+        rf"^CREATE\s+TRIGGER\s+(?P<name>{_IDENTIFIER})\s+.*?\s+ON\s+(?P<table>{_TABLE_NAME})\s+.+$",
+        statement,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    trigger_schema, trigger_name = split_table_name(match.group("name"), database)
+    table_schema, table_name = split_table_name(match.group("table"), database)
+    return TriggerDefinition(
+        name=unquote_identifier(trigger_name),
+        schema=trigger_schema,
+        table=table_key(table_schema, table_name),
+        definition=statement,
+        sql=statement + ";",
+    )
+
+
 def _parse_create_index(statement: str, database: str) -> IndexDefinition | None:
     match = re.match(
         rf"^CREATE\s+(?P<unique>UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(?P<name>{_IDENTIFIER})\s+ON\s+(?P<table>{_TABLE_NAME})(?P<tail>.*)$",
@@ -490,6 +571,18 @@ def _parse_constraint_action(
         schema.constraints[constraint.name_key] = constraint
         return
 
+    check = re.match(r"^CHECK\s+(?P<definition>\(.*\))$", body, re.IGNORECASE | re.DOTALL)
+    if check and constraint_name:
+        constraint = ConstraintDefinition(
+            constraint_name,
+            table,
+            "check",
+            check.group("definition"),
+            statement + ";",
+        )
+        schema.constraints[constraint.name_key] = constraint
+        return
+
     key = re.match(r"^(?P<unique>UNIQUE\s+)?(?:KEY|INDEX)\s+(?P<name>{_IDENTIFIER})\s*\((?P<columns>.+)\)$".replace("{_IDENTIFIER}", _IDENTIFIER), body, re.IGNORECASE | re.DOTALL)
     if key:
         columns = tuple(_clean_index_column(value) for value in split_top_level(key.group("columns")))
@@ -586,6 +679,26 @@ def _read_mysql_schema(connection: Any) -> SchemaDefinition:
     _add_mysql_constraints(schema, constraint_rows)
 
     for row in query_rows(connection, """
+        SELECT tc.TABLE_NAME AS table_name,
+               tc.CONSTRAINT_NAME AS constraint_name,
+               cc.CHECK_CLAUSE AS check_clause
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.check_constraints cc
+          ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA
+         AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+        WHERE tc.CONSTRAINT_SCHEMA = DATABASE()
+          AND tc.CONSTRAINT_TYPE = 'CHECK'
+          AND tc.TABLE_NAME NOT IN ('LocalDevelopmentSeedRuns')
+    """):
+        constraint = ConstraintDefinition(
+            name=str(row["constraint_name"]),
+            table=str(row["table_name"]),
+            kind="check",
+            definition=str(row["check_clause"]),
+        )
+        schema.constraints[constraint.name_key] = constraint
+
+    for row in query_rows(connection, """
         SELECT TABLE_NAME AS table_name, VIEW_DEFINITION AS view_definition
         FROM information_schema.views
         WHERE TABLE_SCHEMA = DATABASE()
@@ -666,9 +779,13 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'public'
           AND c.relname NOT IN ('local_development_seed_runs')
-          AND con.contype IN ('p', 'f')
+          AND con.contype IN ('p', 'f', 'c')
     """):
-        kind = "primary" if row["constraint_type"] == "p" else "foreign"
+        kind = {
+            "p": "primary",
+            "f": "foreign",
+            "c": "check",
+        }[str(row["constraint_type"])]
         constraint = ConstraintDefinition(
             name=str(row["constraint_name"]),
             table=table_key("public", str(row["table_name"])),
@@ -676,6 +793,44 @@ def _read_postgres_schema(connection: Any) -> SchemaDefinition:
             definition=str(row["constraint_definition"]),
         )
         schema.constraints[constraint.name_key] = constraint
+
+    for row in query_rows(connection, """
+        SELECT n.nspname AS schema_name,
+               p.proname AS function_name,
+               pg_get_function_identity_arguments(p.oid) AS arguments,
+               pg_get_functiondef(p.oid) AS function_definition
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+          AND p.prokind = 'f'
+    """):
+        function = FunctionDefinition(
+            name=str(row["function_name"]),
+            schema=str(row["schema_name"]),
+            arguments=str(row["arguments"] or ""),
+            definition=str(row["function_definition"] or ""),
+        )
+        schema.functions[function.key] = function
+
+    for row in query_rows(connection, """
+        SELECT n.nspname AS schema_name,
+               c.relname AS table_name,
+               t.tgname AS trigger_name,
+               pg_get_triggerdef(t.oid) AS trigger_definition
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND NOT t.tgisinternal
+          AND c.relname NOT IN ('local_development_seed_runs')
+    """):
+        trigger = TriggerDefinition(
+            name=str(row["trigger_name"]),
+            schema=str(row["schema_name"]),
+            table=table_key("public", str(row["table_name"])),
+            definition=str(row["trigger_definition"] or ""),
+        )
+        schema.triggers[trigger.key] = trigger
 
     for row in query_rows(connection, """
         SELECT table_name, view_definition

@@ -19,6 +19,7 @@ if __package__ in {None, ""}:  # Support `python src/database/scripts/cli.py ...
     from src.database.scripts.schema_compare import compare_schemas, format_diff  # type: ignore[import-not-found]
     from src.database.scripts.schema_deploy import (  # type: ignore[import-not-found]
         DeploymentBlocked,
+        DeploymentExecutionError,
         build_plan,
         execute_plan,
         format_plan,
@@ -27,7 +28,13 @@ if __package__ in {None, ""}:  # Support `python src/database/scripts/cli.py ...
 else:
     from .connections import ConnectionConfigurationError, connect, resolve_connection
     from .schema_compare import compare_schemas, format_diff
-    from .schema_deploy import DeploymentBlocked, build_plan, execute_plan, format_plan
+    from .schema_deploy import (
+        DeploymentBlocked,
+        DeploymentExecutionError,
+        build_plan,
+        execute_plan,
+        format_plan,
+    )
     from .schema_reader import read_database_schema, read_schema_file
 
 
@@ -99,7 +106,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         finally:
             connection.close()
         return 0
-    except (ConnectionConfigurationError, DeploymentBlocked, OSError, ValueError) as exc:
+    except (
+        ConnectionConfigurationError,
+        DeploymentBlocked,
+        DeploymentExecutionError,
+        OSError,
+        ValueError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:  # pragma: no cover - driver/network-specific safety net

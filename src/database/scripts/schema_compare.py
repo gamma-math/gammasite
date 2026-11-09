@@ -9,9 +9,11 @@ from typing import Any
 from .schema_reader import (
     ColumnDefinition,
     ConstraintDefinition,
+    FunctionDefinition,
     IndexDefinition,
     SchemaDefinition,
     TableDefinition,
+    TriggerDefinition,
     ViewDefinition,
     normalize_sql,
 )
@@ -61,7 +63,7 @@ class SchemaDiff:
 
 
 def compare_schemas(desired: SchemaDefinition, actual: SchemaDefinition) -> SchemaDiff:
-    """Compare tables, columns, indexes, constraints and views.
+    """Compare tables, columns, indexes, constraints, views and PostgreSQL routines.
 
     Extra objects and incompatible changes are reported but are never treated
     as safe deployment operations. This is the central safety boundary used by
@@ -92,6 +94,8 @@ def compare_schemas(desired: SchemaDefinition, actual: SchemaDefinition) -> Sche
     _compare_indexes(result, desired, actual)
     _compare_constraints(result, desired, actual)
     _compare_views(result, desired, actual)
+    _compare_functions(result, desired, actual)
+    _compare_triggers(result, desired, actual)
     return result
 
 
@@ -234,6 +238,70 @@ def _compare_views(result: SchemaDiff, desired: SchemaDefinition, actual: Schema
             )
 
 
+def _compare_functions(result: SchemaDiff, desired: SchemaDefinition, actual: SchemaDefinition) -> None:
+    for key in sorted(desired.functions.keys() - actual.functions.keys()):
+        result.differences.append(
+            SchemaDifference(
+                "function",
+                key,
+                "Missing function",
+                safe=True,
+                requires_confirmation=True,
+            )
+        )
+    for key in sorted(actual.functions.keys() - desired.functions.keys()):
+        result.differences.append(
+            SchemaDifference("function", key, "Extra function exists in database", safe=False)
+        )
+    for key in sorted(desired.functions.keys() & actual.functions.keys()):
+        expected = desired.functions[key]
+        current = actual.functions[key]
+        if _normalize_function_definition(expected, desired.database) != _normalize_function_definition(
+            current,
+            desired.database,
+        ):
+            result.differences.append(
+                SchemaDifference(
+                    "function",
+                    key,
+                    "Function definition differs",
+                    safe=False,
+                )
+            )
+
+
+def _compare_triggers(result: SchemaDiff, desired: SchemaDefinition, actual: SchemaDefinition) -> None:
+    for key in sorted(desired.triggers.keys() - actual.triggers.keys()):
+        result.differences.append(
+            SchemaDifference(
+                "trigger",
+                key,
+                "Missing trigger",
+                safe=True,
+                requires_confirmation=True,
+            )
+        )
+    for key in sorted(actual.triggers.keys() - desired.triggers.keys()):
+        result.differences.append(
+            SchemaDifference("trigger", key, "Extra trigger exists in database", safe=False)
+        )
+    for key in sorted(desired.triggers.keys() & actual.triggers.keys()):
+        expected = desired.triggers[key]
+        current = actual.triggers[key]
+        if _normalize_trigger_definition(expected, desired.database) != _normalize_trigger_definition(
+            current,
+            desired.database,
+        ):
+            result.differences.append(
+                SchemaDifference(
+                    "trigger",
+                    key,
+                    "Trigger definition differs",
+                    safe=False,
+                )
+            )
+
+
 def _column_change_detail(expected: ColumnDefinition, current: ColumnDefinition) -> str:
     return (
         f"expected type={expected.data_type}, nullable={expected.nullable}, "
@@ -274,5 +342,31 @@ def _normalize_view_definition(definition: str, database: str) -> str:
             r"\1 \2",
             normalized,
         )
+    return normalized
+
+
+def _normalize_function_definition(function: FunctionDefinition, database: str) -> str:
+    """Normalize PostgreSQL function output from source SQL and pg_get_functiondef."""
+
+    normalized = normalize_sql(function.definition)
+    # PostgreSQL may choose a generated dollar-quote tag such as $function$
+    # when rendering metadata, while the source definition commonly uses $$.
+    normalized = re.sub(r"\$[a-z_][a-z0-9_]*\$", "$$", normalized)
+    normalized = re.sub(
+        r"^create\s+or\s+replace\s+function\b",
+        "create function",
+        normalized,
+    )
+    if database == "postgres":
+        normalized = normalized.replace('"public".', "public.")
+    return normalized
+
+
+def _normalize_trigger_definition(trigger: TriggerDefinition, database: str) -> str:
+    """Normalize PostgreSQL trigger output without hiding trigger semantics."""
+
+    normalized = normalize_sql(trigger.definition)
+    if database == "postgres":
+        normalized = normalized.replace('"public".', "public.")
     return normalized
 
