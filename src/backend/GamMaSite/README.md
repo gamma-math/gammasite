@@ -41,7 +41,7 @@ GamMaSite/
 * Create Stripe checkout sessions and handle payment-related redirects.
 * Store event/news images in the configured persistent content-media folder.
 
-Content media must be configured outside the deployment directory. See [`docs/content-media.md`](../../../docs/content-media.md) for the Simply TEST/PROD folder layout, permissions, and backup requirements.
+Content media must be configured outside the deployment directory. The runtime value is `ContentMediaRootPath`; local-development Compose mounts the persistent content-media volume at that path. Keep the directory writable by the application and include it in the deployment environment's backup plan.
 
 ## Legacy Policy
 
@@ -61,6 +61,10 @@ dotnet build src/backend/GamMaSite/GamMaSite.csproj
 
 If the local app is running and locks the default build output, use a temporary output folder:
 
-```bash
-dotnet build src/backend/GamMaSite/GamMaSite.csproj -o %TEMP%/GamMaSiteBuildVerify
+```powershell
+dotnet build src/backend/GamMaSite/GamMaSite.csproj `
+  --no-restore `
+  -o "$env:TEMP\GamMaSiteBuildVerify"
 ```
+
+For the complete local Docker stack, see [`src/services/local-development/README.md`](../../../services/local-development/README.md).

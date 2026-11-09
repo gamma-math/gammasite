@@ -20,27 +20,34 @@ const links = [
   ["Budgetter", "finans/budgetter.html", "finance.budgets"],
   ["Systemoversigt", "systemer/index.html", "systems"],
   ["Pages", "systemer/pages.html", "pages"],
+  ["Backup og restore", "systemer/backup-restore.html", "systems.backup"],
   ["Lokal opsætning", "kodebase/lokal-opsætning.html", "code.setup"],
   ["Deploy Hjemmesiden", "kodebase/pipeline.html", "code.pipeline"],
   ["Deploy Database", "systemer/deploy-database.html", "code.database"],
   ["Webhooks", "kodebase/webhooks.html", "code.webhooks"],
+  ["React API-reference", "kodebase/api-reference.html", "code.api"],
   ["GitHub Pages", "kodebase/github-pages.html", "code.pages"],
   ["Kodestruktur", "kodebase/struktur.html", "code.structure"],
+  ["repository", "kodebase/repository.html", "code.repository"],
   [".github/", "kodebase/mappe-github.html", "code.github"],
   [".vscode/", "kodebase/mappe-vscode.html", "code.vscode"],
   ["docs/", "kodebase/mappe-docs.html", "code.docs"],
   ["src/database/", "kodebase/mappe-sql.html", "code.sql"],
   ["src/backend/GamMaSite/", "kodebase/mappe-backend.html", "code.backend"],
   ["src/frontend/", "kodebase/mappe-frontend.html", "code.frontend"],
+  ["src/services/", "kodebase/mappe-services.html", "code.services"],
+  ["src/test/database/", "kodebase/mappe-database-tests.html", "code.database-tests"],
   ["src/test/GamMaSite.Tests/", "kodebase/mappe-backend-tests.html", "code.backend-tests"],
-  ["src/test/frontend/", "kodebase/mappe-frontend-tests.html", "code.frontend-tests"]
+  ["src/test/frontend/", "kodebase/mappe-frontend-tests.html", "code.frontend-tests"],
+  ["Service-tests", "kodebase/mappe-service-tests.html", "code.service-tests"],
+  ["Root-værktøjer", "kodebase/root-værktøjer.html", "code.root-tools"]
 ];
 
 const groups = [
   ["QA-vejledninger", ["qa", "qa.events", "qa.prices", "qa.registrations", "qa.messages", "qa.templates", "qa.status", "qa.permissions"]],
   ["Finans", ["finance", "finance.postings", "finance.groups", "finance.export", "finance.import", "finance.budgets"]],
-  ["Teknik", ["systems", "pages", "code.setup", "code.pipeline", "code.database", "code.webhooks", "code.pages", "code.incident"]],
-  ["Kodestruktur", ["code.structure", "code.github", "code.vscode", "code.docs", "code.sql", "code.backend", "code.frontend", "code.backend-tests", "code.frontend-tests"]]
+  ["Teknik", ["systems", "pages", "systems.backup", "code.setup", "code.pipeline", "code.database", "code.webhooks", "code.api", "code.pages", "code.incident"]],
+  ["Kodestruktur", ["code.structure", "code.repository", "code.github", "code.vscode", "code.docs", "code.sql", "code.backend", "code.frontend", "code.services", "code.database-tests", "code.backend-tests", "code.frontend-tests", "code.service-tests", "code.root-tools"]]
 ];
 
 const byId = new Map(links.map((link) => [link[2], link]));
@@ -141,6 +148,37 @@ document.querySelectorAll("[data-pages-search-input]").forEach((input) => {
       const matches = !query || row.dataset.pagesSearch.includes(query);
       row.hidden = !matches;
       if (matches) visibleRows += 1;
+    });
+    empty.hidden = visibleRows > 0;
+  });
+});
+
+document.querySelectorAll("[data-api-search-input]").forEach((input) => {
+  const documentation = input.closest(".api-documentation");
+  const rows = [...documentation.querySelectorAll("table tbody tr:not(.api-category)")];
+  const categories = [...documentation.querySelectorAll("table tbody tr.api-category")];
+  const empty = documentation.querySelector("[data-api-search-empty]");
+
+  rows.forEach((row) => {
+    row.dataset.apiSearch = row.textContent.trim().toLocaleLowerCase("da-DK");
+  });
+
+  input.addEventListener("input", () => {
+    const query = input.value.trim().toLocaleLowerCase("da-DK");
+    let visibleRows = 0;
+    rows.forEach((row) => {
+      const matches = !query || row.dataset.apiSearch.includes(query);
+      row.hidden = !matches;
+      if (matches) visibleRows += 1;
+    });
+    categories.forEach((category) => {
+      let hasVisibleRow = false;
+      let next = category.nextElementSibling;
+      while (next && !next.classList.contains("api-category")) {
+        if (!next.hidden) hasVisibleRow = true;
+        next = next.nextElementSibling;
+      }
+      category.hidden = !hasVisibleRow;
     });
     empty.hidden = visibleRows > 0;
   });

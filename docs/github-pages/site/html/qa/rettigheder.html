@@ -1,1 +1,86 @@
-<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roller og rettigheder · GamMaSite</title><link rel="stylesheet" href="../../css/styles.css"></head><body data-root="../" data-page="qa.permissions"><header id="site-header" class="site-header"></header><div class="docs-layout"><aside id="sidebar" class="sidebar"></aside><main class="content"><p class="eyebrow">QA · Roller og rettigheder</p><h1>Administrér roller</h1><p class="lead">Kræver: <code>roles.edit</code>. Tildel kun den adgang, der er nødvendig for opgaven.</p><ol class="steps"><li>Åbn <strong>Admin → Roller</strong>.</li><li>Vælg en eksisterende rolle, eller vælg <strong>Opret ny</strong>.</li><li>Vælg de medlemmer, der skal tilknyttes rollen.</li><li>Aktivér de nødvendige rettigheder, og vælg <strong>Gem</strong>.</li><li>Kontrollér medlemmer og rettigheder.</li></ol><div class="callout"><p>ADMIN-rollen har alle nødvendige rettigheder og kan ikke slettes.</p></div><table class="table"><thead><tr><th>Rettighed</th><th>Giver adgang til</th></tr></thead><tbody><tr><td><code>content.edit</code></td><td>Events og nyheder</td></tr><tr><td><code>registrations.edit</code></td><td>Eventtilmeldinger</td></tr><tr><td><code>messages.edit</code></td><td>Beskeder</td></tr><tr><td><code>email_templates.edit</code></td><td>Beskedskabeloner</td></tr><tr><td><code>roles.edit</code></td><td>Roller, medlemmer og rettigheder</td></tr><tr><td><code>finance.view.all</code></td><td>Finansoversigter, posteringer og eksport</td></tr><tr><td><code>finance.edit.all</code></td><td>Import og redigering af finansdata samt læseadgang og eksport</td></tr></tbody></table></main></div><footer class="footer">GamMaSite dokumentation</footer><script src="../../js/app.js"></script></body></html>
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Roller og rettigheder &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="qa.permissions">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">QA &middot; Roller og rettigheder</p>
+      <h1>Administr&eacute;r roller</h1>
+      <p class="lead">Kr&aelig;ver: <code>roles.edit</code>. Tildel kun den adgang, der er n&oslash;dvendig for opgaven.</p>
+
+      <ol class="steps">
+        <li>&Aring;bn <strong>Admin &rarr; Roller</strong>.</li>
+        <li>V&aelig;lg en eksisterende rolle, eller v&aelig;lg <strong>Opret ny</strong>.</li>
+        <li>V&aelig;lg de medlemmer, der skal tilknyttes rollen.</li>
+        <li>Aktiv&eacute;r de n&oslash;dvendige rettigheder, og v&aelig;lg <strong>Gem</strong>.</li>
+        <li>Kontroll&eacute;r medlemmer og rettigheder.</li>
+      </ol>
+
+      <div class="callout"><p>ADMIN-rollen har alle n&oslash;dvendige rettigheder og kan ikke slettes. Betalingsadministration er en separat permission.</p></div>
+
+      <section class="section">
+        <h2>Permissions</h2>
+        <table class="table"><thead><tr><th>Permission</th><th>Giver adgang til</th></tr></thead><tbody>
+          <tr><td><code>content.edit</code></td><td>Se, oprette, redigere, publicere og slette events og nyheder.</td></tr>
+          <tr><td><code>registrations.edit</code></td><td>Tilf&oslash;je, redigere og fjerne tilmeldinger til alle events.</td></tr>
+          <tr><td><code>messages.edit</code></td><td>Se modtageromr&aring;det og sende beskeder.</td></tr>
+          <tr><td><code>email_templates.edit</code></td><td>Se, oprette, redigere og slette beskedskabeloner.</td></tr>
+          <tr><td><code>roles.edit</code></td><td>Administrere medlemmer, roller og permissions.</td></tr>
+          <tr><td><code>finance.view.all</code></td><td>Se og eksportere alle finansdata uden redigering.</td></tr>
+          <tr><td><code>finance.edit.all</code></td><td>Se, oprette og redigere alle finansdata samt importere data.</td></tr>
+          <tr><td><code>payments.edit.all</code></td><td>Se og administrere globale betalingsprodukter og betalingsaftaler.</td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="section">
+        <h2>Adgang til medlemsfunktioner</h2>
+        <p>Medlemsoversigt, kalender, bibliotek, egne betalinger, egen finansoversigt og egen profil kr&aelig;ver login, hvor det er angivet p&aring; den enkelte side. Backend validerer altid den endelige adgang.</p>
+        <table class="table"><thead><tr><th>Omr&aring;de</th><th>Adgang</th></tr></thead><tbody>
+          <tr><td><code>/members</code></td><td>Logget ind.</td></tr>
+          <tr><td><code>/calendar</code></td><td>Logget ind.</td></tr>
+          <tr><td><code>/Library</code></td><td>Logget ind.</td></tr>
+          <tr><td><code>/finance</code></td><td>Logget ind; viser egne posteringer.</td></tr>
+          <tr><td><code>/account/manage</code></td><td>Logget ind; viser og redigerer egen profil.</td></tr>
+          <tr><td><code>/events/{slug}/registrations</code></td><td>Logget ind. Egen tilmelding f&oslash;lger eventreglerne; administration af andre kr&aelig;ver relevant permission eller arrang&oslash;radgang.</td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="section">
+        <h2>Adminsider</h2>
+        <table class="table"><thead><tr><th>Omr&aring;de</th><th>Adgang</th></tr></thead><tbody>
+          <tr><td>Events og nyheder</td><td><code>content.edit</code>; arrang&oslash;rer kan redigere egne events.</td></tr>
+          <tr><td>Eventtilmeldinger</td><td><code>content.edit</code>, <code>registrations.edit</code> eller arrang&oslash;r for det konkrete event.</td></tr>
+          <tr><td>Globale betalingsprodukter og aftaler</td><td><code>payments.edit.all</code>.</td></tr>
+          <tr><td>Medlemmer og massebehandling</td><td><code>roles.edit</code>.</td></tr>
+          <tr><td>Beskeder</td><td><code>messages.edit</code>.</td></tr>
+          <tr><td>Beskedskabeloner</td><td><code>email_templates.edit</code>.</td></tr>
+          <tr><td>Roller og permissions</td><td><code>roles.edit</code>.</td></tr>
+          <tr><td>Finansvisning og eksport</td><td><code>finance.view.all</code> eller <code>finance.edit.all</code>.</td></tr>
+          <tr><td>Finansimport og redigering</td><td><code>finance.edit.all</code>.</td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="section">
+        <h2>Rolleeksempler</h2>
+        <table class="table"><thead><tr><th>Rolle</th><th>Permissions</th></tr></thead><tbody>
+          <tr><td>Arrang&oslash;r</td><td>Ingen permission for egne events; <code>content.edit</code> eller <code>registrations.edit</code> g&aelig;lder alle events.</td></tr>
+          <tr><td>Kommunikationsansvarlig</td><td><code>messages.edit</code>, <code>email_templates.edit</code>.</td></tr>
+          <tr><td>Revisor</td><td><code>finance.view.all</code>.</td></tr>
+          <tr><td>Kasserer</td><td><code>finance.edit.all</code>.</td></tr>
+          <tr><td>Betalingsansvarlig</td><td><code>payments.edit.all</code>.</td></tr>
+          <tr><td>Administrator</td><td>Alle permissions.</td></tr>
+        </tbody></table>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

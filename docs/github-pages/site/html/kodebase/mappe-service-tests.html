@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Service-tests &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.service-tests">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; services/*/test/</p>
+      <h1>Service-tests</h1>
+      <p class="lead">Pytest-tests for Stripe- og MobilePay/Vipps-v&aelig;rkt&oslash;jerne. Testene bruger mocked HTTP-svar og kontrollerer CLI- og requestlogik uden at kalde betalingsleverand&oslash;rernes live-API'er.</p>
+
+      <section class="section">
+        <h2>Testmoduler</h2>
+        <table class="table">
+          <thead><tr><th>Testmodul</th><th>Form&aring;l</th></tr></thead>
+          <tbody>
+            <tr><td><code>stripe/test/test_stripe_api.py</code></td><td>4 tests for API-key og versionsheaders, manglende secret, pagination og filtrering af payout-transaktioner.</td></tr>
+            <tr><td><code>vipps/test/test_vipps_connection.py</code></td><td>3 tests for access-token-kald, manglende konfiguration og optional idempotency-header.</td></tr>
+            <tr><td><code>vipps/test/test_vipps_cli.py</code></td><td>2 tests for CLI'ens betalingsreference og krav om gammelt webhook-id.</td></tr>
+            <tr><td><code>vipps/test/test_vipps_payments.py</code></td><td>4 tests for oprettelse, opslag og capture af betalinger samt afvisning af ugyldig betalingsstatus.</td></tr>
+            <tr><td><code>vipps/test/test_vipps_agreements.py</code></td><td>4 tests for recurring-konfiguration, aftaleopslag, accept/stop og charge-opslag.</td></tr>
+            <tr><td><code>vipps/test/test_vipps_webhooks.py</code></td><td>5 tests for registrering, validering, listing, sletning og rotation af webhooks.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>K&oslash;r testene</h2>
+        <p>Installer f&oslash;rst hvert v&aelig;rkt&oslash;js requirements i dets eget virtuelle milj&oslash;:</p>
+        <pre><code>py -m venv src/services/stripe/.venv
+&amp; .\src\services\stripe\.venv\Scripts\python.exe -m pip install -r src/services/stripe/requirements.txt
+py -m venv src/services/vipps/.venv
+&amp; .\src\services\vipps\.venv\Scripts\python.exe -m pip install -r src/services/vipps/requirements.txt</code></pre>
+        <p>K&oslash;r derefter testpakkerne fra repositoryets rod:</p>
+        <pre><code>&amp; .\src\services\stripe\.venv\Scripts\python.exe -m pytest src/services/stripe/test
+&amp; .\src\services\vipps\.venv\Scripts\python.exe -m pytest src/services/vipps/test</code></pre>
+        <div class="callout"><p>Testene kr&aelig;ver ikke API-secrets. Live integrationstest skal udf&oslash;res separat med test-mode credentials og efter leverand&oslash;rernes rate limits og webhook-regler.</p></div>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

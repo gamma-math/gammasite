@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Repository &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.repository">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kodestruktur &middot; repository</p>
+      <h1>Repositorystruktur</h1>
+      <p class="lead">Denne underside giver et samlet overblik over repositoryets topniveau og de vigtigste projektomr&aring;der. Den er en navigationshj&aelig;lp p&aring; samme m&aring;de som strukturoversigten i root-README&rsquo;en; de enkelte kodeomr&aring;der har egne detaljerede sider.</p>
+
+      <section class="section">
+        <h2>Mapper og projektomr&aring;der</h2>
+        <pre><code>.
+|-- .github/
+|   `-- workflows/                 GitHub Actions build/deployment workflows.
+|-- .vscode/                       Example editor launch/task configuration.
+|-- docs/                          Project documentation and protected design references.
+|   `-- github-pages/              Primary consolidated documentation site.
+|-- src/
+|   |-- database/                  Database schemas, schema tooling, and test seeds.
+|   |-- backend/GamMaSite/         ASP.NET Core application and deployed web assets.
+|   |-- frontend/                  React/Vite source application.
+|   |-- services/
+|   |   |-- database/               Python schema-management service and database drivers.
+|   |   |-- local-development/      Docker Compose stack, seed scripts and local integrations.
+|   |   |-- stripe/                 Standalone Stripe API inspection helper.
+|   |   `-- vipps/                  MobilePay/Vipps CLI, Docker setup and pytest tests.
+|   `-- test/
+|       |-- database/               Python unit tests for schema parsing, comparison and deployment safety.
+|       |-- GamMaSite.Tests/        Backend unit tests for APIs, services, Identity and Finance validation.
+|       `-- frontend/               Node-based frontend tests.
+|-- GamMaSite.sln                  Solution file for the backend project.
+|-- global.json                    .NET SDK version pin.
+|-- Makefile                       Common local build/run commands.
+`-- qrcode-1.5.4.tgz               Local QR code package used by the frontend/tooling.</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>Topniveauets ansvar</h2>
+        <table class="table">
+          <thead><tr><th>Omr&aring;de</th><th>Ansvar</th><th>Detaljeret dokumentation</th></tr></thead>
+          <tbody>
+            <tr><td><code>.github/</code></td><td>CI/CD, database-deployment og GitHub Pages.</td><td><a href="mappe-github.html">GitHub Actions</a></td></tr>
+            <tr><td><code>docs/</code></td><td>Teknisk dokumentation og separat designreference.</td><td><a href="mappe-docs.html">docs</a></td></tr>
+            <tr><td><code>src/database/</code></td><td>Source-of-truth SQL, schema CLI-underst&oslash;ttelse og seeds.</td><td><a href="mappe-sql.html">Database</a></td></tr>
+            <tr><td><code>src/backend/GamMaSite/</code></td><td>ASP.NET Core-host, API, Identity og integrationer.</td><td><a href="mappe-backend.html">Backend</a></td></tr>
+            <tr><td><code>src/frontend/</code></td><td>React/Vite-klient og browserbrugerflade.</td><td><a href="mappe-frontend.html">Frontend</a></td></tr>
+            <tr><td><code>src/services/</code></td><td>Python-services, Docker Compose og lokale integrationsv&aelig;rkt&oslash;jer.</td><td><a href="mappe-services.html">Services</a></td></tr>
+            <tr><td><code>src/test/</code></td><td>Backend-, frontend- og database-tooling-tests.</td><td><a href="mappe-backend-tests.html">Backendtests</a>, <a href="mappe-frontend-tests.html">frontendtests</a> og <a href="mappe-database-tests.html">databasetests</a></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="callout"><p>Lokale milj&oslash;filer, appsettings med secrets, build-output, virtuelle Python-environments og bin&aelig;re artefakter er ikke en del af den versionsstyrede repositorystruktur.</p></div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

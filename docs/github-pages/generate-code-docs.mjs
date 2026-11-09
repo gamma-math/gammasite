@@ -10,6 +10,7 @@ const sourceDirectory = "docs/github-pages/site";
 const documentSets = [
   { key: "backend", sourceRoot: "src/backend/GamMaSite/", mapPage: "html/kodebase/mappe-backend.html" },
   { key: "frontend", sourceRoot: "src/frontend/", mapPage: "html/kodebase/mappe-frontend.html" },
+  { key: "database-tests", sourceRoot: "src/test/database/", mapPage: "html/kodebase/mappe-database-tests.html" },
   { key: "backend-tests", sourceRoot: "src/test/GamMaSite.Tests/", mapPage: "html/kodebase/mappe-backend-tests.html" },
   { key: "frontend-tests", sourceRoot: "src/test/frontend/", mapPage: "html/kodebase/mappe-frontend-tests.html" }
 ];
@@ -169,8 +170,43 @@ function testPurpose(path, set) {
   if (name === "TestDoubles.cs") return "Testdobbelt-typer, som isolerer tests fra eksterne afhængigheder.";
   if (name === "FinanceTestHelpers.cs") return "Fælles testhjælpere til finansrelaterede scenarier.";
   if (name.endsWith(".test.js")) return `Automatiseret frontendtest af ${readableName(name.replace(/\.test\.js$/, ""))}.`;
+  if (name.endsWith(".py")) return "Python unittest for database schema management.";
   if (name.endsWith("Tests.cs")) return `Automatiseret testklasse for ${readableName(name.replace(/Tests\.cs$/, ""))}.`;
+  if (set.key === "database-tests") return "Førstepartsfil i databaseværktøjernes testpakke.";
   return set.key === "frontend-tests" ? "Førstepartsfil i frontendens testpakke." : "Førstepartsfil i backendens testpakke.";
+}
+
+const databaseTestDescriptions = {
+  test_repository_mysql_schema_is_readable: "Verificerer, at repositoryets MySQL-schema kan læses.",
+  test_mysql_live_generated_column_uses_show_create_definition: "Verificerer, at live MySQL-kolonner med genererede værdier læses via SHOW CREATE TABLE.",
+  test_repository_postgres_schema_is_readable: "Verificerer, at repositoryets PostgreSQL-schema kan læses.",
+  test_function_body_semicolons_do_not_split_schema: "Verificerer, at semikoloner i funktionskroppe ikke splitter schemaet forkert.",
+  test_check_constraints_are_parsed: "Verificerer, at CHECK-constraints parses korrekt.",
+  test_postgres_string_default_cast_matches_source_default: "Verificerer, at PostgreSQL-defaultværdier med string-cast matcher kildedefinitionen.",
+  test_missing_column_is_safe_additive_change: "Verificerer, at en manglende kolonne planlægges som en sikker additiv ændring.",
+  test_missing_required_column_without_default_is_blocked: "Verificerer, at en manglende påkrævet kolonne uden defaultværdi blokeres.",
+  test_generated_column_expression_is_part_of_column_signature: "Verificerer, at udtrykket for en genereret kolonne indgår i kolonnens signatur.",
+  test_postgres_nulls_not_distinct_is_part_of_index_signature: "Verificerer, at PostgreSQL-indstillingen NULLS NOT DISTINCT indgår i indeks-signaturen.",
+  test_postgres_check_metadata_wrapper_matches_source_definition: "Verificerer, at PostgreSQL-wrapperen for CHECK-metadata matcher kildedefinitionen.",
+  test_postgres_unqualified_trigger_function_matches_public_function: "Verificerer, at en ukvalificeret PostgreSQL-triggerfunktion matcher den offentlige funktion.",
+  test_matching_schemas_have_empty_idempotent_plan: "Verificerer, at ens schemaer giver en tom og idempotent deployment-plan.",
+  test_mysql_view_database_qualification_is_format_only: "Verificerer, at databasekvalifikation i MySQL-views kun behandles som formatering.",
+  test_incompatible_column_change_is_blocked: "Verificerer, at en inkompatibel kolonneændring blokeres.",
+  test_extra_table_is_never_deleted: "Verificerer, at ekstra tabeller aldrig slettes automatisk.",
+  test_missing_check_constraint_is_planned_as_confirmed_addition: "Verificerer, at en manglende CHECK-constraint planlægges som en bekræftet tilføjelse.",
+  test_postgres_dotnet_connection_string: "Verificerer opbygningen af PostgreSQL-forbindelsesstrenge til .NET.",
+  test_mysql_dotnet_connection_string: "Verificerer opbygningen af MySQL-forbindelsesstrenge til .NET.",
+  test_mysql_auto_increment_primary_key_is_created_inline: "Verificerer, at en MySQL auto-increment-primary key oprettes inline.",
+  test_primary_constraints_are_added_before_foreign_keys: "Verificerer, at primærnøgler oprettes før fremmednøgler.",
+  test_postgres_identity_columns_are_created_inline: "Verificerer, at PostgreSQL identity-kolonner oprettes inline.",
+  test_postgres_inline_primary_key_is_not_emitted_twice: "Verificerer, at en inline PostgreSQL-primary key ikke genereres to gange.",
+  test_postgres_functions_are_created_before_triggers: "Verificerer, at PostgreSQL-funktioner oprettes før triggers.",
+  test_deploy_requires_explicit_confirmation: "Verificerer, at deployment kræver en eksplicit bekræftelse.",
+  test_mysql_failure_reports_non_transactional_partial_deployment: "Verificerer, at MySQL-fejl rapporteres som en mulig delvis deployment uden transaktion."
+};
+
+function databaseTestPurpose(name) {
+  return databaseTestDescriptions[name] ?? `Test af ${readableName(name.replace(/^test_/, ""))}.`;
 }
 
 function purposeFor(path, set) {
@@ -196,13 +232,39 @@ for (const set of documentSets) {
     .split(/\r?\n/)
     .filter(Boolean)
     .filter((path) => !excludedPath.test(path) && !excludedName.test(path));
-  const listItems = trackedFiles.map((path) => {
-    const localPath = path.replace(set.sourceRoot, "");
-    const purpose = purposeFor(path, set);
-    const searchableText = `${localPath} ${purpose}`.toLocaleLowerCase("da-DK");
-    return `<tr data-file-row data-file-search="${escapeHtml(searchableText)}"><td><code>${escapeHtml(localPath)}</code></td><td>${escapeHtml(purpose)}</td></tr>`;
-  }).join("");
-  const listMarkup = `<!-- FILE_LIST_START --><section class="section file-documentation"><p class="file-documentation__intro">Filerne nedenfor er projektets egne, versionsstyrede filer. Tredjepart, build-output og lokale konfigurationsfiler er udeladt.</p><label class="file-search"><span>Søg filer</span><input type="search" data-file-search-input placeholder="Filnavn eller formål" autocomplete="off"></label><div class="file-table-wrap"><table class="table file-table"><thead><tr><th>Fil</th><th>Formål</th></tr></thead><tbody>${listItems}</tbody></table></div><p class="file-search-empty" data-file-search-empty hidden>Ingen filer matcher søgningen.</p></section><!-- FILE_LIST_END -->`;
+  let listItems;
+  let firstColumnHeading;
+  let intro;
+  let searchLabel;
+  let searchPlaceholder;
+  let emptyMessage;
+  if (set.key === "database-tests") {
+    const moduleSource = await readFile(join(set.sourceRoot, "test_schema_management.py"), "utf8");
+    const testNames = [...moduleSource.matchAll(/^\s+def (test_[A-Za-z0-9_]+)\(/gm)].map((match) => match[1]);
+    listItems = testNames.map((name) => {
+      const purpose = databaseTestPurpose(name);
+      const searchableText = `${name} ${purpose}`.toLocaleLowerCase("da-DK");
+      return `<tr data-file-row data-file-search="${escapeHtml(searchableText)}"><td><code>${escapeHtml(name)}</code></td><td>${escapeHtml(purpose)}</td></tr>`;
+    }).join("");
+    firstColumnHeading = "Navn";
+    intro = "Testene nedenfor findes i test_schema_management.py og dækker schema-læsning, sammenligning og sikker deployment-planlægning.";
+    searchLabel = "Søg tests";
+    searchPlaceholder = "Testnavn eller formål";
+    emptyMessage = "Ingen tests matcher søgningen.";
+  } else {
+    listItems = trackedFiles.map((path) => {
+      const localPath = path.replace(set.sourceRoot, "");
+      const purpose = purposeFor(path, set);
+      const searchableText = `${localPath} ${purpose}`.toLocaleLowerCase("da-DK");
+      return `<tr data-file-row data-file-search="${escapeHtml(searchableText)}"><td><code>${escapeHtml(localPath)}</code></td><td>${escapeHtml(purpose)}</td></tr>`;
+    }).join("");
+    firstColumnHeading = "Fil";
+    intro = "Filerne nedenfor er projektets egne, versionsstyrede filer. Tredjepart, build-output og lokale konfigurationsfiler er udeladt.";
+    searchLabel = "Søg filer";
+    searchPlaceholder = "Filnavn eller formål";
+    emptyMessage = "Ingen filer matcher søgningen.";
+  }
+  const listMarkup = `<!-- FILE_LIST_START --><section class="section file-documentation"><p class="file-documentation__intro">${intro}</p><label class="file-search"><span>${searchLabel}</span><input type="search" data-file-search-input placeholder="${searchPlaceholder}" autocomplete="off"></label><div class="file-table-wrap"><table class="table file-table"><thead><tr><th>${firstColumnHeading}</th><th>Formål</th></tr></thead><tbody>${listItems}</tbody></table></div><p class="file-search-empty" data-file-search-empty hidden>${emptyMessage}</p></section><!-- FILE_LIST_END -->`;
   const mapPath = join(outputDirectory, set.mapPage);
   const mapPage = await readFile(mapPath, "utf8");
   const marker = /<!-- FILE_LIST_START -->[\s\S]*?<!-- FILE_LIST_END -->/;

@@ -54,6 +54,9 @@ h3 { margin:0 0 5px; font-size:1rem; }
 .content h2 { display:none; }
 .content .webhook-section-title { display:block; margin:0 0 10px; font-size:clamp(1.22rem,2.1vw,1.55rem); }
 body[data-page="code.setup"] .content h2 { display:block; }
+body[data-page="code.sql"] .content h2 { display:block; }
+body[data-page="code.github"] .content h2,
+body[data-page="code.repository"] .content h2 { display:block; }
 .eyebrow { margin:0 0 7px; color:var(--action-blue); font-size:.69rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .lead { max-width:730px; margin:14px 0 0; color:var(--muted); font-size:1rem; }
 .section { max-width:850px; margin-top:28px; padding-top:28px; border-top:1px solid var(--line); }
@@ -74,6 +77,12 @@ body[data-page="code.setup"] .content h2 { display:block; }
 .file-table td { color:var(--muted); overflow-wrap:anywhere; }
 .file-table code { display:inline-block; max-width:100%; overflow-wrap:anywhere; white-space:normal; }
 .file-search-empty { margin:12px 0 0; color:var(--muted); font-size:.9rem; }
+.api-documentation .file-table { min-width:900px; }
+.api-documentation .file-table th:first-child,.api-documentation .file-table td:first-child { width:7%; font-size:.76rem; white-space:nowrap; }
+.api-documentation .file-table th:nth-child(2),.api-documentation .file-table td:nth-child(2) { width:25%; }
+.api-documentation .file-table th:nth-child(3),.api-documentation .file-table td:nth-child(3) { width:16%; }
+.api-documentation .file-table th:nth-child(4),.api-documentation .file-table td:nth-child(4) { width:52%; font-size:.98rem; }
+.api-documentation .file-table .api-category th { background:#eaf0ff; color:var(--ink-strong); font-size:.82rem; }
 .steps { max-width:790px; margin:19px 0; padding:0; list-style:none; counter-reset:step; }
 .steps > li { position:relative; min-height:52px; padding:5px 0 20px 51px; }
 .steps > li::before { position:absolute; top:0; left:0; width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:var(--action-blue); color:#fff; content:counter(step); counter-increment:step; font-size:.82rem; font-weight:700; }
