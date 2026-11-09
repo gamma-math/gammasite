@@ -29,7 +29,7 @@ const links = [
   [".github/", "kodebase/mappe-github.html", "code.github"],
   [".vscode/", "kodebase/mappe-vscode.html", "code.vscode"],
   ["docs/", "kodebase/mappe-docs.html", "code.docs"],
-  ["SQL/", "kodebase/mappe-sql.html", "code.sql"],
+  ["src/database/", "kodebase/mappe-sql.html", "code.sql"],
   ["src/backend/GamMaSite/", "kodebase/mappe-backend.html", "code.backend"],
   ["src/frontend/", "kodebase/mappe-frontend.html", "code.frontend"],
   ["src/test/GamMaSite.Tests/", "kodebase/mappe-backend-tests.html", "code.backend-tests"],

@@ -156,8 +156,8 @@ docker compose logs -f mysql finance-postgres</code></pre>
 
       <section class="section">
         <h2>Databaseinitialisering</h2>
-        <p>MySQL initialiseres første gang et tomt named volume oprettes med <code>SQL/AspNetMysql.test.sql</code>. Finance PostgreSQL initialiseres med <code>SQL/finance/PostgreSQLTest.sql</code>. Testdata køres kun eksplicit med seed-servicen.</p>
-        <p>Der er ikke fundet EF Core migrationsfiler i backendprojektet. Schemaændringer skal derfor håndteres som særskilte, gennemgåede SQL-ændringer.</p>
+        <p>MySQL initialiseres første gang et tomt named volume oprettes med <code>src/database/mysql/gam_ma_dk_db.sql</code>. Finance PostgreSQL initialiseres med <code>src/database/postgres/finance.sql</code>. Testdata køres kun eksplicit med seed-servicen fra <code>src/database/seeds/</code>.</p>
+        <p>Schemaændringer styres gennem database-servicens CLI og de lokale SQL-definitioner under <code>src/database/</code>. Ændringer skal stadig gennemgås og valideres før deployment.</p>
         <div class="callout callout--warning"><p>Brug ikke <code>docker compose down -v</code>, medmindre alle lokale database- og mediedata med vilje må slettes. Ændringer i init-SQL køres ikke automatisk igen på eksisterende volumes.</p></div>
       </section>
 

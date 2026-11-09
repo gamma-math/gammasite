@@ -42,7 +42,7 @@ Only tracked project folders/files are listed here:
 `-- qrcode-1.5.4.tgz               Local QR code package used by the frontend/tooling.
 ```
 
-See `src/backend/GamMaSite/README.md`, `src/frontend/README.md`, and `SQL/README.md` for more detail.
+See `src/backend/GamMaSite/README.md`, `src/frontend/README.md`, and `src/database/README.md` for more detail.
 
 ## Tests
 
