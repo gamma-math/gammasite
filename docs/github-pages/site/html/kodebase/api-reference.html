@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>React API-reference &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.api">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; API</p>
+      <h1>React API-reference</h1>
+      <p class="lead">De JSON- og filbaserede API'er, som React-klienten bruger gennem <code>src/frontend/services/api.js</code> og <code>src/frontend/services/financeApi.js</code>. Endpointnavne og adgangskrav følger backendens aktuelle controllers.</p>
+
+      <section class="section">
+        <h2>F&aelig;lles regler</h2>
+        <ul>
+          <li>React sender same-origin credentials, s&aring; ASP.NET authentication-cookien f&oslash;lger med.</li>
+          <li><code>GET</code>-kald kr&aelig;ver ikke antiforgery-header. <code>POST</code>, <code>PUT</code> og <code>DELETE</code> henter token fra <code>/api/account/csrf-token</code> og sender det som <code>X-CSRF-TOKEN</code>.</li>
+          <li>Multipart-upload bruger samme token i <code>FormData</code>. Filfelterne er angivet i de relevante r&aelig;kker nedenfor.</li>
+          <li>Beskyttede endpoints kr&aelig;ver login og kan desuden kr&aelig;ve en permission eller arrang&oslash;radgang. Backendens autorisation er den afg&oslash;rende kontrol; klienten skjuler kun funktioner i brugergr&aelig;nsefladen.</li>
+          <li>Succesfulde kald returnerer normalt JSON. Handlinger uden payload kan returnere <code>204 No Content</code>. Validerings- og adgangsfejl returneres typisk som <code>400</code>, <code>401</code>, <code>403</code> eller <code>404</code>; rate-limited kald returnerer <code>429</code>.</li>
+        </ul>
+      </section>
+
+      <div class="api-documentation">
+        <label class="file-search"><span>S&oslash;g i API-reference</span><input type="search" data-api-search-input placeholder="Endpoint, metode, adgang eller form&aring;l" autocomplete="off"></label>
+        <p class="file-search-empty" data-api-search-empty hidden>Ingen API-endpoints matcher s&oslash;gningen.</p>
+
+      <section class="section">
+        <h2>API endpoints</h2>
+        <div class="file-table-wrap"><table class="table file-table">
+          <thead><tr><th>Metode</th><th>Endpoint</th><th>Adgang</th><th>Form&aring;l og parametre</th></tr></thead>
+          <tbody>
+            <tr class="api-category"><th colspan="4">Login, konto og sikkerhed</th></tr>
+            <tr><td>GET</td><td><code>/api/me</code></td><td>Offentlig</td><td>Returnerer loginstatus, bruger-id, navn, status, roller og permissions. En anonym bruger f&aring;r <code>isAuthenticated: false</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/account/csrf-token</code></td><td>Offentlig</td><td>Returnerer antiforgery-token til state-changing requests.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/login</code></td><td>Offentlig</td><td>Logger brugeren ind og opretter authentication-cookie.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/register</code></td><td>Offentlig</td><td>Opretter konto og starter e-mailbekr&aelig;ftelse.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/logout</code></td><td>Logget ind</td><td>Logger den aktuelle bruger ud.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/forgot-password</code></td><td>Offentlig</td><td>Starter nulstilling af adgangskode for en bekr&aelig;ftet e-mailadresse.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/resend-email-confirmation</code></td><td>Offentlig</td><td>Sender en ny e-mailbekr&aelig;ftelse.</td></tr>
+            <tr><td>GET</td><td><code>/api/account/profile</code></td><td>Logget ind</td><td>Henter den aktuelle brugers profil.</td></tr>
+            <tr><td>GET</td><td><code>/api/account/events</code></td><td>Logget ind</td><td>Henter events, som er relevante for den aktuelle konto.</td></tr>
+            <tr><td>PUT</td><td><code>/api/account/profile</code></td><td>Logget ind</td><td>Opdaterer profil- og medlemsfelter.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/change-email</code></td><td>Logget ind</td><td>Skifter e-mailadresse og nulstiller bekr&aelig;ftelsesstatus efter reglerne.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/send-verification-email</code></td><td>Logget ind</td><td>Sender bekr&aelig;ftelse for den aktuelle e-mailadresse.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/change-password</code></td><td>Logget ind</td><td>Skifter brugerens adgangskode.</td></tr>
+            <tr><td>GET</td><td><code>/api/account/personal-data</code></td><td>Logget ind</td><td>Henter brugerens personal-data-download.</td></tr>
+            <tr><td>POST</td><td><code>/api/account/delete</code></td><td>Logget ind</td><td>Sletter kontoen efter password-kontrol og logger brugeren ud.</td></tr>
+          <tr class="api-category"><th colspan="4">Events, nyheder og tilmeldinger</th></tr>
+            <tr><td>GET</td><td><code>/api/content</code></td><td>Offentlig eller logget ind efter indhold</td><td>Viser publicerede events eller nyheder. Underst&oslash;tter query-parametrene <code>type</code> og <code>frontPage=true</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/slug/{slug}</code></td><td>Offentlig eller logget ind efter indhold</td><td>Henter et publiceret indholdselement ud fra slug.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/{id}</code></td><td>Offentlig</td><td>Henter et konkret indholdselement ud fra id. Svaret kan indeholde ekstra redigeringsdata for en autoriseret bruger.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/{id}/access</code></td><td>Logget ind med relevant adgang</td><td>Returnerer den aktuelle brugers adgang til et indholdselement.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/admin</code></td><td><code>content.edit</code> eller <code>messages.edit</code></td><td>Viser indhold til administration og beskedvalg. Underst&oslash;tter filtrene <code>type</code> og <code>status</code>.</td></tr>
+            <tr><td>POST</td><td><code>/api/content</code></td><td><code>content.edit</code></td><td>Opretter event eller nyhed.</td></tr>
+            <tr><td>PUT</td><td><code>/api/content/{id}</code></td><td><code>content.edit</code> eller arrang&oslash;r for eventet</td><td>Opdaterer et event eller en nyhed.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/content/{id}</code></td><td><code>content.edit</code></td><td>Sletter indhold og tilknyttede links.</td></tr>
+            <tr><td>POST</td><td><code>/api/content/{id}/image</code></td><td><code>content.edit</code> eller arrang&oslash;r for eventet</td><td>Multipart-feltet <code>file</code>. Gemmer &eacute;t PNG/JPEG-billede p&aring; h&oslash;jst 2 MiB og opdaterer <code>PictureUrl</code>.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/content/{id}/image</code></td><td><code>content.edit</code> eller arrang&oslash;r for eventet</td><td>Fjerner billedreference og rydder en ubrugt lokal upload op.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/{id}/registrations/me</code></td><td>Logget ind</td><td>Henter den aktuelle brugers tilmelding.</td></tr>
+            <tr><td>POST</td><td><code>/api/content/{id}/registrations</code></td><td>Logget ind efter eventregler</td><td>Opretter den aktuelle brugers tilmelding til et &aring;bent event.</td></tr>
+            <tr><td>PUT</td><td><code>/api/content/{id}/registrations/me/note</code></td><td>Logget ind</td><td>Opdaterer den aktuelle brugers svarnote. Body bruger feltet <code>responseText</code>.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/content/{id}/registrations/me</code></td><td>Logget ind efter eventregler</td><td>Fjerner den aktuelle brugers tilmelding.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/{id}/registrations/summary</code></td><td>Offentlig</td><td>Henter samlet tilmeldingsstatus til eventvisningen.</td></tr>
+            <tr><td>GET</td><td><code>/api/content/{id}/registrations</code></td><td>Logget ind</td><td>Viser deltagere og tilmeldingsstatusser.</td></tr>
+            <tr><td>POST</td><td><code>/api/content/{id}/registrations/admin</code></td><td><code>content.edit</code>, <code>registrations.edit</code> eller arrang&oslash;r</td><td>Tilf&oslash;jer et medlem manuelt til et event.</td></tr>
+            <tr><td>PUT</td><td><code>/api/content/{id}/registrations/{registrationId}</code></td><td><code>content.edit</code>, <code>registrations.edit</code> eller arrang&oslash;r</td><td>Opdaterer deltagerens registreringstype eller svar.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/content/{id}/registrations/{registrationId}</code></td><td><code>content.edit</code>, <code>registrations.edit</code> eller arrang&oslash;r</td><td>Fjerner en anden deltagers tilmelding.</td></tr>
+          <tr class="api-category"><th colspan="4">Medlemmer, roller, skabeloner og beskeder</th></tr>
+            <tr><td>GET</td><td><code>/api/members</code></td><td>Logget ind</td><td>Viser bekr&aelig;ftede medlemmer, bortset fra statusserne <code>INAKTIV</code> og <code>OPRETTET</code>. Synlighedsstatus styrer private felter.</td></tr>
+            <tr><td>GET</td><td><code>/api/members/admin</code></td><td><code>roles.edit</code></td><td>Viser alle brugere til administration og modtagerudvalg.</td></tr>
+            <tr><td>GET</td><td><code>/api/members/{id}/subscriptions</code></td><td><code>roles.edit</code></td><td>Viser betalingsaftaler for et bestemt medlem.</td></tr>
+            <tr><td>GET</td><td><code>/api/members/finance</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Returnerer medlems-id'er og navne til finansfiltre.</td></tr>
+            <tr><td>GET</td><td><code>/api/members/event/{contentItemId}</code></td><td>Logget ind med relevant eventadgang</td><td>Viser medlemmer, der kan v&aelig;lges til et event.</td></tr>
+            <tr><td>PUT</td><td><code>/api/members/{id}/status</code></td><td><code>roles.edit</code></td><td>&AElig;ndrer medlemsstatus. Body bruger feltet <code>status</code>.</td></tr>
+            <tr><td>POST</td><td><code>/api/members/admin/mass-status</code></td><td><code>roles.edit</code></td><td>&AElig;ndrer status for en valgt datoperiode.</td></tr>
+            <tr><td>GET</td><td><code>/api/roles</code></td><td><code>roles.edit</code> eller <code>messages.edit</code></td><td>Viser applikationens roller.</td></tr>
+            <tr><td>POST</td><td><code>/api/roles</code></td><td><code>roles.edit</code></td><td>Opretter en rolle. Body bruger <code>name</code>.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/roles/{id}</code></td><td><code>roles.edit</code></td><td>Sletter en rolle, medmindre den er beskyttet.</td></tr>
+            <tr><td>GET</td><td><code>/api/roles/{id}/members</code></td><td><code>roles.edit</code> eller <code>messages.edit</code></td><td>Viser medlemmer og ikke-medlemmer for en rolle.</td></tr>
+            <tr><td>PUT</td><td><code>/api/roles/{id}/members</code></td><td><code>roles.edit</code></td><td>Tilf&oslash;jer og fjerner brugere fra en rolle.</td></tr>
+            <tr><td>GET</td><td><code>/api/roles/{id}/permissions</code></td><td><code>roles.edit</code></td><td>Viser permissions for en rolle.</td></tr>
+            <tr><td>PUT</td><td><code>/api/roles/{id}/permissions</code></td><td><code>roles.edit</code></td><td>Opdaterer permissions. Body bruger <code>permissionCodes</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/email-templates</code></td><td><code>email_templates.edit</code> eller <code>messages.edit</code></td><td>Viser genbrugelige skabeloner; underst&oslash;tter type- og aktivfiltre.</td></tr>
+            <tr><td>GET</td><td><code>/api/email-templates/{id}</code></td><td><code>email_templates.edit</code> eller <code>messages.edit</code></td><td>Henter &eacute;n skabelon.</td></tr>
+            <tr><td>POST</td><td><code>/api/email-templates</code></td><td><code>email_templates.edit</code></td><td>Opretter en skabelon.</td></tr>
+            <tr><td>PUT</td><td><code>/api/email-templates/{id}</code></td><td><code>email_templates.edit</code></td><td>Opdaterer en skabelon.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/email-templates/{id}</code></td><td><code>email_templates.edit</code></td><td>Sletter en skabelon.</td></tr>
+            <tr><td>POST</td><td><code>/api/email-templates/{id}/preview</code></td><td><code>email_templates.edit</code> eller <code>messages.edit</code></td><td>Renderer preview med de indsendte <code>values</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/messages/categories</code></td><td><code>messages.edit</code></td><td>Viser medlemsstatusser og roller til modtagerfiltre.</td></tr>
+            <tr><td>POST</td><td><code>/api/messages/recipient-preview</code></td><td><code>messages.edit</code></td><td>Opl&oslash;ser valgte grupper, roller, eventdeltagere og medlemmer til en modtager-preview.</td></tr>
+            <tr><td>POST</td><td><code>/api/messages/render</code></td><td><code>messages.edit</code></td><td>Renderer den valgte skabelon og valgte indholdsblokke.</td></tr>
+            <tr><td>POST</td><td><code>/api/messages/send</code></td><td><code>messages.edit</code></td><td>Opl&oslash;ser modtagere og sender e-mail og/eller SMS via de konfigurerede services.</td></tr>
+          <tr class="api-category"><th colspan="4">Kalender, bibliotek og editor</th></tr>
+            <tr><td>GET</td><td><code>/api/calendar</code></td><td>Logget ind</td><td>Henter kommende kalenderbegivenheder fra den konfigurerede iCal-service.</td></tr>
+            <tr><td>GET</td><td><code>/api/library</code></td><td>Logget ind</td><td>Viser beskyttede mapper og dokumenter. Query-parametret <code>path</code> v&aelig;lger sti.</td></tr>
+            <tr><td>GET</td><td><code>/api/library/file?path={path}</code></td><td>Logget ind</td><td>Returnerer det valgte dokument med registreret MIME-type.</td></tr>
+            <tr><td>POST</td><td><code>/api/editor/images</code></td><td><code>content.edit</code>, <code>email_templates.edit</code> eller <code>messages.edit</code></td><td>Multipart-feltet <code>file</code>. Gemmer et editorbillede i <code>wwwroot/uploads/editor</code> og returnerer den offentlige URL.</td></tr>
+          <tr class="api-category"><th colspan="4">Betalinger og betalingsaftaler</th></tr>
+            <tr><td>GET</td><td><code>/api/payments/config</code></td><td>Offentlig konfiguration</td><td>Returnerer den offentlige Stripe API-key til checkout.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/membership</code></td><td>Logget ind</td><td>Viser aktive medlemskabstilbud. Betalende og studiemedlemmer kan ikke k&oslash;be medlemskab igen.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/{id}</code></td><td>Logget ind som deltager eller arrang&oslash;r</td><td>Henter et aktivt eventbetalingstilbud.</td></tr>
+            <tr><td>POST</td><td><code>/api/payment-offers/{id}/checkout</code></td><td>Logget ind som deltager eller arrang&oslash;r</td><td>Starter Stripe- eller MobilePay-checkout. Klienten sender <code>Idempotency-Key</code>; checkout er rate-limited.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/success-context?session={session}</code></td><td>Logget ind</td><td>Validerer Stripe-sessionen for den aktuelle bruger og returnerer betalingsstatus.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/mobilepay-context?reference={reference}</code></td><td>Logget ind</td><td>Kontrollerer MobilePay-status og afstemmer gentagne medlemsbetalinger.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/event/{contentItemId}</code></td><td>Eventredigeringsadgang</td><td>Viser betalingstilbud for et event.</td></tr>
+            <tr><td>POST</td><td><code>/api/payment-offers/event/{contentItemId}</code></td><td>Eventredigeringsadgang</td><td>Opretter eller opdaterer eventbetalingstilbud.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/admin</code></td><td><code>payments.edit.all</code></td><td>Viser globale og eventrelaterede betalingstilbud.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/admin/events</code></td><td><code>payments.edit.all</code></td><td>Viser events til produktfilteret.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-offers/admin/{id}</code></td><td><code>payments.edit.all</code></td><td>Henter et globalt produkt til redigering.</td></tr>
+            <tr><td>PUT</td><td><code>/api/payment-offers/admin/{id}</code></td><td><code>payments.edit.all</code></td><td>Opdaterer et globalt produkt og synkroniserer provider-data.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/payment-offers/{id}</code></td><td>Eventredigeringsadgang</td><td>Sletter et eventbetalingstilbud; oprydning hos provider er best effort.</td></tr>
+            <tr><td>GET</td><td><code>/api/account/subscriptions</code></td><td>Logget ind</td><td>Viser den aktuelle brugers betalingsaftaler og afstemmer MobilePay-aftaler.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/account/subscriptions/{providerSubscriptionId}</code></td><td>Logget ind</td><td>Annullerer den aktuelle brugers provider-aftale og fremtidige lokale opkr&aelig;vninger.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-subscriptions/admin</code></td><td><code>payments.edit.all</code></td><td>Viser alle betalingsaftaler.</td></tr>
+            <tr><td>GET</td><td><code>/api/payment-subscriptions/admin/{id}</code></td><td><code>payments.edit.all</code></td><td>Henter &eacute;n betalingsaftale til administration.</td></tr>
+          <tr class="api-category"><th colspan="4">Finans-API: personlige kald kr&aelig;ver login; admin-kald kr&aelig;ver Finance-permissions.</th></tr>
+            <tr><td>GET</td><td><code>/api/finance/overview?year={year}</code></td><td>Logget ind</td><td>Personlig oversigt for indev&aelig;rende eller forrige &aring;r: indt&aelig;gter, udgifter, m&aring;nedstal, budgetter og datakvalitet.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/postings</code></td><td>Logget ind</td><td>Den aktuelle brugers posteringer og seneste opdateringstidspunkt.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/postings/{id}/receipt</code></td><td>Logget ind</td><td>Viser HTML-kvittering for en af brugerens posteringer.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/overview?year={year}</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Adminoversigt for et &aring;r mellem 1900 og 9999.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/budgets</code></td><td><code>finance.edit.all</code></td><td>Viser alle budgetr&aelig;kker med konti og posteringsgrupper.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/budgets</code></td><td><code>finance.edit.all</code></td><td>Opretter budget. Body: <code>FinanceBudgetUpdateDto</code> med <code>id</code>, <code>accountId</code>, <code>postingGroupId</code>, <code>yearActual</code>, <code>forecast</code> og <code>forecastType</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Henter &eacute;n budgetr&aelig;kke.</td></tr>
+            <tr><td>PUT</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Opdaterer budget og <code>updated_at</code>.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Sletter budgetr&aelig;kke.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/accounts</code></td><td><code>finance.edit.all</code></td><td>Viser kontoplan og konto-/context-n&oslash;gler.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/posteringsgrupper</code></td><td><code>finance.edit.all</code></td><td>Viser posteringsgrupper og contexts.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/posteringsgrupper/{id}</code></td><td><code>finance.edit.all</code></td><td>Henter &eacute;n posteringsgruppe.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/posteringsgrupper</code></td><td><code>finance.edit.all</code></td><td>Opretter posteringsgruppe. Body: <code>FinancePostingGroupUpdateDto</code> med <code>id</code>, <code>postingGroup</code> og <code>context</code>.</td></tr>
+            <tr><td>PUT</td><td><code>/api/finance/admin/posteringsgrupper/{id}</code></td><td><code>finance.edit.all</code></td><td>Opdaterer posteringsgruppe og <code>updated_at</code>.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/finance/admin/posteringsgrupper/{id}</code></td><td><code>finance.edit.all</code></td><td>Sletter posteringsgruppe.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/postings?year={year}&amp;allYears={bool}&amp;accountId={id}&amp;bankKey={key}&amp;mobilePayKey={key}&amp;stripeKey={key}</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Viser adminposteringer. <code>allYears=true</code> fjerner &aring;rsfilteret; de &oslash;vrige filtre er valgfrie.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/postings/years</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Viser &aring;r, der findes i posteringernes datoer.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/postings/options</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Viser s&oslash;gbare konto- og posteringsgruppevalg.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/postings/{id}</code></td><td><code>finance.view.all</code> eller <code>finance.edit.all</code></td><td>Henter postering med kildereferencer og dokumentoplysninger.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/postings</code></td><td><code>finance.edit.all</code></td><td>Opretter manuel postering. Body: <code>FinanceAdminPostingUpdateDto</code> med <code>id</code>, <code>date</code>, <code>accountId</code>, <code>postingGroupId</code>, <code>userId</code>, <code>postingDate</code>, <code>text</code>, <code>amount</code> og <code>document</code>.</td></tr>
+            <tr><td>PUT</td><td><code>/api/finance/admin/postings/{id}</code></td><td><code>finance.edit.all</code></td><td>Opdaterer postering og <code>updated_at</code>.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/postings/{id}/duplicate</code></td><td><code>finance.edit.all</code></td><td>Opretter kopi med suffix <code>-COPY</code>; eksisterende id'er overskrives ikke.</td></tr>
+            <tr><td>DELETE</td><td><code>/api/finance/admin/postings/{id}</code></td><td><code>finance.edit.all</code></td><td>Sletter postering.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/import/history</code></td><td><code>finance.edit.all</code></td><td>Viser importhistorik for bank, MobilePay og Stripe.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/import/postings</code></td><td><code>finance.edit.all</code></td><td>Danner manglende afledte posteringer ud fra allerede importeret kildedata.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/import/stripe</code></td><td><code>finance.edit.all</code></td><td>Importerer Stripe-transaktioner. Valgfrie query-parametre er <code>startDate</code> og <code>endDate</code>.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/import/templates/{source}</code></td><td><code>finance.edit.all</code></td><td>Downloader UTF-8-eksempel-CSV for <code>bank</code> eller <code>mobilepay</code>.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/import</code></td><td><code>finance.edit.all</code></td><td>Multipart-felterne er <code>bankFile</code>, <code>mobilePayFile</code> og <code>syncPostings</code>. CSV-filer valideres og kan h&oslash;jst v&aelig;re 10 MB hver; requesten er begr&aelig;nset til 20 MB.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/import/validate</code></td><td><code>finance.edit.all</code></td><td>Validerer <code>bankFile</code> og/eller <code>mobilePayFile</code> uden at &aelig;ndre databasen.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      </div>
+
+      <section class="section">
+        <h2>Eksempler p&aring; svar</h2>
+        <p><code>GET /api/me</code> returnerer den aktuelle login- og rettighedstilstand. En autentificeret bruger f&aring;r eksempelvis:</p>
+        <pre><code>{
+  &quot;isAuthenticated&quot;: true,
+  &quot;id&quot;: &quot;user-id&quot;,
+  &quot;userName&quot;: &quot;medlem@example.org&quot;,
+  &quot;email&quot;: &quot;medlem@example.org&quot;,
+  &quot;name&quot;: &quot;Medlem Navn&quot;,
+  &quot;status&quot;: &quot;BETALT&quot;,
+  &quot;roles&quot;: [&quot;MEDLEM&quot;],
+  &quot;permissions&quot;: [&quot;content.edit&quot;]
+}</code></pre>
+        <p>En anonym bruger f&aring;r samme struktur med <code>isAuthenticated: false</code> og tomme arrays for roller og permissions. <code>GET /api/account/csrf-token</code> returnerer et objekt med feltet <code>token</code>.</p>
+      </section>
+
+      <section class="section">
+        <h2>DTO'er og testd&aelig;kning</h2>
+        <p>JSON-body'er f&oslash;lger DTO'erne i <code>src/backend/GamMaSite/ViewModels/Api/</code>. De vigtigste finansielle body-formater er angivet i tabellen ovenfor. Betalingscheckout skal have en unik <code>Idempotency-Key</code> pr. logisk checkoutfors&oslash;g.</p>
+        <p>Backendens tests ligger i <code>src/test/GamMaSite.Tests/</code> og d&aelig;kker blandt andet konto, content, editor, e-mailtemplates, finansvalidering, medlemmer, beskeder, betalinger, roller og eventtilmeldinger. Finance CRUD, PostgreSQL-konflikth&aring;ndtering, importhistorik, provider-matchning og fuld HTTP-autorisation kr&aelig;ver integrationstest mod en separat PostgreSQL-database.</p>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

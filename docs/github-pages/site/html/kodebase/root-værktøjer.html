@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Root-v&aelig;rkt&oslash;jer &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.root-tools">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kodestruktur &middot; root-v&aelig;rkt&oslash;jer</p>
+      <h1>Root-v&aelig;rkt&oslash;jer</h1>
+      <p class="lead">De vigtigste konfigurations- og arbejdsv&aelig;rkt&oslash;jer i repositoryets rod. Siden beskriver deres ansvar og kommandoer uden at blande dem sammen med applikationsmapperne.</p>
+
+      <section class="section">
+        <h2>V&aelig;rkt&oslash;jer og konfiguration</h2>
+        <table class="table">
+          <thead><tr><th>Fil</th><th>Form&aring;l</th></tr></thead>
+          <tbody>
+            <tr><td><code>Makefile</code></td><td>Samler standardkommandoer til restore, build, run, hot reload, publish og oprydning.</td></tr>
+            <tr><td><code>.pre-commit-config.yaml</code></td><td>Aktiverer YAML-kontrol, trailing-whitespace-kontrol og end-of-file-fiksering f&oslash;r commits.</td></tr>
+            <tr><td><code>global.json</code></td><td>Fastl&aelig;gger den .NET SDK-version, som lokale builds og CI skal bruge.</td></tr>
+            <tr><td><code>GamMaSite.sln</code></td><td>Samler backendprojektet og dets testprojekt i .NET-l&oslash;sningen.</td></tr>
+            <tr><td><code>multiproject.code-workspace.example</code></td><td>Eksempel p&aring; en VS Code-workspace med de relevante projektmapper.</td></tr>
+            <tr><td><code>.dockerignore</code></td><td>Holder build-konteksten lille ved at udelade lokale milj&oslash;er, output og afh&aelig;ngighedsmapper fra Docker-builds.</td></tr>
+            <tr><td><code>.gitignore</code> og <code>.gitattributes</code></td><td>Styrer lokale artefakter, linjeskift og filer, der ikke skal versionstyres.</td></tr>
+            <tr><td><code>CHANGELOG.md</code></td><td>Releasehistorik og noter om st&oslash;rre tekniske &aelig;ndringer.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Make-kommandoer</h2>
+        <table class="table">
+          <thead><tr><th>Kommando</th><th>Form&aring;l</th></tr></thead>
+          <tbody>
+            <tr><td><code>make restore</code></td><td>Gendanner NuGet-afh&aelig;ngigheder.</td></tr>
+            <tr><td><code>make build</code></td><td>Bygger l&oslash;sningen i Debug-konfiguration.</td></tr>
+            <tr><td><code>make run</code></td><td>Starter backendens udviklingsserver. Brug <code>ENV=Staging</code> for et andet ASP.NET Core-milj&oslash;.</td></tr>
+            <tr><td><code>make watch</code></td><td>Starter backend med hot reload.</td></tr>
+            <tr><td><code>make publish</code></td><td>Publicerer l&oslash;sningen i Release-konfiguration.</td></tr>
+            <tr><td><code>make clean</code></td><td>Fjerner .NET build- og publish-output. K&oslash;r kun kommandoen, n&aring;r output m&aring; genskabes.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Pre-commit</h2>
+        <p>Installer <code>pre-commit</code> i dit lokale Python-milj&oslash;, aktiv&eacute;r hooks i repositoryet, og k&oslash;r dem manuelt ved behov:</p>
+        <pre><code>py -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files</code></pre>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

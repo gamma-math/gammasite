@@ -6,14 +6,15 @@ The active user experience is primarily React-based on canonical public routes w
 
 ## Technology
 
-* ASP.NET Core (.NET 10)
-* React and Vite
-* MySQL 8.0+
-* PostgreSQL (Finance database, accessed through Npgsql)
-* ASP.NET Core Identity
-* Stripe
-* Ical.Net
-* xUnit, Moq, and EF Core InMemory for automated tests
+* ASP.NET Core on .NET 10, including ASP.NET Core Identity and Entity Framework Core
+* React 19, Vite 7, Node.js 22 and npm for the frontend build and browser tests
+* MySQL 8.0+ for the primary application database
+* PostgreSQL for the Finance database, accessed by the backend through Npgsql and by the schema tools through psycopg
+* Python 3.13 for the database schema CLI and the standalone Stripe/MobilePay helper services; PyMySQL, psycopg, requests, python-dotenv and pytest are used by those tools
+* Docker Engine or Docker Desktop with Docker Compose v2 for local application/database services, test containers, seed data and webhook integrations
+* Stripe, MobilePay/Vipps, Mailgun HTTP API and Google Calendar integrations; Ical.Net handles calendar data in the backend
+* GitHub Actions for CI/CD and GitHub Pages for the published technical documentation
+* xUnit, Moq, EF Core InMemory and Node's test runner for automated tests
 
 ## Repository Structure
 
@@ -24,29 +25,34 @@ Only tracked project folders/files are listed here:
 |-- .github/
 |   `-- workflows/                 GitHub Actions build/deployment workflows.
 |-- .vscode/                       Example editor launch/task configuration.
-|-- docs/                          Design references, upgrade notes, and manual API test notes.
-|   `-- github-pages/              
+|-- docs/                          Project documentation and protected design references.
+|   `-- github-pages/              Primary consolidated documentation site.
 |-- src/
 |   |-- database/                  Database schemas, schema tooling, and test seeds.
 |   |-- backend/GamMaSite/         ASP.NET Core application and deployed web assets.
 |   |-- frontend/                  React/Vite source application.
 |   |-- services/
-|   |   `-- database/              
-|   |   `-- local-development/     
-|   |   `-- stripe/              
-|   |   `-- vipps/                 MobilePay/Vipps CLI, Docker setup, and pytest tests.
-|   `-- test/GamMaSite.Tests/      Backend unit tests for APIs, services, Identity, and Finance validation.
+|   |   |-- database/               Python schema-management service and database drivers.
+|   |   |-- local-development/      Docker Compose stack, seed scripts and local integrations.
+|   |   |-- stripe/                 Standalone Stripe API inspection helper.
+|   |   `-- vipps/                  MobilePay/Vipps CLI, Docker setup and pytest tests.
+|   `-- test/
+|       |-- database/               Python unit tests for schema parsing, comparison and deployment safety.
+|       |-- GamMaSite.Tests/        Backend unit tests for APIs, services, Identity and Finance validation.
+|       `-- frontend/               Node-based frontend tests.
 |-- GamMaSite.sln                  Solution file for the backend project.
 |-- global.json                    .NET SDK version pin.
 |-- Makefile                       Common local build/run commands.
 `-- qrcode-1.5.4.tgz               Local QR code package used by the frontend/tooling.
 ```
 
-See `src/backend/GamMaSite/README.md`, `src/frontend/README.md`, and `src/database/README.md` for more detail.
+See `src/backend/GamMaSite/README.md`, `src/frontend/README.md`, and `src/database/README.md` for the core application and schema. The local Docker workflow is documented in `src/services/local-development/README.md`; the database service, Stripe helper and MobilePay/Vipps helper have their own READMEs under `src/services/`.
+
+The consolidated technical documentation is published from `docs/github-pages/site/`. It covers administration, finance, system pages, repository structure, access control, and the React API. The design reference under `docs/muchup/` is kept separately and is not part of the published technical documentation.
 
 ## Tests
 
-The automated tests are located in `src/test/GamMaSite.Tests`. They cover API response behavior, application services, Identity page models, validation rules, and Finance CSV/input validation. The unit tests do not require the local MySQL database, Finance PostgreSQL database, SMTP, Stripe, or external calendar services.
+The core automated tests are located in `src/test/GamMaSite.Tests`, `src/test/frontend` and `src/test/database`. Separate mocked HTTP tests for the standalone Stripe and MobilePay/Vipps helper services are located under `src/services/*/test`. The unit tests do not require the local MySQL database, Finance PostgreSQL database, SMTP, Stripe, or external calendar services.
 
 Run the complete test project from the repository root:
 
@@ -65,6 +71,13 @@ Run one test class or a matching test name:
 ```powershell
 dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj --filter FullyQualifiedName~FinanceImportServiceTests
 dotnet test src/test/GamMaSite.Tests/GamMaSite.Tests.csproj --filter FullyQualifiedName~CreatePosting_RejectsInvalidAmount
+```
+
+Run the Python helper-service tests with their service-specific virtual environments:
+
+```powershell
+& .\src\services\stripe\.venv\Scripts\python.exe -m pytest src/services/stripe/test
+& .\src\services\vipps\.venv\Scripts\python.exe -m pytest src/services/vipps/test
 ```
 
 The Finance unit tests intentionally stop before opening a real PostgreSQL connection. PostgreSQL upserts, import-history persistence, bank/MobilePay matching, database roles, and full HTTP authorization require separate integration tests.
@@ -97,6 +110,28 @@ Deployments are run manually from GitHub Actions:
 * .NET 10 SDK
 * Node.js compatible with the frontend package lock
 * MySQL 8.0+
+* Docker Engine or Docker Desktop with Docker Compose v2 (for the full local stack)
+
+### Local Docker development
+
+The Compose setup runs the React/Vite build, ASP.NET Core app, MySQL 8 and Finance PostgreSQL together. It is the recommended way to run the complete local stack:
+
+```powershell
+docker compose -f src/services/local-development/compose.yml config --quiet
+docker compose -f src/services/local-development/compose.yml up -d --build
+docker compose -f src/services/local-development/compose.yml ps
+docker compose -f src/services/local-development/compose.yml --profile tools run --rm --build tools scripts/validate.sh
+```
+
+The app is available at `http://localhost:5000`, MySQL at `localhost:3306`, and Finance PostgreSQL at `localhost:5433`. Optional local overrides can be placed in `src/services/local-development/.env`; start from `.env.example` and do not add production secrets. The seed profile is available with `docker compose -f src/services/local-development/compose.yml --profile tools run --rm --build seed`.
+
+Stop the stack with:
+
+```powershell
+docker compose -f src/services/local-development/compose.yml down
+```
+
+Do not add `-v` unless local database and media volumes may be deleted. See [`src/services/local-development/README.md`](src/services/local-development/README.md) for service details, troubleshooting and integration profiles.
 
 ### Build Frontend
 

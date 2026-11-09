@@ -1,1 +1,66 @@
-<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>.github · GamMaSite</title><link rel="stylesheet" href="../../css/styles.css"></head><body data-root="../" data-page="code.github"><header id="site-header" class="site-header"></header><div class="docs-layout"><aside id="sidebar" class="sidebar"></aside><main class="content"><p class="eyebrow">Kode · .github/</p><p class="lead">Indeholder GitHub Actions-workflows. App-workflowet bygger, tester og deployer applikationen manuelt. Pages-workflowet udgiver den statiske dokumentation.</p><div class="callout"><p>Secrets og miljøspecifikke værdier tilhører GitHub-konfigurationen og må ikke dokumenteres eller committes.</p></div></main></div><footer class="footer">GamMaSite dokumentation</footer><script src="../../js/app.js"></script></body></html>
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>.github &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="code.github">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Kode &middot; .github/</p>
+      <h1>GitHub Actions-workflows</h1>
+      <p class="lead">Mappen <code>.github/workflows/</code> indeholder de tre manuelle pipelines, som henholdsvis bygger og deployer applikationen, styrer databaseskemaer og udgiver den statiske dokumentation. Alle tre workflows k&oslash;res fra GitHub Actions og bruger repositoryets Source of Truth-filer.</p>
+
+      <section class="section">
+        <h2>Pipeline-oversigt</h2>
+        <table class="table">
+          <thead><tr><th>Workflow</th><th>Form&aring;l</th><th>Trigger og milj&oslash;</th><th>Hovedforl&oslash;b</th></tr></thead>
+          <tbody>
+            <tr><td><code>pipeline.yml</code><br><strong>Build and deploy</strong></td><td>Bygger og publicerer GamMaSite-applikationen.</td><td>Manuel k&oslash;rsel med <code>TEST</code> eller <code>PROD</code> p&aring; Windows Server 2025.</td><td>Validerer secrets, validerer begge databaseskemaer, bygger frontend, k&oslash;rer frontend- og backend-tests og deployer en self-contained <code>win-x86</code>/<code>net10.0</code>-app via MSDeploy.</td></tr>
+            <tr><td><code>database-deployment.yml</code><br><strong>Database schema management</strong></td><td>Diff, validerer, planl&aelig;gger eller deployer &eacute;t databaseskema.</td><td>Manuel k&oslash;rsel med databasevalg (<code>mysql</code>/<code>postgres</code>), handling (<code>diff</code>/<code>validate</code>/<code>plan</code>/<code>deploy</code>) og milj&oslash; (<code>TEST</code>/<code>PROD</code>).</td><td>Kontrollerer Source of Truth og secrets, installerer Python-drivere, k&oslash;rer databasetests, udf&oslash;rer den valgte CLI-handling og validerer igen efter deployment.</td></tr>
+            <tr><td><code>deploy-github-pages.yml</code><br><strong>Deploy GitHub Pages</strong></td><td>Udgiver den samlede tekniske dokumentation.</td><td>Manuel k&oslash;rsel p&aring; Ubuntu med GitHub Pages-milj&oslash;et.</td><td>Checker repositoryet ud, genererer filoversigterne til <code>_site</code>, uploader et Pages-artifact og deployer det med GitHub Pages.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Build and deploy</h2>
+        <p><code>pipeline.yml</code> er applikationens samlede release-pipeline. Den installerer Python 3.13, .NET 10 og Node.js 22, tjekker alle nødvendige deployment-indstillinger og validerer både MySQL- og Finance PostgreSQL-skemaet før build.</p>
+        <ol class="steps">
+          <li>Frontendens npm-pakker gendannes med <code>npm ci</code>, hvorefter Vite-build og Node-tests k&oslash;res.</li>
+          <li>Solutionen restores, og backendens xUnit-tests k&oslash;res. Testresultater uploades som artifact, ogs&aring; hvis et senere trin fejler.</li>
+          <li>Backendens <code>appsettings.json</code> f&aring;r milj&oslash;specifikke v&aelig;rdier fra GitHub Environment secrets/variables.</li>
+          <li>Projektet publiceres self-contained til <code>win-x86</code> og deployes til den valgte TEST- eller PROD-destination via MSDeploy.</li>
+        </ol>
+        <p>Workflowet er den normale applikationsudgivelse. Database-deployment foreg&aring;r som et separat, eksplicit workflow.</p>
+      </section>
+
+      <section class="section">
+        <h2>Database schema management</h2>
+        <p><code>database-deployment.yml</code> er den kontrollerede adgang til schema-v&aelig;rkt&oslash;jet. Den kan k&oslash;re observationer uden &aelig;ndringer eller en eksplicit bekr&aelig;ftet deployment.</p>
+        <ul>
+          <li><code>diff</code>, <code>validate</code> og <code>plan</code> m&aring; ikke skrive til databasen.</li>
+          <li><code>deploy</code> kr&aelig;ver <code>confirm_deployment</code>; PROD kr&aelig;ver desuden <code>confirm_production</code>.</li>
+          <li><code>allow_risk</code> kan kun bruges ved deployment og giver tilladelse til de schema&aelig;ndringer, som v&aelig;rkt&oslash;jet markerer som risikable.</li>
+          <li>Efter en deployment k&oslash;res <code>validate</code> automatisk mod samme milj&oslash;.</li>
+        </ul>
+        <p>Workflowet k&oslash;rer p&aring; Windows Server 2025, bruger Python 3.13 og installerer <code>PyMySQL</code> og <code>psycopg</code> fra database-servicekravene.</p>
+      </section>
+
+      <section class="section">
+        <h2>Deploy GitHub Pages</h2>
+        <p><code>deploy-github-pages.yml</code> publicerer dokumentationen uafh&aelig;ngigt af applikationsdeployments. Build-jobbet k&oslash;rer <code>docs/github-pages/generate-code-docs.mjs _site</code>, s&aring; de genererede filoversigter afspejler repositoryets versionsstyrede filer.</p>
+        <p>Workflowet bruger kun <code>contents: read</code>, <code>pages: write</code> og <code>id-token: write</code>. Det f&aelig;rdige artifact sendes til GitHub Pages, og deployment-jobbet eksponerer den publicerede Pages-URL.</p>
+      </section>
+
+      <div class="callout"><p>Secrets, connection strings og milj&oslash;specifikke v&aelig;rdier h&oslash;rer hjemme i GitHub Environments. De m&aring; ikke skrives i workflow-filer, SQL-filer eller den publicerede dokumentation.</p></div>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>

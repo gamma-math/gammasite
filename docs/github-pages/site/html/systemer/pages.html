@@ -94,6 +94,20 @@
         </div>
         <p class="file-search-empty" data-pages-search-empty hidden>Ingen sider matcher søgningen.</p>
       </section>
+      <section class="section">
+        <h2>React-klient og serverede Identity-flows</h2>
+        <p>De kanoniske offentlige og interne sider bruger React uden <code>/react</code>-prefix. Udvalgte tidligere GET-URL'er viser den samme React-side, så eksisterende bogm&aelig;rker og links fortsat virker. Backend ejer fortsat authentication-cookie, API-autorisation og de sikkerhedsf&oslash;lsomme Identity-flows.</p>
+        <table class="table"><thead><tr><th>Omr&aring;de</th><th>Kanonisk React-URL</th><th>Underst&oslash;ttede tidligere URL'er</th></tr></thead><tbody>
+          <tr><td>Forside</td><td><code>/</code></td><td><code>/react</code>, <code>/Home</code>, <code>/Home/Index</code></td></tr>
+          <tr><td>Events</td><td><code>/events</code></td><td><code>/react/events</code>, <code>/Home/Arrangementer</code></td></tr>
+          <tr><td>Medlemmer</td><td><code>/members</code></td><td><code>/react/members</code>, <code>/Users</code></td></tr>
+          <tr><td>Kalender</td><td><code>/calendar</code></td><td><code>/react/calendar</code>, <code>/Calendar</code></td></tr>
+          <tr><td>Bibliotek</td><td><code>/Library?path=...</code></td><td><code>/library</code>, <code>/bibliotek</code>, <code>/referater</code> og udvalgte <code>/Library/*</code>-URL'er</td></tr>
+          <tr><td>Betaling</td><td><code>/pay</code></td><td><code>/react/pay</code>, <code>/Pay</code>, <code>/Pay/Index</code></td></tr>
+          <tr><td>Admin</td><td><code>/admin/...</code></td><td>Udvalgte legacy MVC-sider som <code>/Users</code>, <code>/Role</code> og <code>/Messages</code></td></tr>
+        </tbody></table>
+        <p>ASP.NET Identity-sider er fortsat serverede, hvor flowet kr&aelig;ver det: e-mailbekr&aelig;ftelse, password reset, authenticator/MFA, recovery-koder, eksterne logins og download eller sletning af personal data.</p>
+      </section>
     </main>
   </div>
   <footer class="footer">GamMaSite dokumentation</footer>

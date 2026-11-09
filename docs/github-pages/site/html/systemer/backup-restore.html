@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Backup og restore &middot; GamMaSite</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body data-root="../" data-page="systems.backup">
+  <header id="site-header" class="site-header"></header>
+  <div class="docs-layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <main class="content">
+      <p class="eyebrow">Systemoversigt &middot; drift</p>
+      <h1>Backup og restore</h1>
+      <p class="lead">Runbook for sikker backup, gendannelse og efterkontrol af GamMaSite-data. Production-databaser gendannes gennem den ansvarlige hosting- eller backupleverand&oslash;r; Docker-kommandoerne nedenfor er til lokal udvikling og restore-test.</p>
+
+      <section class="section">
+        <h2>Det skal beskyttes</h2>
+        <table class="table">
+          <thead><tr><th>Data</th><th>Placering</th><th>Restore-kilde</th></tr></thead>
+          <tbody>
+            <tr><td>Applikationsdata</td><td>Simply/MySQL</td><td>Provider-backup eller lokal SQL-dump</td></tr>
+            <tr><td>Finance-data</td><td>Neon/PostgreSQL</td><td>Neon-backup eller lokal PostgreSQL-dump</td></tr>
+            <tr><td>Content-media</td><td>Persistent content-media-lagring</td><td>Cloudflare/backup-lagring eller lokal volume-backup</td></tr>
+            <tr><td>Schema Source of Truth</td><td><code>src/database/</code></td><td>Git og den valgte commit</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>F&oslash;r database-deployment</h2>
+        <ol class="steps">
+          <li>K&oslash;r <code>diff</code>, <code>validate</code> eller <code>plan</code> i <a href="deploy-database.html">Database schema management</a>, og genneml&aelig;s planen.</li>
+          <li>Kontroll&eacute;r database, environment og GitHub Environment, f&oslash;r et production-run startes.</li>
+          <li>Bekr&aelig;ft, at den seneste provider-backup og content-media-backup findes og har en kendt timestamp.</li>
+          <li>Ved MySQL skal der tages h&oslash;jde for, at DDL ikke er atomisk. En senere fejl kan derfor efterlade nogle statements anvendt.</li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <h2>Lokal backup</h2>
+        <p>Kommandoerne k&oslash;res fra repositoryets rod, mens de lokale Compose-databaser er startet. Gem backupfiler uden for repositoryet, eksempelvis under <code>$env:TEMP\gammasite-backups</code>.</p>
+        <pre><code>$backupPath = Join-Path $env:TEMP "gammasite-backups"
+New-Item -ItemType Directory -Force $backupPath | Out-Null
+
+docker compose -f src/services/local-development/compose.yml exec -T mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers "$MYSQL_DATABASE"' &gt; "$backupPath\gammasite-mysql.sql"
+
+docker compose -f src/services/local-development/compose.yml exec -T finance-postgres sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=plain' &gt; "$backupPath\finance-postgres.sql"
+
+docker run --rm -v gammasite-local-development-content-media:/source -v "${backupPath}:/backup" alpine tar czf /backup/content-media.tar.gz -C /source .</code></pre>
+        <p>Lokale databasevolumes og content-media-volume er separate. En almindelig <code>docker compose down</code> sletter dem ikke; <code>down -v</code> sletter dem og m&aring; kun bruges, n&aring;r lokale data m&aring; nulstilles.</p>
+      </section>
+
+      <section class="section">
+        <h2>Lokal restore-test</h2>
+        <p>Restore skal testes i et isoleret lokalt milj&oslash; eller en midlertidig database. Kontroll&eacute;r f&oslash;rst, at backupfilen ikke er tom, og at den ikke indeholder secrets, som skal deles.</p>
+        <pre><code>Get-Content -Raw "$backupPath\gammasite-mysql.sql" |
+  docker compose -f src/services/local-development/compose.yml exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
+
+Get-Content -Raw "$backupPath\finance-postgres.sql" |
+  docker compose -f src/services/local-development/compose.yml exec -T finance-postgres sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+docker run --rm -v gammasite-local-development-content-media:/target -v "${backupPath}:/backup" alpine sh -c 'tar xzf /backup/content-media.tar.gz -C /target'</code></pre>
+        <p>Efter restore k&oslash;res schema-<code>validate</code>, appens healthcheck, login, en offentlig indholdsside og relevante betalings-/finansl&aelig;seflows. Restore-testen dokumenteres med dato, backup-id og resultat.</p>
+      </section>
+
+      <section class="section">
+        <h2>Production-restore</h2>
+        <ol class="steps">
+          <li>Stop eller begr&aelig;ns ber&oslash;rte skriveflows, hvis h&aelig;ndelsen kr&aelig;ver det, og f&oslash;lg <a href="../qa/kompromitterede-data.html">beredskabsplanen ved kompromitterede data</a>.</li>
+          <li>Brug Simplys backup/restore for applikationsdatabasen og Neons backup/branch/restore-funktion for Finance PostgreSQL. Brug ikke de lokale Compose-volumes som production-backup.</li>
+          <li>Gendan content-media fra den godkendte backup-lagring, og kontroll&eacute;r at <code>ContentMediaRootPath</code> peger p&aring; den gendannede placering.</li>
+          <li>K&oslash;r database-validering og en begr&aelig;nset smoke-test, f&oslash;r normal trafik og skriveadgang &aring;bnes igen.</li>
+          <li>Not&eacute;r tidspunkt, restore-kilde, ber&oslash;rte services, valideringsresultat og eventuelle manglende data.</li>
+        </ol>
+        <div class="callout callout--danger"><p>Del aldrig dumps, connection strings eller backup credentials i issues, logs eller dokumentationen. En restore kan overskrive data og skal godkendes af den ansvarlige for det valgte environment.</p></div>
+      </section>
+    </main>
+  </div>
+  <footer class="footer">GamMaSite dokumentation</footer>
+  <script src="../../js/app.js"></script>
+</body>
+</html>
