@@ -124,6 +124,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python src/database/scripts/cli.py --help
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run database management tests
+        shell: pwsh
+        run: |
+          python -m unittest discover `
+            -s src/test/database `
+            -p "test_*.py" `
+            -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Generate deployment plan
         if: ${{ inputs.action == 'deploy' }}
         shell: pwsh
