@@ -2867,6 +2867,9 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
   const [sort, setSort] = useState({ key: "postingGroup", direction: "asc" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState("");
+  const [isTableExpanded, setIsTableExpanded] = useState(false);
+
+  useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
 
   const load = () =>
     financeApi
@@ -2938,6 +2941,29 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
       setError(requestError.message);
     }
   };
+  const duplicateRow = async (row) => {
+    const sourceId = row.id.trim();
+    if (!sourceId) return setError("ID må ikke være tomt.");
+    const duplicateId = `${sourceId}-COPY`;
+    const rowKey = row._originalId || sourceId;
+    setSaving(rowKey);
+    setError("");
+    try {
+      const copied = await financeApi.createAdminPostingGroup({
+        id: duplicateId,
+        postingGroup: row.postingGroup || "",
+        context: row.context || "",
+      });
+      setRows((current) => [
+        ...current,
+        { ...copied, _originalId: copied.id },
+      ]);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving("");
+    }
+  };
   if (!isAdmin)
     return (
       <AdminLayout active="" canWrite={false}>
@@ -2967,11 +2993,24 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
       <SearchToolbar
         search={search}
         setSearch={setSearch}
-        pageSize={pageSize}
-        setPageSize={setPageSize}
         searchPlaceholder="Søg i posteringsgrupper"
       />
-      <div className="finance-live-panel finance-admin-budget-table finance-admin-groups-table">
+      <div className={`finance-live-panel finance-admin-budget-table finance-admin-groups-table${isTableExpanded ? " is-expanded" : ""}`}>
+        <div className="finance-admin-table-controls">
+          <label className="menu-table-page-size finance-admin-expanded-page-size">
+            <span>Vis</span>
+            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+              {[10, 25, 50, 100].map((size) => <option value={size} key={size}>{size}</option>)}
+            </select>
+            <span>pr. side</span>
+          </label>
+          <div className="finance-table-control-actions">
+            <TableExpansionButton
+              expanded={isTableExpanded}
+              onToggle={() => setIsTableExpanded((current) => !current)}
+            />
+          </div>
+        </div>
         <div className="finance-live-table-scroll">
           <table className="finance-live-table">
             <thead>
@@ -3039,8 +3078,17 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
                         {saving === key ? "Gemmer..." : "Gem"}
                       </button>
                       <button
+                        className="finance-admin-duplicate-button"
+                        type="button"
+                        disabled={saving === key}
+                        onClick={() => duplicateRow(row)}
+                      >
+                        Dupliker
+                      </button>
+                      <button
                         className="finance-admin-delete-button"
                         type="button"
+                        disabled={saving === key}
                         onClick={() => deleteRow(row)}
                       >
                         Slet
@@ -3058,6 +3106,15 @@ export function FinanceAdminPostingGroupsPage({ isAdmin }) {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="finance-admin-expanded-pagination">
+          <Pagination
+            page={currentPage}
+            pageCount={pageCount}
+            total={sorted.length}
+            pageSize={pageSize}
+            setPage={setPage}
+          />
         </div>
       </div>
       <Pagination
