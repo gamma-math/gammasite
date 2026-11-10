@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
 using GamMaSite.Controllers;
 using GamMaSite.Models;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 using System.Security.Claims;
+using System.Text.Json;
 using GamMaSite.ViewModels.Api;
 
 namespace GamMaSite.Tests;
@@ -54,6 +56,57 @@ public class ApiContentControllerTests
         Assert.IsType<NotFoundResult>(result);
         content.Verify(service => service.GetByIdAsync(7, false), Times.Once);
         content.Verify(service => service.GetByIdAsync(7, true), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetById_DoesNotExposeEventNotificationSettings()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        var item = new ContentItem
+        {
+            Id = 7,
+            Type = ContentTypes.Event,
+            EventNotificationSettings = EventNotificationSettingsPolicy.Never
+        };
+        content.Setup(service => service.GetByIdAsync(7, false)).ReturnsAsync(item);
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.GetById(7);
+
+        var response = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<ContentItemDto>(response.Value);
+        Assert.DoesNotContain("EventNotificationSettings", JsonSerializer.Serialize(response.Value), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetAdminById_ReturnsEventNotificationSettings()
+    {
+        var content = new Mock<IContentService>();
+        var registrations = new Mock<IEventRegistrationService>();
+        var accessControl = new Mock<IAccessControlService>();
+        var item = new ContentItem
+        {
+            Id = 7,
+            Type = ContentTypes.Event,
+            EventNotificationSettings = EventNotificationSettingsPolicy.Never
+        };
+        accessControl.Setup(service => service.CanEditEventAsync(It.IsAny<ClaimsPrincipal>(), 7)).ReturnsAsync(true);
+        content.Setup(service => service.GetByIdAsync(7, true)).ReturnsAsync(item);
+        var controller = new ApiContentController(content.Object, registrations.Object, accessControl.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = TestDoubles.User("admin-1") } }
+        };
+
+        var result = await controller.GetAdminById(7);
+
+        var response = Assert.IsType<OkObjectResult>(result);
+        var dto = Assert.IsType<AdminContentItemDto>(response.Value);
+        Assert.Equal(EventNotificationSettingsPolicy.Never, dto.EventNotificationSettings);
     }
 
     [Fact]

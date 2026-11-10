@@ -118,7 +118,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     }
     setIsLoading(true);
     Promise.all([
-      contentApi.getById(itemId),
+      contentApi.getAdminById(itemId),
       type === "EVENT" ? contentApi.access(itemId).catch(() => null) : Promise.resolve(null),
       type === "EVENT" ? paymentOffersApi.listForEvent(itemId).catch(() => []) : Promise.resolve([])
     ]).then(([item, access, offers]) => {
@@ -166,7 +166,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           });
           return next;
         });
-        const refreshed = await contentApi.getById(nextItem.id);
+        const refreshed = await contentApi.getAdminById(nextItem.id);
         nextItem = normalizeContentItem(refreshed, type);
         setPaymentOfferDrafts([]);
       }

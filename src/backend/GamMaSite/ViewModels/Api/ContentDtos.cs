@@ -39,8 +39,6 @@ namespace GamMaSite.ViewModels.Api
 
         public string Status { get; set; }
 
-        public string EventNotificationSettings { get; set; }
-
         public int? MaxParticipants { get; set; }
 
         public bool ShowOnFrontPage { get; set; }
@@ -64,6 +62,11 @@ namespace GamMaSite.ViewModels.Api
         public List<ContentLinkDto> Links { get; set; } = new List<ContentLinkDto>();
 
         public List<PaymentOfferDto> PaymentOffers { get; set; } = new List<PaymentOfferDto>();
+    }
+
+    public class AdminContentItemDto : ContentItemDto
+    {
+        public string EventNotificationSettings { get; set; }
     }
 
     public class SaveContentItemRequest
