@@ -10,6 +10,7 @@ import {
 import { Link, navigate } from "../routes/navigation.jsx";
 import { membersApi } from "../services/api.js";
 import { financeApi } from "../services/financeApi.js";
+import { FinanceBudgetUploadDialog } from "../components/FinanceBudgetUploadDialog.jsx";
 import { effectivePostingDate } from "../utils/financePostingDates.js";
 import * as XLSX from "xlsx";
 import "../styles/finance.css";
@@ -2273,22 +2274,27 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
   const [error, setError] = useState("");
   const [rowErrors, setRowErrors] = useState({});
   const [isTableExpanded, setIsTableExpanded] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   useExpandedTable(isTableExpanded, () => setIsTableExpanded(false));
+
+  const applyBudgetData = (result) => {
+    setData(result);
+    setRows(
+      (result.budgets || []).map((row) => ({
+        ...row,
+        _originalId: row.id,
+      })),
+    );
+  };
+
+  const refreshBudgets = async () => {
+    const result = await financeApi.adminBudgets();
+    applyBudgetData(result);
+  };
 
   useEffect(() => {
     if (!isAdmin) return;
-    financeApi
-      .adminBudgets()
-      .then((result) => {
-        setData(result);
-        setRows(
-          (result.budgets || []).map((row) => ({
-            ...row,
-            _originalId: row.id,
-          })),
-        );
-      })
-      .catch((requestError) => setError(requestError.message));
+    refreshBudgets().catch((requestError) => setError(requestError.message));
   }, [isAdmin]);
 
   const filtered = useMemo(() => {
@@ -2409,13 +2415,25 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
             Administrér budgetlinjer
           </p>
         </div>
-        <button
-          className="menu-create-button"
-          type="button"
-          onClick={() => navigate("/admin/finance/budgets/new")}
-        >
-          + Ny post
-        </button>
+        <div className="finance-admin-budget-header-actions">
+          <button
+            className="menu-create-button"
+            type="button"
+            onClick={() => navigate("/admin/finance/budgets/new")}
+          >
+            + Ny post
+          </button>
+          <button
+            className="frontpage-button finance-admin-upload-button"
+            type="button"
+            onClick={() => {
+              setError("");
+              setIsUploadOpen(true);
+            }}
+          >
+            +Upload
+          </button>
+        </div>
       </div>
       {error && <p className="finance-live-error">{error}</p>}
       {!data && !error && (
@@ -2641,6 +2659,12 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
             setPage={setPage}
           />
         </>
+      )}
+      {isUploadOpen && (
+        <FinanceBudgetUploadDialog
+          onClose={() => setIsUploadOpen(false)}
+          onSuccess={refreshBudgets}
+        />
       )}
     </AdminLayout>
   );

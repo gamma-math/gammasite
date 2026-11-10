@@ -938,6 +938,90 @@
 .finance-admin-budget-header {
   align-items: flex-start;
 }
+
+.finance-admin-budget-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.finance-admin-budget-header-actions .menu-create-button,
+.finance-admin-budget-header-actions .finance-admin-upload-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.finance-admin-budget-header-actions .finance-admin-upload-button {
+  color: var(--action-blue);
+  border-color: var(--action-line);
+  background: #fff;
+}
+
+.finance-budget-upload-modal {
+  width: min(560px, 100%);
+  height: auto;
+  max-height: min(620px, 92vh);
+}
+
+.finance-budget-upload-body {
+  display: grid;
+  gap: 18px;
+  overflow: auto;
+  padding: 24px;
+}
+
+.finance-budget-upload-body > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.finance-budget-upload-file {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #cbd8ed;
+  background: #f8fbff;
+}
+
+.finance-budget-upload-file .finance-import-file-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finance-budget-upload-body .finance-import-example-link {
+  width: fit-content;
+}
+
+@media (max-width: 640px) {
+  .finance-budget-upload-modal {
+    width: 100%;
+    max-height: 92vh;
+  }
+
+  .finance-admin-budget-header-actions {
+    justify-content: flex-start;
+  }
+
+  .finance-budget-upload-body {
+    padding: 18px;
+  }
+
+  .finance-budget-upload-file {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .finance-budget-upload-file .finance-import-file-button,
+  .finance-budget-upload-body .menu-editor-actions button {
+    width: 100% !important;
+  }
+}
+
 .finance-admin-budget-table {
   margin-top: 16px;
   border: 0;

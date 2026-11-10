@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GamMaSite.Services;
@@ -57,6 +59,34 @@ public sealed class FinanceReportServiceTests
 
         Assert.Contains("gyldigt", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task ImportBudgetCsv_RejectsEmptyIdBeforeOpeningDatabase()
+    {
+        using var csv = Csv("id;account number;account;postinggroup id;postinggroup;year;amount;budgettype\n;A-1;Test;Tom;Tom;2026;20000;BU\n");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            FinanceTestHelpers.ReportService().ImportAdminBudgetsAsync(csv, CancellationToken.None));
+
+        Assert.Contains("ID", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ImportBudgetCsv_RejectsDuplicateIdsBeforeOpeningDatabase()
+    {
+        using var csv = Csv(
+            "id;account number;account;postinggroup id;postinggroup;year;amount;budgettype\n" +
+            "2026-A-1;A-1;Test;Tom;Tom;2026;20000;BU\n" +
+            "2026-A-1;A-1;Test;Tom;Tom;2026;20000;BU\n");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            FinanceTestHelpers.ReportService().ImportAdminBudgetsAsync(csv, CancellationToken.None));
+
+        Assert.Contains("flere gange", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static MemoryStream Csv(string content) =>
+        new(Encoding.UTF8.GetBytes(content));
 
     [Fact]
     public async Task CreatePostingGroup_RejectsMissingIdBeforeOpeningDatabase()

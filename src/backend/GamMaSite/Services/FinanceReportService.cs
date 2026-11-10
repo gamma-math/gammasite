@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -177,6 +180,117 @@ namespace GamMaSite.Services
             AddNullableText(command, "forecast_type", update.ForecastType);
             await command.ExecuteNonQueryAsync(cancellationToken);
             return await ReadBudgetAsync(connection, update.Id.Trim(), cancellationToken);
+        }
+
+        public async Task<FinanceBudgetImportResultDto> ImportAdminBudgetsAsync(Stream csvStream, CancellationToken cancellationToken)
+        {
+            if (csvStream == null) throw new ArgumentException("CSV-filen mangler.");
+
+            using var reader = new StreamReader(
+                csvStream,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
+                detectEncodingFromByteOrderMarks: true,
+                leaveOpen: true);
+            var rows = FinanceBudgetCsvParser.Parse(await reader.ReadToEndAsync(cancellationToken));
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var row in rows)
+            {
+                try
+                {
+                    ValidateBudget(row.Update);
+                }
+                catch (ArgumentException exception)
+                {
+                    throw new ArgumentException($"CSV-række {row.RowNumber}: {exception.Message}");
+                }
+
+                if (!ids.Add(row.Update.Id.Trim()))
+                {
+                    throw new ArgumentException($"CSV-række {row.RowNumber}: ID '{row.Update.Id.Trim()}' findes flere gange i filen.");
+                }
+            }
+
+            await using var connection = new NpgsqlConnection(_writeConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+            var existingIds = await ReadExistingIdsAsync(
+                connection,
+                transaction,
+                "SELECT id FROM public.forecast WHERE id = ANY(@ids);",
+                "ids",
+                ids,
+                cancellationToken);
+            if (existingIds.Count > 0)
+            {
+                throw new ArgumentException($"Budget-ID findes allerede: {string.Join(", ", existingIds.OrderBy(id => id, StringComparer.Ordinal))}.");
+            }
+
+            var accountIds = rows.Select(row => row.Update.AccountId.Trim()).ToHashSet(StringComparer.Ordinal);
+            var existingAccountIds = await ReadExistingIdsAsync(
+                connection,
+                transaction,
+                "SELECT id FROM public.account WHERE id = ANY(@ids);",
+                "ids",
+                accountIds,
+                cancellationToken);
+            var missingAccount = rows
+                .FirstOrDefault(row => !existingAccountIds.Contains(row.Update.AccountId.Trim()));
+            if (missingAccount != null)
+            {
+                throw new ArgumentException($"CSV-række {missingAccount.RowNumber}: Account ID '{missingAccount.Update.AccountId.Trim()}' findes ikke i kontoplanen.");
+            }
+
+            var postingGroupIds = rows
+                .Select(row => row.Update.PostingGroupId?.Trim())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet(StringComparer.Ordinal);
+            var existingPostingGroupIds = await ReadExistingIdsAsync(
+                connection,
+                transaction,
+                "SELECT id FROM public.postering_group WHERE id = ANY(@ids);",
+                "ids",
+                postingGroupIds,
+                cancellationToken);
+            var missingPostingGroup = rows
+                .FirstOrDefault(row => !string.IsNullOrWhiteSpace(row.Update.PostingGroupId)
+                    && !existingPostingGroupIds.Contains(row.Update.PostingGroupId.Trim()));
+            if (missingPostingGroup != null)
+            {
+                throw new ArgumentException($"CSV-række {missingPostingGroup.RowNumber}: Posteringsgruppe '{missingPostingGroup.Update.PostingGroupId.Trim()}' findes ikke.");
+            }
+
+            await using var command = new NpgsqlCommand(@"
+                INSERT INTO public.forecast (id, account_id, postering_group_id, year_actual, forecast, forecast_type, created_at, updated_at)
+                VALUES (@id, @account_id, @posting_group_id, @year_actual, @forecast, @forecast_type, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+                connection,
+                transaction);
+            var idParameter = command.Parameters.Add("id", NpgsqlDbType.Text);
+            var accountParameter = command.Parameters.Add("account_id", NpgsqlDbType.Text);
+            var postingGroupParameter = command.Parameters.Add("posting_group_id", NpgsqlDbType.Text);
+            var yearParameter = command.Parameters.Add("year_actual", NpgsqlDbType.Integer);
+            var forecastParameter = command.Parameters.Add("forecast", NpgsqlDbType.Numeric);
+            var typeParameter = command.Parameters.Add("forecast_type", NpgsqlDbType.Text);
+            await command.PrepareAsync(cancellationToken);
+
+            foreach (var row in rows)
+            {
+                idParameter.Value = row.Update.Id.Trim();
+                accountParameter.Value = row.Update.AccountId.Trim();
+                postingGroupParameter.Value = string.IsNullOrWhiteSpace(row.Update.PostingGroupId)
+                    ? DBNull.Value
+                    : row.Update.PostingGroupId.Trim();
+                yearParameter.Value = row.Update.YearActual;
+                forecastParameter.Value = row.Update.Forecast;
+                typeParameter.Value = string.IsNullOrWhiteSpace(row.Update.ForecastType)
+                    ? DBNull.Value
+                    : row.Update.ForecastType.Trim();
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return new FinanceBudgetImportResultDto { ImportedCount = rows.Count };
         }
 
         public async Task<FinanceBudgetDto> UpdateAdminBudgetAsync(string originalId, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
@@ -604,7 +718,30 @@ namespace GamMaSite.Services
             if (update == null) throw new ArgumentException("Budgetposten mangler.");
             if (string.IsNullOrWhiteSpace(update.Id)) throw new ArgumentException("ID må ikke være tomt.");
             if (string.IsNullOrWhiteSpace(update.AccountId)) throw new ArgumentException("Account ID må ikke være tomt.");
-            if (update.YearActual < 1) throw new ArgumentException("År skal være gyldigt.");
+            if (update.YearActual < 1 || update.YearActual > 9999) throw new ArgumentException("År skal være gyldigt.");
+            if (decimal.Round(update.Forecast, 2) != update.Forecast || Math.Abs(update.Forecast) > 999999999999.99m)
+            {
+                throw new ArgumentException("Beløb skal have højst to decimaler og passe i databasen.");
+            }
+        }
+
+        private static async Task<HashSet<string>> ReadExistingIdsAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            string query,
+            string parameterName,
+            IEnumerable<string> ids,
+            CancellationToken cancellationToken)
+        {
+            var values = ids.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray();
+            if (values.Length == 0) return new HashSet<string>(StringComparer.Ordinal);
+
+            await using var command = new NpgsqlCommand(query, connection, transaction);
+            command.Parameters.Add(parameterName, NpgsqlDbType.Array | NpgsqlDbType.Text).Value = values;
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            while (await reader.ReadAsync(cancellationToken)) result.Add(reader.GetString(0));
+            return result;
         }
 
         private static async Task EnsureBudgetReferencesAsync(NpgsqlConnection connection, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
@@ -1165,6 +1302,11 @@ namespace GamMaSite.Services
         public int YearActual { get; set; }
         public decimal Forecast { get; set; }
         public string ForecastType { get; set; } = "";
+    }
+
+    public sealed class FinanceBudgetImportResultDto
+    {
+        public int ImportedCount { get; set; }
     }
 
     public sealed class FinancePostingGroupDto
