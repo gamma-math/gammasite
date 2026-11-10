@@ -129,6 +129,8 @@
             <tr><td>GET</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Henter &eacute;n budgetr&aelig;kke.</td></tr>
             <tr><td>PUT</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Opdaterer budget og <code>updated_at</code>.</td></tr>
             <tr><td>DELETE</td><td><code>/api/finance/admin/budgets/{id}</code></td><td><code>finance.edit.all</code></td><td>Sletter budgetr&aelig;kke.</td></tr>
+            <tr><td>GET</td><td><code>/api/finance/admin/budgets/template</code></td><td><code>finance.edit.all</code></td><td>Downloader en UTF-8 CSV-template med 2026 BU-budgetr&aelig;kker.</td></tr>
+            <tr><td>POST</td><td><code>/api/finance/admin/budgets/import</code></td><td><code>finance.edit.all</code></td><td>Multipart-feltet <code>file</code> importerer semikolonseparerede budgetter. UTF-8 og Windows-1252 accepteres; ID'er valideres mod eksisterende budgetter og relaterede konti/posteringsgrupper.</td></tr>
             <tr><td>GET</td><td><code>/api/finance/admin/accounts</code></td><td><code>finance.edit.all</code></td><td>Viser kontoplan og konto-/context-n&oslash;gler.</td></tr>
             <tr><td>GET</td><td><code>/api/finance/admin/posteringsgrupper</code></td><td><code>finance.edit.all</code></td><td>Viser posteringsgrupper og contexts.</td></tr>
             <tr><td>GET</td><td><code>/api/finance/admin/posteringsgrupper/{id}</code></td><td><code>finance.edit.all</code></td><td>Henter &eacute;n posteringsgruppe.</td></tr>

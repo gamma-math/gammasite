@@ -401,6 +401,28 @@
   min-width: 1000px;
   margin-bottom: 0;
 }
+.finance-admin-groups-table.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 18px 24px 24px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+.finance-admin-groups-table.is-expanded .finance-live-table-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.finance-admin-groups-table.is-expanded .finance-live-table {
+  min-width: 800px;
+  margin-bottom: 0;
+}
 .finance-admin-table-heading {
   color: var(--ink-strong);
   font-weight: 800;
@@ -577,7 +599,8 @@
   display: none;
 }
 .finance-admin-account-plan-table.is-expanded .finance-admin-expanded-pagination,
-.finance-admin-budget-table.is-expanded .finance-admin-expanded-pagination {
+.finance-admin-budget-table.is-expanded .finance-admin-expanded-pagination,
+.finance-admin-groups-table.is-expanded .finance-admin-expanded-pagination {
   display: block;
 }
 .finance-table-control-actions {
@@ -915,6 +938,90 @@
 .finance-admin-budget-header {
   align-items: flex-start;
 }
+
+.finance-admin-budget-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.finance-admin-budget-header-actions .menu-create-button,
+.finance-admin-budget-header-actions .finance-admin-upload-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.finance-admin-budget-header-actions .finance-admin-upload-button {
+  color: var(--action-blue);
+  border-color: var(--action-line);
+  background: #fff;
+}
+
+.finance-budget-upload-modal {
+  width: min(560px, 100%);
+  height: auto;
+  max-height: min(620px, 92vh);
+}
+
+.finance-budget-upload-body {
+  display: grid;
+  gap: 18px;
+  overflow: auto;
+  padding: 24px;
+}
+
+.finance-budget-upload-body > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.finance-budget-upload-file {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #cbd8ed;
+  background: #f8fbff;
+}
+
+.finance-budget-upload-file .finance-import-file-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finance-budget-upload-body .finance-import-example-link {
+  width: fit-content;
+}
+
+@media (max-width: 640px) {
+  .finance-budget-upload-modal {
+    width: 100%;
+    max-height: 92vh;
+  }
+
+  .finance-admin-budget-header-actions {
+    justify-content: flex-start;
+  }
+
+  .finance-budget-upload-body {
+    padding: 18px;
+  }
+
+  .finance-budget-upload-file {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .finance-budget-upload-file .finance-import-file-button,
+  .finance-budget-upload-body .menu-editor-actions button {
+    width: 100% !important;
+  }
+}
+
 .finance-admin-budget-table {
   margin-top: 16px;
   border: 0;
@@ -1033,7 +1140,8 @@
   width: 128px;
 }
 .finance-admin-save-button,
-.finance-admin-cancel-button {
+.finance-admin-cancel-button,
+.finance-admin-duplicate-button {
   padding: 9px 12px;
   border: 0;
   border-radius: 10px;
@@ -1041,6 +1149,10 @@
   background: var(--action-soft);
   font-weight: 800;
   cursor: pointer;
+}
+.finance-admin-duplicate-button {
+  border: 1px solid var(--action-line);
+  background: #fff;
 }
 .finance-admin-delete-button {
   padding: 9px 12px;
@@ -1062,7 +1174,7 @@
   table-layout: fixed;
 }
 .finance-admin-groups-table .finance-admin-budget-actions {
-  width: 150px;
+  width: 220px;
   text-align: center;
 }
 .finance-admin-budgets-table,
@@ -1083,6 +1195,11 @@
   border-radius: 0;
 }
 .finance-admin-save-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.finance-admin-duplicate-button:disabled,
+.finance-admin-delete-button:disabled {
   cursor: wait;
   opacity: 0.6;
 }

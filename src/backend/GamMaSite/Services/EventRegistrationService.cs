@@ -529,7 +529,8 @@ namespace GamMaSite.Services
 
         private async Task SendEventConfirmationAsync(EventRegistration registration, ContentItem content)
         {
-            if (_systemEmailTemplateService == null || registration?.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
+            if (!EventNotificationSettingsPolicy.ShouldSendRegistrationConfirmation(content?.EventNotificationSettings) ||
+                _systemEmailTemplateService == null || registration?.User == null || string.IsNullOrWhiteSpace(registration.User.Email))
             {
                 return;
             }
@@ -553,7 +554,8 @@ namespace GamMaSite.Services
 
         private async Task SendWaitlistPromotionEmailsAsync(ContentItem content, IReadOnlyList<int> registrationIds)
         {
-            if (_systemEmailTemplateService == null || registrationIds == null || registrationIds.Count == 0)
+            if (!EventNotificationSettingsPolicy.ShouldSendWaitlistPromotion(content?.EventNotificationSettings) ||
+                _systemEmailTemplateService == null || registrationIds == null || registrationIds.Count == 0)
             {
                 return;
             }

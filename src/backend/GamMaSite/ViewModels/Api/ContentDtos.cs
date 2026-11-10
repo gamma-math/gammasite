@@ -64,6 +64,11 @@ namespace GamMaSite.ViewModels.Api
         public List<PaymentOfferDto> PaymentOffers { get; set; } = new List<PaymentOfferDto>();
     }
 
+    public class AdminContentItemDto : ContentItemDto
+    {
+        public string EventNotificationSettings { get; set; }
+    }
+
     public class SaveContentItemRequest
     {
         public string Title { get; set; }
@@ -81,6 +86,8 @@ namespace GamMaSite.ViewModels.Api
         public string Type { get; set; }
 
         public string Status { get; set; }
+
+        public string EventNotificationSettings { get; set; }
 
         public int? MaxParticipants { get; set; }
 

@@ -114,6 +114,7 @@ namespace GamMaSite.Data
                 entity.Property(m => m.Tags).HasMaxLength(512);
                 entity.Property(m => m.Type).HasMaxLength(32).IsRequired();
                 entity.Property(m => m.Status).HasMaxLength(32).IsRequired();
+                entity.Property(m => m.EventNotificationSettings).HasMaxLength(32);
                 entity.Property(m => m.ShowOnFrontPage).HasDefaultValue(true);
                 entity.Property(m => m.Location).HasMaxLength(256);
                 entity.Property(m => m.CreatedByUserId).HasMaxLength(128);

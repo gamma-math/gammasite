@@ -87,6 +87,22 @@ public sealed class ApiFinanceControllerTests
     }
 
     [Fact]
+    public void DownloadBudgetTemplate_Returns2026BudgetCsv()
+    {
+        var result = Controller(new DefaultHttpContext()).DownloadBudgetTemplate();
+
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("budget-template-2026-BU.csv", file.FileDownloadName);
+        Assert.Equal("text/csv; charset=utf-8", file.ContentType);
+        var template = Encoding.UTF8.GetString(file.FileContents);
+        Assert.Equal(28, template.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Length);
+        Assert.DoesNotContain(";Tom;Tom;", template);
+        Assert.Contains(";;;2026;", template);
+        Assert.Contains("2026-A-1-1-1;A-1-1-1;Arrangement", template);
+        Assert.Contains("2026-Ø-4-14-2;Ø-4-14-2", template);
+    }
+
+    [Fact]
     public async Task ImportCsv_RequiresAtLeastOneFile()
     {
         var result = await Controller(new DefaultHttpContext()).ImportCsv(null, null, true, CancellationToken.None);

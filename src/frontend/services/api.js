@@ -229,6 +229,7 @@ export const contentApi = {
   listAdmin: (type) => request(`/api/content/admin${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   getBySlug: (slug) => request(`/api/content/slug/${encodeURIComponent(slug)}`),
   getById: (id) => request(`/api/content/${id}`),
+  getAdminById: (id) => request(`/api/content/admin/${id}`),
   access: (id) => request(`/api/content/${id}/access`),
   create: (payload) => request("/api/content", { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) => request(`/api/content/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
