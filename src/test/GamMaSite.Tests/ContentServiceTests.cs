@@ -77,6 +77,38 @@ public class ContentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PersistsEventNotificationSettings()
+    {
+        await using var db = CreateDb();
+
+        var item = await new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Quiet event",
+            Slug = "quiet-event",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            EventNotificationSettings = EventNotificationSettingsPolicy.Never
+        }, "admin");
+
+        Assert.Equal(EventNotificationSettingsPolicy.Never, item.EventNotificationSettings);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsUnknownEventNotificationSettings()
+    {
+        await using var db = CreateDb();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => new ContentService(db).CreateAsync(new SaveContentItemRequest
+        {
+            Title = "Invalid event",
+            Slug = "invalid-event-notification-settings",
+            Type = ContentTypes.Event,
+            Status = ContentStatuses.Published,
+            EventNotificationSettings = "SOMETIMES"
+        }, "admin"));
+    }
+
+    [Fact]
     public async Task CreateAsync_PersistsEventRegistrationDeadline()
     {
         await using var db = CreateDb();

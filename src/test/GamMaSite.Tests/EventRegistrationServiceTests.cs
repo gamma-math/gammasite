@@ -53,6 +53,23 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_DoesNotSendConfirmationWhenOnlyPaymentOfferNotificationsAreEnabled()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1));
+        eventItem.EventNotificationSettings = EventNotificationSettingsPolicy.OnlyWhenNoPaymentOffer;
+        db.ContentItems.Add(eventItem);
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+
+        await new EventRegistrationService(db, emails.Object).RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        emails.Verify(value => value.SendEventConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ContentItem>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
     public async Task RegisterAsync_CompletesWhenEventConfirmationEmailFails()
     {
         await using var db = CreateDb();
@@ -480,6 +497,28 @@ public class EventRegistrationServiceTests
 
         emails.Verify(value => value.SendWaitlistPromotionAsync(
             "two@example.com", It.IsAny<string>(), It.IsAny<ContentItem>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UnregisterAsync_DoesNotSendPromotionEmailWhenNotificationsAreDisabled()
+    {
+        await using var db = CreateDb();
+        db.Users.AddRange(
+            new SiteUser { Id = "user-1", UserName = "user-1", Email = "one@example.com" },
+            new SiteUser { Id = "user-2", UserName = "user-2", Email = "two@example.com" });
+        var eventItem = Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1), 1);
+        eventItem.EventNotificationSettings = EventNotificationSettingsPolicy.Never;
+        db.ContentItems.Add(eventItem);
+        db.EventRegistrations.AddRange(
+            new EventRegistration { ContentItemId = 1, UserId = "user-1", RegistrationType = RegistrationTypes.Attendee, Registered = true },
+            new EventRegistration { ContentItemId = 1, UserId = "user-2", RegistrationType = RegistrationTypes.Waitlisted, Registered = true, Created = DateTime.UtcNow.AddMinutes(-1) });
+        await db.SaveChangesAsync();
+        var emails = new Mock<ISystemEmailTemplateService>();
+
+        await new EventRegistrationService(db, emails.Object).UnregisterAsync(1, "user-1");
+
+        emails.Verify(value => value.SendWaitlistPromotionAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ContentItem>()), Times.Never);
     }
 
     [Fact]

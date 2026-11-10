@@ -121,6 +121,7 @@ namespace GamMaSite.Services
         {
             var now = DateTime.UtcNow;
             var status = NormalizeStatus(request.Status);
+            var type = NormalizeType(request.Type);
             var item = new ContentItem
             {
                 Title = Required(request.Title, nameof(request.Title)),
@@ -129,13 +130,14 @@ namespace GamMaSite.Services
                 Body = request.Body,
                 PictureUrl = request.PictureUrl,
                 Tags = request.Tags,
-                Type = NormalizeType(request.Type),
+                Type = type,
                 Status = status,
+                EventNotificationSettings = NormalizeEventNotificationSettings(type, request.EventNotificationSettings),
                 MaxParticipants = ValidateMaxParticipants(request.MaxParticipants),
                 ShowOnFrontPage = request.ShowOnFrontPage,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
-                RegistrationDeadline = ValidateRegistrationDeadline(request.Type, request.StartDate, request.RegistrationDeadline),
+                RegistrationDeadline = ValidateRegistrationDeadline(type, request.StartDate, request.RegistrationDeadline),
                 Location = request.Location,
                 CreatedByUserId = createdByUserId,
                 Created = now,
@@ -190,6 +192,7 @@ namespace GamMaSite.Services
             item.Tags = request.Tags;
             item.Type = nextType;
             item.Status = status;
+            item.EventNotificationSettings = NormalizeEventNotificationSettings(nextType, request.EventNotificationSettings);
             item.MaxParticipants = nextMaxParticipants;
             item.ShowOnFrontPage = request.ShowOnFrontPage;
             item.StartDate = request.StartDate;
@@ -551,6 +554,13 @@ namespace GamMaSite.Services
             }
 
             return registrationDeadline;
+        }
+
+        private static string NormalizeEventNotificationSettings(string type, string value)
+        {
+            return string.Equals(type, ContentTypes.Event, StringComparison.OrdinalIgnoreCase)
+                ? EventNotificationSettingsPolicy.Normalize(value)
+                : null;
         }
 
         private async Task EnsureMaxParticipantsCanBeReducedAsync(ContentItem item, string nextType, int? nextMaxParticipants)

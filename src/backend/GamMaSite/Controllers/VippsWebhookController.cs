@@ -333,7 +333,8 @@ public sealed class VippsWebhookController : ControllerBase
                 offer,
                 DateTime.UtcNow,
                 recurring: false,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                eventNotificationSettings: eventItem.EventNotificationSettings);
         }
     }
 
@@ -769,9 +770,11 @@ public sealed class VippsWebhookController : ControllerBase
         PaymentOffer offer,
         DateTime paymentDate,
         bool recurring,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string eventNotificationSettings = null)
     {
-        if (_systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
+        if (!EventNotificationSettingsPolicy.ShouldSendPaymentConfirmation(offer?.Scope, eventNotificationSettings) ||
+            _systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
         {
             return;
         }

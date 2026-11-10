@@ -39,6 +39,8 @@ namespace GamMaSite.ViewModels.Api
 
         public string Status { get; set; }
 
+        public string EventNotificationSettings { get; set; }
+
         public int? MaxParticipants { get; set; }
 
         public bool ShowOnFrontPage { get; set; }
@@ -81,6 +83,8 @@ namespace GamMaSite.ViewModels.Api
         public string Type { get; set; }
 
         public string Status { get; set; }
+
+        public string EventNotificationSettings { get; set; }
 
         public int? MaxParticipants { get; set; }
 
