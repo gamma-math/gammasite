@@ -20,14 +20,7 @@ namespace GamMaSite.Services
     {
         private readonly string _connectionString;
         private readonly IFinanceMobilePayReferenceService _mobilePayReferenceService;
-        private static readonly Encoding Windows1252 = CreateWindows1252Encoding();
         private const string UnknownPayerName = "Unknown";
-
-        private static Encoding CreateWindows1252Encoding()
-        {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            return Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-        }
 
         private static readonly IReadOnlyList<CsvColumnRule> BankCsvSchema = new[]
         {
@@ -939,24 +932,7 @@ namespace GamMaSite.Services
 
         private static string ReadCsvText(Stream stream)
         {
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            var bytes = buffer.ToArray();
-
-            try
-            {
-                // Use strict UTF-8 first so legacy ANSI/Windows-1252 files can
-                // be detected instead of silently becoming replacement chars.
-                return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
-                    .GetString(bytes);
-            }
-            catch (DecoderFallbackException)
-            {
-                // Danish bank exports are commonly Windows-1252. Decode with
-                // the actual code page so punctuation such as smart quotes
-                // and the euro sign is preserved as well as Danish letters.
-                return Windows1252.GetString(bytes);
-            }
+            return FinanceCsvTextReader.Read(stream);
         }
 
         private static void ValidateCsvSchema(

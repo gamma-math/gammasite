@@ -92,6 +92,21 @@ export const financeApi = {
     }
     return response.json();
   },
+  importAdminBudgets: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await financeFetch("/api/finance/admin/budgets/import", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData,
+    });
+    const payload = response.headers.get("content-type")?.includes("json")
+      ? await response.json()
+      : null;
+    if (!response.ok)
+      throw new Error(payload?.error || "Budgetterne kunne ikke importeres.");
+    return payload;
+  },
   adminAccounts: async () => {
     const response = await financeFetch("/api/finance/admin/accounts", {
       credentials: "same-origin",

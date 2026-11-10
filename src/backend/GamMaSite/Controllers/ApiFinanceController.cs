@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Claims;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,37 @@ namespace GamMaSite.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IStripeService _stripeService;
+        private static readonly string[] BudgetTemplateRows =
+        {
+            "id;account number;account;postinggroup id;postinggroup;year;amount;budgettype",
+            "2026-A-1-1-1;A-1-1-1;Arrangement - Deltagerbetaling - Indtægt;;;2026;20000;BU",
+            "2026-A-1-1-2;A-1-1-2;Arrangement - Deltagerbetaling - Udgift;;;2026;0;BU",
+            "2026-A-1-2-1;A-1-2-1;Arrangement - Lokale - Indtægt;;;2026;0;BU",
+            "2026-A-1-2-2;A-1-2-2;Arrangement - Lokale - Udgift;;;2026;-5000;BU",
+            "2026-A-1-3-1;A-1-3-1;Arrangement - Hytteleje - Indtægt;;;2026;0;BU",
+            "2026-A-1-3-2;A-1-3-2;Arrangement - Hytteleje - Udgift;;;2026;-7000;BU",
+            "2026-A-1-4-1;A-1-4-1;Arrangement - Mad og drikke - Indtægt;;;2026;0;BU",
+            "2026-A-1-4-2;A-1-4-2;Arrangement - Mad og drikke - Udgift;;;2026;-22000;BU",
+            "2026-A-1-5-1;A-1-5-1;Arrangement - Øvrige - Indtægt;;;2026;0;BU",
+            "2026-A-1-5-2;A-1-5-2;Arrangement - Øvrige - Udgift;;;2026;-1000;BU",
+            "2026-D-2-10-1;D-2-10-1;Drift - Øvrige - Indtægt;;;2026;0;BU",
+            "2026-D-2-10-2;D-2-10-2;Drift - Øvrige - Udgift;;;2026;0;BU",
+            "2026-D-2-6-1;D-2-6-1;Drift - IT - Indtægt;;;2026;0;BU",
+            "2026-D-2-6-2;D-2-6-2;Drift - IT - Udgift;;;2026;-1200;BU",
+            "2026-D-2-7-1;D-2-7-1;Drift - Bank - Indtægt;;;2026;0;BU",
+            "2026-D-2-7-2;D-2-7-2;Drift - Bank - Udgift;;;2026;-1000;BU",
+            "2026-D-2-8-1;D-2-8-1;Drift - Mobilepay - Indtægt;;;2026;0;BU",
+            "2026-D-2-8-2;D-2-8-2;Drift - Mobilepay - Udgift;;;2026;-300;BU",
+            "2026-D-2-9-1;D-2-9-1;Drift - Bestyelse - Indtægt;;;2026;0;BU",
+            "2026-D-2-9-2;D-2-9-2;Drift - Bestyelse - Udgift;;;2026;-3000;BU",
+            "2026-K-3-11-1;K-3-11-1;Kontigent - Virksomhedskontigent - Indtægt;;;2026;10000;BU",
+            "2026-K-3-11-2;K-3-11-2;Kontigent - Virksomhedskontigent - Udgift;;;2026;0;BU",
+            "2026-K-3-12-1;K-3-12-1;Kontigent - Medlemskontigent - Indtægt;;;2026;11250;BU",
+            "2026-Ø-4-13-1;Ø-4-13-1;Øvrige - Rekruttering - Indtægt;;;2026;0;BU",
+            "2026-Ø-4-13-2;Ø-4-13-2;Øvrige - Rekruttering - Udgift;;;2026;-1000;BU",
+            "2026-Ø-4-14-1;Ø-4-14-1;Øvrige - Øvrige - Indtægt;;;2026;0;BU",
+            "2026-Ø-4-14-2;Ø-4-14-2;Øvrige - Øvrige - Udgift;;;2026;0;BU"
+        };
 
         public ApiFinanceController(
             FinanceReportService financeReportService,
@@ -148,6 +180,45 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetAdminAccounts(CancellationToken cancellationToken)
         {
             return Ok(await _financeReportService.GetAdminAccountsAsync(cancellationToken));
+        }
+
+        [HttpGet("admin/budgets/template")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
+        public IActionResult DownloadBudgetTemplate()
+        {
+            var template = string.Join("\r\n", BudgetTemplateRows) + "\r\n";
+            var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(template)).ToArray();
+            return File(bytes, "text/csv; charset=utf-8", "budget-template-2026-BU.csv");
+        }
+
+        [HttpPost("admin/budgets/import")]
+        [Authorize(Policy = PermissionPolicies.FinanceEditAll)]
+        public async Task<IActionResult> ImportAdminBudgets([FromForm] IFormFile file, CancellationToken cancellationToken)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { error = "Vælg en CSV-fil." });
+            }
+
+            if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { error = "Budgetfilen skal være en CSV-fil." });
+            }
+
+            if (file.Length > 10 * 1024 * 1024)
+            {
+                return BadRequest(new { error = "CSV-filen må højst være 10 MB." });
+            }
+
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                return Ok(await _financeReportService.ImportAdminBudgetsAsync(stream, cancellationToken));
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(new { error = exception.Message });
+            }
         }
 
         [HttpPost("admin/budgets")]
