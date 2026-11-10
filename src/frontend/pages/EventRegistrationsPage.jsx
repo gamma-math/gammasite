@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { CircleMinus, CirclePlus, LogIn, Plus, X } from "lucide-react";
+import { CircleMinus, CirclePlus, LogIn, MessageCircle, Plus, X } from "lucide-react";
 import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
 import { Link } from "../routes/navigation.jsx";
@@ -17,6 +17,8 @@ const registrationTypes = [
   { value: "WAITLISTED", label: "Venteliste" }
 ];
 
+const MAX_REGISTRATION_NOTE_LENGTH = 1024;
+
 /**
  * Admin/member view for event attendees, including mobile-friendly row editing.
  */
@@ -33,7 +35,9 @@ export function EventRegistrationsPage({ slug, user }) {
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [registrationToMarkUnpaid, setRegistrationToMarkUnpaid] = useState(null);
   const [isUpdatingPaymentStatus, setIsUpdatingPaymentStatus] = useState(false);
-  const [registrationNoteToView, setRegistrationNoteToView] = useState(null);
+  const [registrationNoteToEdit, setRegistrationNoteToEdit] = useState(null);
+  const [registrationNoteDraft, setRegistrationNoteDraft] = useState("");
+  const [isSavingRegistrationNote, setIsSavingRegistrationNote] = useState(false);
   const [error, setError] = useState("");
   const canViewRegistrations = user.isAuthenticated;
   const permissionCanEditRegistrations = hasAnyPermission(user, [permissions.contentEdit, permissions.registrationsEdit]);
@@ -80,7 +84,7 @@ export function EventRegistrationsPage({ slug, user }) {
     const payload = {
       registrationType: registration.registrationType,
       registered: registration.registered,
-      responseText: registration.responseText,
+      responseText: getRegistrationNote(registration),
       ...changes
     };
     try {
@@ -92,6 +96,35 @@ export function EventRegistrationsPage({ slug, user }) {
       setError(requestError.message);
       return false;
     }
+  }
+
+  function openRegistrationNoteEditor(registration) {
+    setError("");
+    setRegistrationNoteToEdit(registration);
+    setRegistrationNoteDraft(getRegistrationNote(registration));
+  }
+
+  function closeRegistrationNoteEditor() {
+    if (isSavingRegistrationNote) {
+      return;
+    }
+
+    setRegistrationNoteToEdit(null);
+    setRegistrationNoteDraft("");
+  }
+
+  async function saveRegistrationNote(event) {
+    event.preventDefault();
+    if (!registrationNoteToEdit || isSavingRegistrationNote) {
+      return;
+    }
+
+    setIsSavingRegistrationNote(true);
+    const updated = await updateRegistration(registrationNoteToEdit, { responseText: registrationNoteDraft });
+    if (updated) {
+      closeRegistrationNoteEditor();
+    }
+    setIsSavingRegistrationNote(false);
   }
 
   function requestRegisteredChange(registration, registered) {
@@ -281,6 +314,7 @@ export function EventRegistrationsPage({ slug, user }) {
           <tbody>
             {sortedRegistrations.map((registration) => {
               const isExpanded = expandedRegistrationIds.has(registration.id);
+              const hasNote = hasRegistrationNote(registration);
               return (
                 <Fragment key={registration.id}>
                   <tr>
@@ -298,16 +332,16 @@ export function EventRegistrationsPage({ slug, user }) {
                           </button>
                         )}
                         <span className="menu-registration-avatar">{attendeeInitials(registration)}</span>
-                        <span>{attendeeName(registration)}</span>
-                        {canEditRegistrations && hasRegistrationNote(registration) && (
+                        <span className="menu-registration-name">{attendeeName(registration)}</span>
+                        {canEditRegistrations && (
                           <button
-                            className="menu-registration-note-button"
+                            className={`menu-registration-note-button ${hasNote ? "menu-registration-note-button-has-note" : "menu-registration-note-button-empty"}`}
                             type="button"
-                            aria-label={`Vis note fra ${attendeeName(registration)}`}
-                            title="Vis note"
-                            onClick={() => setRegistrationNoteToView(registration)}
+                            aria-label={`${hasNote ? "Rediger" : "Skriv"} note for ${attendeeName(registration)}`}
+                            title={hasNote ? "Rediger note" : "Skriv note"}
+                            onClick={() => openRegistrationNoteEditor(registration)}
                           >
-                            🗨️
+                            <MessageCircle size={16} strokeWidth={2.2} />
                           </button>
                         )}
                       </div>
@@ -397,26 +431,42 @@ export function EventRegistrationsPage({ slug, user }) {
         />
       )}
 
-      {registrationNoteToView && (
-        <div className="admin-preview-modal-backdrop" role="presentation" onClick={() => setRegistrationNoteToView(null)}>
-          <section className="admin-recipient-modal" role="dialog" aria-modal="true" aria-label="Note" onClick={(event) => event.stopPropagation()}>
+      {registrationNoteToEdit && (
+        <div className="admin-preview-modal-backdrop" role="presentation" onClick={closeRegistrationNoteEditor}>
+          <section className="admin-recipient-modal" role="dialog" aria-modal="true" aria-label="Rediger note" onClick={(event) => event.stopPropagation()}>
             <div className="admin-preview-modal-header">
               <div>
                 <p className="menu-section-title">Note</p>
-                <h2>{attendeeName(registrationNoteToView)}</h2>
+                <h2>{attendeeName(registrationNoteToEdit)}</h2>
               </div>
-              <button className="admin-preview-close" type="button" aria-label="Luk note" onClick={() => setRegistrationNoteToView(null)}>
+              <button className="admin-preview-close" type="button" aria-label="Luk note" onClick={closeRegistrationNoteEditor} disabled={isSavingRegistrationNote}>
                 <X size={20} />
               </button>
             </div>
-            <div className="admin-send-confirm-body">
-              <p className="event-registration-note-content">{getRegistrationNote(registrationNoteToView)}</p>
-              <div className="menu-editor-actions">
-                <button className="frontpage-button frontpage-button-secondary" type="button" onClick={() => setRegistrationNoteToView(null)}>
-                  Luk
-                </button>
+            <form className="admin-send-confirm-body" onSubmit={saveRegistrationNote}>
+              <label className="admin-field event-registration-admin-note">
+                <span>Note</span>
+                <textarea
+                  autoFocus
+                  value={registrationNoteDraft}
+                  maxLength={MAX_REGISTRATION_NOTE_LENGTH}
+                  onChange={(event) => setRegistrationNoteDraft(event.target.value)}
+                  rows="5"
+                />
+              </label>
+              <div className="event-registration-note-footer">
+                <small>{registrationNoteDraft.length}/{MAX_REGISTRATION_NOTE_LENGTH}</small>
+                <div className="menu-editor-actions">
+                  <button className="frontpage-button frontpage-button-secondary" type="button" onClick={closeRegistrationNoteEditor} disabled={isSavingRegistrationNote}>
+                    Luk
+                  </button>
+                  <button className="frontpage-button frontpage-button-primary" type="submit" disabled={isSavingRegistrationNote}>
+                    {isSavingRegistrationNote ? "Gemmer..." : "Gem note"}
+                  </button>
+                </div>
               </div>
-            </div>
+              {error && <p className="status-message status-message-error" role="alert">{error}</p>}
+            </form>
           </section>
         </div>
       )}

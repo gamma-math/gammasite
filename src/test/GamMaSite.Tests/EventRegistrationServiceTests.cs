@@ -121,6 +121,26 @@ public class EventRegistrationServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_StoresRegistrationNoteForAdminEditing()
+    {
+        await using var db = CreateDb();
+        db.Users.Add(new SiteUser { Id = "user-1", UserName = "user-1", Email = "user@example.com" });
+        db.ContentItems.Add(Event(ContentStatuses.Published, DateTime.UtcNow.AddDays(1)));
+        await db.SaveChangesAsync();
+        var service = new EventRegistrationService(db);
+        var registration = await service.RegisterAsync(1, "user-1", new SaveEventRegistrationRequest());
+
+        var updated = await service.UpdateAsync(1, registration.Id, new UpdateEventRegistrationRequest
+        {
+            RegistrationType = RegistrationTypes.Attendee,
+            Registered = false,
+            ResponseText = "Allergi mod nødder"
+        });
+
+        Assert.Equal("Allergi mod nødder", updated.ResponseText);
+    }
+
+    [Fact]
     public void RegistrationRules_CloseAtExactRegistrationDeadline()
     {
         var deadline = DateTime.UtcNow.AddHours(1);
