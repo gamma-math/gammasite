@@ -49,7 +49,7 @@ namespace GamMaSite.Controllers
         public async Task<IActionResult> GetAll([FromQuery] string type, [FromQuery] string status)
         {
             var items = await _contentService.GetAllAsync(type, status);
-            return Ok(items.Select(item => item.ToDto()));
+            return Ok(items.Select(item => item.ToAdminDto()));
         }
 
         [HttpGet("{id:int}")]
@@ -58,6 +58,19 @@ namespace GamMaSite.Controllers
         {
             var item = await _contentService.GetByIdAsync(id, await _accessControl.CanEditEventAsync(User, id));
             return item == null ? NotFound() : Ok(item.ToDto());
+        }
+
+        [HttpGet("admin/{id:int}")]
+        [Authorize]
+        public async Task<IActionResult> GetAdminById(int id)
+        {
+            if (!await _accessControl.CanEditEventAsync(User, id))
+            {
+                return Forbid();
+            }
+
+            var item = await _contentService.GetByIdAsync(id, true);
+            return item == null ? NotFound() : Ok(item.ToAdminDto());
         }
 
         [HttpGet("{id:int}/access")]
@@ -91,7 +104,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var item = await _contentService.CreateAsync(request, User.FindFirstValue(ClaimTypes.NameIdentifier));
-                return CreatedAtAction(nameof(GetById), new { id = item.Id }, item.ToDto());
+                return CreatedAtAction(nameof(GetAdminById), new { id = item.Id }, item.ToAdminDto());
             }
             catch (ArgumentException ex)
             {
@@ -117,7 +130,7 @@ namespace GamMaSite.Controllers
             try
             {
                 var item = await _contentService.UpdateAsync(id, request);
-                return item == null ? NotFound() : Ok(item.ToDto());
+                return item == null ? NotFound() : Ok(item.ToAdminDto());
             }
             catch (ArgumentException ex)
             {

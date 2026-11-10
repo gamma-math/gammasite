@@ -11,39 +11,49 @@ namespace GamMaSite.ViewModels.Api
     {
         public static ContentItemDto ToDto(this ContentItem item)
         {
-            return new ContentItemDto
-            {
-                Id = item.Id,
-                Title = item.Title,
-                Slug = item.Slug,
-                Summary = item.Summary,
-                Body = item.Body,
-                PictureUrl = item.PictureUrl,
-                Tags = item.Tags,
-                Type = item.Type,
-                Status = item.Status,
-                MaxParticipants = item.MaxParticipants,
-                ShowOnFrontPage = item.ShowOnFrontPage,
-                StartDate = item.StartDate,
-                EndDate = item.EndDate,
-                RegistrationDeadline = item.RegistrationDeadline,
-                Location = item.Location,
-                CreatedByUserId = item.CreatedByUserId,
-                Created = item.Created,
-                Updated = item.Updated,
-                PublishedAt = item.PublishedAt,
-                Links = item.Links
-                    .Where(link => !IsManagedPaymentLink(link))
-                    .OrderBy(link => link.SortOrder)
-                    .Select(link => link.ToDto())
-                    .ToList(),
-                PaymentOffers = item.PaymentOffers
-                    .Where(offer => offer.IsActive)
-                    .OrderBy(offer => offer.Created)
-                    .ThenBy(offer => offer.Id)
-                    .Select(offer => offer.ToDto(item))
-                    .ToList()
-            };
+            return MapContentItem(item, new ContentItemDto());
+        }
+
+        public static AdminContentItemDto ToAdminDto(this ContentItem item)
+        {
+            var dto = MapContentItem(item, new AdminContentItemDto());
+            dto.EventNotificationSettings = item.EventNotificationSettings;
+            return dto;
+        }
+
+        private static T MapContentItem<T>(ContentItem item, T dto) where T : ContentItemDto
+        {
+            dto.Id = item.Id;
+            dto.Title = item.Title;
+            dto.Slug = item.Slug;
+            dto.Summary = item.Summary;
+            dto.Body = item.Body;
+            dto.PictureUrl = item.PictureUrl;
+            dto.Tags = item.Tags;
+            dto.Type = item.Type;
+            dto.Status = item.Status;
+            dto.MaxParticipants = item.MaxParticipants;
+            dto.ShowOnFrontPage = item.ShowOnFrontPage;
+            dto.StartDate = item.StartDate;
+            dto.EndDate = item.EndDate;
+            dto.RegistrationDeadline = item.RegistrationDeadline;
+            dto.Location = item.Location;
+            dto.CreatedByUserId = item.CreatedByUserId;
+            dto.Created = item.Created;
+            dto.Updated = item.Updated;
+            dto.PublishedAt = item.PublishedAt;
+            dto.Links = item.Links
+                .Where(link => !IsManagedPaymentLink(link))
+                .OrderBy(link => link.SortOrder)
+                .Select(link => link.ToDto())
+                .ToList();
+            dto.PaymentOffers = item.PaymentOffers
+                .Where(offer => offer.IsActive)
+                .OrderBy(offer => offer.Created)
+                .ThenBy(offer => offer.Id)
+                .Select(offer => offer.ToDto(item))
+                .ToList();
+            return dto;
         }
 
         private static bool IsManagedPaymentLink(ContentLink link)

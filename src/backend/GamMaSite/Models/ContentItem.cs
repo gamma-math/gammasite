@@ -26,6 +26,8 @@ namespace GamMaSite.Models
 
         public string Status { get; set; }
 
+        public string EventNotificationSettings { get; set; }
+
         public int? MaxParticipants { get; set; }
 
         public bool ShowOnFrontPage { get; set; } = true;

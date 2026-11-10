@@ -126,6 +126,7 @@ CREATE TABLE `ContentItems` (
   `Tags` varchar(512) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `Type` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
   `Status` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
+  `EventNotificationSettings` varchar(32) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `MaxParticipants` int DEFAULT NULL,
   `ShowOnFrontPage` tinyint NOT NULL DEFAULT '1',
   `StartDate` datetime DEFAULT NULL,

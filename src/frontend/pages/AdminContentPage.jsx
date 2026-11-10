@@ -6,6 +6,10 @@ import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { contentApi, paymentOffersApi } from "../services/api.js";
 import { contentMetaLabel, detailPath, emptyContent, formatDate } from "../utils/format.js";
+import {
+  EVENT_NOTIFICATION_SETTING_OPTIONS,
+  normalizeEventNotificationSettings
+} from "../utils/eventNotificationSettings.js";
 import { isLocalContentImage, isSupportedContentImage } from "../utils/contentMedia.js";
 import { sanitizeHtml } from "../utils/richText.js";
 import { SortableHeader } from "./MembersPage.jsx";
@@ -114,7 +118,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
     }
     setIsLoading(true);
     Promise.all([
-      contentApi.getById(itemId),
+      contentApi.getAdminById(itemId),
       type === "EVENT" ? contentApi.access(itemId).catch(() => null) : Promise.resolve(null),
       type === "EVENT" ? paymentOffersApi.listForEvent(itemId).catch(() => []) : Promise.resolve([])
     ]).then(([item, access, offers]) => {
@@ -162,7 +166,7 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           });
           return next;
         });
-        const refreshed = await contentApi.getById(nextItem.id);
+        const refreshed = await contentApi.getAdminById(nextItem.id);
         nextItem = normalizeContentItem(refreshed, type);
         setPaymentOfferDrafts([]);
       }
@@ -303,6 +307,19 @@ export function AdminContentEditorPage({ type, isAdmin, itemId }) {
           onUpload={uploadImage}
           onDelete={deleteImage}
         />
+        {type === "EVENT" && (
+          <label className="admin-field">
+            <span>Event-mails</span>
+            <select
+              value={normalizeEventNotificationSettings(selected.eventNotificationSettings)}
+              onChange={(event) => update("eventNotificationSettings", event.target.value)}
+            >
+              {EVENT_NOTIFICATION_SETTING_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="menu-editor-grid">
           <label className="admin-field"><span>Tags</span><input value={selected.tags ?? ""} onChange={(event) => update("tags", event.target.value)} placeholder="event,karriere" /></label>
           {type === "EVENT" && <label className="admin-field"><span>Sted</span><input value={selected.location ?? ""} onChange={(event) => update("location", event.target.value)} /></label>}
@@ -686,6 +703,9 @@ function normalizeContentItem(item, type) {
     ...item,
     type: item.type ?? item.Type ?? type,
     maxParticipants: item.maxParticipants ?? item.MaxParticipants ?? null,
+    eventNotificationSettings: normalizeEventNotificationSettings(
+      item.eventNotificationSettings ?? item.EventNotificationSettings
+    ),
     registrationDeadline: item.registrationDeadline ?? item.RegistrationDeadline ?? null,
     showOnFrontPage: item.showOnFrontPage ?? item.ShowOnFrontPage ?? true
   };
@@ -705,6 +725,9 @@ function buildSavePayload(item, type) {
     tags: item.tags ?? "",
     type,
     status: item.status ?? "DRAFT",
+    eventNotificationSettings: type === "EVENT"
+      ? normalizeEventNotificationSettings(item.eventNotificationSettings)
+      : null,
     showOnFrontPage: isShownOnFrontPage(item),
     maxParticipants: type === "EVENT" && item.maxParticipants !== "" && item.maxParticipants != null ? Number(item.maxParticipants) : null,
     startDate: item.startDate || null,

@@ -509,7 +509,8 @@ namespace GamMaSite.Controllers
                     offer,
                     session.Created.ToUniversalTime(),
                     recurring: false,
-                    cancellationToken: cancellationToken);
+                    cancellationToken: cancellationToken,
+                    eventNotificationSettings: eventItem.EventNotificationSettings);
             }
         }
 
@@ -914,9 +915,11 @@ namespace GamMaSite.Controllers
             PaymentOffer offer,
             DateTime paymentDate,
             bool recurring,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string eventNotificationSettings = null)
         {
-            if (_systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
+            if (!EventNotificationSettingsPolicy.ShouldSendPaymentConfirmation(offer?.Scope, eventNotificationSettings) ||
+                _systemEmailTemplateService == null || offer == null || string.IsNullOrWhiteSpace(userId))
             {
                 return;
             }

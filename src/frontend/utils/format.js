@@ -1,3 +1,5 @@
+import { EVENT_NOTIFICATION_SETTINGS } from "./eventNotificationSettings.js";
+
 /**
  * Formats a full Danish date/time value for visible UI text.
  */
@@ -14,7 +16,6 @@ export function formatDate(value) {
     minute: "2-digit"
   }).format(new Date(value));
 }
-
 /**
  * Formats a compact Danish date for cards and metadata.
  */
@@ -28,7 +29,6 @@ export function formatShortDate(value) {
     month: "long"
   }).format(new Date(value));
 }
-
 /**
  * Builds the small date/location metadata label shown on content cards.
  */
@@ -57,6 +57,7 @@ export function emptyContent(type) {
     tags: "",
     type,
     status: "DRAFT",
+    eventNotificationSettings: EVENT_NOTIFICATION_SETTINGS.DEFAULT,
     showOnFrontPage: true,
     maxParticipants: null,
     startDate: "",
