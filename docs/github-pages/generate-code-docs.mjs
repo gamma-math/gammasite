@@ -70,6 +70,8 @@ const backendDescriptions = {
   "Services/EmailService.cs": "Sender e-mails via den konfigurerede e-mailintegration.",
   "Services/EmailTemplateService.cs": "Håndterer lagring, rendering og forhåndsvisning af e-mailskabeloner.",
   "Services/EventRegistrationService.cs": "Håndterer tilmelding, afmelding og deltagerroller på events.",
+  "Services/FinanceBudgetCsvParser.cs": "Parser og validerer semikolonseparerede budget-CSV-filer.",
+  "Services/FinanceCsvTextReader.cs": "Fælles tekstlæsning for finans-CSV-filer med UTF-8 og Windows-1252 fallback.",
   "Services/FinanceImportService.cs": "Validerer og importerer bank- og MobilePay-filer til finansdata.",
   "Services/FinanceReportService.cs": "Udarbejder finansoversigter, posteringer, budgetter og kontoplan-data.",
   "Services/GithubService.cs": "Integration til GitHub-relaterede funktioner i applikationen.",
@@ -114,6 +116,7 @@ function frontendPurpose(path) {
   const frontendDescriptions = {
     "components/ConfirmationDialog.jsx": "Genbrugelig dialog til bekræftelse af handlinger, før ændringer udføres.",
     "components/ContentCard.jsx": "Genbrugelig kortvisning af et event, en nyhed eller andet indhold.",
+    "components/FinanceBudgetUploadDialog.jsx": "Genbrugelig dialog til upload af budget-CSV-filer og download af template.",
     "components/RichTextEditor.jsx": "Rich-text-editor til redigering af formateret indhold i administrationen.",
     "layouts/AdminLayout.jsx": "Fælles ramme for administrationssider med navigationsmenu og rettighedsfiltrering.",
     "layouts/MenuLayout.jsx": "Fælles layout for menurelaterede visninger i React-klienten.",
