@@ -25,7 +25,8 @@ export function FinanceBudgetUploadDialog({ onClose, onSuccess }) {
       setSuccess(`${count} budgetlinje${count === 1 ? "" : "r"} blev importeret.`);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      await onSuccess?.();
+      await onSuccess?.(result);
+      onClose();
     } catch (requestError) {
       setError(requestError.message);
     } finally {

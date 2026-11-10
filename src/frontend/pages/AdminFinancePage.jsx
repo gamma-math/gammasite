@@ -2272,6 +2272,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
   const [sort, setSort] = useState({ key: "yearActual", direction: "desc" });
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [rowErrors, setRowErrors] = useState({});
   const [isTableExpanded, setIsTableExpanded] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -2290,6 +2291,26 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
   const refreshBudgets = async () => {
     const result = await financeApi.adminBudgets();
     applyBudgetData(result);
+  };
+
+  const handleBudgetUploadSuccess = async (result) => {
+    const importedBudgets = (result?.budgets || []).map((row) => ({
+      ...row,
+      _originalId: row.id,
+    }));
+
+    if (importedBudgets.length > 0) {
+      setData((current) => current ? {
+        ...current,
+        budgets: [...(current.budgets || []), ...importedBudgets],
+      } : current);
+      setRows((current) => [...current, ...importedBudgets]);
+    } else {
+      await refreshBudgets();
+    }
+
+    const count = result?.importedCount ?? importedBudgets.length;
+    setMessage(`${count} budgetlinje${count === 1 ? "" : "r"} blev importeret.`);
   };
 
   useEffect(() => {
@@ -2428,6 +2449,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
             type="button"
             onClick={() => {
               setError("");
+              setMessage("");
               setIsUploadOpen(true);
             }}
           >
@@ -2436,6 +2458,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
         </div>
       </div>
       {error && <p className="finance-live-error">{error}</p>}
+      {message && <p className="status-message status-message-success">{message}</p>}
       {!data && !error && (
         <div className="finance-live-loading">Henter budgetter...</div>
       )}
@@ -2663,7 +2686,7 @@ export function FinanceAdminBudgetsPage({ isAdmin }) {
       {isUploadOpen && (
         <FinanceBudgetUploadDialog
           onClose={() => setIsUploadOpen(false)}
-          onSuccess={refreshBudgets}
+          onSuccess={handleBudgetUploadSuccess}
         />
       )}
     </AdminLayout>

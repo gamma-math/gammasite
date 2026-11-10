@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -186,12 +185,7 @@ namespace GamMaSite.Services
         {
             if (csvStream == null) throw new ArgumentException("CSV-filen mangler.");
 
-            using var reader = new StreamReader(
-                csvStream,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
-                detectEncodingFromByteOrderMarks: true,
-                leaveOpen: true);
-            var rows = FinanceBudgetCsvParser.Parse(await reader.ReadToEndAsync(cancellationToken));
+            var rows = FinanceBudgetCsvParser.Parse(FinanceCsvTextReader.Read(csvStream));
 
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (var row in rows)
@@ -290,7 +284,19 @@ namespace GamMaSite.Services
             }
 
             await transaction.CommitAsync(cancellationToken);
-            return new FinanceBudgetImportResultDto { ImportedCount = rows.Count };
+            return new FinanceBudgetImportResultDto
+            {
+                ImportedCount = rows.Count,
+                Budgets = rows.Select(row => new FinanceBudgetDto
+                {
+                    Id = row.Update.Id.Trim(),
+                    AccountId = row.Update.AccountId.Trim(),
+                    PostingGroupId = row.Update.PostingGroupId?.Trim() ?? "",
+                    YearActual = row.Update.YearActual,
+                    Forecast = row.Update.Forecast,
+                    ForecastType = row.Update.ForecastType?.Trim() ?? ""
+                }).ToArray()
+            };
         }
 
         public async Task<FinanceBudgetDto> UpdateAdminBudgetAsync(string originalId, FinanceBudgetUpdateDto update, CancellationToken cancellationToken)
@@ -1307,6 +1313,7 @@ namespace GamMaSite.Services
     public sealed class FinanceBudgetImportResultDto
     {
         public int ImportedCount { get; set; }
+        public IReadOnlyList<FinanceBudgetDto> Budgets { get; set; } = Array.Empty<FinanceBudgetDto>();
     }
 
     public sealed class FinancePostingGroupDto
