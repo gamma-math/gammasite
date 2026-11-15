@@ -42,7 +42,7 @@ if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri) ||
 
 // Add the database connection
 var mysqlConn = builder.Configuration.GetConnectionString("DefaultConnection");
-var serverVersion = new MySqlServerVersion(new Version(8, 0));
+var serverVersion = new MySqlServerVersion(new Version(8, 4, 11));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
         mysqlConn,
