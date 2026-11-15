@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarPlus, Edit3, LogIn, Trash2, UserPlus, Users } from "lucide-react";
 import { ConfirmationDialog } from "../components/ConfirmationDialog.jsx";
 import { MenuLayout } from "../layouts/MenuLayout.jsx";
@@ -27,7 +27,11 @@ export function ContentDetailPage({ slug, type, user }) {
   const [showUnregisterConfirmation, setShowUnregisterConfirmation] = useState(false);
   const [isRemovingRegistration, setIsRemovingRegistration] = useState(false);
   const [registrationNote, setRegistrationNote] = useState("");
-  const [isSavingRegistrationNote, setIsSavingRegistrationNote] = useState(false);
+  const [registrationNoteSaveStatus, setRegistrationNoteSaveStatus] = useState("saved");
+  const savedRegistrationNote = useRef("");
+  const failedRegistrationNote = useRef(null);
+  const isSavingRegistrationNote = useRef(false);
+  const [registrationNoteSaveVersion, setRegistrationNoteSaveVersion] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -53,7 +57,11 @@ export function ContentDetailPage({ slug, type, user }) {
     Promise.all(requests)
       .then(([mine, eventRegistrations, access, summary]) => {
         setRegistration(mine);
-        setRegistrationNote(getRegistrationNote(mine));
+        const note = getRegistrationNote(mine);
+        savedRegistrationNote.current = note;
+        failedRegistrationNote.current = null;
+        setRegistrationNote(note);
+        setRegistrationNoteSaveStatus("saved");
         setRegistrations(eventRegistrations);
         setEventAccess(access);
         setCapacitySummary(summary);
@@ -63,6 +71,45 @@ export function ContentDetailPage({ slug, type, user }) {
         setCapacitySummary(null);
       });
   }, [item?.id, item?.type, user.isAuthenticated, user.permissions]);
+
+  useEffect(() => {
+    if (!registration || registrationNote === savedRegistrationNote.current) {
+      setRegistrationNoteSaveStatus("saved");
+      return undefined;
+    }
+
+    if (registrationNote === failedRegistrationNote.current) {
+      return undefined;
+    }
+
+    const noteToSave = registrationNote;
+    const timeoutId = window.setTimeout(async () => {
+      if (isSavingRegistrationNote.current) {
+        return;
+      }
+
+      isSavingRegistrationNote.current = true;
+      setRegistrationNoteSaveStatus("saving");
+      setError("");
+      try {
+        const updated = await registrationsApi.updateMineNote(item.id, noteToSave);
+        savedRegistrationNote.current = noteToSave;
+        failedRegistrationNote.current = null;
+        setRegistration(updated);
+        setRegistrationNoteSaveStatus("saved");
+      } catch (requestError) {
+        failedRegistrationNote.current = noteToSave;
+        setRegistrationNoteSaveStatus("error");
+        setError(requestError.message);
+      } finally {
+        isSavingRegistrationNote.current = false;
+        setRegistrationNoteSaveVersion((version) => version + 1);
+      }
+    }, 700);
+
+    setRegistrationNoteSaveStatus("pending");
+    return () => window.clearTimeout(timeoutId);
+  }, [item?.id, registration, registrationNote, registrationNoteSaveVersion]);
 
   useEffect(() => {
     if (item?.type !== "EVENT") {
@@ -147,6 +194,8 @@ export function ContentDetailPage({ slug, type, user }) {
     try {
       await registrationsApi.unregister(item.id);
       setRegistration(null);
+      savedRegistrationNote.current = "";
+      failedRegistrationNote.current = null;
       setRegistrationNote("");
       const [nextRegistrations, nextSummary] = await Promise.all([
         registrationsApi.list(item.id).catch(() => []),
@@ -172,7 +221,11 @@ export function ContentDetailPage({ slug, type, user }) {
     try {
       const next = await registrationsApi.register(item.id, { registrationType: "ATTENDEE", responseText: "" });
       setRegistration(next);
-      setRegistrationNote(getRegistrationNote(next));
+      const note = getRegistrationNote(next);
+      savedRegistrationNote.current = note;
+      failedRegistrationNote.current = null;
+      setRegistrationNote(note);
+      setRegistrationNoteSaveStatus("saved");
       setRegistrations((current) => {
         const withoutCurrentUser = current.filter((eventRegistration) => eventRegistration.userId !== next.userId);
         return [...withoutCurrentUser, next];
@@ -180,24 +233,6 @@ export function ContentDetailPage({ slug, type, user }) {
       setCapacitySummary(await registrationsApi.summary(item.id).catch(() => null));
     } catch (requestError) {
       setError(requestError.message);
-    }
-  }
-
-  async function saveRegistrationNote() {
-    if (!registration || isSavingRegistrationNote) {
-      return;
-    }
-
-    setIsSavingRegistrationNote(true);
-    setError("");
-    try {
-      const updated = await registrationsApi.updateMineNote(item.id, registrationNote);
-      setRegistration(updated);
-      setRegistrationNote(getRegistrationNote(updated));
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setIsSavingRegistrationNote(false);
     }
   }
 
@@ -239,15 +274,18 @@ export function ContentDetailPage({ slug, type, user }) {
                       id="event-registration-note"
                       value={registrationNote}
                       maxLength={MAX_REGISTRATION_NOTE_LENGTH}
-                      onChange={(event) => setRegistrationNote(event.target.value)}
+                      onChange={(event) => {
+                        setRegistrationNote(event.target.value);
+                        setRegistrationNoteSaveStatus("pending");
+                      }}
                       placeholder="Skriv fx madforbehold eller andre bemærkninger"
                       rows="3"
                     />
                     <div className="event-registration-note-footer">
                       <small>{registrationNote.length}/{MAX_REGISTRATION_NOTE_LENGTH}</small>
-                      <button className="frontpage-button frontpage-button-secondary" type="button" onClick={saveRegistrationNote} disabled={isSavingRegistrationNote}>
-                        {isSavingRegistrationNote ? "Gemmer..." : "Gem note"}
-                      </button>
+                      <small role="status" aria-live="polite">
+                        {registrationNoteSaveStatus === "saving" ? "Gemmer..." : registrationNoteSaveStatus === "pending" ? "Gemmer snart..." : registrationNoteSaveStatus === "error" ? "Kunne ikke gemme" : "Gemt"}
+                      </small>
                     </div>
                   </div>
                 )}
