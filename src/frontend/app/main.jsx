@@ -52,6 +52,7 @@ import {
   PaymentStatusPage,
 } from "../pages/PaymentPage.jsx";
 import { StaticPage } from "../pages/StaticPage.jsx";
+import { ContactModal } from "../components/ContactModal.jsx";
 import { Link } from "../routes/navigation.jsx";
 import { setMobileMenuCollapsed } from "../utils/mobileMenu.js";
 import { meApi } from "../services/api.js";
@@ -136,12 +137,25 @@ function App() {
     paymentsEditAll: hasPermission(user, permissions.paymentsEditAll)
   };
 
+  const [contactOpen, setContactOpen] = useState(false);
+  useEffect(() => {
+    const openFromContactLink = (event) => {
+      if (event.target.closest?.("[data-contact-trigger]")) {
+        event.preventDefault();
+        setContactOpen(true);
+      }
+    };
+    document.addEventListener("click", openFromContactLink);
+    return () => document.removeEventListener("click", openFromContactLink);
+  }, []);
+
   return (
     <AccessContext.Provider value={user}>
       <div className="app-shell">
         <Header user={user} isReadAdmin={isReadAdmin} adminPath={adminPath} />
         <main>{renderRoute(route, user, isAdmin, access)}</main>
-        <Footer />
+        <Footer onContact={() => setContactOpen(true)} />
+        <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} email={user.email || ""} />
       </div>
     </AccessContext.Provider>
   );
@@ -545,7 +559,7 @@ function AdminRedirectPage({ path }) {
 /**
  * Shared footer with association contact and social links.
  */
-function Footer() {
+function Footer({ onContact }) {
   return (
     <section className="frontpage-footer-band">
       <div className="page-shell frontpage-footer-inner">
@@ -557,8 +571,7 @@ function Footer() {
             </li>
             <li>CVR: 34637768</li>
             <li>
-              Kontakt:{" "}
-              <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>
+              <button className="frontpage-footer-contact" type="button" onClick={onContact}>Kontaktformular</button>
             </li>
           </ul>
         </div>

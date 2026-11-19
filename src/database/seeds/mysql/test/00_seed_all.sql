@@ -1430,4 +1430,42 @@ INSERT INTO `ContentItems` (
   '2026-09-08 10:00:00',
   '2026-09-08 10:00:00',
   '2026-09-08 10:00:00'
+),
+(
+  'System - Ny kontaktbesked',
+  'Ny henvendelse fra hjemmesiden: {{ContactType}}',
+  'Ny kontaktbesked fra {{SenderEmail}}',
+  '<div style="margin:0;padding:24px;background:#eaf2fb;font-family:Arial,sans-serif;color:#173042;"><div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d9e7f5;padding:28px 24px;line-height:1.55;"><a href="https://gam-ma.dk/" style="display:block;text-align:center;margin:0 0 20px;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="160" style="max-width:100%;height:auto;border:0;"></a><h1 style="font-size:24px;color:#10233a;margin:0 0 16px;">Ny henvendelse fra hjemmesiden</h1><p><strong>Henvendelse:</strong> {{ContactType}}</p><p><strong>Arrangement / emne:</strong> {{Topic}}</p><p><strong>Afsender:</strong> <a href="mailto:{{SenderEmail}}">{{SenderEmail}}</a></p><div style="white-space:pre-wrap;border-top:1px solid #d9e7f5;padding-top:16px;">{{Message}}</div><p style="margin-top:24px;">Med venlig hilsen<br><strong>GamMa</strong></p></div></div>',
+  'Ny henvendelse fra hjemmesiden\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\nAfsender: {{SenderEmail}}\n\n{{Message}}',
+  'SYSTEM_CONTACT_REQUEST', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+),
+(
+  'System - Bekræftelse på kontaktbesked',
+  'Vi har modtaget din henvendelse til GamMa',
+  'Tak for din besked til GamMa',
+  '<div style="margin:0;padding:24px;background:#eaf2fb;font-family:Arial,sans-serif;color:#173042;"><div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d9e7f5;padding:28px 24px;line-height:1.55;"><a href="https://gam-ma.dk/" style="display:block;text-align:center;margin:0 0 20px;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="160" style="max-width:100%;height:auto;border:0;"></a><h1 style="font-size:24px;color:#10233a;margin:0 0 16px;">Tak for din henvendelse</h1><p>Vi har modtaget din besked og vender tilbage, så snart vi kan.</p><p><strong>Henvendelse:</strong> {{ContactType}}<br><strong>Arrangement / emne:</strong> {{Topic}}</p><div style="white-space:pre-wrap;border-top:1px solid #d9e7f5;padding-top:16px;">{{Message}}</div><p style="margin-top:24px;">Med venlig hilsen<br><strong>GamMa</strong></p></div></div>',
+  'Tak for din henvendelse til GamMa. Vi har modtaget din besked og vender tilbage, så snart vi kan.\n\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\n\n{{Message}}',
+  'SYSTEM_CONTACT_CONFIRMATION', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+);
+
+INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) VALUES
+('role-contact-responsible', 'Kontakt Ansvarlig', 'KONTAKT ANSVARLIG', '63bc78b9-97bd-42a9-8a65-15c0c4c3ef21')
+ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`), `NormalizedName` = VALUES(`NormalizedName`), `ConcurrencyStamp` = VALUES(`ConcurrencyStamp`);
+
+INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextBody`, `TemplateType`, `IsActive`, `Created`, `Updated`) VALUES
+(
+  'System - Ny kontaktbesked',
+  'Ny henvendelse fra hjemmesiden: {{ContactType}}',
+  'Ny kontaktbesked fra {{SenderEmail}}',
+  '<div style="margin:0;padding:24px;background:#eaf2fb;font-family:Arial,sans-serif;color:#173042;"><div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d9e7f5;padding:28px 24px;line-height:1.55;"><a href="https://gam-ma.dk/" style="display:block;text-align:center;margin:0 0 20px;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="160" style="max-width:100%;height:auto;border:0;"></a><h1 style="font-size:24px;color:#10233a;margin:0 0 16px;">Ny henvendelse fra hjemmesiden</h1><p><strong>Henvendelse:</strong> {{ContactType}}</p><p><strong>Arrangement / emne:</strong> {{Topic}}</p><p><strong>Afsender:</strong> <a href="mailto:{{SenderEmail}}">{{SenderEmail}}</a></p><div style="white-space:pre-wrap;border-top:1px solid #d9e7f5;padding-top:16px;">{{Message}}</div><p style="margin-top:24px;">Med venlig hilsen<br><strong>GamMa</strong></p></div></div>',
+  'Ny henvendelse fra hjemmesiden\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\nAfsender: {{SenderEmail}}\n\n{{Message}}',
+  'SYSTEM_CONTACT_REQUEST', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+),
+(
+  'System - Bekræftelse på kontaktbesked',
+  'Vi har modtaget din henvendelse til GamMa',
+  'Tak for din besked til GamMa',
+  '<div style="margin:0;padding:24px;background:#eaf2fb;font-family:Arial,sans-serif;color:#173042;"><div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #d9e7f5;padding:28px 24px;line-height:1.55;"><a href="https://gam-ma.dk/" style="display:block;text-align:center;margin:0 0 20px;"><img src="https://gam-ma.dk/lib/logo_blue.png" alt="GamMa" width="160" style="max-width:100%;height:auto;border:0;"></a><h1 style="font-size:24px;color:#10233a;margin:0 0 16px;">Tak for din henvendelse</h1><p>Vi har modtaget din besked og vender tilbage, så snart vi kan.</p><p><strong>Henvendelse:</strong> {{ContactType}}<br><strong>Arrangement / emne:</strong> {{Topic}}</p><div style="white-space:pre-wrap;border-top:1px solid #d9e7f5;padding-top:16px;">{{Message}}</div><p style="margin-top:24px;">Med venlig hilsen<br><strong>GamMa</strong></p></div></div>',
+  'Tak for din henvendelse til GamMa. Vi har modtaget din besked og vender tilbage, så snart vi kan.\n\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\n\n{{Message}}',
+  'SYSTEM_CONTACT_CONFIRMATION', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
 );

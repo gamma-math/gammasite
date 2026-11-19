@@ -107,6 +107,11 @@ namespace GamMaSite.Services
                 return false;
             }
 
+            if (SystemMailKinds.IsSystem(template.TemplateType))
+            {
+                return false;
+            }
+
             _db.EmailTemplates.Remove(template);
             await _db.SaveChangesAsync();
             return true;

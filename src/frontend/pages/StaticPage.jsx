@@ -70,7 +70,7 @@ function TermsPage() {
       <InfoSection id="privatlivspolitik" title="Privatlivspolitik">
         <p>Alumneforeningen GamMa behandler de oplysninger, du giver os, for at kunne administrere medlemskab, login, kommunikation og foreningens aktiviteter.</p>
         <p>Det kan blandt andet være navn, årgang, telefonnummer, e-mailadresse, arbejde og adresse. Oplysningerne bruges kun til foreningsrelaterede formål og deles ikke til kommerciel brug.</p>
-        <p>Du kan kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>, hvis du har spørgsmål til dine oplysninger eller ønsker at få dem rettet.</p>
+        <p>Du kan kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk" data-contact-trigger>bestyrelsen@gam-ma.dk</a>, hvis du har spørgsmål til dine oplysninger eller ønsker at få dem rettet.</p>
         <p>Oplysninger om cookies og login findes på <Link href="/cookies">cookies-siden</Link>.</p>
       </InfoSection>
 
@@ -124,18 +124,18 @@ function TermsPage() {
         <p>Betaling gennemføres med de betalingsmetoder, der vises på betalingssiden, når disse er tilgængelige. Et medlemskab eller en eventtilmelding er først registreret som betalt, når den eksterne betalingsudbyder har bekræftet betalingen. Hvis betalingen afvises, annulleres eller ikke gennemføres, er der ikke indgået en betalt aftale.</p>
 
         <h3>5. Fortrydelse, afbud og tilbagebetaling</h3>
-        <p>For medlemskab købt online er fortrydelsesfristen 14 dage fra aftalens indgåelse, medmindre andet følger af ufravigelig lovgivning. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> inden fristens udløb.</p>
-        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse. Efter den angivne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
+        <p>For medlemskab købt online er fortrydelsesfristen 14 dage fra aftalens indgåelse, medmindre andet følger af ufravigelig lovgivning. Hvis du ønsker at gøre brug af fortrydelsesretten, skal du kontakte bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk" data-contact-trigger>bestyrelsen@gam-ma.dk</a> inden fristens udløb.</p>
+        <p>For betalte arrangementer tilbyder GamMa en frivillig fortrydelsesordning på 14 dage fra aftalens indgåelse. Fortrydelsen skal dog altid meddeles til bestyrelsen på <a href="mailto:bestyrelsen@gam-ma.dk" data-contact-trigger>bestyrelsen@gam-ma.dk</a> senest 7 dage før arrangementets afholdelse. Efter den angivne frist eller efter arrangementets afholdelse kan der ikke gøres brug af fortrydelsesordningen.</p>
         <p>Eventbeskrivelsen oplyser, hvis der gælder særlige regler for afbud eller navneændring. Tilbagebetaling sker, når afmeldingen er meddelt inden den frist, der er angivet i disse salgsbetingelser eller i eventbeskrivelsen.</p>
 
         <h3>6. Fejl og manglende levering</h3>
-        <p>Hvis et arrangement aflyses, ikke gennemføres som beskrevet eller har væsentlige mangler, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. GamMa vurderer sagen og tilbyder ombooking eller hel eller delvis tilbagebetaling, hvis det følger af aftalen eller gældende lovgivning.</p>
+        <p>Hvis et arrangement aflyses, ikke gennemføres som beskrevet eller har væsentlige mangler, skal du kontakte GamMa hurtigst muligt på <a href="mailto:bestyrelsen@gam-ma.dk" data-contact-trigger>bestyrelsen@gam-ma.dk</a>. GamMa vurderer sagen og tilbyder ombooking eller hel eller delvis tilbagebetaling, hvis det følger af aftalen eller gældende lovgivning.</p>
 
         <h3>7. Ansvar</h3>
         <p>GamMa er ikke ansvarlig for manglende opfyldelse, der skyldes forhold uden for foreningens rimelige kontrol, herunder myndighedsforhold, strejke, sygdom, brand, naturkatastrofer, tekniske driftsforstyrrelser eller andre force majeure-forhold. Bestemmelsen begrænser ikke rettigheder, som ikke lovligt kan begrænses.</p>
 
         <h3>8. Kontakt og klager</h3>
-        <p>Spørgsmål, indsigelser og klager vedrørende betaling, medlemskab eller arrangementer kan sendes til <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a>. Oplys gerne navn, ordrebekræftelse og en beskrivelse af sagen, så GamMa kan behandle henvendelsen.</p>
+        <p>Spørgsmål, indsigelser og klager vedrørende betaling, medlemskab eller arrangementer kan sendes til <a href="mailto:bestyrelsen@gam-ma.dk" data-contact-trigger>bestyrelsen@gam-ma.dk</a>. Oplys gerne navn, ordrebekræftelse og en beskrivelse af sagen, så GamMa kan behandle henvendelsen.</p>
 
         <h3>9. Lovvalg og ændringer</h3>
         <p>Salgsbetingelserne er underlagt dansk ret. Ufravigelige regler, der beskytter forbrugere, gælder uanset dette. Salgsbetingelserne gælder i den version, der var tilgængelig på købstidspunktet. Ændringer gælder ikke for allerede indgåede aftaler, medmindre andet følger af lovgivningen.</p>

@@ -192,6 +192,10 @@ export const meApi = {
   get: () => request("/api/me")
 };
 
+export const contactApi = {
+  send: (payload) => request("/api/contact", { method: "POST", body: JSON.stringify(payload) })
+};
+
 /**
  * Account API used by React account management screens.
  */

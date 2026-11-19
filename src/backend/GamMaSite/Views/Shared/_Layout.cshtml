@@ -85,7 +85,7 @@
             <div>
                 <h2>Alumneforeningen GamMa</h2>
                 <p>CVR: <a href="https://datacvr.virk.dk/data/visenhed?enhedstype=virksomhed&id=34637768">34637768</a></p>
-                <p>Kontakt: <a href="mailto:bestyrelsen@gam-ma.dk">bestyrelsen@gam-ma.dk</a></p>
+                <p><button class="legacy-footer-contact" type="button" data-contact-trigger>Kontaktformular</button></p>
             </div>
             <div class="legacy-footer-socials">
                 <a href="https://www.linkedin.com/company/gamma-math-ucph/" aria-label="LinkedIn">in</a>
@@ -94,6 +94,21 @@
             </div>
         </div>
     </footer>
+    <div class="contact-modal-backdrop" id="contact-modal" hidden>
+        <section class="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+            <button type="button" class="contact-modal-close" data-contact-close aria-label="Luk kontaktformular">×</button>
+            <h2 id="contact-modal-title">Kontakt GamMa</h2>
+            <form id="contact-form">
+                <label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="254" value="@(SignInManager.IsSignedIn(User) ? (await UserManager.GetUserAsync(User))?.Email : "")" /></label>
+                <label>Henvendelse<select name="contactType"><option>Arrangement</option><option>Betaling og refusion</option><option>Andet</option></select></label>
+                <label><span data-contact-topic-label>Arrangementets titel</span><input name="topic" required maxlength="200" placeholder="Skriv arrangementets titel" /></label>
+                <label>Besked<textarea name="message" required maxlength="5000" rows="5" placeholder="Skriv din besked her..."></textarea></label>
+                <p class="contact-modal-note">Vi sender en bekræftelse til din e-mail.</p>
+                <p class="contact-modal-status" id="contact-status" role="status" hidden></p>
+                <div class="contact-modal-actions"><button type="button" class="contact-button-secondary" data-contact-close>Annuller</button><button type="submit" class="contact-button-primary">Send besked</button></div>
+            </form>
+        </section>
+    </div>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
         initializeDatatable();
