@@ -83,3 +83,4 @@ htmlcov/
 !/src/backend/gammasite-media/.gitkeep
 
 !src/database/seeds/mysql/test/16_EmailTemplates.sql
+!src/frontend/services/emailTemplatePolicy.js
