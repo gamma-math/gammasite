@@ -36,7 +36,12 @@ namespace GamMaSite.Services
             await PostMailgun(email, subject, htmlMessage);
         }
 
-        private async Task PostMailgun(string toAddress, string subject, string htmlMessage)
+        public async Task SendEmailFromAsync(string fromAddress, string email, string subject, string htmlMessage)
+        {
+            await PostMailgun(email, subject, htmlMessage, fromAddress);
+        }
+
+        private async Task PostMailgun(string toAddress, string subject, string htmlMessage, string fromAddress = null)
         {
             var handler = new HttpClientHandler
             {
@@ -48,7 +53,7 @@ namespace GamMaSite.Services
             client.DefaultRequestHeaders.Add("Authorization", $"Basic {authToken}");
 
             IList<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>> {
-                new("from", this._fromAddress),
+                new("from", string.IsNullOrWhiteSpace(fromAddress) ? this._fromAddress : fromAddress),
                 new("to", toAddress),
                 new("subject", subject),
                 new("html", htmlMessage ?? "<p></p>")

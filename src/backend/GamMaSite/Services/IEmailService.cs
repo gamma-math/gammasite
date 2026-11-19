@@ -12,6 +12,8 @@ namespace GamMaSite.Services
     public interface IEmailService : IEmailSender
     {
         public Task SendEmailAsync(IEnumerable<string> emails, string subject, string htmlMessage);
+
+        Task SendEmailFromAsync(string fromAddress, string email, string subject, string htmlMessage);
         
     }
 }

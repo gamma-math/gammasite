@@ -77,6 +77,48 @@ public class EmailTemplateServiceTests
         Assert.True(result.IsActive);
     }
 
+    [Fact]
+    public async Task DeleteAsync_RefusesSystemTemplates()
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "System contact request",
+            Subject = "Contact",
+            HtmlBody = "<p>Contact</p>",
+            TemplateType = SystemEmailTemplateService.ContactRequest,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var deleted = await new EmailTemplateService(db).DeleteAsync(1);
+
+        Assert.False(deleted);
+        Assert.NotNull(await db.EmailTemplates.FindAsync(1));
+    }
+
+    [Theory]
+    [InlineData(SystemEmailTemplateService.ContactRequest)]
+    [InlineData(SystemEmailTemplateService.ContactConfirmation)]
+    public async Task UpdateAsync_AllowsContactSystemTemplatesToBeDeactivated(string templateType)
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "Contact system email", Subject = "Contact", HtmlBody = "<p>Contact</p>",
+            TemplateType = templateType, IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var updated = await new EmailTemplateService(db).UpdateAsync(1, new SaveEmailTemplateRequest
+        {
+            Name = "Contact system email", Subject = "Contact", HtmlBody = "<p>Contact</p>",
+            TemplateType = templateType, IsActive = false
+        });
+
+        Assert.False(updated.IsActive);
+    }
+
     [Theory]
     [InlineData("SYSTEM_FINANCE_PAYMENT_RECEIPT")]
     [InlineData("SYSTEM_FINANCE_REFUND_RECEIPT")]

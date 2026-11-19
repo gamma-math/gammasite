@@ -27,6 +27,9 @@ namespace GamMaSite.Services
         public const string WaitlistPromotion = "SYSTEM_WAITLIST_PROMOTION";
         public const string FinancePaymentReceipt = "SYSTEM_FINANCE_PAYMENT_RECEIPT";
         public const string FinanceRefundReceipt = "SYSTEM_FINANCE_REFUND_RECEIPT";
+        public const string ContactRequest = "SYSTEM_CONTACT_REQUEST";
+        public const string ContactConfirmation = "SYSTEM_CONTACT_CONFIRMATION";
+        private const string ContactFromAddress = "bestyrelsen@gam-ma.dk";
 
         private static readonly Regex PlaceholderRegex = new(@"\{\{([A-Za-z0-9_]+)\}\}", RegexOptions.Compiled);
 
@@ -156,6 +159,43 @@ namespace GamMaSite.Services
                 "Du har fået en plads",
                 "En plads er blevet ledig, og du er nu tilmeldt arrangementet.",
                 "Se arrangementet");
+        }
+
+        public Task<bool> SendContactRequestAsync(IEnumerable<string> recipients, string contactType, string topic, string senderEmail, string message)
+        {
+            return SendContactTemplateAsync(ContactRequest, recipients, contactType, topic, senderEmail, message);
+        }
+
+        public Task<bool> SendContactConfirmationAsync(string email, string contactType, string topic, string message)
+        {
+            return SendContactTemplateAsync(ContactConfirmation, new[] { email }, contactType, topic, email, message);
+        }
+
+        private async Task<bool> SendContactTemplateAsync(string templateType, IEnumerable<string> recipients, string contactType, string topic, string senderEmail, string message)
+        {
+            var template = await GetActiveTemplate(templateType);
+            if (template == null)
+            {
+                return false;
+            }
+
+            var values = new Dictionary<string, string>
+            {
+                ["ContactType"] = contactType ?? string.Empty,
+                ["Topic"] = topic ?? string.Empty,
+                ["SenderEmail"] = senderEmail ?? string.Empty,
+                ["Message"] = message ?? string.Empty
+            };
+            var htmlValues = values.ToDictionary(pair => pair.Key, pair => HtmlEncoder.Default.Encode(pair.Value));
+            var subject = CleanSubject(Render(template.Subject, values));
+            var html = Render(template.HtmlBody, htmlValues);
+
+            var mailTasks = recipients
+                .Where(address => !string.IsNullOrWhiteSpace(address))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(recipient => _emailService.SendEmailFromAsync(ContactFromAddress, recipient, subject, html));
+            await Task.WhenAll(mailTasks);
+            return true;
         }
 
         private async Task SendOptionalEventEmailAsync(

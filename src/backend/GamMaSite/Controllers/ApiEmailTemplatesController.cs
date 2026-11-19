@@ -74,6 +74,17 @@ namespace GamMaSite.Controllers
         [Authorize(Policy = PermissionPolicies.EmailTemplatesEdit)]
         public async Task<IActionResult> Delete(int id)
         {
+            var template = await _emailTemplateService.GetByIdAsync(id);
+            if (template == null)
+            {
+                return NotFound();
+            }
+
+            if (SystemMailKinds.IsSystem(template.TemplateType))
+            {
+                return Conflict(new { error = "Systemmailskabeloner kan ikke slettes. De kan deaktiveres, hvis det er relevant." });
+            }
+
             var deleted = await _emailTemplateService.DeleteAsync(id);
             return deleted ? NoContent() : NotFound();
         }

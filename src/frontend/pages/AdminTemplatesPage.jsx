@@ -5,6 +5,7 @@ import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { SortableHeader, useSortedMembers } from "./MembersPage.jsx";
 import { Link, navigate } from "../routes/navigation.jsx";
 import { emailTemplatesApi } from "../services/api.js";
+import { canDeleteEmailTemplate, isSystemTemplate } from "../services/emailTemplatePolicy.js";
 import { formatDate } from "../utils/format.js";
 
 const defaultBlockDesign = {
@@ -30,10 +31,6 @@ const requiredSystemTemplateTypes = new Set([
   "SYSTEM_FINANCE_PAYMENT_RECEIPT",
   "SYSTEM_FINANCE_REFUND_RECEIPT"
 ]);
-
-function isSystemTemplate(templateType) {
-  return String(templateType ?? "").toUpperCase().startsWith("SYSTEM_");
-}
 
 /**
  * Admin overview for reusable email/message templates.
@@ -150,10 +147,12 @@ function TemplateSection({ title, templates, emptyMessage, sort, setSort, onRemo
                 <td>{formatDate(template.updated)}</td>
                 <td className="table-actions">
                   <Link className="admin-table-button" href={`/admin/templates/${template.id}/edit`}>Rediger</Link>
-                  <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => onRemove(template)}>
-                    <Trash2 size={14} />
-                    Slet
-                  </button>
+                  {canDeleteEmailTemplate(template.templateType) && (
+                    <button className="admin-table-button admin-table-button-danger" type="button" onClick={() => onRemove(template)}>
+                      <Trash2 size={14} />
+                      Slet
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -337,7 +336,9 @@ export function AdminTemplateEditorPage({ isAdmin, templateId }) {
         <div className="menu-editor-actions">
           <button className="profile-button" type="submit"><Save size={16} /> Gem</button>
           <button className="admin-action-button" type="button" onClick={renderPreview}><Eye size={16} /> Preview</button>
-          <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>
+          {canDeleteEmailTemplate(selectedTemplateType) && (
+            <button className="profile-button profile-button-danger" type="button" onClick={remove}><Trash2 size={16} /> Slet</button>
+          )}
         </div>
         {message && <p className="status-message status-message-success">{message}</p>}
         {error && <p className="status-message status-message-error">{error}</p>}

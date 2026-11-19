@@ -81,3 +81,6 @@ htmlcov/
 # Local, user-uploaded content images. Keep the root directory for local setup.
 /src/backend/gammasite-media/*
 !/src/backend/gammasite-media/.gitkeep
+
+!src/database/seeds/mysql/test/16_EmailTemplates.sql
+!src/frontend/services/emailTemplatePolicy.js
