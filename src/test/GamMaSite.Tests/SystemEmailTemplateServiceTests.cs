@@ -180,6 +180,77 @@ public class SystemEmailTemplateServiceTests
         missingEmail.Verify(value => value.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public async Task SendContactRequest_UsesContactTemplatesEscapesValuesAndSetsRequiredSender()
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.AddRange(
+            new EmailTemplate
+            {
+                Name = "Contact request", Subject = "Ny henvendelse: {{ContactType}}",
+                HtmlBody = "<p>{{ContactType}}|{{Topic}}|{{SenderEmail}}|{{Message}}</p>",
+                TemplateType = SystemEmailTemplateService.ContactRequest, IsActive = true
+            },
+            new EmailTemplate
+            {
+                Name = "Contact confirmation", Subject = "Vi har modtaget din henvendelse",
+                HtmlBody = "<p>{{ContactType}}|{{Topic}}|{{SenderEmail}}|{{Message}}</p>",
+                TemplateType = SystemEmailTemplateService.ContactConfirmation, IsActive = true
+            });
+        await db.SaveChangesAsync();
+        var email = new Mock<IEmailService>();
+        email.Setup(value => value.SendEmailFromAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        var service = new SystemEmailTemplateService(db, email.Object);
+
+        await service.SendContactRequestAsync(new[] { "contact@gam-ma.dk", "second@gam-ma.dk" }, "Arrangement", "Sommerfest", "member@example.com", "Hjælp <venligst>");
+        await service.SendContactConfirmationAsync("member@example.com", "Arrangement", "Sommerfest", "Hjælp <venligst>");
+
+        email.Verify(value => value.SendEmailFromAsync(
+            "bestyrelsen@gam-ma.dk", "contact@gam-ma.dk", "Ny henvendelse: Arrangement",
+            It.Is<string>(html => html.Contains("Sommerfest") && html.Contains("member@example.com") && html.Contains("Hj&#xE6;lp &lt;venligst&gt;"))), Times.Once);
+        email.Verify(value => value.SendEmailFromAsync("bestyrelsen@gam-ma.dk", "second@gam-ma.dk", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        email.Verify(value => value.SendEmailFromAsync("bestyrelsen@gam-ma.dk", "member@example.com", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendContactRequest_SkipsInactiveTemplate()
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "Inactive contact request", Subject = "{{ContactType}}", HtmlBody = "{{Message}}",
+            TemplateType = SystemEmailTemplateService.ContactRequest, IsActive = false
+        });
+        await db.SaveChangesAsync();
+        var email = new Mock<IEmailService>();
+
+        var sent = await new SystemEmailTemplateService(db, email.Object)
+            .SendContactRequestAsync(new[] { "contact@gam-ma.dk" }, "Arrangement", "Sommerfest", "member@example.com", "Hej");
+
+        Assert.False(sent);
+        email.Verify(value => value.SendEmailFromAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendContactConfirmation_SkipsInactiveTemplate()
+    {
+        await using var db = CreateDb();
+        db.EmailTemplates.Add(new EmailTemplate
+        {
+            Name = "Inactive contact confirmation", Subject = "Confirmation", HtmlBody = "{{Message}}",
+            TemplateType = SystemEmailTemplateService.ContactConfirmation, IsActive = false
+        });
+        await db.SaveChangesAsync();
+        var email = new Mock<IEmailService>();
+
+        var sent = await new SystemEmailTemplateService(db, email.Object)
+            .SendContactConfirmationAsync("member@example.com", "Arrangement", "Sommerfest", "Hej");
+
+        Assert.False(sent);
+        email.Verify(value => value.SendEmailFromAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
     private static ApplicationDbContext CreateDb() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }

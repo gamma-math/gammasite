@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using GamMaSite.Models;
 
@@ -33,5 +34,9 @@ namespace GamMaSite.Services
         Task SendEventConfirmationAsync(string email, string name, ContentItem content, string registrationType);
 
         Task SendWaitlistPromotionAsync(string email, string name, ContentItem content);
+
+        Task<bool> SendContactRequestAsync(IEnumerable<string> recipients, string contactType, string topic, string senderEmail, string message);
+
+        Task<bool> SendContactConfirmationAsync(string email, string contactType, string topic, string message);
     }
 }

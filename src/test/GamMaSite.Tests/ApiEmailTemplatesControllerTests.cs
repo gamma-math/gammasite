@@ -54,10 +54,23 @@ public class ApiEmailTemplatesControllerTests
     public async Task Delete_ReturnsNoContentWhenTemplateWasDeleted()
     {
         var service = new Mock<IEmailTemplateService>();
+        service.Setup(value => value.GetByIdAsync(1)).ReturnsAsync(new EmailTemplate { Id = 1, TemplateType = "EVENT" });
         service.Setup(value => value.DeleteAsync(1)).ReturnsAsync(true);
 
         var result = await new ApiEmailTemplatesController(service.Object).Delete(1);
 
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task Delete_RejectsSystemTemplates()
+    {
+        var service = new Mock<IEmailTemplateService>();
+        service.Setup(value => value.GetByIdAsync(1)).ReturnsAsync(new EmailTemplate { Id = 1, TemplateType = "SYSTEM_CONTACT_REQUEST" });
+
+        var result = await new ApiEmailTemplatesController(service.Object).Delete(1);
+
+        Assert.IsType<ConflictObjectResult>(result);
+        service.Verify(value => value.DeleteAsync(It.IsAny<int>()), Times.Never);
     }
 }
