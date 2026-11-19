@@ -1150,9 +1150,9 @@ GamMas bestyrelse',
     </div>
   </div>',
   'Ny henvendelse fra hjemmesiden\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\nAfsender: {{SenderEmail}}\n\n{{Message}}',
-  'SYSTEM_CONTACT_REQUEST', 
-  1, 
-  UTC_TIMESTAMP(), 
+  'SYSTEM_CONTACT_REQUEST',
+  1,
+  UTC_TIMESTAMP(),
   UTC_TIMESTAMP()
 ),
 (
@@ -1172,8 +1172,8 @@ GamMas bestyrelse',
     </div>
   </div>',
   'Tak for din henvendelse til GamMa. Vi har modtaget din besked og vender tilbage, så snart vi kan.\n\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\n\n{{Message}}',
-  'SYSTEM_CONTACT_CONFIRMATION', 
-  1, 
-  UTC_TIMESTAMP(), 
+  'SYSTEM_CONTACT_CONFIRMATION',
+  1,
+  UTC_TIMESTAMP(),
   UTC_TIMESTAMP()
 );
