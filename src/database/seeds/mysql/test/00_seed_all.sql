@@ -29,7 +29,7 @@ INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) V
 ('role-kasserer', 'Kasserer', 'KASSERER', 'd7b5c54e-1a7a-4d42-a7eb-7e12f45c3f01'),
 ('role-revisor', 'Revisor', 'REVISOR', 'e0c7bd31-8935-4db8-88b8-72b0c5b2a302'),
 ('role-arrangoer', CONVERT(0x417272616E67C3B872 USING utf8mb4), CONVERT(0x415252414E47C39852 USING utf8mb4), 'f1a6df40-9e4d-4fa7-8e6f-6e5d7f8d7c03'),
-('role-kommunikation', 'Kommunikationsansvarlig', 'KOMMUNIKATIONSANSVARLIG', 'a8e5a4f9-2f06-4a7b-ae11-2d1eb4c7d504');
+('role-communication', 'Kommunikationsansvarlig', 'KOMMUNIKATIONSANSVARLIG', 'a8e5a4f9-2f06-4a7b-ae11-2d1eb4c7d504');
 
 INSERT INTO `Permissions` (`Code`, `Description`) VALUES
   ('content.edit', 'Se, oprette, redigere, publicere og slette events og nyheder'),
@@ -72,7 +72,7 @@ FROM `Permissions`
 WHERE `Code` IN ('content.edit', 'registrations.edit');
 
 INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
-SELECT 'role-kommunikation', `Id`
+SELECT 'role-communication', `Id`
 FROM `Permissions`
 WHERE `Code` IN ('messages.edit', 'email_templates.edit');
 
@@ -1447,10 +1447,6 @@ INSERT INTO `ContentItems` (
   'Tak for din henvendelse til GamMa. Vi har modtaget din besked og vender tilbage, så snart vi kan.\n\nHenvendelse: {{ContactType}}\nArrangement / emne: {{Topic}}\n\n{{Message}}',
   'SYSTEM_CONTACT_CONFIRMATION', 1, UTC_TIMESTAMP(), UTC_TIMESTAMP()
 );
-
-INSERT INTO `AspNetRoles` (`Id`, `Name`, `NormalizedName`, `ConcurrencyStamp`) VALUES
-('role-contact-responsible', 'Kontakt Ansvarlig', 'KONTAKT ANSVARLIG', '63bc78b9-97bd-42a9-8a65-15c0c4c3ef21')
-ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`), `NormalizedName` = VALUES(`NormalizedName`), `ConcurrencyStamp` = VALUES(`ConcurrencyStamp`);
 
 INSERT INTO `EmailTemplates` (`Name`, `Subject`, `Preheader`, `HtmlBody`, `TextBody`, `TemplateType`, `IsActive`, `Created`, `Updated`) VALUES
 (

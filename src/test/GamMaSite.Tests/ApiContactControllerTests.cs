@@ -17,12 +17,12 @@ public class ApiContactControllerTests
     [Fact]
     public async Task Send_RoutesToContactResponsibleUsers()
     {
-        var contactRole = new IdentityRole("Kontakt Ansvarlig");
+        var contactRole = new IdentityRole("Kommunikationsansvarlig");
         var users = CreateUserManager();
-        users.Setup(manager => manager.GetUsersInRoleAsync("Kontakt Ansvarlig"))
+        users.Setup(manager => manager.GetUsersInRoleAsync("Kommunikationsansvarlig"))
             .ReturnsAsync(new List<SiteUser> { new() { Email = "contact@gam-ma.dk" } });
         var roles = CreateRoleManager();
-        roles.Setup(manager => manager.FindByNameAsync("Kontakt Ansvarlig")).ReturnsAsync(contactRole);
+        roles.Setup(manager => manager.FindByNameAsync("Kommunikationsansvarlig")).ReturnsAsync(contactRole);
         var templates = new Mock<ISystemEmailTemplateService>();
         templates.Setup(service => service.SendContactRequestAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
         templates.Setup(service => service.SendContactConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
@@ -42,11 +42,11 @@ public class ApiContactControllerTests
     public async Task Send_FallsBackToAdminsWhenContactRoleHasNoRecipients()
     {
         var users = CreateUserManager();
-        users.Setup(manager => manager.GetUsersInRoleAsync("Kontakt Ansvarlig")).ReturnsAsync(new List<SiteUser>());
+        users.Setup(manager => manager.GetUsersInRoleAsync("Kommunikationsansvarlig")).ReturnsAsync(new List<SiteUser>());
         users.Setup(manager => manager.GetUsersInRoleAsync("Admin"))
             .ReturnsAsync(new List<SiteUser> { new() { Email = "admin@gam-ma.dk" } });
         var roles = CreateRoleManager();
-        roles.Setup(manager => manager.FindByNameAsync("Kontakt Ansvarlig")).ReturnsAsync(new IdentityRole("Kontakt Ansvarlig"));
+        roles.Setup(manager => manager.FindByNameAsync("Kommunikationsansvarlig")).ReturnsAsync(new IdentityRole("Kommunikationsansvarlig"));
         var templates = new Mock<ISystemEmailTemplateService>();
         templates.Setup(service => service.SendContactRequestAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
         templates.Setup(service => service.SendContactConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
@@ -64,10 +64,10 @@ public class ApiContactControllerTests
     public async Task Send_DoesNotSendConfirmationWhenContactRequestTemplateIsInactive()
     {
         var users = CreateUserManager();
-        users.Setup(manager => manager.GetUsersInRoleAsync("Kontakt Ansvarlig"))
+        users.Setup(manager => manager.GetUsersInRoleAsync("Kommunikationsansvarlig"))
             .ReturnsAsync(new List<SiteUser> { new() { Email = "contact@gam-ma.dk" } });
         var roles = CreateRoleManager();
-        roles.Setup(manager => manager.FindByNameAsync("Kontakt Ansvarlig")).ReturnsAsync(new IdentityRole("Kontakt Ansvarlig"));
+        roles.Setup(manager => manager.FindByNameAsync("Kommunikationsansvarlig")).ReturnsAsync(new IdentityRole("Kommunikationsansvarlig"));
         var templates = new Mock<ISystemEmailTemplateService>();
         templates.Setup(service => service.SendContactRequestAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
         var controller = new ApiContactController(users.Object, roles.Object, templates.Object);

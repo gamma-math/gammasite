@@ -16,7 +16,7 @@ namespace GamMaSite.Controllers
     [AutoValidateAntiforgeryToken]
     public class ApiContactController : ControllerBase
     {
-        private const string ContactRoleName = "Kontakt Ansvarlig";
+        private const string ContactRoleName = "Kommunikationsansvarlig";
         private readonly UserManager<SiteUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ISystemEmailTemplateService _systemEmailTemplateService;

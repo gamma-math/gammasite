@@ -49,7 +49,7 @@ FROM `Permissions`
 WHERE `Code` IN ('content.edit', 'registrations.edit');
 
 INSERT IGNORE INTO `RolePermissions` (`RoleId`, `PermissionId`)
-SELECT 'role-kommunikation', `Id`
+SELECT 'role-communication', `Id`
 FROM `Permissions`
 WHERE `Code` IN ('messages.edit', 'email_templates.edit');
 
