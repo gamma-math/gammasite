@@ -571,7 +571,7 @@ function Footer({ onContact }) {
             </li>
             <li>CVR: 34637768</li>
             <li>
-              <button className="frontpage-footer-contact" type="button" onClick={onContact}>Kontaktformular</button>
+              Kontakt: <button className="frontpage-footer-contact" type="button" onClick={onContact}>Kontaktformular</button>
             </li>
           </ul>
         </div>

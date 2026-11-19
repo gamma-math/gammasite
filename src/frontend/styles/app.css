@@ -3250,6 +3250,7 @@ img {
   border: 0;
   color: inherit;
   background: transparent;
+  font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
 }
