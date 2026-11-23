@@ -83,7 +83,7 @@ public sealed class StripeWebhookControllerTests
         await using var db = CreateDb();
         var stripe = new Mock<IStripeService>();
         stripe.Setup(value => value.GetPayoutBalanceTransactionsAsync("po_diagnostic", It.IsAny<System.Threading.CancellationToken>()))
-            .ThrowsAsync(new Exception("Stripe balance lookup failed."));
+            .ThrowsAsync(new Exception("Stripe balance lookup failed.", new InvalidOperationException("Inner database failure.")));
 
         var financeConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -122,7 +122,9 @@ public sealed class StripeWebhookControllerTests
         var result = Assert.IsType<ObjectResult>(await controller.Receive(default));
         Assert.Equal(502, result.StatusCode);
         using var response = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
-        Assert.Equal("Stripe balance lookup failed.", response.RootElement.GetProperty("diagnostic").GetString());
+        Assert.Equal(
+            "Stripe balance lookup failed. --> InvalidOperationException: Inner database failure.",
+            response.RootElement.GetProperty("diagnostic").GetString());
     }
 
     [Fact]
