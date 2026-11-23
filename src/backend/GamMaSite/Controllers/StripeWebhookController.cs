@@ -184,7 +184,7 @@ namespace GamMaSite.Controllers
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : await _db.Users
                     .AsNoTracking()
-                    .Where(user => userIds.Contains(user.Id))
+                    .Where(user => Enumerable.Contains(userIds, user.Id))
                     .ToDictionaryAsync(
                         user => user.Id,
                         user => user.Navn,
