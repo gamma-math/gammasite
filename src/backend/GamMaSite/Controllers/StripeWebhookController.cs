@@ -111,10 +111,25 @@ namespace GamMaSite.Controllers
                         break;
                 }
             }
-            catch (InvalidOperationException exception)
+            catch (Exception exception)
             {
                 _logger.LogError(exception, "Stripe webhook processing failed for {WebhookId}.", webhookId);
-                return StatusCode(502, new { error = "Stripe-webhooken kunne ikke behandles endnu." });
+                // Simply exposes the HTTP response but not the application log.
+                // Return a short diagnostic for failed events without exposing a stack trace.
+                var diagnostic = exception.Message?
+                    .Replace('\r', ' ')
+                    .Replace('\n', ' ')
+                    .Trim();
+                if (diagnostic?.Length > 300)
+                {
+                    diagnostic = diagnostic[..300];
+                }
+
+                return StatusCode(502, new
+                {
+                    error = "Stripe-webhooken kunne ikke behandles endnu.",
+                    diagnostic
+                });
             }
 
             return Ok();

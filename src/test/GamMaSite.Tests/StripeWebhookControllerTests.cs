@@ -40,6 +40,92 @@ public sealed class StripeWebhookControllerTests
     }
 
     [Fact]
+    public async Task Receive_ReturnsDiagnosticForNonPayoutWebhookFailures()
+    {
+        await using var db = CreateDb();
+        var controller = CreateController(db, new Mock<IStripeService>().Object);
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = JsonSerializer.Serialize(new
+        {
+            id = "evt_checkout_failure",
+            @object = "event",
+            created,
+            data = new
+            {
+                @object = new
+                {
+                    id = "cs_missing_user",
+                    @object = "checkout.session",
+                    mode = "payment",
+                    payment_status = "paid",
+                    created,
+                    metadata = new Dictionary<string, string>
+                    {
+                        ["PaymentOfferId"] = "987654",
+                        ["Scope"] = PaymentOfferScopes.Membership
+                    }
+                }
+            },
+            livemode = false,
+            type = "checkout.session.completed"
+        });
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = Assert.IsType<ObjectResult>(await controller.Receive(default));
+        Assert.Equal(502, result.StatusCode);
+        using var response = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+        Assert.Contains("kunne ikke knyttes til en bruger", response.RootElement.GetProperty("diagnostic").GetString());
+    }
+
+    [Fact]
+    public async Task Receive_ReturnsDiagnosticForUnexpectedPayoutExceptions()
+    {
+        await using var db = CreateDb();
+        var stripe = new Mock<IStripeService>();
+        stripe.Setup(value => value.GetPayoutBalanceTransactionsAsync("po_diagnostic", It.IsAny<System.Threading.CancellationToken>()))
+            .ThrowsAsync(new Exception("Stripe balance lookup failed."));
+
+        var financeConfiguration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FinanceWrite:CONNECTION_STRING"] = "Host=localhost;Database=finance;Username=test;Password=test"
+            })
+            .Build();
+        var controller = CreateController(
+            db,
+            stripe.Object,
+            financeImportService: new FinanceImportService(financeConfiguration));
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = JsonSerializer.Serialize(new
+        {
+            id = "evt_payout_failure",
+            @object = "event",
+            created,
+            data = new
+            {
+                @object = new
+                {
+                    id = "po_diagnostic",
+                    @object = "payout",
+                    created,
+                    amount = 10000,
+                    currency = "dkk",
+                    status = "in_transit",
+                    reconciliation_status = "completed"
+                }
+            },
+            livemode = false,
+            type = "payout.reconciliation_completed"
+        });
+        SetRequest(controller, payload, Sign(payload));
+
+        var result = Assert.IsType<ObjectResult>(await controller.Receive(default));
+        Assert.Equal(502, result.StatusCode);
+        using var response = JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+        Assert.Equal("Stripe balance lookup failed.", response.RootElement.GetProperty("diagnostic").GetString());
+    }
+
+    [Fact]
     public async Task Receive_MarksOneTimeMembershipPaymentAsPaid()
     {
         await using var db = CreateDb();
@@ -447,7 +533,8 @@ public sealed class StripeWebhookControllerTests
     private static StripeWebhookController CreateController(
         ApplicationDbContext db,
         IStripeService stripe,
-        ISystemEmailTemplateService systemEmailTemplateService = null!)
+        ISystemEmailTemplateService systemEmailTemplateService = null!,
+        FinanceImportService financeImportService = null!)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -461,7 +548,8 @@ public sealed class StripeWebhookControllerTests
             stripe,
             configuration,
             NullLogger<StripeWebhookController>.Instance,
-            systemEmailTemplateService);
+            systemEmailTemplateService,
+            financeImportService);
     }
 
     private static void SetRequest(StripeWebhookController controller, string payload, string signature)

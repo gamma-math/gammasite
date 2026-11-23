@@ -860,6 +860,10 @@ namespace GamMaSite.Services
                 }
             }
 
+            // Persist the checkout user on the PaymentIntent as well as the
+            // Checkout Session so later payout imports can map it back to GAMMA.
+            sessionMetadata["GamMaUserId"] = user;
+
             var options = new SessionCreateOptions
             {
                 PaymentMethodTypes = new List<string>
