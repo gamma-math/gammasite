@@ -120,9 +120,24 @@ namespace GamMaSite.Controllers
                     .Replace('\r', ' ')
                     .Replace('\n', ' ')
                     .Trim();
-                if (diagnostic?.Length > 300)
+                var innerException = exception.InnerException;
+                while (innerException != null)
                 {
-                    diagnostic = diagnostic[..300];
+                    var innerMessage = innerException.Message?
+                        .Replace('\r', ' ')
+                        .Replace('\n', ' ')
+                        .Trim();
+                    if (!string.IsNullOrWhiteSpace(innerMessage))
+                    {
+                        diagnostic = $"{diagnostic} --> {innerException.GetType().Name}: {innerMessage}";
+                    }
+
+                    innerException = innerException.InnerException;
+                }
+
+                if (diagnostic?.Length > 1000)
+                {
+                    diagnostic = diagnostic[..1000];
                 }
 
                 return StatusCode(502, new
