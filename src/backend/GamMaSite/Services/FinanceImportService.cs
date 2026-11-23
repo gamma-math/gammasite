@@ -505,7 +505,7 @@ namespace GamMaSite.Services
                             AND NULLIF(TRIM(s.payout_id), '') IS NOT NULL
                             AND b.text ILIKE '%STRIPE%'
                           GROUP BY s.payout_id, s.payout_date, s.currency
-                          HAVING SUM(s.net) = b.amount
+                          HAVING ABS(SUM(s.net) - b.amount) <= 1.00
                              AND (SELECT COUNT(*)
                                   FROM public.bank_account b2
                                   WHERE b2.is_manual = false
