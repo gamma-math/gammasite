@@ -565,13 +565,13 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   }
 
   return (
-    <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated}>
-      <article className="menu-payment-card menu-payment-status-card">
+    <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <section className="menu-payment-event-success">
         <p className="menu-payment-kicker">Betaling</p>
         <h1>{success ? "Køb gennemført" : "Køb annulleret"}</h1>
         <p className="muted">{status === "kontingent-success" ? "Du har nu købt et kontingent." : success ? "Dit køb blev gennemført." : "Dit køb blev annulleret."}</p>
-        <Link className="frontpage-button frontpage-button-secondary" href="/pay">Til oversigten</Link>
-      </article>
+        <Link className="frontpage-button frontpage-button-primary" href="/pay">Til oversigten</Link>
+      </section>
     </MenuLayout>
   );
 }
