@@ -345,7 +345,7 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   }, [status]);
 
   useEffect(() => {
-    if (status !== "success" || !session) {
+    if (status !== "success" || !session || !user?.isAuthenticated) {
       setIsLoadingPaymentContext(false);
       return undefined;
     }
@@ -396,10 +396,10 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
         window.clearTimeout(timer);
       }
     };
-  }, [status, session]);
+  }, [status, session, user?.isAuthenticated]);
 
   useEffect(() => {
-    if (!reference || (status !== "event-success" && status !== "success") || session) {
+    if (!reference || (status !== "event-success" && status !== "success") || session || !user?.isAuthenticated) {
       return undefined;
     }
 
@@ -445,9 +445,26 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
         window.clearTimeout(timer);
       }
     };
-  }, [status, reference]);
+  }, [status, reference, user?.isAuthenticated]);
 
   const resolvedEventSlug = eventSlug || paymentContext?.eventSlug;
+  const isSuccessPage = status === "success" || status === "kontingent-success" || status === "event-success";
+  if (isSuccessPage && !user?.isAuthenticated) {
+    return (
+      <MenuLayout active={status === "event-success" ? "/events" : "/pay"} isAuthenticated={false} contentClassName="menu-content-flat">
+        <section className="menu-payment-event-success">
+          <p className="menu-payment-kicker">Betaling</p>
+          <h1>Log ind</h1>
+          <p className="muted">Du er ikke logget ind.</p>
+          <small className="muted">Har du betalt i en anden browser? Log ind igen for at se betalingsstatus.</small>
+          <Link className="frontpage-button frontpage-button-primary" href={loginHref()}>
+            Log ind
+          </Link>
+        </section>
+      </MenuLayout>
+    );
+  }
+
   if (status === "success" && session && isLoadingPaymentContext) {
     return (
       <MenuLayout active="/events" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
@@ -548,13 +565,13 @@ export function PaymentStatusPage({ status, eventSlug, session, reference, user 
   }
 
   return (
-    <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated}>
-      <article className="menu-payment-card menu-payment-status-card">
+    <MenuLayout active="/pay" isAuthenticated={user?.isAuthenticated} contentClassName="menu-content-flat">
+      <section className="menu-payment-event-success">
         <p className="menu-payment-kicker">Betaling</p>
         <h1>{success ? "Køb gennemført" : "Køb annulleret"}</h1>
         <p className="muted">{status === "kontingent-success" ? "Du har nu købt et kontingent." : success ? "Dit køb blev gennemført." : "Dit køb blev annulleret."}</p>
-        <Link className="frontpage-button frontpage-button-secondary" href="/pay">Til oversigten</Link>
-      </article>
+        <Link className="frontpage-button frontpage-button-primary" href="/pay">Til oversigten</Link>
+      </section>
     </MenuLayout>
   );
 }
